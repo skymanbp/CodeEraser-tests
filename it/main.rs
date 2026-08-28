@@ -61,6 +61,7 @@ mod eval_t3_candidates;
 mod eval_t3_precision;
 mod eval_t3_precision_parts;
 mod eval_t3_universe;
+mod fixtures_why;
 mod fpr_fourclass;
 mod gate_e2e;
 mod graph_containment;
