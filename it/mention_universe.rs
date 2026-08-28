@@ -244,3 +244,33 @@ fn the_formula_names_every_rule_the_walk_has() {
     f.assert_matches(&stats);
     assert_eq!(stats.universe, 3);
 }
+
+/// A nested repository is cut whole; the one the root's `.gitmodules`
+/// declares is this tree's (plan v2.18: the suite rides at `cli/tests`
+/// as a submodule) — read off the tracked file, so the exemption is
+/// the commit's own fact with or without the checkout. The same `cut`
+/// the formula above places every listed entry through.
+#[test]
+fn a_declared_submodule_is_not_a_nested_repository() {
+    let dir = common::tmp("gitmodules-exempt");
+    common::ladder::materialize(
+        &dir,
+        &[
+            ("declared/.git", "gitdir: ../.git/modules/declared\n"),
+            ("declared/inner/.keep", ""),
+            ("foreign/.git", "gitdir: elsewhere\n"),
+            (
+                ".gitmodules",
+                "[submodule \"suite\"]\n\tpath = declared/\n\turl = https://example.invalid/suite.git\n",
+            ),
+        ],
+    );
+    assert_eq!(
+        declared_submodules(&dir).into_iter().collect::<Vec<_>>(),
+        ["declared"]
+    );
+    assert!(!cut(&dir, "declared/a.rs"), "declared: this tree's");
+    assert!(!cut(&dir, "declared/inner/b.rs"), "…all the way down");
+    assert!(cut(&dir, "foreign/a.rs"), "undeclared: its own U");
+    assert!(cut(&dir, "declared/.ce/x"), "the by-name cut still applies inside it");
+}

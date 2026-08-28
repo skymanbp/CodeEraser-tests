@@ -95,5 +95,6 @@ mod sonar_whitepaper;
 mod structure_knobs;
 mod symbol_visibility;
 mod trend_rebuild;
+mod trend_submodule;
 mod wire_indices;
 mod zh_surface;
