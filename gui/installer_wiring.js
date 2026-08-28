@@ -9,12 +9,13 @@
 // so a rename or move reddens the push that made it instead of the
 // install three days later.
 //
-// Usage: node gui/tests/installer_wiring.js   (exit 1 = broken wiring)
+// Usage: node cli/tests/gui/installer_wiring.js   (exit 1 = broken wiring)
 "use strict";
 const fs = require("fs");
 const path = require("path");
 
-const root = path.join(__dirname, "..", "..");
+// cli/tests/gui/ → the superproject root (the suite is the cli/tests submodule)
+const root = path.join(__dirname, "..", "..", "..");
 const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 
 const problems = [];

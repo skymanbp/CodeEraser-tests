@@ -12,13 +12,14 @@
 // lens, and with no row or rect carrying their id, unreachable by
 // click as well (review 2026-08-19).
 //
-// Usage: node gui/tests/lens_invariant.js   (exit 1 = a broken lens)
+// Usage: node cli/tests/gui/lens_invariant.js   (exit 1 = a broken lens)
 "use strict";
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const root = path.join(__dirname, "..", "..");
+// cli/tests/gui/ → the superproject root (the suite is the cli/tests submodule)
+const root = path.join(__dirname, "..", "..", "..");
 const report = JSON.parse(
   fs.readFileSync(path.join(root, "contracts/fixtures/structure/gui-lens.json"), "utf8"),
 );

@@ -7,13 +7,14 @@
 // from index.html (data-i18n / data-i18n-ph / data-i18n-title) and every screen's
 // tr("...") calls.
 //
-// Usage: node gui/tests/i18n_gate.js   (exit 1 = a broken table)
+// Usage: node cli/tests/gui/i18n_gate.js   (exit 1 = a broken table)
 "use strict";
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const root = path.join(__dirname, "..", "..");
+// cli/tests/gui/ → the superproject root (the suite is the cli/tests submodule)
+const root = path.join(__dirname, "..", "..", "..");
 const ui = (f) => fs.readFileSync(path.join(root, "gui/ui", f), "utf8");
 
 // Load the REAL table under a stub sandbox (the lens gate's pattern).

@@ -20,7 +20,7 @@
 
 use crate::common;
 use codeeraser::dedup::{Params, index::Index};
-use codeeraser::mention::{FILE_CAP, Stats, cut, decode, excluded};
+use codeeraser::mention::{FILE_CAP, Stats, cut, declared_submodules, decode, excluded};
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
@@ -45,7 +45,8 @@ pub struct Terms {
     /// under `--others`, the walk never enters it
     pub named_cut: usize,
     /// inside — or itself — a directory owning a `.git`: a nested
-    /// repository, which git lists as one `sub/` entry or a gitlink
+    /// repository, which git lists as one `sub/` entry or a gitlink;
+    /// a submodule the root's `.gitmodules` declares is not nested
     pub nested: usize,
     /// a TRACKED file a `.gitignore` pattern matches: the walk reads
     /// patterns and never the index (spec §1 C3), git lists it under
@@ -118,28 +119,52 @@ impl Formula {
     }
 }
 
-/// git asked for `.gitignore` alone, twice: the listing (tracked, and
-/// untracked not pattern-matched) and the tracked files a pattern
-/// matches — the one ignore source the walk reads, read the one way
-/// the walk reads it (patterns, never the index). `.ceignore` is the
-/// walk's second source and git's none, so its presence is refused.
+/// git asked per REPOSITORY: the root, then every declared submodule
+/// whose checkout is seated (the walk's own exemption, walk.rs — a
+/// declared submodule is this tree's, so its files enter U under
+/// their superproject paths, and the superproject's bare gitlink row
+/// for it is the one entry skipped: those files arrive through the
+/// submodule's own listing). An unseated submodule keeps its gitlink
+/// row, which the walk never meets — `absent`, truthfully.
 pub fn formula(root: &Path) -> Formula {
-    const GITIGNORE_ONLY: &str = "--exclude-per-directory=.gitignore";
-    let listed = git_z(root, &["ls-files", "--cached", "--others", GITIGNORE_ONLY]);
-    let ignored: BTreeSet<String> =
-        git_z(root, &["ls-files", "--cached", "--ignored", GITIGNORE_ONLY])
-            .into_iter()
-            .collect();
     let mut f = Formula::default();
-    for rel in &listed {
+    let seated: Vec<String> = declared_submodules(root)
+        .into_iter()
+        .filter(|s| root.join(s).join(".git").exists())
+        .collect();
+    list_repo(&mut f, root, root, "", &seated);
+    for sub in &seated {
+        list_repo(&mut f, root, &root.join(sub), &format!("{sub}/"), &[]);
+    }
+    f
+}
+
+/// One repository's two git questions, `.gitignore` alone: the listing
+/// (tracked, and untracked not pattern-matched) and the tracked files
+/// a pattern matches — the one ignore source the walk reads, read the
+/// one way the walk reads it (patterns, never the index). `.ceignore`
+/// is the walk's second source and git's none, so its presence is
+/// refused. `prefix` is the repository's path under `root`.
+fn list_repo(f: &mut Formula, root: &Path, repo: &Path, prefix: &str, skip: &[String]) {
+    const GITIGNORE_ONLY: &str = "--exclude-per-directory=.gitignore";
+    let listed = git_z(repo, &["ls-files", "--cached", "--others", GITIGNORE_ONLY]);
+    let ignored: BTreeSet<String> =
+        git_z(repo, &["ls-files", "--cached", "--ignored", GITIGNORE_ONLY])
+            .into_iter()
+            .map(|r| format!("{prefix}{r}"))
+            .collect();
+    for rel in listed {
+        let rel = format!("{prefix}{rel}");
+        if skip.contains(&rel) {
+            continue;
+        }
         assert_ne!(
             rel.rsplit('/').next(),
             Some(".ceignore"),
             "{rel}: the formula reads git's `.gitignore` alone; the walk honours `.ceignore` too"
         );
-        f.place(root, rel, &ignored);
+        f.place(root, &rel, &ignored);
     }
-    f
 }
 
 fn git_z(root: &Path, args: &[&str]) -> Vec<String> {

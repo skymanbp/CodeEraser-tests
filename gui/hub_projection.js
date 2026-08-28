@@ -9,13 +9,14 @@
 // sees; the leg drives the REAL gui/ui/reports.js under DOM stubs and
 // reads the rendered header cells.
 //
-// Usage: node gui/tests/hub_projection.js   (exit 1 = a lost column)
+// Usage: node cli/tests/gui/hub_projection.js   (exit 1 = a lost column)
 "use strict";
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const root = path.join(__dirname, "..", "..");
+// cli/tests/gui/ → the superproject root (the suite is the cli/tests submodule)
+const root = path.join(__dirname, "..", "..", "..");
 
 // Just enough DOM for the module's boot IIFE (a select it fills, two
 // listeners) — every sink is a no-op, hubTable is called directly.

@@ -128,7 +128,7 @@ fn the_entry_globs_hint_follows_the_dead_share() {
 /// files. K44's Rust half rides here too: the row's five keys in the
 /// order serde_json emits them (a BTreeMap — alphabetical), which is
 /// the order the GUI hub projects its first five columns from
-/// (gui/tests/hub_projection.js pins the JS half on the same five).
+/// (cli/tests/gui/hub_projection.js pins the JS half on the same five).
 /// The advisory fixture: `used.ts` is kept alive by the entry and
 /// exports a name nothing spells; with `orphan`, a dead file beside it.
 fn unspoken_tree(tag: &str, orphan: bool) -> std::path::PathBuf {
