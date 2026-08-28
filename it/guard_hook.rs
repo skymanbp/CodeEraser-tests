@@ -209,13 +209,28 @@ fn exclusion_model_agrees_across_a_vcs_boundary() {
         .iter()
         .map(|p| walk::rel_str(&dir, p))
         .collect();
-    assert!(walked.iter().any(|p| p == "sub/hidden.rs"), "the root rule stops at the boundary: {walked:?}");
-    assert!(!walked.iter().any(|p| p == "sub/owned.rs"), "the nested rule applies: {walked:?}");
+    assert!(
+        walked.iter().any(|p| p == "sub/hidden.rs"),
+        "the root rule stops at the boundary: {walked:?}"
+    );
+    assert!(
+        !walked.iter().any(|p| p == "sub/owned.rs"),
+        "the nested rule applies: {walked:?}"
+    );
     let env = common::pretooluse_envelope_at(&dir, "sub/hidden.rs", "Write", &big);
     let reason = common::expect_decision(&dir, &env, "deny");
-    assert!(reason.contains("751 lines"), "the budget rule fired: {reason}");
-    let out = run_hook(&dir, &common::pretooluse_envelope_at(&dir, "sub/owned.rs", "Write", &big));
-    assert!(out.trim().is_empty(), "the walk skips it, so must the guard: {out}");
+    assert!(
+        reason.contains("751 lines"),
+        "the budget rule fired: {reason}"
+    );
+    let out = run_hook(
+        &dir,
+        &common::pretooluse_envelope_at(&dir, "sub/owned.rs", "Write", &big),
+    );
+    assert!(
+        out.trim().is_empty(),
+        "the walk skips it, so must the guard: {out}"
+    );
 }
 
 /// The rulepack's hook half (plan v2.13 ① P4, zero wire): the hard

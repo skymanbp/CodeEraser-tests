@@ -166,7 +166,11 @@ fn apply_refuses_by_name_then_converges() {
 #[test]
 fn apply_refuses_a_target_below_a_gitlink() {
     let sup = common::seed_superproject("erase-submodule", "suite");
-    std::fs::write(sup.join("suite/stray.md"), "an unlinked note nobody references\n").expect("md");
+    std::fs::write(
+        sup.join("suite/stray.md"),
+        "an unlinked note nobody references\n",
+    )
+    .expect("md");
     commit_all(&sup.join("suite"), "note");
     std::fs::write(sup.join(".gitignore"), ".ce/\n").expect(".gitignore");
     commit_all(&sup, "bump");
@@ -177,7 +181,10 @@ fn apply_refuses_a_target_below_a_gitlink() {
         "the walk reaches into the child"
     );
     let err = erase::apply_plan(&sup, None, &core, &plan).expect_err("refuses");
-    assert!(err.to_string().contains("below the submodule suite"), "{err:#}");
+    assert!(
+        err.to_string().contains("below the submodule suite"),
+        "{err:#}"
+    );
     assert!(sup.join("suite/stray.md").exists(), "nothing written");
     for repo in [sup.clone(), sup.join("suite")] {
         let out = std::process::Command::new("git")

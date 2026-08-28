@@ -12,7 +12,11 @@ use std::path::{Path, PathBuf};
 const EXTS: [&str; 8] = ["js", "rs", "hs", "json", "md", "toml", "ts", "py"];
 
 fn fixtures(dir: &Path, out: &mut Vec<PathBuf>) {
-    for p in std::fs::read_dir(dir).expect("fixtures dir").flatten().map(|e| e.path()) {
+    for p in std::fs::read_dir(dir)
+        .expect("fixtures dir")
+        .flatten()
+        .map(|e| e.path())
+    {
         if p.is_dir() {
             fixtures(&p, out);
         } else if p.extension().is_some_and(|x| x == "json") {
@@ -26,7 +30,10 @@ fn fixtures(dir: &Path, out: &mut Vec<PathBuf>) {
 fn paths(why: &str) -> Vec<&str> {
     why.split(|c: char| c.is_whitespace() || "()[]{},;:\"'`".contains(c))
         .filter(|t| t.contains('/') && !t.starts_with('/'))
-        .filter(|t| t.rsplit_once('.').is_some_and(|(_, ext)| EXTS.contains(&ext)))
+        .filter(|t| {
+            t.rsplit_once('.')
+                .is_some_and(|(_, ext)| EXTS.contains(&ext))
+        })
         .collect()
 }
 
@@ -45,16 +52,29 @@ fn every_path_a_fixture_why_spells_exists() {
         for rel in paths(why) {
             seen += 1;
             if !root.join(rel).exists() {
-                missing.push(format!("{}: {rel}", file.strip_prefix(&root).expect("under root").display()));
+                missing.push(format!(
+                    "{}: {rel}",
+                    file.strip_prefix(&root).expect("under root").display()
+                ));
             }
         }
     }
-    assert!(seen >= 1, "no fixture _why spells a path: the parser went quiet");
-    assert!(missing.is_empty(), "a fixture's _why names a path that is not there:\n{}", missing.join("\n"));
+    assert!(
+        seen >= 1,
+        "no fixture _why spells a path: the parser went quiet"
+    );
+    assert!(
+        missing.is_empty(),
+        "a fixture's _why names a path that is not there:\n{}",
+        missing.join("\n")
+    );
 }
 
 #[test]
 fn the_path_reading_is_narrow() {
     let why = "shaped for cli/tests/gui/lens_invariant.js (see docs/reference/gui.md); not a/b, not x.js, not /abs/p.rs";
-    assert_eq!(paths(why), ["cli/tests/gui/lens_invariant.js", "docs/reference/gui.md"]);
+    assert_eq!(
+        paths(why),
+        ["cli/tests/gui/lens_invariant.js", "docs/reference/gui.md"]
+    );
 }

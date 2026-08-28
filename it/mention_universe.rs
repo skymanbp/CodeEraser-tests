@@ -300,7 +300,10 @@ fn the_gitmodules_reading_feeds_the_cut() {
     for rel in ["quoted dir/a.rs", "inline/a.rs", "case/a.rs"] {
         assert!(!cut(&dir, rel), "{rel}: declared by git's reading");
     }
-    assert!(cut(&dir, "foreign/a.rs"), "a `path` outside a submodule stanza declares nothing");
+    assert!(
+        cut(&dir, "foreign/a.rs"),
+        "a `path` outside a submodule stanza declares nothing"
+    );
 }
 
 /// The oracle: on the repository itself, the product's reading equals
@@ -310,7 +313,14 @@ fn the_gitmodules_reading_feeds_the_cut() {
 fn declared_submodules_agree_with_git() {
     let root = common::repo_root();
     let out = Command::new("git")
-        .args(["config", "-f", ".gitmodules", "-z", "--get-regexp", r"^submodule\..+\.path$"])
+        .args([
+            "config",
+            "-f",
+            ".gitmodules",
+            "-z",
+            "--get-regexp",
+            r"^submodule\..+\.path$",
+        ])
         .current_dir(&root)
         .output()
         .expect("git config");
@@ -318,7 +328,10 @@ fn declared_submodules_agree_with_git() {
     let gits: BTreeSet<String> = String::from_utf8(out.stdout)
         .expect("utf-8")
         .split('\0')
-        .filter_map(|rec| rec.split_once('\n').map(|(_, v)| v.trim_end_matches('/').to_string()))
+        .filter_map(|rec| {
+            rec.split_once('\n')
+                .map(|(_, v)| v.trim_end_matches('/').to_string())
+        })
         .collect();
     assert!(!gits.is_empty(), "the repository declares its suite");
     assert_eq!(gitmodules::declared(&root), gits);
@@ -331,13 +344,22 @@ fn declared_submodules_agree_with_git() {
 #[test]
 fn an_unseated_declared_submodule_is_named_and_refused() {
     let sup = common::seed_superproject("mention-unseated", "suite");
-    assert!(gitmodules::unseated(&sup).is_empty(), "seated: nothing to name");
+    assert!(
+        gitmodules::unseated(&sup).is_empty(),
+        "seated: nothing to name"
+    );
     common::unseat(&sup, "suite");
     assert_eq!(gitmodules::unseated(&sup), ["suite"]);
     let scratch = common::tmp("mention-unseated-db");
     let idx = Index::open(&scratch.join("index.db"), Params::default()).expect("scratch index");
     let err = codeeraser::mention::refresh(&sup, &idx).expect_err("hollow U refused");
-    assert!(format!("{err:#}").contains("suite is not checked out"), "{err:#}");
+    assert!(
+        format!("{err:#}").contains("suite is not checked out"),
+        "{err:#}"
+    );
     std::fs::remove_dir(sup.join("suite")).expect("a stale stanza");
-    assert!(gitmodules::unseated(&sup).is_empty(), "no directory, nothing unseated");
+    assert!(
+        gitmodules::unseated(&sup).is_empty(),
+        "no directory, nothing unseated"
+    );
 }

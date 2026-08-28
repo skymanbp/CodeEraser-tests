@@ -24,7 +24,11 @@ fn corpus(root: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     let mut stack = vec![root.join("docs")];
     while let Some(dir) = stack.pop() {
-        for p in std::fs::read_dir(&dir).expect("docs dir").flatten().map(|e| e.path()) {
+        for p in std::fs::read_dir(&dir)
+            .expect("docs dir")
+            .flatten()
+            .map(|e| e.path())
+        {
             if p.is_dir() {
                 stack.push(p);
             } else if p.extension().is_some_and(|x| x == "md") {
@@ -32,8 +36,15 @@ fn corpus(root: &Path) -> Vec<PathBuf> {
             }
         }
     }
-    for (dir, ext) in [(root.to_path_buf(), "md"), (root.join("cli/tests/it"), "rs")] {
-        for p in std::fs::read_dir(&dir).expect("dir").flatten().map(|e| e.path()) {
+    for (dir, ext) in [
+        (root.to_path_buf(), "md"),
+        (root.join("cli/tests/it"), "rs"),
+    ] {
+        for p in std::fs::read_dir(&dir)
+            .expect("dir")
+            .flatten()
+            .map(|e| e.path())
+        {
             if p.is_file() && p.extension().is_some_and(|x| x == ext) {
                 out.push(p);
             }
@@ -47,16 +58,32 @@ fn corpus(root: &Path) -> Vec<PathBuf> {
 fn lines_of(root: &Path) -> Vec<(String, usize, String)> {
     let mut out = Vec::new();
     for p in corpus(root) {
-        let shown = p.strip_prefix(root).expect("under root").to_string_lossy().replace('\\', "/");
+        let shown = p
+            .strip_prefix(root)
+            .expect("under root")
+            .to_string_lossy()
+            .replace('\\', "/");
         let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{shown}: {e}"));
-        out.extend(text.lines().enumerate().map(|(i, l)| (shown.clone(), i + 1, l.to_string())));
+        out.extend(
+            text.lines()
+                .enumerate()
+                .map(|(i, l)| (shown.clone(), i + 1, l.to_string())),
+        );
     }
     out
 }
 
 fn git_out(dir: &Path, args: &[&str]) -> (bool, String) {
-    let out = Command::new("git").arg("-C").arg(dir).args(args).output().expect("git");
-    (out.status.success(), String::from_utf8_lossy(&out.stdout).into_owned())
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .output()
+        .expect("git");
+    (
+        out.status.success(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+    )
 }
 
 /// `git show <rev>:<path>` and `git archive <rev> <path>` on one line.
@@ -98,14 +125,24 @@ fn is_rev(rev: &str) -> bool {
 fn no_documented_command_writes_the_superproject_index_below_a_gitlink() {
     let root = common::repo_root();
     let declared = gitmodules::declared(&root);
-    assert!(!declared.is_empty(), "a gate with nothing to guard is vacuous");
-    let below = |tok: &str| declared.iter().any(|s| tok == s || tok.starts_with(&format!("{s}/")));
+    assert!(
+        !declared.is_empty(),
+        "a gate with nothing to guard is vacuous"
+    );
+    let below = |tok: &str| {
+        declared
+            .iter()
+            .any(|s| tok == s || tok.starts_with(&format!("{s}/")))
+    };
     let mut offenders = Vec::new();
     for (file, n, text) in lines_of(&root) {
         for cmd in ["git checkout", "git rm"] {
             let Some(i) = text.find(cmd) else { continue };
             let tail = &text[i + cmd.len()..];
-            if tail.split(|c: char| c.is_whitespace() || c == '`' || c == '"').any(below) {
+            if tail
+                .split(|c: char| c.is_whitespace() || c == '`' || c == '"')
+                .any(below)
+            {
                 offenders.push(format!("{file}:{n}: {}", text.trim()));
             }
         }
@@ -136,10 +173,16 @@ fn every_extraction_recipe_resolves_in_the_parents_history() {
                 "{file}:{n}: {rev} is not a commit of this repository"
             );
             let (ok, tree) = git_out(&root, &["ls-tree", "--name-only", &rev, "--", &path]);
-            assert!(ok && !tree.trim().is_empty(), "{file}:{n}: {path} is not in {rev}'s tree");
+            assert!(
+                ok && !tree.trim().is_empty(),
+                "{file}:{n}: {path} is not in {rev}'s tree"
+            );
         }
     }
-    assert!(seen >= 9, "the recipe corpus went quiet ({seen}): the parser stopped matching");
+    assert!(
+        seen >= 9,
+        "the recipe corpus went quiet ({seen}): the parser stopped matching"
+    );
 }
 
 /// Leg 3: the git semantics the wording relies on, on a superproject
@@ -159,20 +202,41 @@ fn extraction_leaves_the_gitlink_and_checkout_replaces_it() {
     let blob_era = git_out(&sup, &["rev-parse", "HEAD"]).1.trim().to_string();
     common::git(&sup, &["rm", "-rq", "suite"]);
     let url = child.to_str().expect("utf8").replace('\\', "/");
-    common::git(&sup, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, "suite"]);
+    common::git(
+        &sup,
+        &[
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            &url,
+            "suite",
+        ],
+    );
     common::commit_all(&sup, "submodule era");
     let gitlink = || git_out(&sup, &["ls-files", "-s", "suite"]).1;
     assert!(gitlink().starts_with("160000"), "{}", gitlink());
 
     let blob = git_out(&sup, &["show", &format!("{blob_era}:suite/f.rs")]).1;
     std::fs::write(sup.join("suite/g.rs"), blob).expect("extracted");
-    assert!(gitlink().starts_with("160000"), "extraction left the gitlink: {}", gitlink());
+    assert!(
+        gitlink().starts_with("160000"),
+        "extraction left the gitlink: {}",
+        gitlink()
+    );
     let status = git_out(&sup, &["status", "--porcelain"]).1;
     assert!(
-        status.lines().all(|l| l.trim_start().starts_with("M suite")),
+        status
+            .lines()
+            .all(|l| l.trim_start().starts_with("M suite")),
         "only the child's untracked content shows, as ` M suite`: {status:?}"
     );
 
     common::git(&sup, &["checkout", &blob_era, "--", "suite/f.rs"]);
-    assert!(!gitlink().contains("160000"), "the checkout replaced the gitlink: {}", gitlink());
+    assert!(
+        !gitlink().contains("160000"),
+        "the checkout replaced the gitlink: {}",
+        gitlink()
+    );
 }

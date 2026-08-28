@@ -112,7 +112,10 @@ fn an_unseated_submodule_is_named_in_the_audit_feed() {
     common::unseat(&sup, "suite");
     let line = stop_observe(&sup);
     assert_eq!(line["unmeasured"], serde_json::json!(["suite"]), "{line}");
-    assert!(line.get("skipped").is_none(), "partial, never skipped: {line}");
+    assert!(
+        line.get("skipped").is_none(),
+        "partial, never skipped: {line}"
+    );
 }
 
 /// `mode = "Deny"` used to come back from `tier()` verbatim: the

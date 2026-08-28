@@ -38,7 +38,8 @@ fn live_score(sup: &Path) -> anyhow::Result<codeeraser::score::Outcome> {
 #[test]
 fn a_seated_gitlink_judges_exactly_as_the_live_checkout() {
     let sup = common::seed_superproject("trend-super", "suite");
-    let report = codeeraser::trend::run(&sup, None, &common::core_bin(), 10, None).expect("trend run");
+    let report =
+        codeeraser::trend::run(&sup, None, &common::core_bin(), 10, None).expect("trend run");
     assert_eq!(
         report.rows.len(),
         2,
@@ -85,7 +86,12 @@ fn an_unseated_submodule_refuses_the_measurement_walk() {
     let sup = common::seed_superproject("walk-super-hollow", "suite");
     common::unseat(&sup, "suite");
     for (what, err) in [
-        ("scan", codeeraser::scan::measure(&sup).err().map(|e| format!("{e:#}"))),
+        (
+            "scan",
+            codeeraser::scan::measure(&sup)
+                .err()
+                .map(|e| format!("{e:#}")),
+        ),
         ("score", live_score(&sup).err().map(|e| format!("{e:#}"))),
     ] {
         let err = err.unwrap_or_else(|| panic!("{what} judged a hollow tree"));
@@ -96,7 +102,10 @@ fn an_unseated_submodule_refuses_the_measurement_walk() {
     }
     let out = common::run_ce(&sup, &["baseline", "."]);
     assert!(!out.status.success(), "ce baseline must not write: {out:?}");
-    assert!(!sup.join("ce-baseline.json").exists(), "no shrunken ratchet on disk");
+    assert!(
+        !sup.join("ce-baseline.json").exists(),
+        "no shrunken ratchet on disk"
+    );
 }
 
 /// Ruling (1): a submodule the exclusion model prunes contributes
@@ -118,7 +127,10 @@ fn an_excluded_unseated_submodule_is_not_refused() {
 fn a_refused_point_is_a_named_exit_1() {
     let seated = common::seed_superproject("trend-super-batch", "suite");
     let out = common::run_ce(&seated, &["trend", ".", "--batch", "1"]);
-    assert!(out.status.success(), "pending points are not failures: {out:?}");
+    assert!(
+        out.status.success(),
+        "pending points are not failures: {out:?}"
+    );
     let sup = common::seed_superproject("trend-super-exit", "suite");
     common::unseat(&sup, "suite");
     let out = common::run_ce(&sup, &["trend", "."]);
@@ -127,7 +139,10 @@ fn a_refused_point_is_a_named_exit_1() {
         String::from_utf8_lossy(&out.stderr),
     );
     assert!(!out.status.success(), "a refused point exits 1");
-    assert!(stdout.contains("FAILED"), "the report still names it: {stdout}");
+    assert!(
+        stdout.contains("FAILED"),
+        "the report still names it: {stdout}"
+    );
     assert!(
         stderr.contains("trend check:") && stderr.contains("not checked out"),
         "the veto carries the reason: {stderr}"

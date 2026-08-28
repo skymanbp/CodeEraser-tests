@@ -59,16 +59,26 @@ fn a_declared_submodule_with_no_parent_history_is_named_not_a_silent_zero() {
         "no ledger row from the submodule: {:?}",
         r.units
     );
-    assert!(r.commits >= 3, "the pointer bump is still a commit: {}", r.commits);
+    assert!(
+        r.commits >= 3,
+        "the pointer bump is still a commit: {}",
+        r.commits
+    );
     assert_eq!(r.submodules_without_history, ["suite"]);
     let json = churn::report_json(&r);
     assert_eq!(json["schema"], "ce.churn-report/0.2.0");
-    assert_eq!(json["submodules_without_file_history"], serde_json::json!(["suite"]));
+    assert_eq!(
+        json["submodules_without_file_history"],
+        serde_json::json!(["suite"])
+    );
 }
 
 fn assert_report(r: &churn::Report) {
     assert_eq!(r.commits, 3);
-    assert!(r.submodules_without_history.is_empty(), "nothing declared, nothing named");
+    assert!(
+        r.submodules_without_history.is_empty(),
+        "nothing declared, nothing named"
+    );
     assert!(
         r.rewrite_lines() >= 2,
         "work_1 edits are rewrite: {}",

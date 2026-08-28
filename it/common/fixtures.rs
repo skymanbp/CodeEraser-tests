@@ -125,7 +125,15 @@ pub fn seed_superproject(name: &str, mount: &str) -> PathBuf {
     let url = sub.to_str().expect("utf8").replace('\\', "/");
     git(
         &sup,
-        &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, mount],
+        &[
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            &url,
+            mount,
+        ],
     );
     commit_all(&sup, "mount");
     sup

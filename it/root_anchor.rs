@@ -31,7 +31,10 @@ fn answers_to_the_project(dir: &Path, sub: &Path) {
     assert_eq!(cfg.dedup.budget, Some(41), "the project's declaration wins");
     dedup::analyze(sub, None, None, None).expect("analyze");
     assert!(dir.join(".ce/index.db").is_file(), "the project's index");
-    assert!(!sub.join(".ce").exists(), "no stray beside the subdirectory");
+    assert!(
+        !sub.join(".ce").exists(),
+        "no stray beside the subdirectory"
+    );
 }
 
 #[test]
@@ -79,7 +82,10 @@ fn eject_lists_nested_stray_caches() {
         ("pkg/.ce", &[]),
         ("pkg/deep/.ce", &[]),
         ("vendored/.ce", &[("vendored/ce.toml", "\n")]),
-        ("vendored_git/.ce", &[("vendored_git/.git/HEAD", "ref: refs/heads/main\n")]),
+        (
+            "vendored_git/.ce",
+            &[("vendored_git/.git/HEAD", "ref: refs/heads/main\n")],
+        ),
         (
             "submod/.ce",
             &[
@@ -103,11 +109,20 @@ fn eject_lists_nested_stray_caches() {
             .any(|l| l.starts_with(head) && l.ends_with(&format!("/{rel}")))
     };
     for rel in ["pkg/.ce", "pkg/deep/.ce", "submod/.ce"] {
-        assert!(says("would remove:", rel), "stray {rel} unnamed in:\n{text}");
+        assert!(
+            says("would remove:", rel),
+            "stray {rel} unnamed in:\n{text}"
+        );
     }
     for rel in ["vendored", "vendored_git"] {
-        assert!(!says("would remove:", &format!("{rel}/.ce")), "{rel}: not ours:\n{text}");
-        assert!(says("left to its own eject", rel), "{rel}: named as kept:\n{text}");
+        assert!(
+            !says("would remove:", &format!("{rel}/.ce")),
+            "{rel}: not ours:\n{text}"
+        );
+        assert!(
+            says("left to its own eject", rel),
+            "{rel}: named as kept:\n{text}"
+        );
     }
     assert!(
         Path::new(&dir).join("vendored/.ce").exists(),
@@ -134,7 +149,10 @@ fn a_declared_submodule_answers_to_the_superproject() {
             ("sub/a.rs", &a),
         ],
     );
-    assert_eq!(score::baseline::path_for(&sub), dir.join("ce-baseline.json"));
+    assert_eq!(
+        score::baseline::path_for(&sub),
+        dir.join("ce-baseline.json")
+    );
     answers_to_the_project(&dir, &sub);
     std::fs::remove_dir_all(&dir).ok();
 }
