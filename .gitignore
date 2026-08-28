@@ -1,0 +1,5 @@
+# The suite runs inside the CodeEraser superproject (this repository is
+# mounted there as the `cli/tests` submodule); cargo's target/ and the
+# product's own .ce/ state never belong to the suite's history.
+target/
+.ce/
