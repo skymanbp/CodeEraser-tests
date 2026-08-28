@@ -272,5 +272,8 @@ fn a_declared_submodule_is_not_a_nested_repository() {
     assert!(!cut(&dir, "declared/a.rs"), "declared: this tree's");
     assert!(!cut(&dir, "declared/inner/b.rs"), "…all the way down");
     assert!(cut(&dir, "foreign/a.rs"), "undeclared: its own U");
-    assert!(cut(&dir, "declared/.ce/x"), "the by-name cut still applies inside it");
+    assert!(
+        cut(&dir, "declared/.ce/x"),
+        "the by-name cut still applies inside it"
+    );
 }

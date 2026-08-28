@@ -10,48 +10,49 @@
 //! hollow score.
 
 use crate::common::{self, git, rust_fn, tmp};
-use std::path::Path;
+use std::path::PathBuf;
 
-/// A submodule repository with one committed T2 clone pair (the
-/// trend_rebuild fixture's own pair) — content the superproject's
-/// judgment can only see through the seat.
-fn seed_sub(dir: &Path) {
-    std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("a.rs");
-    std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("b.rs");
-    git(dir, &["init", "-q"]);
-    common::commit_all(dir, "pair");
-}
-
-/// A superproject: one commit without the submodule, one that mounts
-/// it at `suite/` — not under a name the scan walk excludes, which
-/// would hide the pair from the live judgment too (the local-path
+/// The seeded superproject: one commit of its own, then one that
+/// mounts a submodule holding common::seed_clone_pair's T2 pair at
+/// `suite/` — not under a name the judgment excludes (`vendor/` hid
+/// the pair from the live score too, measured). The local-path
 /// transport git refuses by default since 2.38.1 is allowed for this
-/// fixture alone).
-fn seed_super(dir: &Path, sub: &Path) {
-    std::fs::write(dir.join("root.rs"), rust_fn(3)).expect("root.rs");
-    git(dir, &["init", "-q"]);
-    common::commit_all(dir, "root");
+/// fixture alone. Returns the superproject.
+fn superproject(name: &str) -> PathBuf {
+    let sub = tmp(&format!("{name}-sub"));
+    common::seed_clone_pair(&sub);
+    common::init_and_commit(&sub, "pair");
+    let sup = tmp(name);
+    std::fs::write(sup.join("root.rs"), rust_fn(3)).expect("root.rs");
+    common::init_and_commit(&sup, "root");
     let url = sub.to_str().expect("utf8").replace('\\', "/");
     git(
-        dir,
-        &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, "suite"],
+        &sup,
+        &[
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            &url,
+            "suite",
+        ],
     );
-    common::commit_all(dir, "mount");
-}
-
-fn trend(dir: &Path, core: &str) -> codeeraser::trend::Report {
-    codeeraser::trend::run(dir, None, core, 10, None).expect("trend run")
+    common::commit_all(&sup, "mount");
+    sup
 }
 
 #[test]
 fn a_seated_gitlink_judges_exactly_as_the_live_checkout() {
-    let sub = tmp("trend-sub");
-    seed_sub(&sub);
-    let sup = tmp("trend-super");
-    seed_super(&sup, &sub);
+    let sup = superproject("trend-super");
     let core = common::core_bin();
-    let report = trend(&sup, &core);
-    assert_eq!(report.rows.len(), 2, "both mainline commits measured: {:?}", report.failed);
+    let report = codeeraser::trend::run(&sup, None, &core, 10, None).expect("trend run");
+    assert_eq!(
+        report.rows.len(),
+        2,
+        "both mainline commits measured: {:?}",
+        report.failed
+    );
     let (before, mounted) = (&report.rows[0], &report.rows[1]);
     // the live checkout, judged the way trend judges every point: a
     // null baseline against the tree's own warn line (no baseline is
@@ -86,12 +87,10 @@ fn a_seated_gitlink_judges_exactly_as_the_live_checkout() {
 
 #[test]
 fn an_unseated_submodule_is_a_named_refusal() {
-    let sub = tmp("trend-sub-hollow");
-    seed_sub(&sub);
-    let sup = tmp("trend-super-hollow");
-    seed_super(&sup, &sub);
+    let sup = superproject("trend-super-hollow");
     git(&sup, &["submodule", "deinit", "-f", "-q", "suite"]);
-    let report = trend(&sup, &common::core_bin());
+    let report =
+        codeeraser::trend::run(&sup, None, &common::core_bin(), 10, None).expect("trend run");
     assert_eq!(report.rows.len(), 1, "the pre-mount commit still measures");
     assert!(
         report

@@ -94,6 +94,14 @@ pub fn seed_clone_pair(dir: &Path) {
     std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("b.rs (T2 clone)");
 }
 
+/// `git init` + the first commit of everything present — the one
+/// repo-birth stanza (trend_rebuild and trend_submodule each grew it
+/// beside their seeds until the ratchet paired them).
+pub fn init_and_commit(dir: &Path, msg: &str) {
+    git(dir, &["init", "-q"]);
+    commit_all(dir, msg);
+}
+
 /// Stage everything present and commit it — the one commit stanza
 /// (the P4 ratchet caught trend_rebuild's seed re-growing this trio
 /// of git calls token for token).

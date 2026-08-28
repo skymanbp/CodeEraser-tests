@@ -6,13 +6,12 @@
 //! pure cache read — same rows, nothing pending, nothing failed.
 
 use crate::common;
-use crate::common::{git, rust_fn, tmp};
+use crate::common::{rust_fn, tmp};
 use std::path::Path;
 
 fn seed_two_commits(dir: &Path) {
     std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("a.rs");
-    git(dir, &["init", "-q"]);
-    common::commit_all(dir, "one");
+    common::init_and_commit(dir, "one");
     std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("b.rs");
     common::commit_all(dir, "two");
 }
