@@ -43,8 +43,32 @@ fn root_commit_additions_are_counted() {
     assert_eq!(row.rewrote, 0, "an empty before side cannot rewrite");
 }
 
+/// A declared submodule's judged files can take no ledger row — their
+/// history is the child's, the parent sees pointer bumps — and the
+/// report SAYS so (plan v2.18 follow-up), while the bump itself still
+/// counts as a commit: absent rows, named, not degraded ones.
+#[test]
+fn a_declared_submodule_with_no_parent_history_is_named_not_a_silent_zero() {
+    let sup = common::seed_superproject("churn-submodule", "suite");
+    common::append(&sup.join("suite/b.rs"), "// child edit\n");
+    common::commit_all(&sup.join("suite"), "child edit");
+    common::commit_all(&sup, "bump");
+    let r = churn::run(&sup, 30).expect("churn");
+    assert!(
+        r.units.iter().all(|u| !u.path.starts_with("suite/")),
+        "no ledger row from the submodule: {:?}",
+        r.units
+    );
+    assert!(r.commits >= 3, "the pointer bump is still a commit: {}", r.commits);
+    assert_eq!(r.submodules_without_history, ["suite"]);
+    let json = churn::report_json(&r);
+    assert_eq!(json["schema"], "ce.churn-report/0.2.0");
+    assert_eq!(json["submodules_without_file_history"], serde_json::json!(["suite"]));
+}
+
 fn assert_report(r: &churn::Report) {
     assert_eq!(r.commits, 3);
+    assert!(r.submodules_without_history.is_empty(), "nothing declared, nothing named");
     assert!(
         r.rewrite_lines() >= 2,
         "work_1 edits are rewrite: {}",
@@ -69,7 +93,7 @@ fn assert_report(r: &churn::Report) {
         r.added_in_window()
     );
     let json = churn::report_json(r);
-    assert_eq!(json["schema"], "ce.churn-report/0.1.0");
+    assert_eq!(json["schema"], "ce.churn-report/0.2.0");
     assert_eq!(
         json["added_in_window"].as_u64().unwrap(),
         json["surviving"].as_u64().unwrap() + json["churned"].as_u64().unwrap(),

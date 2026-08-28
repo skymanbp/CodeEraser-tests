@@ -20,7 +20,8 @@
 
 use crate::common;
 use codeeraser::dedup::{Params, index::Index};
-use codeeraser::mention::{FILE_CAP, Stats, cut, declared_submodules, decode, excluded};
+use codeeraser::gitmodules;
+use codeeraser::mention::{FILE_CAP, Stats, cut, decode, excluded};
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
@@ -124,14 +125,12 @@ impl Formula {
 /// declared submodule is this tree's, so its files enter U under
 /// their superproject paths, and the superproject's bare gitlink row
 /// for it is the one entry skipped: those files arrive through the
-/// submodule's own listing). An unseated submodule keeps its gitlink
-/// row, which the walk never meets — `absent`, truthfully.
+/// submodule's own listing). An unseated one is refused by the walk
+/// before any listing (gitmodules.rs), so the formula, which mirrors
+/// the walk, is never asked about it.
 pub fn formula(root: &Path) -> Formula {
     let mut f = Formula::default();
-    let seated: Vec<String> = declared_submodules(root)
-        .into_iter()
-        .filter(|s| root.join(s).join(".git").exists())
-        .collect();
+    let seated: Vec<String> = gitmodules::seated(root);
     list_repo(&mut f, root, root, "", &seated);
     for sub in &seated {
         list_repo(&mut f, root, &root.join(sub), &format!("{sub}/"), &[]);
@@ -266,7 +265,7 @@ fn a_declared_submodule_is_not_a_nested_repository() {
         ],
     );
     assert_eq!(
-        declared_submodules(&dir).into_iter().collect::<Vec<_>>(),
+        gitmodules::declared(&dir).into_iter().collect::<Vec<_>>(),
         ["declared"]
     );
     assert!(!cut(&dir, "declared/a.rs"), "declared: this tree's");
@@ -276,4 +275,69 @@ fn a_declared_submodule_is_not_a_nested_repository() {
         cut(&dir, "declared/.ce/x"),
         "the by-name cut still applies inside it"
     );
+}
+
+/// The parse half feeds the cut: git's own spellings — a quoted value,
+/// an inline comment, a case-variant key under a case-variant header —
+/// exempt, and a `path` outside a submodule stanza does not (the
+/// grammar itself is pinned in gitmodules.rs's unit table; this leg
+/// ties it to the rule the walk consults).
+#[test]
+fn the_gitmodules_reading_feeds_the_cut() {
+    let dir = common::tmp("gitmodules-grammar");
+    for repo in ["quoted dir", "inline", "case", "foreign"] {
+        std::fs::create_dir_all(dir.join(repo)).expect("mkdir");
+        std::fs::write(dir.join(repo).join(".git"), "gitdir: elsewhere\n").expect(repo);
+    }
+    std::fs::write(
+        dir.join(".gitmodules"),
+        "[submodule \"a\"]\n\tpath = \"quoted dir\"\n[submodule \"b\"]\n\tpath = inline # was elsewhere\n\
+         [SUBMODULE \"c\"]\n\tPath = case\n[core]\n\tpath = foreign\n",
+    )
+    .expect(".gitmodules");
+    let want: BTreeSet<String> = ["case", "inline", "quoted dir"].map(String::from).into();
+    assert_eq!(gitmodules::declared(&dir), want);
+    for rel in ["quoted dir/a.rs", "inline/a.rs", "case/a.rs"] {
+        assert!(!cut(&dir, rel), "{rel}: declared by git's reading");
+    }
+    assert!(cut(&dir, "foreign/a.rs"), "a `path` outside a submodule stanza declares nothing");
+}
+
+/// The oracle: on the repository itself, the product's reading equals
+/// git's (`git config -f .gitmodules`), so a mis-parse cannot keep the
+/// K23 leg green by moving the walk and the formula together.
+#[test]
+fn declared_submodules_agree_with_git() {
+    let root = common::repo_root();
+    let out = Command::new("git")
+        .args(["config", "-f", ".gitmodules", "-z", "--get-regexp", r"^submodule\..+\.path$"])
+        .current_dir(&root)
+        .output()
+        .expect("git config");
+    assert!(out.status.success(), "{out:?}");
+    let gits: BTreeSet<String> = String::from_utf8(out.stdout)
+        .expect("utf-8")
+        .split('\0')
+        .filter_map(|rec| rec.split_once('\n').map(|(_, v)| v.trim_end_matches('/').to_string()))
+        .collect();
+    assert!(!gits.is_empty(), "the repository declares its suite");
+    assert_eq!(gitmodules::declared(&root), gits);
+}
+
+/// An unseated declared submodule is named by the shared predicate and
+/// refuses the mention pass by name (ruling: one commit, one U — a
+/// walk over the hollow checkout would shrink U silently); a declared
+/// path that does not exist at all is a stale stanza and names nothing.
+#[test]
+fn an_unseated_declared_submodule_is_named_and_refused() {
+    let sup = common::seed_superproject("mention-unseated", "suite");
+    assert!(gitmodules::unseated(&sup).is_empty(), "seated: nothing to name");
+    common::unseat(&sup, "suite");
+    assert_eq!(gitmodules::unseated(&sup), ["suite"]);
+    let scratch = common::tmp("mention-unseated-db");
+    let idx = Index::open(&scratch.join("index.db"), Params::default()).expect("scratch index");
+    let err = codeeraser::mention::refresh(&sup, &idx).expect_err("hollow U refused");
+    assert!(format!("{err:#}").contains("suite is not checked out"), "{err:#}");
+    std::fs::remove_dir(sup.join("suite")).expect("a stale stanza");
+    assert!(gitmodules::unseated(&sup).is_empty(), "no directory, nothing unseated");
 }

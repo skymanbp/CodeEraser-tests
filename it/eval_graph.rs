@@ -10,9 +10,9 @@
 //!
 //! Regenerate — the `--ignored` generator half retired in 0c7c936
 //! (M7.5a); revive it with its coeval support (EVAL-SET.md「再生成」):
-//!   git checkout 0c7c936^ -- cli/tests/eval_graph.rs cli/tests/eval_support
+//!   git show 0c7c936^:cli/tests/eval_graph.rs > cli/tests/eval_graph.rs && git archive 0c7c936^ cli/tests/eval_support | tar -x
 //!   cargo test --test eval_graph -- --ignored --nocapture   # per corpus: CE_SLICE_REPO + CE_GRAPH_NAME + CE_GRAPH_TIP
-//!   git checkout HEAD -- cli/tests/eval_graph.rs cli/tests/eval_support
+//!   rm -rf cli/tests/eval_graph.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 use crate::eval_support;
 use crate::eval_support::*;

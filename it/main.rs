@@ -74,6 +74,7 @@ mod graph_wire;
 mod guard_hook;
 mod guard_novelty;
 mod health_plugin;
+mod history_recipes;
 mod hs_grammar_pin;
 mod index_epoch;
 mod join_e2e;

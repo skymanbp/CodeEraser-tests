@@ -31,9 +31,9 @@
 //! Run (the CI gate — no core, no git): cargo test --test eval_l2
 //! Regenerate — the `--ignored` generator half retired in 0c7c936
 //! (M7.5a); revive it with its coeval support (EVAL-SET.md「再生成」):
-//!   git checkout 0c7c936^ -- cli/tests/eval_l2.rs cli/tests/eval_support
+//!   git show 0c7c936^:cli/tests/eval_l2.rs > cli/tests/eval_l2.rs && git archive 0c7c936^ cli/tests/eval_support | tar -x
 //!   CE_CORE_BIN=$(cd core && cabal list-bin ce-core) cargo test --test eval_l2 -- --ignored --nocapture   # CE_SLICE_* retargets the corpus
-//!   git checkout HEAD -- cli/tests/eval_l2.rs cli/tests/eval_support
+//!   rm -rf cli/tests/eval_l2.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 use crate::eval_l2_parts as parts;
 use crate::eval_l2_register;

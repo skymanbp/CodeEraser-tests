@@ -75,6 +75,46 @@ fn a_plain_dot_git_file_cannot_re_root_the_guard() {
     blocks(&common::fake_anchor_subdir(&dir, "sub"), "c.rs");
 }
 
+/// A deny-mode superproject whose clone pair lives in the `suite`
+/// submodule, committed clean — the shape 9bedcc4 gave this
+/// repository, and one both git legs were blind to: the parent's
+/// `diff --numstat` reports the child as `0 0 suite` and its
+/// `ls-files --others` never lists a file of the child.
+fn deny_superproject(name: &str) -> std::path::PathBuf {
+    let sup = common::seed_superproject(name, "suite");
+    std::fs::write(sup.join("ce.toml"), "[guard]\nmode = \"deny\"\n").expect("ce.toml");
+    common::commit_all(&sup, "policy");
+    sup
+}
+
+/// The diff leg, through the child's own git, in the ce root's spelling.
+#[test]
+fn a_tracked_edit_inside_a_submodule_still_blocks() {
+    let sup = deny_superproject("bypass-submodule-edit");
+    common::append(&sup.join("suite/b.rs"), "// touched\n");
+    blocks(&sup, "suite/b.rs");
+}
+
+/// The untracked leg — the §4.2 Bash-write scenario, one level down.
+#[test]
+fn a_brand_new_clone_inside_a_submodule_still_blocks() {
+    let sup = deny_superproject("bypass-submodule-new");
+    std::fs::write(sup.join("suite/c.rs"), common::rust_fn(3)).expect("clone");
+    blocks(&sup, "suite/c.rs");
+}
+
+/// An unseated submodule is a NAMED shortfall in the feed — the
+/// parent's numbers stay real, `skipped` stays absent (that field
+/// voids the whole line for a LOC-summing reader).
+#[test]
+fn an_unseated_submodule_is_named_in_the_audit_feed() {
+    let sup = deny_superproject("bypass-submodule-unseated");
+    common::unseat(&sup, "suite");
+    let line = stop_observe(&sup);
+    assert_eq!(line["unmeasured"], serde_json::json!(["suite"]), "{line}");
+    assert!(line.get("skipped").is_none(), "partial, never skipped: {line}");
+}
+
 /// `mode = "Deny"` used to come back from `tier()` verbatim: the
 /// audit compares `== "deny"` and stayed silent, while SessionStart
 /// printed `guard: Deny` as though it were armed.

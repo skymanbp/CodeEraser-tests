@@ -7,7 +7,7 @@
 //! CI's `ce erase .. --check` leg, not this file.
 
 use crate::common::gitio::git;
-use crate::common::{commit_all, core_bin, tmp};
+use crate::common::{self, commit_all, core_bin, tmp};
 use codeeraser::erase;
 use std::path::Path;
 
@@ -157,6 +157,36 @@ fn apply_refuses_by_name_then_converges() {
     assert!(log.lines().all(|l| l.contains("ce.erase-log/0.1.0")));
     let after = erase::plan(&dir, None, &core).expect("post-plan");
     assert_eq!(after.counts.eraseable, 0, "converged");
+}
+
+/// The repository ce verified and the subtree it writes must be one
+/// (plan v2.18 follow-up): a dead file inside a declared submodule is
+/// PLANNED (the CI `--check` leg still sees it) and REFUSED at apply,
+/// by name, with nothing written in either repository.
+#[test]
+fn apply_refuses_a_target_below_a_gitlink() {
+    let sup = common::seed_superproject("erase-submodule", "suite");
+    std::fs::write(sup.join("suite/stray.md"), "an unlinked note nobody references\n").expect("md");
+    commit_all(&sup.join("suite"), "note");
+    std::fs::write(sup.join(".gitignore"), ".ce/\n").expect(".gitignore");
+    commit_all(&sup, "bump");
+    let core = core_bin();
+    let plan = erase::plan(&sup, None, &core).expect("plan");
+    assert!(
+        row(&plan, "dead_file", "suite/stray.md").eraseable,
+        "the walk reaches into the child"
+    );
+    let err = erase::apply_plan(&sup, None, &core, &plan).expect_err("refuses");
+    assert!(err.to_string().contains("below the submodule suite"), "{err:#}");
+    assert!(sup.join("suite/stray.md").exists(), "nothing written");
+    for repo in [sup.clone(), sup.join("suite")] {
+        let out = std::process::Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(&repo)
+            .output()
+            .expect("git status");
+        assert!(out.stdout.is_empty(), "{}: untouched", repo.display());
+    }
 }
 
 #[test]

@@ -15,9 +15,9 @@
 //! Run (the CI gate — no core, no local data): cargo test --test fpr_fourclass
 //! Regenerate — the `--ignored` replay half retired in 0c7c936
 //! (M7.5a); revive it with its coeval support (EVAL-SET.md「再生成」):
-//!   git checkout 0c7c936^ -- cli/tests/fpr_fourclass.rs cli/tests/eval_support
+//!   git show 0c7c936^:cli/tests/fpr_fourclass.rs > cli/tests/fpr_fourclass.rs && git archive 0c7c936^ cli/tests/eval_support | tar -x
 //!   CE_CORE_BIN=$(cd core && cabal list-bin ce-core) cargo test --test fpr_fourclass -- --ignored --nocapture
-//!   git checkout HEAD -- cli/tests/fpr_fourclass.rs cli/tests/eval_support
+//!   rm -rf cli/tests/fpr_fourclass.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 use crate::eval_support::{eval_doc, load};
 

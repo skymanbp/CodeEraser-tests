@@ -12,9 +12,9 @@
 //!
 //! Regenerate — the `--ignored` generator half retired in 0c7c936
 //! (M7.5a); revive it with its coeval support (EVAL-SET.md「再生成」):
-//!   git checkout 0c7c936^ -- cli/tests/eval_docdup_precision.rs cli/tests/eval_support
+//!   git show 0c7c936^:cli/tests/eval_docdup_precision.rs > cli/tests/eval_docdup_precision.rs && git archive 0c7c936^ cli/tests/eval_support | tar -x
 //!   cargo test --release --test eval_docdup_precision -- --ignored --nocapture   # per corpus; corpora under .ce-eval/corpora; CE_CORE_BIN
-//!   git checkout HEAD -- cli/tests/eval_docdup_precision.rs cli/tests/eval_support
+//!   rm -rf cli/tests/eval_docdup_precision.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 #[path = "eval_docdup_precision_parts/mod.rs"]
 mod parts;

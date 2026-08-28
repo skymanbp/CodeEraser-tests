@@ -1,5 +1,16 @@
 # The suite runs inside the CodeEraser superproject (this repository is
 # mounted there as the `cli/tests` submodule); cargo's target/ and the
-# product's own .ce/ state never belong to the suite's history.
+# product's own .ce/ state never belong to the suite's history — nor do
+# the editor droppings and scratch files the superproject's own
+# .gitignore names: git applies THAT file only above this repository's
+# boundary (so does ce's walk), so the rules a nested tree needs live here.
 target/
 .ce/
+Thumbs.db
+.DS_Store
+*.swp
+.vscode/
+.idea/
+*.log
+*.tmp
+scratch/

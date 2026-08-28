@@ -110,6 +110,39 @@ pub fn commit_all(dir: &Path, msg: &str) {
     git(dir, &["commit", "-qm", msg]);
 }
 
+/// A superproject with one commit of its own, then one that mounts a
+/// submodule holding `seed_clone_pair`'s T2 pair at `mount` — `suite`
+/// unless a leg needs the judgment to EXCLUDE it (`vendor/` hid the
+/// pair from the live score, measured). The local-path transport git
+/// refuses by default since 2.38.1 is allowed for this fixture alone.
+pub fn seed_superproject(name: &str, mount: &str) -> PathBuf {
+    let sub = tmp(&format!("{name}-sub"));
+    seed_clone_pair(&sub);
+    init_and_commit(&sub, "pair");
+    let sup = tmp(name);
+    std::fs::write(sup.join("root.rs"), rust_fn(3)).expect("root.rs");
+    init_and_commit(&sup, "root");
+    let url = sub.to_str().expect("utf8").replace('\\', "/");
+    git(
+        &sup,
+        &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, mount],
+    );
+    commit_all(&sup, "mount");
+    sup
+}
+
+/// Append to a tracked file: the smallest edit a git leg can see.
+pub fn append(path: &Path, tail: &str) {
+    let text = std::fs::read_to_string(path).expect("read") + tail;
+    std::fs::write(path, text).expect("append");
+}
+
+/// `git submodule deinit`: the checkout leaves, the gitlink stays — the
+/// unseated shape every refusal leg asks about.
+pub fn unseat(sup: &Path, mount: &str) {
+    git(sup, &["submodule", "deinit", "-f", "-q", mount]);
+}
+
 /// The three-commit history the churn batteries measure, and the one
 /// every long-measurement face reuses: a root commit adding a.rs; an
 /// edit INSIDE work_1 plus a new b.rs (one rewrite, one append, one

@@ -84,6 +84,11 @@ const say = (ok, what) => {
   if (!ok) problems.push(what);
 };
 
+// the fixture's `_why` points back at this gate; the pointer moved
+// with the suite once (gui/tests → cli/tests/gui) and nothing read it
+const selfRel = path.relative(root, __filename).split(path.sep).join("/");
+say(report._why.includes(selfRel), `the fixture's _why names this gate's live path (${selfRel})`);
+
 const lost = report.tree
   .map((n, i) => ({ i, n }))
   .filter(({ i, n }) => n.axes.length > 0 && !named.has(i));

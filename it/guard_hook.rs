@@ -185,6 +185,39 @@ fn budget_respects_the_exclusion_model() {
     }
 }
 
+/// The budget rule's scope is the WALK's own matcher, across git's
+/// VCS boundary (plan v2.18 follow-up): the root `.gitignore` stops at
+/// a nested `.git` — file or directory — exactly as it does for git
+/// and for `collect()`, and the nested repository's own applies.
+#[test]
+fn exclusion_model_agrees_across_a_vcs_boundary() {
+    use codeeraser::scan::walk;
+    let dir = tmp("guard-vcs-boundary");
+    let big = "// filler\n".repeat(751);
+    common::ladder::materialize(
+        &dir,
+        &[
+            (".gitignore", "hidden.rs\n"),
+            ("sub/.git", "gitdir: ../.git/modules/sub\n"),
+            ("sub/.gitignore", "owned.rs\n"),
+            ("sub/hidden.rs", &big),
+            ("sub/owned.rs", &big),
+        ],
+    );
+    let walked: Vec<String> = walk::collect(&dir, &[])
+        .expect("collect")
+        .iter()
+        .map(|p| walk::rel_str(&dir, p))
+        .collect();
+    assert!(walked.iter().any(|p| p == "sub/hidden.rs"), "the root rule stops at the boundary: {walked:?}");
+    assert!(!walked.iter().any(|p| p == "sub/owned.rs"), "the nested rule applies: {walked:?}");
+    let env = common::pretooluse_envelope_at(&dir, "sub/hidden.rs", "Write", &big);
+    let reason = common::expect_decision(&dir, &env, "deny");
+    assert!(reason.contains("751 lines"), "the budget rule fired: {reason}");
+    let out = run_hook(&dir, &common::pretooluse_envelope_at(&dir, "sub/owned.rs", "Write", &big));
+    assert!(out.trim().is_empty(), "the walk skips it, so must the guard: {out}");
+}
+
 /// The rulepack's hook half (plan v2.13 ① P4, zero wire): the hard
 /// budget a write is measured against is the FILE'S class line. The
 /// same 800-line write passes inside a class whose hard line sits at
