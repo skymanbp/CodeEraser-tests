@@ -84,6 +84,7 @@ fn mcp_initialize_and_list() {
             "erase",
             "doctor",
             "trend",
+            "update_check",
         ]
     );
     // The write verbs stay absent BY NAME, not by nobody having added

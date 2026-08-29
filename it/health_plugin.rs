@@ -95,8 +95,9 @@ fn plugin_manifests_parse_and_wire_real_subcommands() {
             }
         }
     }
-    // the wire target and its manifest ship with the plugin
-    for shipped in ["bin/ce.sh", "bin/manifest.env"] {
+    // the wire target and its manifest ship with the plugin, and so
+    // does the update command (the plugin's face of `ce update`)
+    for shipped in ["bin/ce.sh", "bin/manifest.env", "commands/update.md"] {
         assert!(plugin.join(shipped).is_file(), "{shipped} missing");
     }
 }

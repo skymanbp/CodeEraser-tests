@@ -20,3 +20,19 @@ fn trend_window_default_is_the_shared_one() {
         "0 is no window"
     );
 }
+
+/// The update row is the CHECK alone (the read-only charter): `path`
+/// rides its schema like every row's and nothing else does, and the
+/// description says what the tool does not do.
+#[test]
+fn the_update_row_is_the_read_only_check() {
+    let row = TOOLS
+        .iter()
+        .find(|t| t.name == "update_check")
+        .expect("update_check row");
+    assert!(row.extra.is_empty());
+    assert!(row.desc.contains("places nothing"), "{}", row.desc);
+    let d = descriptor(row);
+    let props = d["inputSchema"]["properties"].as_object().expect("props");
+    assert_eq!(props.keys().collect::<Vec<_>>(), ["path"]);
+}

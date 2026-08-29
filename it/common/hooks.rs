@@ -99,10 +99,20 @@ pub fn stop_envelope(dir: &Path, stop_hook_active: bool) -> String {
 /// salvage (CE_DAEMON_IDLE_SECS=120, kept as a second fence) only
 /// shortened that leak to two minutes on the panic path.
 pub fn run_hook(dir: &Path, args: &[&str], stdin: &str) -> String {
+    run_hook_env(dir, args, stdin, &[])
+}
+
+/// `run_hook` under named environment (the run_ce / run_ce_env
+/// shape): the leg that arms the SessionStart update notice overrides
+/// the harness's default opt-out here, and nothing else does.
+pub fn run_hook_env(dir: &Path, args: &[&str], stdin: &str, env: &[(&str, &str)]) -> String {
     use std::io::Write as _;
     let mut child = Command::new(env!("CARGO_BIN_EXE_ce"))
         .args(args)
         .env("CE_DAEMON_IDLE_SECS", "120")
+        // no battery reaches the release index by accident (mod.rs)
+        .env("CE_UPDATE_CHECK", "0")
+        .envs(env.iter().copied())
         .current_dir(dir)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

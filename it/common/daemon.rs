@@ -17,6 +17,12 @@ pub struct DaemonGuard {
     child: Option<Child>,
 }
 
+impl From<Child> for DaemonGuard {
+    fn from(child: Child) -> Self {
+        DaemonGuard { child: Some(child) }
+    }
+}
+
 impl Drop for DaemonGuard {
     fn drop(&mut self) {
         if let Some(mut c) = self.child.take() {
@@ -24,6 +30,20 @@ impl Drop for DaemonGuard {
             let _ = c.wait(); // reap — no zombie on the panic path
         }
     }
+}
+
+/// The `ce daemon <root>` command every spawner shares: null stdin
+/// and stdout, `stderr` as the caller needs it (inherited for CI
+/// logs, piped to read the serving line), the test idle window.
+pub fn daemon_command(root: &Path, stderr: Stdio) -> Command {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_ce"));
+    cmd.arg("daemon")
+        .arg(root)
+        .env("CE_DAEMON_IDLE_SECS", "120")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(stderr);
+    cmd
 }
 
 /// Spawn the real `ce daemon` for `root` and wait until it answers a
@@ -37,16 +57,10 @@ impl Drop for DaemonGuard {
 /// Daemon stderr is inherited so CI logs show its cold-start lines.
 pub fn spawn_daemon_ready(root: &Path) -> DaemonGuard {
     use codeeraser::daemon::{client, proto::Request};
-    let child = Command::new(env!("CARGO_BIN_EXE_ce"))
-        .arg("daemon")
-        .arg(root)
-        .env("CE_DAEMON_IDLE_SECS", "120")
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
+    let child = daemon_command(root, Stdio::inherit())
         .spawn()
         .expect("spawn ce daemon");
-    let guard = DaemonGuard { child: Some(child) };
+    let guard = DaemonGuard::from(child);
     // 30 s, not 5: readiness is a liveness wait, not a latency claim,
     // and inside the merged `it` crate a cold daemon start co-runs
     // with the whole suite's thread pool — the old 5 s window blew
