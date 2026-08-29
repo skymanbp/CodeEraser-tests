@@ -60,10 +60,18 @@ fn repo_root() -> std::path::PathBuf {
 }
 
 fn run(args: &[&str], zh: bool) -> Output {
-    let db = crate::common::tmp("zh-surface-db")
-        .join("index.db")
-        .to_string_lossy()
-        .into_owned();
+    // one scratch db PER LEG: the two legs run in parallel, and `tmp`
+    // wipes its directory on every call — a shared name put one leg's
+    // wipe under the other leg's live mention pass (`database is
+    // locked` once, in a 305 s full-suite run; green alone)
+    let db = crate::common::tmp(if zh {
+        "zh-surface-db-zh"
+    } else {
+        "zh-surface-db-en"
+    })
+    .join("index.db")
+    .to_string_lossy()
+    .into_owned();
     let mut c = Command::new(env!("CARGO_BIN_EXE_ce"));
     c.current_dir(repo_root()).env_remove("CE_LANG").args(
         args.iter()

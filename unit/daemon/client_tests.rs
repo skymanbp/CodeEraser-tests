@@ -3,21 +3,80 @@
 //! its ceiling (the candidates_tests.rs precedent): the scripted
 //! stale daemons and the trust ordering they exercise.
 
-use super::{Request, bounded, request_if_running, socket_name, stale};
+use super::{Request, request_if_running, socket_name, stale};
+use crate::daemon::cancel::{Canceller, GRACE, PARKED, bounded_with};
 use interprocess::local_socket::traits::ListenerExt;
-use interprocess::local_socket::{GenericNamespaced, ListenerOptions, ToNsName};
+use interprocess::local_socket::{GenericNamespaced, Listener, ListenerOptions, ToNsName};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
+use std::sync::Mutex;
+use std::sync::atomic::Ordering::SeqCst;
+use std::time::{Duration, Instant};
+
+/// The gauge is process-wide, so the two legs that read it take
+/// turns; a poisoned lock (a failed leg) must not hide the other.
+static GAUGE: Mutex<()> = Mutex::new(());
+
+/// The deadline every measured leg hands `bounded_with`.
+const DEADLINE: Duration = Duration::from_millis(300);
+
+/// Bind this root's socket, the way every scripted daemon here does.
+fn listen(root: &Path) -> Listener {
+    let ns = socket_name(root)
+        .to_ns_name::<GenericNamespaced>()
+        .expect("name");
+    ListenerOptions::new().name(ns).create_sync().expect("bind")
+}
+
+/// One measured conversation with a daemon that accepts and then
+/// says NOTHING for `hold` (from the accept, which the client's own
+/// connect drives) before dropping the connection: the refusal's
+/// text, how long the client waited, the gauge before it asked, and
+/// the daemon's thread to join.
+struct Probe {
+    err: String,
+    elapsed: Duration,
+    parked: usize,
+    held: std::thread::JoinHandle<()>,
+}
+
+fn probe(tag: &str, hold: Duration, canceller: Canceller) -> Probe {
+    let root = crate::testutil::scratch(tag);
+    let listener = listen(&root);
+    let held = std::thread::spawn(move || {
+        let stream = listener.incoming().next().expect("conn").expect("accept");
+        std::thread::sleep(hold);
+        drop(stream);
+    });
+    let parked = PARKED.load(SeqCst);
+    let started = Instant::now();
+    let err = bounded_with(&root, &Request::Ping, false, DEADLINE, canceller)
+        .expect_err("silence must not be an answer")
+        .to_string();
+    Probe {
+        err,
+        elapsed: started.elapsed(),
+        parked,
+        held,
+    }
+}
+
+/// The gauge settles to `want` within `within`, or the leg fails
+/// with the value it saw last.
+fn settles(want: usize, within: Duration) {
+    let until = Instant::now() + within;
+    while PARKED.load(SeqCst) != want && Instant::now() < until {
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(PARKED.load(SeqCst), want, "the parked gauge settles");
+}
 
 /// A scripted pre-1.1.0 daemon: it answers ONE hello with `proto`
 /// (checking no credential, as such a daemon does), then records
 /// every further line and answers each with a bye. The handle
 /// yields the recorded lines once the client drops the socket.
 fn stub_daemon(root: &Path, proto: &str) -> std::thread::JoinHandle<Vec<String>> {
-    let ns = socket_name(root)
-        .to_ns_name::<GenericNamespaced>()
-        .expect("name");
-    let listener = ListenerOptions::new().name(ns).create_sync().expect("bind");
+    let listener = listen(root);
     let hello_ok = format!(r#"{{"type":"hello_ok","proto":"{proto}"}}"#);
     std::thread::spawn(move || {
         let stream = listener.incoming().next().expect("conn").expect("accept");
@@ -107,37 +166,60 @@ fn stale_orders_minors_and_distrusts_garbage() {
 
 /// The #85 close, measured: a daemon that accepts and then says
 /// NOTHING no longer parks the client forever. The deadline is
-/// passed straight to `bounded` — an env pin here would race the
-/// parallel tests reading the same process environment.
+/// passed straight to the bounded call — an env pin here would race
+/// the parallel tests reading the same process environment. And the
+/// O64 half: the worker the deadline gave up on is TORN DOWN, not
+/// parked — the refusal comes back well inside the grace (the
+/// cancelled read returned, so nothing was detached), and the gauge
+/// never moved, while the daemon still holds its end for seconds.
 #[test]
 fn a_silent_daemon_meets_the_deadline_not_forever() {
-    let root = crate::testutil::scratch("client-silent");
-    let ns = socket_name(&root)
-        .to_ns_name::<GenericNamespaced>()
-        .expect("name");
-    let listener = ListenerOptions::new().name(ns).create_sync().expect("bind");
-    // accept, then hold the connection open without one byte back
-    let hold = std::thread::spawn(move || {
-        let stream = listener.incoming().next().expect("conn").expect("accept");
-        std::thread::sleep(std::time::Duration::from_secs(5));
-        drop(stream);
-    });
-    let started = std::time::Instant::now();
-    let err = bounded(
-        &root,
-        &Request::Ping,
-        false,
-        std::time::Duration::from_millis(300),
-    )
-    .expect_err("silence must not be an answer");
+    let _turn = GAUGE.lock().unwrap_or_else(|e| e.into_inner());
+    let p = probe("client-silent", Duration::from_secs(5), Canceller::new());
     assert!(
-        started.elapsed() < std::time::Duration::from_secs(3),
-        "the deadline bounded the wait: {:?}",
-        started.elapsed()
+        p.elapsed < DEADLINE + GRACE,
+        "the worker came back inside the grace, not at its end: {:?}",
+        p.elapsed
     );
     assert!(
-        err.to_string().contains("did not answer within"),
-        "the refusal names the deadline: {err}"
+        p.err.contains("did not answer within") && !p.err.contains("detached"),
+        "the refusal names the deadline and no residue: {}",
+        p.err
     );
-    hold.join().expect("stub");
+    assert_eq!(PARKED.load(SeqCst), p.parked, "nothing was detached");
+    p.held.join().expect("stub");
+}
+
+/// The counterfactual that proves the cancel is what tore the
+/// worker down: with an INERT canceller (the pre-O64 behaviour) the
+/// same silent daemon leaves the worker parked past the whole grace,
+/// the refusal says so by name, and the gauge counts it — until the
+/// daemon drops the connection and the worker returns, at which
+/// point the gauge goes back down. The daemon holds for longer than
+/// deadline + grace so the detach is certain, not a race.
+#[test]
+fn an_inert_canceller_leaves_the_worker_parked_and_counted() {
+    let _turn = GAUGE.lock().unwrap_or_else(|e| e.into_inner());
+    let p = probe(
+        "client-inert",
+        GRACE + Duration::from_secs(2),
+        Canceller::inert(),
+    );
+    assert!(
+        p.elapsed >= DEADLINE + GRACE,
+        "the whole grace was spent: {:?}",
+        p.elapsed
+    );
+    assert!(
+        p.err.contains("still reading") && p.err.contains("detached"),
+        "the residue is named with its stage: {}",
+        p.err
+    );
+    assert_eq!(
+        PARKED.load(SeqCst),
+        p.parked + 1,
+        "the parked worker is counted"
+    );
+    p.held.join().expect("stub");
+    settles(p.parked, Duration::from_secs(3));
 }

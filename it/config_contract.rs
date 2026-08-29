@@ -157,3 +157,72 @@ fn rulepack_classes_refuse_at_the_load_throat() {
         "64 classes load"
     );
 }
+
+/// O39: the digest a fixed declaration hashes to is a COMPATIBILITY
+/// SURFACE — it sits in downstream repos' committed baselines and is
+/// compared for equality across ce upgrades — so one literal is
+/// frozen here (the GRAPH_REV / DOCDUP_REV discipline). Moving it is
+/// a deliberate act with a CHANGELOG line and a named re-pin in every
+/// fenced repo, never a side effect of a serialization change. The
+/// rows pin the canonical form's laws through the real load throat:
+/// comments and key order do not move it; a knob spelled at its
+/// effective default is silence; a changed threshold, a changed class
+/// glob and a changed exclude each move it and apart; a Windows
+/// spelling of a glob is refused by name at load (O42), never a
+/// second digest of the same intent.
+#[test]
+fn the_digest_of_a_fixed_declaration_is_frozen() {
+    const FROZEN: u64 = 13_320_460_457_564_820_659;
+    let fx = common::fixture("config-contract-digest", &[("src/a.rs", "fn a() {}\n")]);
+    let digest = |toml: &str| load_toml(&fx.dir, toml).expect("loads").knobs_digest();
+    // (text, what it hashes to): silent = the shipped default's
+    // nothing, frozen = the literal, moved = something else
+    let rows = [
+        ("# nothing declared\n", "silent"),
+        (
+            "[trend]\nmin_points = 3\n[thresholds]\nfile_lines_warn = 300\n[graph]\nscc_floor = 2\n[score]\nviol_cost = 10\n",
+            "silent",
+        ),
+        (
+            "[dedup]\nbudget = 182\n\n[thresholds]\nfile_lines_warn = 250\n",
+            "frozen",
+        ),
+        (
+            "[thresholds]\n# spelled the other way round, commented\nfile_lines_warn = 250 # the line\n[dedup]\nbudget = 182\n[score]\ntol_abs = 10\n",
+            "frozen",
+        ),
+        (
+            "[dedup]\nbudget = 182\n[thresholds]\nfile_lines_warn = 251\n",
+            "moved",
+        ),
+    ];
+    for (i, (toml, want)) in rows.iter().enumerate() {
+        let got = digest(toml);
+        let ok = match *want {
+            "silent" => got.is_none(),
+            "frozen" => got == Some(FROZEN),
+            _ => got.is_some() && got != Some(FROZEN),
+        };
+        assert!(ok, "row {i} ({want}): {got:?} for {toml:?}");
+    }
+    let classed = |glob: &str| {
+        digest(&format!(
+            "[[rules.class]]\nname = \"gen\"\nglobs = [\"{glob}\"]\n"
+        ))
+    };
+    assert_ne!(
+        classed("src/gen/**"),
+        classed("src/gen/*"),
+        "a class glob moves it"
+    );
+    assert_ne!(
+        classed("src/gen/**"),
+        digest("exclude = [\"src/gen/**\"]\n"),
+        "and apart from an exclude"
+    );
+    let err = load_toml(&fx.dir, "exclude = [\"src\\\\gen\\\\*.rs\"]\n").expect_err("refused");
+    assert!(
+        err.contains("escape"),
+        "a Windows spelling is refused by name, not fingerprinted: {err}"
+    );
+}

@@ -35,6 +35,9 @@ fn a_missing_core_is_a_finding_not_an_error() {
     assert_eq!(d["index"]["state"], 0);
     assert_eq!(d["index"]["files"], serde_json::Value::Null);
     assert_eq!(d["degradedRuns"]["entries"], 0);
+    // 0.3.0 (O64): the deadline's residue is a number, and in a
+    // process that met no wedged daemon it is zero
+    assert_eq!(d["daemon"]["parkedWorkers"], 0);
 }
 
 /// The document agrees with the console face field for field — the

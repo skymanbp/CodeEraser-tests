@@ -162,6 +162,70 @@ fn knob_default_drift_gate() {
         }),
         "core Cost.hs defaults drifted from the pinned knob face"
     );
+    // O39: the Rust mirror of those defaults (the digest's effective
+    // default) rides the same throats the request does, so every row
+    // it would send equals the echo the knobless request received —
+    // the mirror cannot drift from the core in silence. The
+    // thresholds table's code 7 is the graph's floor, mirrored below.
+    use codeeraser::score::knobs::{
+        CEILING_KEYS, CORE_SCC_FLOOR, THRESHOLD_KEYS, TOLERANCE_KEYS, ceiling_rows, core_defaults,
+        threshold_rows, tolerance_rows,
+    };
+    let mirror = core_defaults();
+    let tables = [
+        (
+            &CEILING_KEYS[..],
+            ceiling_rows(&t, &mirror),
+            CEILING_KEYS.len(),
+        ),
+        (
+            &THRESHOLD_KEYS[..],
+            threshold_rows(&mirror, None),
+            THRESHOLD_KEYS.len() - 1,
+        ),
+        (
+            &TOLERANCE_KEYS[..],
+            tolerance_rows(&mirror),
+            TOLERANCE_KEYS.len(),
+        ),
+    ];
+    for (keys, rows, want) in tables {
+        assert_eq!(rows.len(), want, "the mirror declares every code: {rows:?}");
+        for [code, value] in rows {
+            let key = keys[code as usize];
+            assert_eq!(
+                reply["knobs"][key],
+                serde_json::json!(value),
+                "mirror of {key}"
+            );
+        }
+    }
+    // the trend mirror against the trend echo, the graph's floor
+    // against the graph's own reading of it: absent = the mirrored
+    // floor (no cycle for a self-arc singleton), 1 = a cycle
+    let trend = link
+        .request("trend", serde_json::json!({"rows": [[86400, 900, 1000]]}))
+        .expect("trend round-trip");
+    assert_eq!(
+        trend["knobs"],
+        serde_json::json!([[0, 3], [1, 0]]),
+        "trend mirror"
+    );
+    let mut graph = |floor: Option<u32>| {
+        let mut req = serde_json::json!({
+            "nodes": [[0, 0, 0]], "edges": [[0, 0, 0, 0]], "pos": []
+        });
+        if let Some(f) = floor {
+            req["sccFloor"] = serde_json::json!(f);
+        }
+        link.request("graph", req).expect("graph round-trip")["cycles"].clone()
+    };
+    assert_eq!(
+        graph(None),
+        graph(Some(CORE_SCC_FLOOR)),
+        "graph floor mirror"
+    );
+    assert_ne!(graph(None), graph(Some(1)), "and 1 is not that floor");
 }
 
 /// A two-pair batch in the cross-pair shape every bucket test uses:
