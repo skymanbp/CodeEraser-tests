@@ -17,6 +17,7 @@ mod baseline_policy;
 mod bench;
 mod bench_render;
 mod bench_render_dashboard;
+mod bench_seat;
 mod bench_support;
 mod churn;
 mod cli_bare;

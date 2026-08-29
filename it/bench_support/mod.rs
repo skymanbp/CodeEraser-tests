@@ -162,6 +162,40 @@ pub fn version_of(ce: &Path) -> anyhow::Result<String> {
         .to_string())
 }
 
+/// Seat every submodule a checked-out tree declares. `git worktree
+/// add` leaves gitlinks empty, and since the tests moved into a
+/// submodule (L round step #11) the product refuses an unseated
+/// declaration by name — a replay that did not seat would measure
+/// the refusal, not the tag. Returns the seated mounts as the
+/// product's own predicate reads them; a tree without `.gitmodules`
+/// makes no git call. The local-path transport is allowed for the
+/// fixture superprojects (git refuses it by default since 2.38.1);
+/// the real tree's submodule resolves over https.
+pub fn seat_submodules(tree: &Path) -> anyhow::Result<Vec<String>> {
+    if !tree.join(".gitmodules").is_file() {
+        return Ok(Vec::new());
+    }
+    let st = Command::new("git")
+        .args([
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "update",
+            "--init",
+            "--recursive",
+        ])
+        .current_dir(tree)
+        .status()?;
+    anyhow::ensure!(st.success(), "submodule update at {}", tree.display());
+    let seated = codeeraser::gitmodules::seated(tree);
+    anyhow::ensure!(
+        !seated.is_empty(),
+        "declared submodules did not seat at {}",
+        tree.display()
+    );
+    Ok(seated)
+}
+
 /// today, YYYY-MM-DD (UTC) — provenance, not a comparability key.
 pub fn today() -> String {
     let secs = std::time::SystemTime::now()

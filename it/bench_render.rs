@@ -16,8 +16,9 @@ fn render_md(d: &Value) -> String {
          > Generated from [contracts/bench/bench.json](../contracts/bench/bench.json) by\n\
          > `cli/tests/it/bench_render.rs` (`CE_BLESS=1` to regenerate). Every series row was\n\
          > measured by `cli/tests/it/bench.rs` (`bench_append` for a checkout, `bench_backfill`\n\
-         > per release tag — each tag's OWN binaries, release builds only, fresh index per\n\
-         > cold run). Frozen points carry their sealed-ledger source; points that cannot\n\
+         > per release tag — the tag's submodules seated, its OWN binaries, release builds\n\
+         > only, fresh index per cold run). Frozen points carry their sealed-ledger source;\n\
+         > points that cannot\n\
          > honestly become a per-version series say why in their epoch clause.\n\
          >\n\
          > The whole series is ONE machine — the host column repeats because it never\n\

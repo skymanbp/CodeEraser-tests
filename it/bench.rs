@@ -198,6 +198,8 @@ fn bench_append() {
 }
 
 /// Per-tag backfill (user ruling ④): detached worktree, the tag's
+/// submodules seated (bench_support::seat_submodules — from v1.3.0 the
+/// tests are one, and an unseated one is refused by name), the tag's
 /// OWN ce + ce-core built and measured. v0.0.1-m0 is structurally
 /// absent (no product exists there) and is skipped by the range.
 #[test]
@@ -237,6 +239,8 @@ fn backfill_one(tag: &str) -> anyhow::Result<()> {
         .arg(tag)
         .status()?;
     anyhow::ensure!(ok.success(), "worktree add {tag}");
+    let seated = bs::seat_submodules(&wt)?;
+    println!("   seated {} submodule(s)", seated.len());
     let build = |dir: &str, prog: &str, args: &[&str]| -> anyhow::Result<()> {
         let st = Command::new(prog)
             .args(args)
