@@ -64,6 +64,8 @@ mod eval_t3_candidates;
 mod eval_t3_precision;
 mod eval_t3_precision_parts;
 mod eval_t3_universe;
+mod fence_wire;
+mod fixture_contract;
 mod fixtures_why;
 mod foreign_readers;
 mod fpr_fourclass;

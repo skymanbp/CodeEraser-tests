@@ -7,13 +7,11 @@
 //! is not the one asserted here.
 
 use crate::common;
-use crate::common::{core_bin, rust_fn, tmp};
+use crate::common::{FENCE, WHOLESALE, core_bin, declare, rust_fn, tmp};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
 const NO_CORE: &str = "ce-core-that-does-not-exist";
-const WHOLESALE: &[(&str, &str)] = &[("CE_ACCEPT_BASELINE", "1")];
-const FENCE: &[(&str, &str)] = &[("CE_ACCEPT_FENCE", "1")];
 
 /// A project with one source file and a non-default knob — its
 /// digest is Some, so reverting ce.toml to the shipped default is a
@@ -25,10 +23,6 @@ fn project(tag: &str) -> PathBuf {
     dir
 }
 
-fn declare(dir: &Path, toml: &str) {
-    std::fs::write(dir.join("ce.toml"), toml).expect("ce.toml");
-}
-
 /// One `ce baseline <scope>` run: (exit code, stderr, stdout).
 fn baseline(
     dir: &Path,
@@ -36,12 +30,8 @@ fn baseline(
     env: &[(&str, &str)],
     core: &str,
 ) -> (Option<i32>, String, String) {
-    let out = common::run_ce_env(dir, &["baseline", scope, "--core", core], env);
-    (
-        out.status.code(),
-        String::from_utf8_lossy(&out.stderr).into_owned(),
-        String::from_utf8_lossy(&out.stdout).into_owned(),
-    )
+    let (code, out, err) = common::ce_triple(dir, &["baseline", scope, "--core", core], env);
+    (code, err, out)
 }
 
 fn committed(dir: &Path) -> Option<String> {

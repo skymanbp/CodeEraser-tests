@@ -47,6 +47,7 @@ fn scan_report_json_matches_golden() {
         files: &files,
         findings: &findings,
         summary,
+        failed: &[],
     };
     let json = serde_json::to_string_pretty(&rep).expect("serialize");
     assert_matches_golden(&json, &golden_path("scan-report/report.golden.json"));

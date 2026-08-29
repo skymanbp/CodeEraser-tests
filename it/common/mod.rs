@@ -225,5 +225,25 @@ pub fn graph_wire(
     (idx, w)
 }
 
+/// The two named baseline acts as environments (plan v2.18 step #14).
+pub const WHOLESALE: &[(&str, &str)] = &[("CE_ACCEPT_BASELINE", "1")];
+pub const FENCE: &[(&str, &str)] = &[("CE_ACCEPT_FENCE", "1")];
+
+/// Declare `dir`'s ce.toml whole.
+pub fn declare(dir: &Path, toml: &str) {
+    std::fs::write(dir.join("ce.toml"), toml).expect("ce.toml");
+}
+
+/// One `ce` run as (exit code, stdout, stderr) — the shape every
+/// act-and-refusal leg reads (baseline_policy, fence_wire).
+pub fn ce_triple(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (Option<i32>, String, String) {
+    let out = run_ce_env(dir, args, env);
+    (
+        out.status.code(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
 // Daemon e2e machinery (spawn/raw-line/shutdown/wait) lives in
 // daemon.rs — split at the 300-line dogfood wall.

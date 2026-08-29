@@ -155,12 +155,12 @@ fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
     use codeeraser::{churn, dedup, graph, scan};
     let core = common::core_bin();
     let row = no_args;
-    let (files, findings, summary, _fail) = scan::analyze_judged(dir, &core).expect("scan");
+    let (files, findings, summary, _fail, failed) = scan::analyze_judged(dir, &core).expect("scan");
     let (found, dsum) = dedup::analyze(dir, None, None, None).expect("dedup");
     vec![
         row(
             "scan",
-            scan::report_string(&files, &findings, summary).expect("scan json"),
+            scan::report_string(&files, &findings, summary, &failed).expect("scan json"),
         ),
         row(
             "check_duplication",
@@ -321,7 +321,7 @@ fn mcp_tool_calls_and_unknown_method() {
     }));
     let stext = scan["result"]["content"][0]["text"].as_str().expect("text");
     let sreport: serde_json::Value = serde_json::from_str(stext).expect("scan json");
-    assert_eq!(sreport["schema"], "ce.scan-report/0.1.0");
+    assert_eq!(sreport["schema"], "ce.scan-report/0.2.0");
     // unknown method gets a JSON-RPC error, not a hang or crash
     let err = s.ask(serde_json::json!({"jsonrpc": "2.0", "id": 5, "method": "nope"}));
     assert_eq!(err["error"]["code"], -32601);

@@ -57,10 +57,10 @@ fn stack_page_constants_are_locked_and_resolvable() {
         BTreeMap::from([
             ("ci-floor".into(), "946".into()),
             ("ghc".into(), "9.14.1".into()),
-            ("proto".into(), "6.3.0".into()),
+            ("proto".into(), "6.4.0".into()),
         ])
     );
-    source_contains(&root, "cli/src/corelink.rs", r#"PROTO: &str = "6.3.0""#);
+    source_contains(&root, "cli/src/corelink.rs", r#"PROTO: &str = "6.4.0""#);
     source_contains(
         &root,
         ".github/workflows/ci.yml",

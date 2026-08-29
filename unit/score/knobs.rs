@@ -45,6 +45,7 @@ fn class_knob_rows_shadow_the_ceiling_codes_in_order() {
             fn_lines_warn: Some(80),
             fn_lines_fail: Some(90),
             ratchet_tolerance: None,
+            cognitive_ratchet_tolerance: None,
         },
     };
     let rules = RulesCfg {

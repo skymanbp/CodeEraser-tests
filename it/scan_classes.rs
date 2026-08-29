@@ -29,7 +29,8 @@ fn a_class_moves_its_files_fn_ladder_and_the_mirror_holds() {
         ],
     );
     let core = common::gates::core_bin();
-    let (files, findings, _summary, fail) = scan::analyze_judged(&fx.dir, &core).expect("judged");
+    let (files, findings, _summary, fail, _failed) =
+        scan::analyze_judged(&fx.dir, &core).expect("judged");
     assert_eq!(files.len(), 2, "both files measured");
     assert!(!fail, "no hard line breached");
     let fn_lines: Vec<(&str, usize, usize)> = findings

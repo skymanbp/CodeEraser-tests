@@ -26,6 +26,7 @@ fn fixture() -> (GraphWire, Report) {
         symbols: Default::default(),
         unmentioned: None,
         mounts: None,
+        scc_floor: None,
     };
     let report = Report {
         dead: vec![crate::graph::deadcode::DeadRow {
