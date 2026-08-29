@@ -60,12 +60,17 @@ fn the_score_knobs_that_bypassed_the_gates_move_it() {
 
 /// Everything a rulepack declaration can say still moves it —
 /// including declaration ORDER, which is precedence, and a knob set
-/// to zero, which is a claim and not an absence.
+/// to zero, which is a claim and not an absence — except its NAME,
+/// a label that reaches no judgment (rule 5): a rename is silence.
 #[test]
 fn the_rulepack_still_moves_it_in_every_part() {
     let a = with_class("vendored", &["vendor/**"], None).knobs_digest();
     assert!(a.is_some());
-    assert_ne!(a, with_class("vendor", &["vendor/**"], None).knobs_digest());
+    assert_eq!(
+        a,
+        with_class("vendor", &["vendor/**"], None).knobs_digest(),
+        "a rename is silence"
+    );
     assert_ne!(
         a,
         with_class("vendored", &["vendor/*"], None).knobs_digest()
@@ -106,15 +111,16 @@ fn an_exclude_glob_moves_it() {
     assert_ne!(Config::default().knobs_digest(), excluded.knobs_digest());
 }
 
-/// No value can be read as structure: a name carrying the JSON the
+/// No value can be read as structure: a glob carrying the JSON the
 /// encoding uses is escaped, not spliced. The class-only draft
 /// separated fields with a NUL and its own test found the collision
-/// immediately; serialized JSON has no such seam to exploit.
+/// immediately; serialized JSON has no such seam to exploit (the
+/// name, that draft's seam, no longer reaches the tree at all).
 #[test]
-fn a_name_cannot_impersonate_the_encoding() {
+fn a_glob_cannot_impersonate_the_encoding() {
     assert_ne!(
-        with_class("a", &["b"], None).knobs_digest(),
-        with_class("a\",\"globs\":[\"b", &[], None).knobs_digest(),
+        with_class("a", &["b"], Some(0)).knobs_digest(),
+        with_class("a", &["b\"],\"knobs\":{\"ratchet_tolerance\":0"], None).knobs_digest(),
     );
 }
 
@@ -213,9 +219,10 @@ fn the_tree_holds_declarations_only() {
     assert_eq!(
         canonical(&classed),
         json!({"rules": {"class": [{
-            "name": "vendored", "globs": ["vendor/**"],
+            "globs": ["vendor/**"],
             "knobs": {"ratchet_tolerance": 0}
-        }]}})
+        }]}}),
+        "the name is a label, not a knob (rule 5)"
     );
     let spelled = Config {
         rules: RulesCfg {
