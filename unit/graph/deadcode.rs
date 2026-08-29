@@ -56,11 +56,24 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
     let skew = json!({"dead": [[2, 1]], "counts": {}});
     let err = super::consume(&skew, &nodes, 0, None).expect_err("aggregate in dead");
     assert!(err.to_string().contains("wire skew"), "{err}");
-    // pre-2.18 core: no fail bit — the old conjunction stands in
-    let old = json!({"dead": [[0, 1]], "counts": {}});
-    assert!(
-        super::consume(&old, &nodes, 0, None)
-            .expect("old core")
-            .fail
-    );
+    // a reply without the 2.18.0 keys is wire skew, not an older
+    // core to accommodate: no pre-2.18 core passes the handshake,
+    // and the conjunction that used to stand in is retired (O62)
+    for (reply, key) in [
+        (
+            json!({"dead": [[0, 1]], "reported": [], "counts": {}}),
+            "fail",
+        ),
+        (
+            json!({"dead": [[0, 1]], "fail": true, "counts": {}}),
+            "reported",
+        ),
+    ] {
+        let err = super::consume(&reply, &nodes, 0, None).expect_err("absent key");
+        let text = format!("{err:#}");
+        assert!(
+            text.contains("wire skew") && text.contains(&format!("`{key}`")),
+            "the absent key is refused by name: {text}"
+        );
+    }
 }

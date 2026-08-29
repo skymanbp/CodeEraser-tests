@@ -127,9 +127,11 @@ fn corelink_open_and_desync() {
 /// `Thresholds::default()` — the config IS its source; the P4 knobs
 /// have no config default (absent key = core default), so this
 /// literal object is their pinned mirror, the drift check itself.
-#[test]
-fn knob_default_drift_gate() {
-    let t = codeeraser::config::Thresholds::default();
+/// The knobless verdict request: every knob table empty, so the
+/// reply's `knobs` echo is the core's own defaults, nothing else.
+/// Returns the Rust-side defaults beside it — the two readers
+/// below compare the echo against those.
+fn knobless_echo() -> (codeeraser::config::Thresholds, serde_json::Value) {
     let (mut link, _) = codeeraser::corelink::Link::open(&core_bin()).expect("open");
     let reply = link
         .request(
@@ -142,6 +144,12 @@ fn knob_default_drift_gate() {
             }),
         )
         .expect("verdict round-trip");
+    (codeeraser::config::Thresholds::default(), reply)
+}
+
+#[test]
+fn knob_default_drift_gate() {
+    let (t, reply) = knobless_echo();
     assert_eq!(
         reply["knobs"],
         serde_json::json!({
@@ -162,15 +170,19 @@ fn knob_default_drift_gate() {
         }),
         "core Cost.hs defaults drifted from the pinned knob face"
     );
-    // O39: the Rust mirror of those defaults (the digest's effective
-    // default) rides the same throats the request does, so every row
-    // it would send equals the echo the knobless request received —
-    // the mirror cannot drift from the core in silence. The
-    // thresholds table's code 7 is the graph's floor, mirrored below.
+}
+
+/// O39: the Rust mirror of those defaults (the digest's effective
+/// default) rides the same throats the request does, so every row it
+/// would send equals the echo the knobless request received — the
+/// mirror cannot drift from the core in silence.
+#[test]
+fn the_rust_mirror_of_the_core_defaults_matches_the_echo() {
     use codeeraser::score::knobs::{
-        CEILING_KEYS, CORE_SCC_FLOOR, THRESHOLD_KEYS, TOLERANCE_KEYS, ceiling_rows, core_defaults,
-        threshold_rows, tolerance_rows,
+        CEILING_KEYS, THRESHOLD_KEYS, TOLERANCE_KEYS, ceiling_rows, core_defaults, threshold_rows,
+        tolerance_rows,
     };
+    let (t, reply) = knobless_echo();
     let mirror = core_defaults();
     let tables = [
         (
@@ -200,9 +212,17 @@ fn knob_default_drift_gate() {
             );
         }
     }
-    // the trend mirror against the trend echo, the graph's floor
-    // against the graph's own reading of it: absent = the mirrored
-    // floor (no cycle for a self-arc singleton), 1 = a cycle
+}
+
+/// The two mirrors outside the verdict tables: the trend knobs
+/// against the trend echo, and the graph's floor (the thresholds
+/// table's code 7) against the graph's own reading of it — absent =
+/// the mirrored floor (no cycle for a self-arc singleton), 1 = a
+/// cycle.
+#[test]
+fn the_trend_and_graph_mirrors_match_their_echoes() {
+    use codeeraser::score::knobs::CORE_SCC_FLOOR;
+    let (mut link, _) = codeeraser::corelink::Link::open(&core_bin()).expect("open");
     let trend = link
         .request("trend", serde_json::json!({"rows": [[86400, 900, 1000]]}))
         .expect("trend round-trip");

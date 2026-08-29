@@ -87,15 +87,14 @@ fn baseline_refuses_by_name_before_any_measurement() {
     );
 }
 
-/// The acts write what they promise. Wholesale creates the file; the
-/// routine road keeps it byte-identical when nothing moved; a digest
-/// drift refuses without an act and names both acts; the fence act
-/// re-pins the SAME ceilings under the current digest and the next
-/// check is green; growth refuses under the fence act by name (the
-/// narrow act does not launder it), and only wholesale adopts it.
-#[test]
-fn the_named_acts_write_what_they_promise() {
-    let dir = project("baseline-acts");
+/// The road every act leg starts from: wholesale creates the file;
+/// the routine road keeps it byte-identical when nothing moved; a
+/// digest drift refuses without an act and names both acts; the
+/// fence act re-pins the SAME ceilings under the current digest.
+/// Returns the project, the core, the first baseline's document and
+/// the re-pinned text.
+fn established_then_fenced(tag: &str) -> (PathBuf, String, Value, String) {
+    let dir = project(tag);
     let core = core_bin();
     let (code, err, out) = baseline(&dir, ".", WHOLESALE, &core);
     assert_eq!(code, Some(0), "{err}");
@@ -146,12 +145,26 @@ fn the_named_acts_write_what_they_promise() {
         new.get("knobsDigest").is_none(),
         "a default config records no digest: {repinned}"
     );
+    (dir, core, old, repinned)
+}
+
+/// The acts write what they promise, and after the fence act the
+/// next check is green.
+#[test]
+fn the_named_acts_write_what_they_promise() {
+    let (dir, core, _, _) = established_then_fenced("baseline-acts");
     let check = common::run_ce(&dir, &["check", ".", "--core", &core]);
     assert!(
         check.status.success(),
         "re-pinned: the next check is green: {check:?}"
     );
+}
 
+/// Growth refuses under the fence act by name (the narrow act does
+/// not launder it), and only wholesale adopts it.
+#[test]
+fn growth_needs_the_wholesale_act() {
+    let (dir, core, old, repinned) = established_then_fenced("baseline-growth");
     common::append(&dir.join("a.rs"), &"// filler\n".repeat(200));
     for env in [&[][..], FENCE] {
         let (code, err, _) = baseline(&dir, ".", env, &core);

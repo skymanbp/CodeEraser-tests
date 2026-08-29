@@ -190,6 +190,9 @@ fn import_cases() -> Vec<Case> {
         (ts, im, app, "leftover", ext(5)),
         (ts, im, app, "unknown-pkg", no(Reason::OutOfScope)),
         (ts, im, app, "./missing", no(Reason::OutOfScope)),
+        // the degenerate specifier is refused by name before any
+        // rung reads `""` as a bare package (O60)
+        (ts, im, app, "", no(Reason::Empty)),
         (py, im, con, ".mod", ok("pkg/mod.py", 1)),
         (py, im, con, ".", ok("pkg/__init__.py", 1)),
         (py, im, con, ".sub", ok("pkg/sub/__init__.py", 1)),
@@ -218,6 +221,7 @@ fn go_cases() -> Vec<Case> {
     let (go, im, gm, nlib) = (Lang::Go, "import", "cmd/main.go", "nested/lib/lib.go");
     let pu = "pkg/util";
     vec![
+        (go, im, gm, "", no(Reason::Empty)),
         (go, im, gm, "x.io/root/pkg/util", pkg(pu, 1)),
         (go, im, nlib, "x.io/root/pkg/util", pkg(pu, 1)),
         (go, im, gm, "x.io/nested/lib", pkg("nested/lib", 1)),

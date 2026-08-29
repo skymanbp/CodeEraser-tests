@@ -20,8 +20,10 @@ use crate::scan::lang::Lang;
 /// D11 collision class) but carries no module field — and a TS
 /// star export (bare or namespaced) is ONE `export_star` site
 /// while the clause form stays `export_from`.
-/// (language, source, expected (kind, spec) sequence).
-type Case = (Lang, &'static str, &'static [(&'static str, &'static str)]);
+/// (language, source, expected sites as one `kind=spec|kind=spec`
+/// literal — a tuple slice per row made every row the same token
+/// stream under the dedup gate's ID/LIT normalisation).
+type Case = (Lang, &'static str, &'static str);
 
 /// The per-language table, split from its assertion loop at the
 /// E01 fn-length line.
@@ -32,27 +34,17 @@ fn cases() -> [Case; 5] {
         (
             Lang::Python,
             "from __future__ import annotations\nimport a.b, c as d\nfrom .pkg import thing\n",
-            &[
-                ("import_from", "__future__"),
-                ("import", "a.b"),
-                ("import", "c"),
-                ("import_from", ".pkg"),
-            ],
+            "import_from=__future__|import=a.b|import=c|import_from=.pkg",
         ),
         // `import fs = require("./b")` is an `import` site off the
         // require clause; `import X = A.B.C` names a namespace and
         // opens none (step 8, O26)
         (
             Lang::TypeScript,
-            "import { x } from \"./util\";\nimport {\n  a,\n  b,\n} from \"./multi\";\nexport { y } from './other';\nexport const z = 1;\nexport * from './all';\nexport * as ns from './space';\nimport fs = require(\"./req\");\nimport X = A.B.C;\nexport import Y = A.B;\n",
-            &[
-                ("import", "./util"),
-                ("import", "./multi"),
-                ("export_from", "./other"),
-                ("export_star", "./all"),
-                ("export_star", "./space"),
-                ("import", "./req"),
-            ],
+            // a degenerate `import ""` is a site with an EMPTY spec —
+            // kept for the unresolved ledger, not dropped (O60)
+            "import { x } from \"./util\";\nimport {\n  a,\n  b,\n} from \"./multi\";\nexport { y } from './other';\nexport const z = 1;\nexport * from './all';\nexport * as ns from './space';\nimport fs = require(\"./req\");\nimport X = A.B.C;\nexport import Y = A.B;\nimport \"\";\n",
+            "import=./util|import=./multi|export_from=./other|export_star=./all|export_star=./space|import=./req|import=",
         ),
         (
             Lang::Rust,
@@ -60,28 +52,19 @@ fn cases() -> [Case; 5] {
             // remap is ladder-side (rs.rs path_attr), which is what
             // keeps the frozen site universe standing across REV 5
             "mod alpha;\n#[path = \"x.rs\"]\nmod beta { fn x() {} }\nuse crate::a::{b, c};\nuse crate::{\n    d,\n    e,\n};\n",
-            &[
-                ("mod_decl", "alpha"),
-                ("use", "crate::a::{b, c}"),
-                ("use", "crate::{"),
-            ],
+            "mod_decl=alpha|use=crate::a::{b, c}|use=crate::{",
         ),
         (
             Lang::Go,
-            "package main\n\nimport (\n\t\"fmt\"\n\t\"github.com/x/y\"\n)\n",
-            &[("import", "fmt"), ("import", "github.com/x/y")],
+            "package main\n\nimport (\n\t\"fmt\"\n\t\"github.com/x/y\"\n\t\"\"\n)\n",
+            "import=fmt|import=github.com/x/y|import=",
         ),
         // a `{-# SOURCE #-}` import keeps the bare module name — the
         // ladder answers M.hs for it (step 8, O28)
         (
             Lang::Haskell,
             "module Main where\n\nimport CE.Alpha\nimport qualified Data.Map as M\nimport Data.List (sort)\nimport {-# SOURCE #-} CE.Boot (x)\n\nforeign import ccall \"math.h sin\" c_sin :: Double -> Double\n",
-            &[
-                ("import", "CE.Alpha"),
-                ("import", "Data.Map"),
-                ("import", "Data.List"),
-                ("import", "CE.Boot"),
-            ],
+            "import=CE.Alpha|import=Data.Map|import=Data.List|import=CE.Boot",
         ),
     ]
 }
@@ -91,13 +74,24 @@ fn per_language_kinds_specs_and_line_substrings() {
     for (lang, text, want) in cases() {
         let found = detect(text, lang);
         let got: Vec<(&str, &str)> = found.iter().map(|s| (s.kind, s.spec.as_str())).collect();
-        assert_eq!(got, *want, "{lang:?}");
+        let want: Vec<(&str, &str)> = want
+            .split('|')
+            .map(|p| p.split_once('=').expect("kind=spec"))
+            .collect();
+        assert_eq!(got, want, "{lang:?}");
         let lines: Vec<&str> = text.lines().collect();
         let stray: Vec<&str> = found
             .iter()
             .filter(|s| {
                 let end = (s.line + 15).min(lines.len());
-                !lines[s.line - 1..end].iter().any(|l| l.contains(&s.spec))
+                // an empty spec is a substring of every line: its
+                // placement proof is the empty quoted literal itself
+                let needle = if s.spec.is_empty() {
+                    "\"\""
+                } else {
+                    s.spec.as_str()
+                };
+                !lines[s.line - 1..end].iter().any(|l| l.contains(needle))
             })
             .map(|s| s.spec.as_str())
             .collect();
