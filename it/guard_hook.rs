@@ -185,52 +185,54 @@ fn budget_respects_the_exclusion_model() {
     }
 }
 
-/// The budget rule's scope is the WALK's own matcher, across git's
-/// VCS boundary (plan v2.18 follow-up): the root `.gitignore` stops at
-/// a nested `.git` — file or directory — exactly as it does for git
-/// and for `collect()`, and the nested repository's own applies.
+/// The owner rule at a `.git` boundary (plan v2.18 step #12, user
+/// ruling 2026-08-28): a nested repository the root's `.gitmodules`
+/// DECLARES is a foreign reader — the root's `.gitignore` stops at
+/// its door and its own applies, exactly as for git, so its files are
+/// walked (flagged foreign) and never guarded: a write there is the
+/// submodule's own gate's to judge, and this hook stays inert on it.
+/// A nested repository nobody declared is cut whole from this tree —
+/// nothing walked, and a write there from THIS root's session is
+/// nobody's to guard; a session rooted inside it (the hook anchors on
+/// the envelope cwd, root.rs) judges it as its own project.
 #[test]
 fn exclusion_model_agrees_across_a_vcs_boundary() {
-    use codeeraser::scan::walk;
     let dir = tmp("guard-vcs-boundary");
     let big = "// filler\n".repeat(751);
     common::ladder::materialize(
         &dir,
         &[
+            (
+                ".gitmodules",
+                "[submodule \"sub\"]\n\tpath = sub\n\turl = ./sub\n",
+            ),
             (".gitignore", "hidden.rs\n"),
+            (".git/modules/sub/HEAD", "ref: refs/heads/main\n"),
             ("sub/.git", "gitdir: ../.git/modules/sub\n"),
             ("sub/.gitignore", "owned.rs\n"),
             ("sub/hidden.rs", &big),
             ("sub/owned.rs", &big),
+            ("cut/.git/HEAD", "ref: refs/heads/main\n"),
+            ("cut/hidden.rs", &big),
         ],
     );
-    let walked: Vec<String> = walk::collect(&dir, &[])
-        .expect("collect")
-        .iter()
-        .map(|p| walk::rel_str(&dir, p))
-        .collect();
-    assert!(
-        walked.iter().any(|p| p == "sub/hidden.rs"),
-        "the root rule stops at the boundary: {walked:?}"
+    assert_eq!(
+        common::walked(&dir),
+        [("sub/hidden.rs".to_string(), true)],
+        "the root rule stops at the declared boundary, the nested rule applies inside it, the undeclared repository is cut"
     );
-    assert!(
-        !walked.iter().any(|p| p == "sub/owned.rs"),
-        "the nested rule applies: {walked:?}"
-    );
-    let env = common::pretooluse_envelope_at(&dir, "sub/hidden.rs", "Write", &big);
-    let reason = common::expect_decision(&dir, &env, "deny");
-    assert!(
-        reason.contains("751 lines"),
-        "the budget rule fired: {reason}"
-    );
-    let out = run_hook(
-        &dir,
-        &common::pretooluse_envelope_at(&dir, "sub/owned.rs", "Write", &big),
-    );
-    assert!(
-        out.trim().is_empty(),
-        "the walk skips it, so must the guard: {out}"
-    );
+    for rel in ["sub/hidden.rs", "sub/owned.rs", "cut/hidden.rs"] {
+        let out = run_hook(
+            &dir,
+            &common::pretooluse_envelope_at(&dir, rel, "Write", &big),
+        );
+        assert!(
+            out.trim().is_empty(),
+            "{rel} is not this tree's to guard, so its hook is inert: {out}"
+        );
+    }
+    // rooted inside it, the undeclared repository is its own project
+    common::expect_write_denied(&dir.join("cut"), "hidden.rs", &big, "751 lines");
 }
 
 /// The rulepack's hook half (plan v2.13 ① P4, zero wire): the hard

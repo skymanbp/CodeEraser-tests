@@ -3,7 +3,9 @@
 //! is tree content a filesystem walk cannot see, so every judging
 //! surface must either SEAT it or REFUSE by name — never a hollow
 //! score: (1) trend seats a commit's gitlinks in nested worktrees and
-//! the seated row equals the live checkout's own judgment; (2) an
+//! the seated row equals the live checkout's own judgment — and, the
+//! submodule being a READER and never a measured part of the tree
+//! (step #12), the pre-mount row too; (2) an
 //! unseated checkout refuses by name in the trend library, at the
 //! measurement walk every family shares (`walk::collect`: scan, score,
 //! dedup, graph), at the trend binary's exit code, and in `ce
@@ -53,10 +55,14 @@ fn a_seated_gitlink_judges_exactly_as_the_live_checkout() {
         (live.reply.score, &live.reply.axes),
         "the seated worktree must judge exactly as the live checkout"
     );
-    assert_ne!(
+    // the pair is READ, never measured (plan v2.18 step #12: a declared
+    // submodule is a reader of the tree): the mounted row repeats the
+    // pre-mount one by construction. That the row exists at all is the
+    // seat's proof — an unseated checkout is refused by name below
+    assert_eq!(
         (before.score, &before.axes),
         (mounted.score, &mounted.axes),
-        "the mounted pair must be IN the judgment — a hollow seat would repeat the first row"
+        "the mounted pair is foreign, so the seated row must equal the pre-mount row"
     );
 }
 
@@ -74,6 +80,35 @@ fn an_unseated_submodule_is_a_named_refusal() {
             .any(|(_, why)| why.contains("not checked out")),
         "the mounted commit refuses by name, not a hollow score: {:?}",
         report.failed
+    );
+}
+
+/// A `.git` gitfile whose pointer resolves to nothing is no seat
+/// (codex review of step #12: an `.exists()` test once seated it and
+/// git worktree failed generically): trend refuses the mounted commit
+/// by name and the measurement walk refuses the tree by name.
+#[test]
+fn a_gitfile_pointing_nowhere_is_unseated_by_name() {
+    let sup = common::seed_superproject("trend-super-broken-gitfile", "suite");
+    std::fs::write(sup.join("suite/.git"), "gitdir: ../nowhere\n").expect("gitfile");
+    assert_eq!(codeeraser::gitmodules::unseated(&sup), ["suite"]);
+    let report =
+        codeeraser::trend::run(&sup, None, &common::core_bin(), 10, None).expect("trend run");
+    assert!(
+        report
+            .failed
+            .iter()
+            .any(|(_, why)| why.contains("not checked out")),
+        "the mounted commit refuses by name: {:?}",
+        report.failed
+    );
+    let err = codeeraser::scan::measure(&sup)
+        .err()
+        .map(|e| format!("{e:#}"))
+        .expect("the walk refuses");
+    assert!(
+        err.contains("suite") && err.contains("not checked out"),
+        "{err}"
     );
 }
 

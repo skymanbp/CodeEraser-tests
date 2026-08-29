@@ -244,11 +244,14 @@ fn the_formula_names_every_rule_the_walk_has() {
     assert_eq!(stats.universe, 3);
 }
 
-/// A nested repository is cut whole; the one the root's `.gitmodules`
-/// declares is this tree's (plan v2.18: the suite rides at `cli/tests`
-/// as a submodule) — read off the tracked file, so the exemption is
-/// the commit's own fact with or without the checkout. The same `cut`
-/// the formula above places every listed entry through.
+/// A nested repository (a REAL git anchor, root.rs) is cut whole; the
+/// one the root's `.gitmodules` declares is a reader of this tree
+/// (plan v2.18: the suite rides at `cli/tests` as a submodule, in U
+/// and measured by nobody here) — read off the tracked file, so the
+/// exemption is the commit's own fact with or without the checkout
+/// (its own `.git` here is a gitfile pointing nowhere, which anchors
+/// nothing and changes nothing). The same `cut` the formula above
+/// places every listed entry through.
 #[test]
 fn a_declared_submodule_is_not_a_nested_repository() {
     let dir = common::tmp("gitmodules-exempt");
@@ -257,7 +260,7 @@ fn a_declared_submodule_is_not_a_nested_repository() {
         &[
             ("declared/.git", "gitdir: ../.git/modules/declared\n"),
             ("declared/inner/.keep", ""),
-            ("foreign/.git", "gitdir: elsewhere\n"),
+            ("foreign/.git/HEAD", "ref: refs/heads/main\n"),
             (
                 ".gitmodules",
                 "[submodule \"suite\"]\n\tpath = declared/\n\turl = https://example.invalid/suite.git\n",
@@ -286,8 +289,9 @@ fn a_declared_submodule_is_not_a_nested_repository() {
 fn the_gitmodules_reading_feeds_the_cut() {
     let dir = common::tmp("gitmodules-grammar");
     for repo in ["quoted dir", "inline", "case", "foreign"] {
-        std::fs::create_dir_all(dir.join(repo)).expect("mkdir");
-        std::fs::write(dir.join(repo).join(".git"), "gitdir: elsewhere\n").expect(repo);
+        // a real anchor each: the owner rule reads root.rs's
+        // is_git_anchor, and a gitfile pointing nowhere is none
+        std::fs::create_dir_all(dir.join(repo).join(".git")).expect("mkdir");
     }
     std::fs::write(
         dir.join(".gitmodules"),

@@ -30,7 +30,7 @@ fn pkg_edge(src: &str, dst: &str) -> GraphEdge {
 
 /// Does `contain` derive a package→member arc for this pair?
 fn arc(files: &[String], edges: &[GraphEdge], pkg: &str, member: &str) -> bool {
-    let nodes = nodes_of(files, edges);
+    let nodes = nodes_of(files, edges, &Default::default());
     let ids = ids(&nodes);
     let mut wire = BTreeSet::new();
     contain(&nodes, &ids, &mut wire);

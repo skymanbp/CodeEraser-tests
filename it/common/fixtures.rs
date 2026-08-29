@@ -53,12 +53,20 @@ pub fn write_doc(dir: &Path, doc: &str) {
     }
 }
 
+/// A fixture document written out under a fresh tmp dir — the two
+/// lines every document-shaped leg opened with (the deadcode legs let
+/// their own run build the index; `indexed_doc` adds the walk).
+pub fn doc_tree(name: &str, doc: &str) -> PathBuf {
+    let dir = tmp(name);
+    write_doc(&dir, doc);
+    dir
+}
+
 /// A fixture document written out under a fresh tmp dir and indexed
 /// by the real walk — the three lines every wire-reading leg opened
 /// with.
 pub fn indexed_doc(name: &str, doc: &str) -> PathBuf {
-    let dir = tmp(name);
-    write_doc(&dir, doc);
+    let dir = doc_tree(name, doc);
     super::build_index(&dir);
     dir
 }
@@ -137,6 +145,18 @@ pub fn seed_superproject(name: &str, mount: &str) -> PathBuf {
     );
     commit_all(&sup, "mount");
     sup
+}
+
+/// The measurement walk as `(rel, foreign)` rows — what every
+/// owner-rule leg (guard_hook, foreign_readers) asserts on, so the
+/// collect-map-collect stanza has one home (the clone gate paired the
+/// first two copies).
+pub fn walked(dir: &Path) -> Vec<(String, bool)> {
+    codeeraser::scan::walk::collect(dir, &[])
+        .expect("collect")
+        .iter()
+        .map(|w| (codeeraser::scan::walk::rel_str(dir, &w.path), w.foreign))
+        .collect()
 }
 
 /// Append to a tracked file: the smallest edit a git leg can see.

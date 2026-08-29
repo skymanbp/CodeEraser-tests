@@ -8,6 +8,7 @@
 //! Plus the ADR-006 independence pair: the --fail-under floor and
 //! the ratchet each fail ALONE.
 
+use crate::baseline_ledgers::{RETIRED, rekeyed_pairs, suite_pairs};
 use crate::common;
 use crate::common::core_bin;
 use codeeraser::score::{self, Opts};
@@ -50,115 +51,16 @@ fn bridge_conserves_blocks_into_members_and_gates_agree() {
     assert!(o.reply.degraded.is_none(), "healthy judgment");
 }
 
-/// Frozen members whose SOURCE duplication was genuinely REMOVED
-/// after the freeze — each entry names its de-duplication batch.
-/// The gate below exists for GENERATION immutability (a corpus
-/// regeneration dropping members arrives with no entry here); real
-/// cleanups are this tool's whole point and retire BY NAME, never
-/// silently. A listed id back in the baseline = a stale entry,
-/// refused — the ledger can only ever describe the present.
-const RETIRED: [(u64, &str); 12] = [
-    (
-        15941172437324464441,
-        "v0.6 P3: budget_breach's scope+size stanza folded into the \
-         shared sized_write throat — the zone observer would have been \
-         its second copy, which is exactly what the ratchet refuses",
-    ),
-    (
-        12069581799026901328,
-        "v0.5.0 cleanup: the docdup/t3 audit assembly legs retired whole \
-         (one-shot instruments, user ruling 2026-08-20) — their twin \
-         stanzas went with the files",
-    ),
-    (
-        5157928330096415643,
-        "ADR-008 P3 tenth bite: probe_gate.rs Target/probe stanzas table-driven",
-    ),
-    (
-        13860957365059798074,
-        "ADR-008 P3 tenth bite: probe_gate.rs Target/probe stanzas table-driven",
-    ),
-    (
-        17525617435279245638,
-        "ADR-008 P3 tenth bite: probe_gate.rs Target/probe stanzas table-driven",
-    ),
-    (
-        9291417281997523150,
-        "M7.5 deep-thin: dormant generator/replay halves excised (EVAL-SET amendment)",
-    ),
-    (
-        11389896668359803242,
-        "M7.5 deep-thin: dormant generator/replay halves excised (EVAL-SET amendment)",
-    ),
-    (
-        11980760446779025474,
-        "M7.5 deep-thin: dormant generator/replay halves excised (EVAL-SET amendment)",
-    ),
-    (
-        14078978657527709474,
-        "headroom sprint 2026-08-24: the guard hook-envelope moved to its own leaf, dissolving the audit/guard/health face chains this member rode",
-    ),
-    (
-        14752821476017908148,
-        "headroom sprint 2026-08-24: the guard hook-envelope moved to its own leaf, dissolving the audit/guard/health face chains this member rode",
-    ),
-    (
-        18322300311120329557,
-        "headroom sprint 2026-08-24: the guard hook-envelope moved to its own leaf, dissolving the audit/guard/health face chains this member rode",
-    ),
-    (
-        1045130446377401539,
-        "v2.18 subtraction batch 2026-08-28: the clone/docdup parse_result zip-and-shape tails moved INTO lockstep::parse_scores as its row shaper — the two families' last clone pair, one member",
-    ),
-];
-
-/// §7.2 members whose id was RE-KEYED, not removed: the 2026-08-26
-/// tests merge moved every integration root from `cli/tests/` to
-/// `cli/tests/it/`, and a member id hashes its sides' PATHS — so the
-/// duplication survived under a new key. Each line is `old new`,
-/// derived by re-hashing every current block's member with the it/
-/// prefix stripped back to the pre-merge path (one-shot instrument,
-/// same `member_id("clone", ..)` throat) — all 22 landed in the same
-/// establish, so the gate can demand BOTH exits: the old key gone
-/// AND its successor seated. A rename is neither a cleanup (RETIRED)
-/// nor a rewrite; it gets its own ledger so RETIRED's "duplication
-/// genuinely removed" claim stays true of every RETIRED row. One
-/// document, not a tuple table: the pair table is this repo's
-/// most-rhyming token shape, and this ledger's first draft duly
-/// cloned against the tree.rs vocabulary probe.
-const REKEYED: &str = "\
-403099628869665561 5334522415661725441
-544715961310330730 12869198444950852490
-2882419735887471358 14233146052196931664
-3617975609329458940 10800140972768024034
-4594855599954596366 17942699572433341952
-4742601464868157263 10488150594258799447
-5315089852001355175 9604165174791687559
-5649599479936906696 14886130437521744082
-6110245542527137987 1789320524636541571
-7831405124474784806 13432724845369755580
-8423437723322751843 1761923728217702749
-9365579024641649012 16776566333703835756
-10471417808950161288 11934305135765209544
-12304973788363298482 686744464717091746
-13294590378060918370 5084876662118533682
-14215491476022457249 16099042295628905391
-14377273919435821282 5091239511442668826
-14768101773271409225 1813728321700676971
-15454680224575117074 2831076054381254698
-16465453656258218267 13321394588352495875
-16603034293491020654 3504532828427293052
-18388344836232998712 5687268460904012680
-";
-
-/// The REKEYED document parsed: (old, new) per line.
-fn rekeyed_pairs() -> Vec<(u64, u64)> {
-    REKEYED
-        .lines()
-        .map(|l| {
-            let mut w = l.split_whitespace().map(|n| n.parse().expect("member id"));
-            (w.next().expect("old"), w.next().expect("new"))
-        })
+/// The `discrete` member ids of one committed baseline.
+fn discrete_members(path: &str) -> std::collections::HashSet<u64> {
+    let baseline: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(path).expect("committed baseline"))
+            .expect("baseline json");
+    baseline["discrete"]
+        .as_array()
+        .expect("discrete")
+        .iter()
+        .map(|v| v.as_u64().expect("member id"))
         .collect()
 }
 
@@ -179,16 +81,11 @@ fn pre_haskell_members_survive_every_generation() {
         &std::fs::read_to_string("../contracts/eval/pre-haskell-members-v1.json").expect("frozen"),
     )
     .expect("frozen json");
-    let baseline: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string("../ce-baseline.json").expect("committed baseline"),
-    )
-    .expect("baseline json");
-    let now: std::collections::HashSet<u64> = baseline["discrete"]
-        .as_array()
-        .expect("discrete")
-        .iter()
-        .map(|v| v.as_u64().expect("member id"))
-        .collect();
+    let now = discrete_members("../ce-baseline.json");
+    // the suite's own baseline (plan v2.18 step #12): the members that
+    // moved there are checked under their suite keys, never merged
+    // into `now` — a key must be found in the ledger that names it
+    let suite = discrete_members("../cli/tests/ce-baseline.json");
     let old: Vec<u64> = frozen["members"]
         .as_array()
         .expect("members")
@@ -196,6 +93,7 @@ fn pre_haskell_members_survive_every_generation() {
         .map(|v| v.as_u64().expect("member id"))
         .collect();
     assert_eq!(old.len(), 40, "the frozen set is the 3j-close 40");
+    let suite_ledger = suite_pairs();
     for m in &old {
         if let Some((_, why)) = RETIRED.iter().find(|(id, _)| id == m) {
             assert!(
@@ -209,10 +107,21 @@ fn pre_haskell_members_survive_every_generation() {
                 !now.contains(m),
                 "re-keyed member {m} is back under its pre-move key — stale REKEYED entry"
             );
+            let Some((_, sk)) = suite_ledger.iter().find(|(id, _)| id == new) else {
+                assert!(
+                    now.contains(new),
+                    "re-keyed member {m}'s successor {new} is missing — the rename ledger \
+                     promised the duplication survived the move"
+                );
+                continue;
+            };
             assert!(
-                now.contains(new),
-                "re-keyed member {m}'s successor {new} is missing — the rename ledger \
-                 promised the duplication survived the move"
+                !now.contains(new),
+                "member {new} moved to the suite yet is back in the superproject's baseline — stale REKEYED_SUITE entry"
+            );
+            assert!(
+                suite.contains(sk),
+                "member {new}'s suite key {sk} is missing from the suite's baseline — the second-generation ledger promised the duplication survived the move"
             );
             continue;
         }

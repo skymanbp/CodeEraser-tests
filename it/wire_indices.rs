@@ -76,7 +76,7 @@ fn a_skewed_edge_endpoint_is_a_named_error_not_a_panic() {
     };
     let files = vec!["a.rs".to_string()];
     let good = edge_from("a.rs");
-    let nodes = nodes_of(&files, std::slice::from_ref(&good));
+    let nodes = nodes_of(&files, std::slice::from_ref(&good), &Default::default());
     let id_map = ids(&nodes);
     assert_eq!(edge_wire(&[good], &id_map).expect("in range").len(), 1);
     // ghost.rs: never walked, never a dst — no node exists for it

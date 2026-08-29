@@ -159,10 +159,12 @@ fn apply_refuses_by_name_then_converges() {
     assert_eq!(after.counts.eraseable, 0, "converged");
 }
 
-/// The repository ce verified and the subtree it writes must be one
-/// (plan v2.18 follow-up): a dead file inside a declared submodule is
-/// PLANNED (the CI `--check` leg still sees it) and REFUSED at apply,
-/// by name, with nothing written in either repository.
+/// A declared submodule is a READER of this tree (plan v2.18 step
+/// #12): a dead file inside it is nobody's verdict here and is never
+/// planned. The apply-side fence stays as defence in depth — the
+/// repository ce verified and the subtree it writes must be one — so
+/// a row a hand-built plan aims below a gitlink is REFUSED by name,
+/// with nothing written in either repository.
 #[test]
 fn apply_refuses_a_target_below_a_gitlink() {
     let sup = common::seed_superproject("erase-submodule", "suite");
@@ -175,11 +177,22 @@ fn apply_refuses_a_target_below_a_gitlink() {
     std::fs::write(sup.join(".gitignore"), ".ce/\n").expect(".gitignore");
     commit_all(&sup, "bump");
     let core = core_bin();
-    let plan = erase::plan(&sup, None, &core).expect("plan");
+    let mut plan = erase::plan(&sup, None, &core).expect("plan");
     assert!(
-        row(&plan, "dead_file", "suite/stray.md").eraseable,
-        "the walk reaches into the child"
+        plan.rows.iter().all(|r| r.path != "suite/stray.md"),
+        "a reader is never planned: {:?}",
+        plan.rows.iter().map(|r| &r.path).collect::<Vec<_>>()
     );
+    let bytes = std::fs::read(sup.join("suite/stray.md")).expect("read");
+    plan.rows.push(erase::Row {
+        class: "dead_file",
+        eraseable: true,
+        reason: "unref_private",
+        path: "suite/stray.md".into(),
+        span: None,
+        provenance: String::new(),
+        hash: codeeraser::dedup::tokens::fnv1a(&bytes),
+    });
     let err = erase::apply_plan(&sup, None, &core, &plan).expect_err("refuses");
     assert!(
         err.to_string().contains("below the submodule suite"),

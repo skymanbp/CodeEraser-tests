@@ -26,7 +26,7 @@ fn windows_spelled_exclude_glob_excludes() {
         walk::collect(&fx.dir, globs)
             .expect("walk")
             .iter()
-            .map(|p| walk::rel_str(&fx.dir, p))
+            .map(|w| walk::rel_str(&fx.dir, &w.path))
             .collect()
     };
     assert_eq!(kept(&[]).len(), 2, "both files are in scope unexcluded");

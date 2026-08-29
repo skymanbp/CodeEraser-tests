@@ -1,0 +1,37 @@
+# The suite's own gate (plan v2.18 step #12, user ruling 2026-08-28):
+# this repository is mounted in CodeEraser as the `cli/tests` submodule,
+# where it is a READER of the superproject's tree (its references and
+# mentions count there) and never a measured part of it. What measures
+# it is this file: the same six gates the superproject runs on itself
+# (scan, dedup ratchet, check floor, deadcode, docdup, erase), rooted
+# here — root resolution stops at a nested ce.toml, so `ce <cmd>
+# cli/tests` judges this tree alone. Thresholds stay at the defaults.
+
+[graph]
+# This tree is a slice of the `cli` package: its three test binaries
+# are cargo targets only in the superproject's cli/Cargo.toml, so the
+# crate roots are declared here — each one mounts its `mod` children
+# and anchors its `crate::` paths, and is a declared target for the
+# entry role.
+crate_roots = [
+    "it/main.rs",
+    "corelink_deadline.rs",
+    "daemon_conn_deadline.rs",
+]
+# The four GUI gate scripts node runs by path from ci.yml.
+entry_globs = ["gui/"]
+
+# Only-shrink clone ratchet, measured on formatted code (the
+# superproject's ledger discipline: never raise without a written
+# entry here). 119 measured 2026-08-28 at the split: the suite's own
+# blocks alone (the superproject read 182 with the suite inside it and
+# re-measures without it the same day) — the documentary-table
+# families (metrics / divergence / sonar / coc_haskell whitepaper
+# tables, per-case citations ARE the content) and the Props-shaped
+# battery scaffolds the superproject's ledger names. 119 -> 118 the
+# same day: the step-#12 legs first re-grew the envelope-decision-
+# needle stanza (+3 caught), repaid at the mechanism as
+# common::expect_write_denied, which also dissolved the one standing
+# foreign_readers<->guard_hook pair. Ratchet DOWN with every cleanup.
+[dedup]
+budget = 118

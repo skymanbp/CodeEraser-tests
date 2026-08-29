@@ -30,6 +30,19 @@ fn dedup_check_fails_over_budget_and_passes_at_budget() {
     });
 }
 
+/// A tree with no clone block at all passes `--check` on budget 0:
+/// the core answers `dedupBlocks: null` when no distinct row rode,
+/// and null is zero admitted, not a drift (step #12 found the first
+/// such tree: a superproject whose only clones sit in a submodule).
+#[test]
+fn dedup_check_passes_on_a_tree_without_clones() {
+    let dir = tmp("gate-dedup-clean");
+    std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("a.rs");
+    std::fs::write(dir.join("ce.toml"), "[dedup]\nbudget = 0\n").expect("ce.toml");
+    let out = run_dedup_check(&dir);
+    assert!(out.status.success(), "no blocks, budget 0: {out:?}");
+}
+
 #[test]
 fn dedup_check_without_budget_is_an_error() {
     let dir = tmp("gate-dedup-nocfg");

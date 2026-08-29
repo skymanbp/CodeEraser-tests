@@ -21,7 +21,7 @@ fn open_idx(tag: &str, db: &str) -> (PathBuf, Index) {
 
 /// Refresh one rust source into the index (default params).
 fn put(idx: &mut Index, name: &str, src: &str) {
-    idx.refresh_file(name, src.as_bytes(), Lang::Rust, Params::default())
+    idx.refresh_file(name, src.as_bytes(), Lang::Rust, Params::default(), false)
         .expect(name);
 }
 
@@ -117,11 +117,11 @@ fn unchanged_content_is_fast_path() {
     let (_dir, mut idx) = open_idx("fast-path", "index.db");
     let src = rust_fn(5);
     assert!(
-        idx.refresh_file("a.rs", src.as_bytes(), Lang::Rust, p)
+        idx.refresh_file("a.rs", src.as_bytes(), Lang::Rust, p, false)
             .expect("first")
     );
     assert!(
-        !idx.refresh_file("a.rs", src.as_bytes(), Lang::Rust, p)
+        !idx.refresh_file("a.rs", src.as_bytes(), Lang::Rust, p, false)
             .expect("second"),
         "identical bytes must not rewrite"
     );
@@ -142,7 +142,7 @@ fn param_change_invalidates_index() {
     };
     let mut idx = Index::open(&dir.join("index.db"), p2).expect("open p2");
     assert!(
-        idx.refresh_file("a.rs", src.as_bytes(), Lang::Rust, p2)
+        idx.refresh_file("a.rs", src.as_bytes(), Lang::Rust, p2, false)
             .expect("after wipe"),
         "changed params must invalidate the cached fingerprints"
     );
@@ -159,7 +159,7 @@ fn docdup_rev_bump_invalidates_index() {
     let line = format!("   {}\n", "word ".repeat(20).trim());
     let src = format!("/* prose\n{}*/\nfn main() {{}}\n", line.repeat(3));
     let (dir, mut idx) = open_idx("docdup-rev", "index.db");
-    idx.refresh_file("a.rs", src.as_bytes(), Lang::Rust, Params::default())
+    idx.refresh_file("a.rs", src.as_bytes(), Lang::Rust, Params::default(), false)
         .expect("first");
     drop(idx);
     let db = dir.join("index.db");
@@ -173,7 +173,7 @@ fn docdup_rev_bump_invalidates_index() {
     drop(conn);
     let mut idx = Index::open(&db, Params::default()).expect("reopen");
     assert!(
-        idx.refresh_file("a.rs", src.as_bytes(), Lang::Rust, Params::default())
+        idx.refresh_file("a.rs", src.as_bytes(), Lang::Rust, Params::default(), false)
             .expect("after wipe"),
         "a bumped docdup_rev must wipe the cache"
     );
@@ -190,11 +190,11 @@ fn markdown_is_graph_cache_not_fingerprints() {
     let p = Params::default();
     let (_dir, mut idx) = open_idx("md-graph", "index.db");
     assert!(
-        idx.refresh_file("doc.md", b"[x](./a.rs)\n", Lang::Markdown, p)
+        idx.refresh_file("doc.md", b"[x](./a.rs)\n", Lang::Markdown, p, false)
             .expect("md")
     );
     assert!(
-        !idx.refresh_file("doc.md", b"[x](./a.rs)\n", Lang::Markdown, p)
+        !idx.refresh_file("doc.md", b"[x](./a.rs)\n", Lang::Markdown, p, false)
             .expect("md again"),
         "content-hash fast path covers markdown"
     );

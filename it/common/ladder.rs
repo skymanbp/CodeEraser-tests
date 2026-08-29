@@ -40,6 +40,9 @@ pub struct Fixture {
     pub files: BTreeSet<String>,
     pub configs: Vec<String>,
     pub memo: ladder::Memo,
+    /// Declared crate roots (ce.toml `[graph] crate_roots`); empty
+    /// unless a leg sets it.
+    pub crate_roots: BTreeSet<String>,
 }
 
 pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
@@ -50,6 +53,7 @@ pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
         files,
         configs,
         memo: Default::default(),
+        crate_roots: BTreeSet::new(),
     }
 }
 
@@ -60,6 +64,7 @@ impl Fixture {
             configs: &self.configs,
             root: &self.dir,
             memo: &self.memo,
+            crate_roots: &self.crate_roots,
         }
     }
 }

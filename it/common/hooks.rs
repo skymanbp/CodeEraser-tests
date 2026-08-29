@@ -67,6 +67,20 @@ pub fn expect_decision(dir: &Path, envelope: &str, want: &str) -> String {
         .to_string()
 }
 
+/// A Write of `content` at `rel`, judged from a session rooted at
+/// `dir`, must be DENIED with a reason naming `needle` — the
+/// envelope-decision-needle stanza every budget-deny leg opened with
+/// (the suite's own ratchet paired its third copy). Returns the reason.
+pub fn expect_write_denied(dir: &Path, rel: &str, content: &str, needle: &str) -> String {
+    let env = pretooluse_envelope_at(dir, rel, "Write", content);
+    let reason = expect_decision(dir, &env, "deny");
+    assert!(
+        reason.contains(needle),
+        "{rel}: denied for {needle}: {reason}"
+    );
+    reason
+}
+
 /// Stop envelope; `stop_hook_active` = the loop-prevention flag.
 pub fn stop_envelope(dir: &Path, stop_hook_active: bool) -> String {
     serde_json::json!({

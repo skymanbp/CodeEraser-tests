@@ -54,7 +54,7 @@ proptest! {
             match op {
                 Op::Upsert(i, seeds) => {
                     let (name, src) = (file_name(*i), content(seeds));
-                    incr.refresh_file(&name, src.as_bytes(), Lang::Rust, p).expect("refresh");
+                    incr.refresh_file(&name, src.as_bytes(), Lang::Rust, p, false).expect("refresh");
                     model.insert(name, src);
                 }
                 Op::Delete(i) => {
@@ -68,7 +68,7 @@ proptest! {
         }
         let mut full = Index::open(&dir.join("full.db"), p).expect("open full");
         for (name, src) in &model {
-            full.refresh_file(name, src.as_bytes(), Lang::Rust, p).expect("rebuild");
+            full.refresh_file(name, src.as_bytes(), Lang::Rust, p, false).expect("rebuild");
         }
         prop_assert_eq!(
             incr.all_instances().expect("incr"),

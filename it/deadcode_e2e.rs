@@ -132,7 +132,6 @@ fn the_entry_globs_hint_follows_the_dead_share() {
 /// The advisory fixture: `used.ts` is kept alive by the entry and
 /// exports a name nothing spells; with `orphan`, a dead file beside it.
 fn unspoken_tree(tag: &str, orphan: bool) -> std::path::PathBuf {
-    let dir = common::fixtures::tmp(tag);
     let mut doc = String::from(
         "--- ce.toml\n[graph]\nentry_globs = [\"root.ts\"]\n\
          --- root.ts\nimport './used';\n\
@@ -141,8 +140,7 @@ fn unspoken_tree(tag: &str, orphan: bool) -> std::path::PathBuf {
     if orphan {
         doc.push_str("--- orphan.ts\nexport {};\n");
     }
-    common::fixtures::write_doc(&dir, &doc);
-    dir
+    common::fixtures::doc_tree(tag, &doc)
 }
 
 #[test]

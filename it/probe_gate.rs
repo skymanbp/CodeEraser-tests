@@ -26,7 +26,7 @@ fn seeded_index(dir: &Path) -> Index {
     let p = Params::default();
     std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("write a.rs");
     let mut idx = Index::open(&dir.join(".ce/index.db"), p).expect("open");
-    idx.refresh_file("a.rs", rust_fn(1).as_bytes(), Lang::Rust, p)
+    idx.refresh_file("a.rs", rust_fn(1).as_bytes(), Lang::Rust, p, false)
         .expect("seed");
     idx.mark_full_build().expect("stamp");
     idx

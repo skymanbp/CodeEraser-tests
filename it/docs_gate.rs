@@ -35,6 +35,7 @@ guard.mode\tExplicit hook tier for every rule class: observe / warn / ask / deny
 guard.zone_tiers\tArm the graded-zone tier map (plan v2.7): a write landing <25% into (softLine, hard budget] stays observe, 25-75% warns, >75% asks. Default OFF - the zone is feed-only until a repo opts in, and the observe feed records the mapped tier when armed
 dedup.budget\tOnly-shrink clone-block budget; `ce dedup --check` fails when the repo exceeds it
 graph.entry_globs\tExtra liveness roots for the deadcode judgment, beyond the mechanical entry conventions
+graph.crate_roots\tRust crate roots of a tree whose manifest lives elsewhere (the test-suite submodule is a slice of the `cli` package): root-relative exact paths. A declared root mounts its `mod` children and anchors `crate::` paths like a manifest target, and is one for the deadcode entry role; a declared path that is not a walked Rust file is refused by name
 score.weights\tPer-axis weight numerators by axis name (size / complexity / clone / docdup / deadcode / churn / cycle); unlisted axes keep the equal default
 score.size_penalty_max\tSoft-zone curve: the size-axis penalty of a file AT the hard line (plan v2.6; default 10)
 score.soft_line_k\tRelative soft line: the multiplicative-MAD exponent k in S = clamp(median*r^k, [200,500]) (default 2)

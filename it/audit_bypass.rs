@@ -77,30 +77,50 @@ fn a_plain_dot_git_file_cannot_re_root_the_guard() {
 
 /// A deny-mode superproject whose clone pair lives in the `suite`
 /// submodule, committed clean — the shape 9bedcc4 gave this
-/// repository, and one both git legs were blind to: the parent's
-/// `diff --numstat` reports the child as `0 0 suite` and its
-/// `ls-files --others` never lists a file of the child.
-fn deny_superproject(name: &str) -> std::path::PathBuf {
+/// repository. The parent's `diff --numstat` reports the child as
+/// `0 0 suite` and its `ls-files --others` never lists a file of the
+/// child; since plan v2.18 step #12 that is by design — the child is
+/// a READER here — and what audits the child is the child's own gate:
+/// `gated` seats a deny-mode ce.toml in the suite, committed there.
+fn deny_superproject(name: &str, gated: bool) -> std::path::PathBuf {
     let sup = common::seed_superproject(name, "suite");
-    std::fs::write(sup.join("ce.toml"), "[guard]\nmode = \"deny\"\n").expect("ce.toml");
+    let policy = "[guard]\nmode = \"deny\"\n";
+    if gated {
+        std::fs::write(sup.join("suite/ce.toml"), policy).expect("suite/ce.toml");
+        common::commit_all(&sup.join("suite"), "gate");
+    }
+    std::fs::write(sup.join("ce.toml"), policy).expect("ce.toml");
     common::commit_all(&sup, "policy");
     sup
 }
 
-/// The diff leg, through the child's own git, in the ce root's spelling.
+/// The diff leg, through the child's own git and the child's own
+/// audit — delegated from the session's Stop, the verdict riding it
+/// under the mount name.
 #[test]
-fn a_tracked_edit_inside_a_submodule_still_blocks() {
-    let sup = deny_superproject("bypass-submodule-edit");
+fn a_tracked_edit_inside_a_gated_submodule_still_blocks() {
+    let sup = deny_superproject("bypass-submodule-edit", true);
     common::append(&sup.join("suite/b.rs"), "// touched\n");
-    blocks(&sup, "suite/b.rs");
+    blocks(&sup, "suite: ");
 }
 
 /// The untracked leg — the §4.2 Bash-write scenario, one level down.
 #[test]
-fn a_brand_new_clone_inside_a_submodule_still_blocks() {
-    let sup = deny_superproject("bypass-submodule-new");
+fn a_brand_new_clone_inside_a_gated_submodule_still_blocks() {
+    let sup = deny_superproject("bypass-submodule-new", true);
     std::fs::write(sup.join("suite/c.rs"), common::rust_fn(3)).expect("clone");
-    blocks(&sup, "suite/c.rs");
+    blocks(&sup, "suite: ");
+}
+
+/// Without a gate of its own the submodule is a reader here: its
+/// edit is nobody's to audit from this root — no block, and the
+/// root's own line counts zero changed files, honestly.
+#[test]
+fn an_edit_inside_an_ungated_submodule_is_nobodys_here() {
+    let sup = deny_superproject("bypass-submodule-ungated", false);
+    common::append(&sup.join("suite/b.rs"), "// touched\n");
+    let line = stop_observe(&sup);
+    assert_eq!(line["changed_files"], serde_json::json!(0), "{line}");
 }
 
 /// An unseated submodule is a NAMED shortfall in the feed — the
@@ -108,7 +128,7 @@ fn a_brand_new_clone_inside_a_submodule_still_blocks() {
 /// voids the whole line for a LOC-summing reader).
 #[test]
 fn an_unseated_submodule_is_named_in_the_audit_feed() {
-    let sup = deny_superproject("bypass-submodule-unseated");
+    let sup = deny_superproject("bypass-submodule-unseated", false);
     common::unseat(&sup, "suite");
     let line = stop_observe(&sup);
     assert_eq!(line["unmeasured"], serde_json::json!(["suite"]), "{line}");
