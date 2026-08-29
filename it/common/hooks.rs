@@ -116,8 +116,10 @@ pub fn run_hook(dir: &Path, args: &[&str], stdin: &str) -> String {
         .write_all(stdin.as_bytes())
         .expect("write envelope");
     let out = child.wait_with_output().expect("wait");
-    // best-effort and inert for daemon-free hooks (request_if_running
-    // never spawns); before the assert so a red test cannot leak
+    // confirmed gone at every root the hook could have judged (a
+    // delegated write's daemon lives under the nested project), and
+    // inert for daemon-free hooks (request_if_running never spawns);
+    // before the assert so a red test cannot leak
     shutdown_daemon(dir);
     assert!(out.status.success(), "hook must always exit 0 (fail-open)");
     String::from_utf8_lossy(&out.stdout).to_string()

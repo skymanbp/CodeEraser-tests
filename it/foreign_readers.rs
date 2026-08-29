@@ -243,6 +243,14 @@ fn the_guard_is_inert_on_a_foreign_write() {
     // gate — from this session's cwd
     std::fs::write(sup.join("suite/ce.toml"), "[guard]\nmode = \"deny\"\n").expect("gate");
     common::expect_write_denied(&sup, "suite/new.rs", &big, "751 lines");
+    // the delegated hook started its daemon under the submodule's
+    // root — the hook runner's teardown must reach it there (CI
+    // 33261672033: one left running held target/debug/ce.exe against
+    // the dogfood relink for its whole idle window)
+    assert!(
+        !codeeraser::daemon::client::is_running(&sup.join("suite")),
+        "the daemon the delegated hook started outlives its teardown"
+    );
 }
 
 /// The mention universe reads through the same owner rule: the

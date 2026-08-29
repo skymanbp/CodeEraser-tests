@@ -93,13 +93,64 @@ pub fn raw_daemon_line(
     serde_json::from_str(reply.trim()).expect("parse")
 }
 
-/// Ask the daemon for `dir` to shut down (ignore errors — may be
-/// gone). Never the lazy-spawning path: spawning a daemon in order to
-/// shut it down would be absurd, and in a test harness it sprays
-/// nested test-binary processes (see spawn_daemon_ready).
+/// Shut down the daemon for `dir` AND for every nested project root
+/// under it, and CONFIRM each one is gone. A hook judges a write
+/// under a nested project (a gated submodule, a nested repository)
+/// at that project's own root (root::judging_root, plan v2.18 step
+/// #12), so the daemon it lazily starts lives THERE: a teardown that
+/// asked only `dir` left one serving `…/suite` for its whole idle
+/// window, holding target/debug/ce.exe against the dogfood relink
+/// on Windows (CI 33261672033 twice; the census step named it on
+/// 33262869599). The confirmation is a liveness wait, spawn_daemon_
+/// ready's shape: a daemon still cold-starting refuses the first
+/// shutdown (its token lands after the bind), and a refused connect
+/// is the only proof it is gone (client::is_running). Never the
+/// lazy-spawning path (see spawn_daemon_ready). Residue named: a
+/// spawn the hook gave up waiting for (its 2 s budget) has no socket
+/// to ask yet and is not seen here — the hook then also reports a
+/// degraded probe of ≥ 2 s, which no leg accepts silently.
 pub fn shutdown_daemon(dir: &Path) {
+    for root in judged_roots(dir) {
+        shutdown_confirmed(&root);
+    }
+}
+
+/// `dir` plus every directory below it carrying a `ce.toml` — the
+/// roots a hook run from `dir` can judge at (judging_root delegates
+/// only to a nested project with a gate of its own).
+fn judged_roots(dir: &Path) -> Vec<std::path::PathBuf> {
+    let mut roots = vec![dir.to_path_buf()];
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            if !p.is_dir() || matches!(e.file_name().to_str(), Some(".git" | ".ce")) {
+                continue;
+            }
+            if p.join("ce.toml").is_file() {
+                roots.push(p.clone());
+            }
+            stack.push(p);
+        }
+    }
+    roots
+}
+
+/// Shutdown asked until the socket is gone — 30 s, the readiness
+/// bound above; a daemon that outlives it fails the test out loud.
+fn shutdown_confirmed(root: &Path) {
     use codeeraser::daemon::{client, proto::Request};
-    let _ = client::request_if_running(dir, &Request::Shutdown);
+    for _ in 0..300 {
+        if !client::is_running(root) {
+            return;
+        }
+        let _ = client::request_if_running(root, &Request::Shutdown);
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    panic!("daemon at {} outlived its shutdown", root.display());
 }
 
 /// The daemon must still ANSWER (it survived whatever the test threw
