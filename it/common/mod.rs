@@ -183,8 +183,19 @@ pub fn corrupt_index(dir: &Path) {
 /// run_expect / write_all (the success-direction and multi-write
 /// stanzas) live in gates.rs — mod.rs sits at its own 300-line gate.
 pub fn run_ce(dir: &Path, args: &[&str]) -> std::process::Output {
+    run_ce_env(dir, args, &[])
+}
+
+/// `run_ce` under named environment — the acts `ce baseline` reads
+/// and the console language; the one process-construction throat.
+/// The two acts are cleared first: a developer shell that exported
+/// one would otherwise turn every refusal case green by inheritance.
+pub fn run_ce_env(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_ce"))
         .args(args)
+        .env_remove("CE_ACCEPT_BASELINE")
+        .env_remove("CE_ACCEPT_FENCE")
+        .envs(env.iter().copied())
         .current_dir(dir)
         .output()
         .expect("run ce")

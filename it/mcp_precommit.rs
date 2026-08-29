@@ -191,6 +191,7 @@ fn judged_reports(dir: &std::path::Path) -> Vec<Row> {
         floor: None,
         establish: false,
         pinned_soft: None,
+        baseline: None,
     };
     vec![
         row(

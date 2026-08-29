@@ -73,6 +73,34 @@ fn verdicts_come_back_with_names() {
     assert_eq!(dead_set(&rebuilt), want, "from-scratch rebuild identical");
 }
 
+/// entry_globs speak the one ce.toml dialect (step #14): `src/**/*.ts`
+/// marks a NESTED root the legacy three-form matcher could not spell
+/// (it matched nothing, and root.ts died with its import), while the
+/// legacy `dir/` form keeps its meaning — the suite's own ce.toml says
+/// `unit/`. The orphan is the only death.
+#[test]
+fn entry_globs_speak_the_one_dialect() {
+    let fx = common::fixture(
+        "deadcode-e2e-dialect",
+        &[
+            (
+                "ce.toml",
+                "[graph]\nentry_globs = [\"src/**/*.ts\", \"lib/\"]\n",
+            ),
+            ("src/n/root.ts", "import './used';\n"),
+            ("src/n/used.ts", "export {};\n"),
+            ("lib/inner.ts", "export {};\n"),
+            ("orphan.ts", "export {};\n"),
+        ],
+    );
+    let r = deadcode::run(&fx.dir, None, &core_bin()).expect("run");
+    assert_eq!(
+        dead_set(&r),
+        vec![("orphan.ts".to_string(), "unref_private")],
+        "the nested root and the dir/ root live; only the orphan dies"
+    );
+}
+
 /// The v2.16 K9 hint, both directions: a convention-loaded tree
 /// (nothing imports anything, no entry declared) names the
 /// entry_globs knob beside its dead list; a tree where death is the

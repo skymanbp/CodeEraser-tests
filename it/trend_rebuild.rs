@@ -13,6 +13,9 @@ fn seed_two_commits(dir: &Path) {
     std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("a.rs");
     common::init_and_commit(dir, "one");
     std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("b.rs");
+    // a non-default knob: the tree's digest is Some from here on, the
+    // road every real project's history walks (O34)
+    common::seed_budget(dir, 41);
     common::commit_all(dir, "two");
 }
 
@@ -26,6 +29,13 @@ fn trend_rows_rebuild_from_history() {
     seed_two_commits(&dir);
     let core = common::core_bin();
 
+    assert!(
+        codeeraser::config::Config::load(&dir)
+            .expect("config")
+            .knobs_digest()
+            .is_some(),
+        "the seeded tree declares a non-default knob"
+    );
     let first = run_all(&dir, &core);
     assert_eq!(first.window, 2, "two mainline commits seeded");
     assert_eq!(first.rows.len(), 2, "both measured: {:?}", first.failed);
@@ -72,4 +82,45 @@ fn trend_batch_measures_incrementally() {
         let r = codeeraser::trend::run(&dir, None, &core, 10, Some(1)).expect("batch run");
         assert_eq!((r.rows.len(), r.pending), (rows_want, pending_want));
     }
+}
+
+/// O34: the pinned-soft baseline is the request's own identity, so a
+/// tree whose ce.toml is not the shipped default judges clean under
+/// its own digest with a clone pair in it — the old two-empty-tables
+/// pin failed every such point by `knobs_digest` and `discrete_added`,
+/// and trend recorded the score anyway. The echoed newBaseline
+/// carries the digest and the pinned line, nothing added, nothing over.
+#[test]
+fn a_pinned_soft_point_judges_clean_under_its_own_digest() {
+    let dir = tmp("trend-pin");
+    common::seed_clone_pair(&dir);
+    common::seed_budget(&dir, 41);
+    let digest = codeeraser::config::Config::load(&dir)
+        .expect("config")
+        .knobs_digest()
+        .expect("non-default");
+    let out = codeeraser::score::run(
+        &dir,
+        codeeraser::score::Opts {
+            db: None,
+            core: common::core_bin(),
+            days: None,
+            floor: None,
+            establish: true,
+            pinned_soft: Some(300),
+            baseline: None,
+        },
+    )
+    .expect("pinned run");
+    let r = &out.reply;
+    assert!(!r.fail, "identity pin: nothing holds: {:?}", r.failed);
+    assert!(
+        r.added.is_empty() && r.over.is_empty(),
+        "{:?} {:?}",
+        r.added,
+        r.over
+    );
+    assert_eq!(r.new_baseline["knobsDigest"], serde_json::json!(digest));
+    assert_eq!(r.new_baseline["softLine"], serde_json::json!(300));
+    assert!(out.members > 0, "the clone pair is in the discrete set");
 }

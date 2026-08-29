@@ -14,7 +14,9 @@ use crate::common::core_bin;
 use codeeraser::score::{self, Opts};
 use std::path::{Path, PathBuf};
 
-fn opts(db: Option<PathBuf>, floor: Option<u32>) -> Opts {
+/// The committed baseline is the CALLER's one read (O31): score::run
+/// judges what it is handed and never opens the file itself.
+fn opts(dir: &Path, db: Option<PathBuf>, floor: Option<u32>) -> Opts {
     Opts {
         db,
         core: core_bin(),
@@ -22,6 +24,7 @@ fn opts(db: Option<PathBuf>, floor: Option<u32>) -> Opts {
         floor,
         establish: false,
         pinned_soft: None,
+        baseline: score::baseline::read(dir).expect("baseline read"),
     }
 }
 
@@ -32,7 +35,7 @@ fn opts(db: Option<PathBuf>, floor: Option<u32>) -> Opts {
 fn bridge_conserves_blocks_into_members_and_gates_agree() {
     let root = Path::new("..");
     let db = common::tmp("bridge-db").join("index.db");
-    let o = score::run(root, opts(Some(db.clone()), None)).expect("check");
+    let o = score::run(root, opts(root, Some(db.clone()), None)).expect("check");
     let (found, _s) = codeeraser::dedup::analyze(root, Some(db), None, None).expect("dedup");
     let budget = codeeraser::config::Config::load(root)
         .expect("ce.toml")
@@ -139,12 +142,12 @@ fn pre_haskell_members_survive_every_generation() {
 fn floor_and_ratchet_fail_independently() {
     let dir = common::tmp("bridge-both");
     common::seed_clone_pair(&dir);
-    let est = score::run(&dir, opts(None, None)).expect("establish");
+    let est = score::run(&dir, opts(&dir, None, None)).expect("establish");
     assert!(!est.reply.fail, "no baseline, no floor: nothing fails");
     score::baseline::write(&dir, &est.reply.new_baseline).expect("write");
 
     // direction 1: floor alone (the ratchet half is clean)
-    let floored = score::run(&dir, opts(None, Some(1000))).expect("floored");
+    let floored = score::run(&dir, opts(&dir, None, Some(1000))).expect("floored");
     assert!(floored.reply.fail, "the floor alone must fail");
     // and the report SAYS which floor it judged under — a pass with
     // none armed is a weaker claim than a pass with one, and the two
@@ -168,7 +171,7 @@ fn floor_and_ratchet_fail_independently() {
 
     // direction 2: ratchet alone (no floor on the wire)
     std::fs::write(dir.join("c.rs"), common::rust_fn(3)).expect("c.rs");
-    let grown = score::run(&dir, opts(None, None)).expect("grown");
+    let grown = score::run(&dir, opts(&dir, None, None)).expect("grown");
     assert!(grown.reply.fail, "a new discrete member alone must fail");
     assert!(
         !grown.reply.added.is_empty(),

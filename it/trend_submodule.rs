@@ -33,6 +33,7 @@ fn live_score(sup: &Path) -> anyhow::Result<codeeraser::score::Outcome> {
             floor: None,
             establish: true,
             pinned_soft: Some(soft),
+            baseline: None,
         },
     )
 }

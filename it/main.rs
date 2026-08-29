@@ -13,6 +13,7 @@ mod audit_bypass;
 mod audit_stop;
 mod baseline_bridge;
 mod baseline_ledgers;
+mod baseline_policy;
 mod bench;
 mod bench_render;
 mod bench_render_dashboard;

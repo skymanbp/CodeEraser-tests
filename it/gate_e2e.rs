@@ -24,9 +24,9 @@ fn run_scan(dir: &Path) -> Output {
 fn dedup_check_fails_over_budget_and_passes_at_budget() {
     let dir = tmp("gate-dedup");
     common::seed_clone_pair(&dir);
-    std::fs::write(dir.join("ce.toml"), "[dedup]\nbudget = 0\n").expect("ce.toml");
+    common::seed_budget(&dir, 0);
     gate_red_green(&dir, &run_dedup_check, "ratchet", true, &|| {
-        std::fs::write(dir.join("ce.toml"), "[dedup]\nbudget = 1\n").expect("ce.toml");
+        common::seed_budget(&dir, 1);
     });
 }
 
@@ -38,7 +38,7 @@ fn dedup_check_fails_over_budget_and_passes_at_budget() {
 fn dedup_check_passes_on_a_tree_without_clones() {
     let dir = tmp("gate-dedup-clean");
     std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("a.rs");
-    std::fs::write(dir.join("ce.toml"), "[dedup]\nbudget = 0\n").expect("ce.toml");
+    common::seed_budget(&dir, 0);
     let out = run_dedup_check(&dir);
     assert!(out.status.success(), "no blocks, budget 0: {out:?}");
 }
@@ -49,6 +49,62 @@ fn dedup_check_without_budget_is_an_error() {
     std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("a.rs");
     let out = run_dedup_check(&dir);
     assert!(!out.status.success(), "--check without budget must error");
+}
+
+/// `--check` accepts the calibrated operating point or a tighter one
+/// only — a looser filter empties the budget with no clone repaid
+/// (k4 fence attack, item O41). The refusal precedes any core
+/// contact (a nonexistent core proves it, and the message, not the
+/// exit code, is what the old binary could not produce); tightening
+/// rows reach the core and stay red on the same seeded pair.
+#[test]
+fn dedup_check_refuses_loosening_overrides_before_the_core() {
+    let dir = tmp("gate-dedup-filters");
+    common::seed_clone_pair(&dir);
+    common::seed_budget(&dir, 0);
+    let loosening = [
+        ("--min-tokens", "1000"),
+        ("--min-distinct", "8"),
+        ("--min-distinct", "0"),
+    ];
+    for (flag, value) in loosening {
+        let args = [
+            "dedup",
+            ".",
+            "--check",
+            flag,
+            value,
+            "--core",
+            "ce-core-that-does-not-exist",
+        ];
+        let out = common::run_ce(&dir, &args);
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert_eq!(
+            out.status.code(),
+            Some(2),
+            "{flag} {value}: refused as usage: {out:?}"
+        );
+        assert!(
+            err.contains("default or tighter only") && err.contains(flag),
+            "{flag} {value}: the refusal names the flag and the rule: {err}"
+        );
+    }
+    for (flag, value) in [("--min-tokens", "25"), ("--min-distinct", "1")] {
+        let out = common::run_ce(
+            &dir,
+            &["dedup", ".", "--check", flag, value, "--core", &core_bin()],
+        );
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert_eq!(
+            out.status.code(),
+            Some(1),
+            "{flag} {value}: reaches the core, stays red: {out:?}"
+        );
+        assert!(
+            err.contains("ratchet"),
+            "{flag} {value}: the budget gate names itself: {err}"
+        );
+    }
 }
 
 #[test]

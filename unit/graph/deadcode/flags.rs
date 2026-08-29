@@ -20,14 +20,14 @@ fn allow_claim_requires_the_why_tail() {
         ("missing.py", None, false),
     ];
     let root = crate::testutil::scratch("dc-allow");
-    let cfg = crate::config::Config::default();
+    let entries = globs::compile_inclusions(&root, &[], "[graph] entry_globs").expect("empty set");
     let none = no_targets();
     for (name, text, want) in cases {
         if let Some(text) = text {
             std::fs::write(root.join(name), text).unwrap();
         }
         assert_eq!(allow_claim(&root, name), want, "{name}");
-        let r = roles_of(&root, name, &cfg, &none);
+        let r = roles_of(&root, name, &entries, &none);
         assert_eq!(r & ROLE_ALLOW != 0, want, "{name}");
     }
     std::fs::remove_dir_all(&root).ok();

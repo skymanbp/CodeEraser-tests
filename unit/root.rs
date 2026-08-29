@@ -39,7 +39,33 @@ fn project_root_ascends_to_the_nearest_anchor() {
     // its ancestors carrying a real anchor, never a sibling
     let got = project_root(&loose);
     assert!(loose.starts_with(&got), "never leaves the ancestry line");
+    // and from INSIDE it, a relative `.` resolves absolute and says
+    // moved exactly when the root differs: the fallback used to
+    // return the typed path itself, so `resolve(".")` in an
+    // anchorless tree compared `/abs/here` against `.` and reported
+    // an ascent that never happened — `ce baseline .` there was
+    // refused as "inside a project" it was the root of (O30)
+    let (root, moved) = resolved_from(&loose);
+    let here = std::fs::canonicalize(&loose).expect("canon");
+    assert_eq!(
+        moved,
+        root != here,
+        "moved says exactly whether the root differs: {root:?}"
+    );
     std::fs::remove_dir_all(&dir).ok();
+}
+
+/// `resolve(".")` with the process cwd at `dir`, restored after —
+/// the one stanza both relative-path tests need (the dedup gate
+/// paired them), answered canonical: the temp dir may itself be
+/// reached through a symlink (macOS /var -> /private/var).
+fn resolved_from(dir: &Path) -> (PathBuf, bool) {
+    let keep = std::env::current_dir().expect("cwd");
+    std::env::set_current_dir(dir).expect("cd");
+    let (root, moved) = resolve(Path::new("."));
+    std::env::set_current_dir(keep).expect("cd back");
+    assert!(root.is_absolute(), "never a relative root: {root:?}");
+    (std::fs::canonicalize(&root).expect("canon"), moved)
 }
 
 /// A relative path walks its ancestry too. `Path::new("cli")
@@ -49,14 +75,9 @@ fn project_root_ascends_to_the_nearest_anchor() {
 #[test]
 fn a_relative_path_still_ascends() {
     let (dir, repo, deep) = anchored("relroot", "sub");
-    let keep = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(&deep).expect("cd");
-    let got = project_root(Path::new("."));
-    std::env::set_current_dir(keep).expect("cd back");
-    // canonicalize both sides: the temp dir may itself be reached
-    // through a symlink (macOS /var -> /private/var)
-    let want = std::fs::canonicalize(&repo).expect("canon");
-    assert_eq!(std::fs::canonicalize(&got).expect("canon"), want);
+    let (got, moved) = resolved_from(&deep);
+    assert_eq!(got, std::fs::canonicalize(&repo).expect("canon"));
+    assert!(moved, "an ascent reports itself");
     std::fs::remove_dir_all(&dir).ok();
 }
 

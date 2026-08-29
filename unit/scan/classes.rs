@@ -18,8 +18,9 @@ fn rules(classes: &[Decl]) -> RulesCfg {
 
 /// Declaration order is the tiebreak (C3): the same overlapping
 /// pair flipped hands the shared path to the other class, an
-/// unmatched path is class 0, and a Windows-spelled glob matches
-/// through the same normalization the exclude list gets.
+/// unmatched path is class 0, a `dir/` glob owns the directory's
+/// files (the one dialect, plan v2.18 step #14), and a
+/// Windows-spelled glob is refused by name — never normalized.
 #[test]
 fn first_declared_match_owns_the_path() {
     let root = Path::new(".");
@@ -38,10 +39,7 @@ fn first_declared_match_owns_the_path() {
         "flipped order, flipped owner"
     );
     assert_eq!(
-        owner(
-            &[("gen", &["src\\generated\\*.rs"])],
-            "src/generated/api.rs"
-        ),
+        owner(&[("gen", &["src/generated/"])], "src/generated/api.rs"),
         1
     );
     assert!(
@@ -49,8 +47,13 @@ fn first_declared_match_owns_the_path() {
             .expect("empty")
             .declared()
     );
-    let err = Classes::compile(root, &rules(&[("neg", &["!src/**"])]))
-        .err()
-        .expect("'!' refuses");
-    assert!(err.contains("without '!'"), "{err}");
+    for (glob, names) in [
+        ("!src/**", "without '!'"),
+        ("src\\generated\\*.rs", "escape"),
+    ] {
+        let err = Classes::compile(root, &rules(&[("bad", &[glob])]))
+            .err()
+            .unwrap_or_else(|| panic!("{glob} refuses"));
+        assert!(err.contains(names) && err.contains("\"bad\""), "{err}");
+    }
 }

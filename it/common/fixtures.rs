@@ -97,6 +97,13 @@ pub fn seed_sources(dir: &Path, mode: &str) {
 }
 
 /// a.rs + b.rs forming a T2 clone pair that clears t=50.
+/// The one-line ce.toml that declares a dedup budget — the knob every
+/// gate fixture turns, and the cheapest non-default declaration (a
+/// Some digest) the baseline fixtures need.
+pub fn seed_budget(dir: &Path, budget: u32) {
+    std::fs::write(dir.join("ce.toml"), format!("[dedup]\nbudget = {budget}\n")).expect("ce.toml");
+}
+
 pub fn seed_clone_pair(dir: &Path) {
     std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("a.rs");
     std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("b.rs (T2 clone)");

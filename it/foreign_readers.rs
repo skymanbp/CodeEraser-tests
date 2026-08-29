@@ -128,7 +128,9 @@ fn foreign_files_are_walked_but_never_measured() {
         std::fs::copy(sup.join(rel), own.join(rel)).expect(rel);
     }
     let table = |dir: &Path| -> serde_json::Value {
-        let out = common::run_ce(dir, &["baseline", "."]);
+        // O31: an establish is a named act — the fixture has no
+        // committed floor, so the wholesale act is the road
+        let out = common::run_ce_env(dir, &["baseline", "."], &[("CE_ACCEPT_BASELINE", "1")]);
         assert!(out.status.success(), "ce baseline: {out:?}");
         let text = std::fs::read_to_string(dir.join("ce-baseline.json")).expect("baseline");
         serde_json::from_str::<serde_json::Value>(&text).expect("json")["continuous"].clone()
