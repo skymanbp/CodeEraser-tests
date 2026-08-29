@@ -55,5 +55,5 @@ fn t3_universe_consistent() {
 /// guards against a vacuous gate).
 #[test]
 fn self_universe_tracks_units() {
-    assert_self_tracks("t3-universe", t3_row, 25);
+    assert_self_tracks(&FAMILY, t3_row, 25);
 }

@@ -124,6 +124,23 @@ pub fn repo_root() -> PathBuf {
         .to_path_buf()
 }
 
+/// Every file under `dir`, recursively, whose extension is `ext` —
+/// the one walk the fixtures' `_why` gate and the unit-mount gate
+/// share (they were a clone row apart until the dedup gate said so).
+pub fn files_with_ext(dir: &Path, ext: &str, out: &mut Vec<PathBuf>) {
+    for p in std::fs::read_dir(dir)
+        .expect("a directory to walk")
+        .flatten()
+        .map(|e| e.path())
+    {
+        if p.is_dir() {
+            files_with_ext(&p, ext, out);
+        } else if p.extension().is_some_and(|x| x == ext) {
+            out.push(p);
+        }
+    }
+}
+
 /// Path of a golden fixture under contracts/fixtures.
 pub fn golden_path(name: &str) -> PathBuf {
     repo_root().join("contracts/fixtures").join(name)

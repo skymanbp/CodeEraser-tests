@@ -72,8 +72,18 @@ pub fn assert_covered<'k>(
 /// The self working-tree drift gate: every sha-matched frozen row
 /// must re-derive byte-identically through the family's row throat,
 /// and enough rows must still match for the gate to mean anything.
-pub fn assert_self_tracks(family: &str, row: fn(&str, &str, &str) -> Value, floor: usize) {
-    let doc = super::load(&super::eval_doc(family));
+/// CE_BLESS=1 with CE_REFREEZE=<paths> first re-signs the named rows
+/// (universe::refreeze_self), the way the other blessed gates do.
+pub fn assert_self_tracks(
+    family: &UniverseFamily,
+    row: fn(&str, &str, &str) -> Value,
+    floor: usize,
+) {
+    let path = super::eval_doc(family.family);
+    if super::blessing() {
+        super::universe::refreeze_self(&path, row, family.summarize);
+    }
+    let doc = super::load(&path);
     let verified = super::each_frozen_match(&doc, |frozen, path, lang, text| {
         assert_eq!(
             frozen,

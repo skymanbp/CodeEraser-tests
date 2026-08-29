@@ -7,23 +7,8 @@
 //! least one such path is spelled somewhere, else the parser went quiet.
 
 use crate::common;
-use std::path::{Path, PathBuf};
 
 const EXTS: [&str; 8] = ["js", "rs", "hs", "json", "md", "toml", "ts", "py"];
-
-fn fixtures(dir: &Path, out: &mut Vec<PathBuf>) {
-    for p in std::fs::read_dir(dir)
-        .expect("fixtures dir")
-        .flatten()
-        .map(|e| e.path())
-    {
-        if p.is_dir() {
-            fixtures(&p, out);
-        } else if p.extension().is_some_and(|x| x == "json") {
-            out.push(p);
-        }
-    }
-}
 
 /// The tokens of a `_why` that read as a repo-relative path: a `/`
 /// inside and a source extension at the end, punctuation shed.
@@ -41,7 +26,7 @@ fn paths(why: &str) -> Vec<&str> {
 fn every_path_a_fixture_why_spells_exists() {
     let root = common::repo_root();
     let mut files = Vec::new();
-    fixtures(&root.join("contracts/fixtures"), &mut files);
+    common::files_with_ext(&root.join("contracts/fixtures"), "json", &mut files);
     let (mut seen, mut missing) = (0usize, Vec::new());
     for file in &files {
         let text = std::fs::read_to_string(file).expect("fixture");

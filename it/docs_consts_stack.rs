@@ -55,7 +55,7 @@ fn stack_page_constants_are_locked_and_resolvable() {
     assert_eq!(
         en,
         BTreeMap::from([
-            ("ci-floor".into(), "940".into()),
+            ("ci-floor".into(), "946".into()),
             ("ghc".into(), "9.14.1".into()),
             ("proto".into(), "6.3.0".into()),
         ])
@@ -66,7 +66,7 @@ fn stack_page_constants_are_locked_and_resolvable() {
         ".github/workflows/ci.yml",
         r#"ghc-version: "9.14.1""#,
     );
-    source_contains(&root, ".github/workflows/ci.yml", "--fail-under 940");
+    source_contains(&root, ".github/workflows/ci.yml", "--fail-under 946");
     let site_svg = std::fs::read(root.join("site/assets/stack.svg")).expect("site stack svg");
     let docs_svg = std::fs::read(root.join("docs/assets/stack.svg")).expect("docs stack svg");
     assert_eq!(site_svg, docs_svg, "site/docs stack diagrams differ");

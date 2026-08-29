@@ -56,6 +56,12 @@ pub const CLASSES: [&str; 4] = [
     "removed_moved",
 ];
 
+/// CE_BLESS=1 — exactly "1", as the golden gates read it (any-value
+/// is_ok() would let CE_BLESS=0 or an empty var bless-and-pass).
+pub fn blessing() -> bool {
+    std::env::var("CE_BLESS").as_deref() == Ok("1")
+}
+
 pub fn load(path: &str) -> Value {
     serde_json::from_str(&std::fs::read_to_string(path).expect(path)).expect(path)
 }

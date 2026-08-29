@@ -18,8 +18,11 @@ crate_roots = [
     "corelink_deadline.rs",
     "daemon_conn_deadline.rs",
 ]
-# The four GUI gate scripts node runs by path from ci.yml.
-entry_globs = ["gui/"]
+# The four GUI gate scripts node runs by path from ci.yml, and the
+# unit tree: every file under unit/ is a `#[cfg(test)] #[path] mod`
+# of a superproject source file (plan v2.18 step #13) — mounted from
+# outside, it has no root here to be reached from, so it is an entry.
+entry_globs = ["gui/", "unit/"]
 
 # Only-shrink clone ratchet, measured on formatted code (the
 # superproject's ledger discipline: never raise without a written
@@ -32,6 +35,11 @@ entry_globs = ["gui/"]
 # same day: the step-#12 legs first re-grew the envelope-decision-
 # needle stanza (+3 caught), repaid at the mechanism as
 # common::expect_write_denied, which also dissolved the one standing
-# foreign_readers<->guard_hook pair. Ratchet DOWN with every cleanup.
+# foreign_readers<->guard_hook pair. 118 -> 119 (plan v2.18 step #13,
+# user ruling 2026-08-28): the superproject's #[cfg(test)] modules ride
+# here as unit/ — with them came exactly one clone row the superproject
+# measured until then (its unit tests of dedup/t3 and docdup/judge,
+# 65 -> 64 in its ledger the same commit): a row moving between two
+# ledgers, not new duplication. Ratchet DOWN with every cleanup.
 [dedup]
-budget = 118
+budget = 119

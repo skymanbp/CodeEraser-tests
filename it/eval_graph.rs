@@ -27,6 +27,20 @@ fn constants() -> Value {
     json!({"min_per_lang": 15, "r0_share_trigger": 0.80})
 }
 
+const FAMILY: UniverseFamily = UniverseFamily {
+    family: "graph-slice",
+    constants,
+    summarize,
+};
+
+/// One graph-slice row: content identity plus the per-kind site
+/// counts the detector reads off the text — the row throat the self
+/// drift walk re-derives and CE_BLESS=1 re-signs with.
+fn graph_row(path: &str, lang: &str, text: &str) -> Value {
+    let sites = detect(text, lang_of(lang));
+    json!({"lang": lang, "path": path, "sha256": content_sha(text), "sites": kind_counts(&sites)})
+}
+
 /// Re-derivable from the rows alone — the CI gate re-runs this exact
 /// function (the G1 discipline: generator and gate share one scorer).
 fn summarize(files: &[Value]) -> Value {
@@ -74,8 +88,12 @@ fn graph_slice_consistent() {
 /// on toy fixtures).
 #[test]
 fn self_universe_tracks_detector() {
+    // whole-row equality through the family throat, the floor and the
+    // CE_BLESS=1 re-sign are the skeleton every self view shares;
+    // this family adds the per-site statement-window check
+    assert_self_tracks(&FAMILY, graph_row, 25);
     let doc = load(&eval_doc("graph-slice"));
-    let verified = each_frozen_match(&doc, |row, path, lang, text| {
+    each_frozen_match(&doc, |row, path, lang, text| {
         let sites = detect(text, lang_of(lang));
         let lines: Vec<&str> = text.lines().collect();
         for s in &sites {
@@ -98,7 +116,4 @@ fn self_universe_tracks_detector() {
             "{path}: detector drifted from the frozen universe"
         );
     });
-    // ordinary churn shrinks the verifiable set between freezes;
-    // this floor only guards against the gate going vacuous
-    assert!(verified >= 25, "drift gate near-vacuous: {verified} rows");
 }

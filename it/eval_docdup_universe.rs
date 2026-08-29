@@ -52,5 +52,5 @@ fn docdup_segments_consistent() {
 /// freezes; the floor only guards against a vacuous gate).
 #[test]
 fn self_docdup_tracks_segments() {
-    assert_self_tracks("docdup-segments", docdup_row, 25);
+    assert_self_tracks(&FAMILY, docdup_row, 25);
 }

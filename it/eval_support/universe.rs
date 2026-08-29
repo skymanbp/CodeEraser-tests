@@ -104,35 +104,42 @@ pub fn sum_obj_into(obj: &Value, into: &mut BTreeMap<String, u64>) -> u64 {
     total
 }
 
-/// The working-tree drift walk both self gates share: every frozen
-/// row whose working-tree file still carries the frozen sha256 is
-/// handed to `check` as (row, path, lang code, text); returns how
-/// many verified. Content-changed files are skipped — that is
-/// editing, not drift; a semantics change re-pins the tip and
-/// re-freezes. Rows frozen under `cli/tests/` are also sought at
-/// `cli/tests/it/` — the 2026-08-26 tests merge moved every
-/// integration root and support dir there, and a file that moved
-/// byte-identical is the same corpus row, not churn; without the
-/// alias the verified count fell 25 -> 24 and tripped the vacuous
-/// floors below on rows that still exist.
+/// Where a frozen row's file lives now, and its LF text: the path
+/// as frozen, or its relocation — `cli/tests/<x>` moved under `it/`
+/// when the suite became a submodule (K+1), and every `#[cfg(test)]`
+/// module of cli/src rides at `cli/tests/unit/<x>` since plan v2.18
+/// step #13. None when the file is gone. The frozen identity is
+/// git-blob text (LF); the Windows CI runner checks out with
+/// autocrlf=true, so normalize before comparing — first CI run of
+/// the slice gate was 0-row vacuous on windows-latest for exactly
+/// this reason.
+fn live_text(path: &str) -> Option<(String, String)> {
+    let mut candidates = vec![path.to_string()];
+    if let Some(rest) = path.strip_prefix("cli/tests/") {
+        candidates.push(format!("cli/tests/it/{rest}"));
+    }
+    if let Some(rest) = path.strip_prefix("cli/src/") {
+        let name = rest.rsplit('/').next().unwrap_or(rest);
+        if name == "testutil.rs" || name.ends_with("_tests.rs") || name.starts_with("tests") {
+            candidates.push(format!("cli/tests/unit/{rest}"));
+        }
+    }
+    candidates.into_iter().find_map(|live| {
+        let bytes = std::fs::read(format!("../{live}")).ok()?;
+        Some((live, String::from_utf8_lossy(&bytes).replace("\r\n", "\n")))
+    })
+}
+
+/// The self working-tree drift walk: every frozen row whose file
+/// still carries the frozen content identity is handed to `check`
+/// with its LF text; the count of such rows is the gate's evidence.
 pub fn each_frozen_match(doc: &Value, mut check: impl FnMut(&Value, &str, &str, &str)) -> usize {
     let mut verified = 0;
     for row in doc["files"].as_array().expect("files") {
         let path = row["path"].as_str().expect("path");
-        let moved = path
-            .strip_prefix("cli/tests/")
-            .map(|rest| format!("cli/tests/it/{rest}"));
-        let Ok(bytes) = std::fs::read(format!("../{path}")).or_else(|e| match &moved {
-            Some(m) => std::fs::read(format!("../{m}")),
-            None => Err(e),
-        }) else {
+        let Some((_, text)) = live_text(path) else {
             continue;
         };
-        // the frozen identity is git-blob text (LF); the Windows CI
-        // runner checks out with autocrlf=true, so normalize before
-        // comparing — first CI run of the slice gate was 0-row
-        // vacuous on windows-latest for exactly this reason
-        let text = String::from_utf8_lossy(&bytes).replace("\r\n", "\n");
         if super::content_sha(&text) != row["sha256"].as_str().expect("sha256") {
             continue;
         }
@@ -140,4 +147,50 @@ pub fn each_frozen_match(doc: &Value, mut check: impl FnMut(&Value, &str, &str, 
         verified += 1;
     }
     verified
+}
+
+/// CE_BLESS=1 with CE_REFREEZE=<frozen path,…>: re-sign exactly the
+/// named rows — each re-derived through the family's own row throat
+/// at the file's live path — then re-derive the summary with the
+/// family's scorer (the envelope the gate re-checks). Named, never
+/// "every changed row": the self views are a pinned denominator (the
+/// t3-candidates doc anchors its admitted units to the universe
+/// bands and the t3 sample to its pool digest), so a step re-signs
+/// the rows it touched and patches that anchor by hand, as steps #5
+/// and #8 did by hand-edit; a wholesale re-sign is a re-freeze at a
+/// new tip. The self views must be re-signed together: the sibling
+/// anchor holds them to one path→sha inventory. A named row whose
+/// file is gone or unchanged is never touched, so a detector drift
+/// can never be blessed away.
+pub fn refreeze_self(
+    doc_path: &str,
+    row: fn(&str, &str, &str) -> Value,
+    summarize: fn(&[Value]) -> Value,
+) {
+    let named: Vec<String> = std::env::var("CE_REFREEZE")
+        .unwrap_or_default()
+        .split(',')
+        .filter(|p| !p.is_empty())
+        .map(str::to_string)
+        .collect();
+    let mut doc = super::load(doc_path);
+    let files = doc["files"].as_array_mut().expect("files");
+    for frozen in files.iter_mut() {
+        let path = frozen["path"].as_str().expect("path");
+        if !named.iter().any(|n| n == path) {
+            continue;
+        }
+        let Some((live, text)) = live_text(path) else {
+            continue;
+        };
+        if super::content_sha(&text) == frozen["sha256"].as_str().expect("sha256") {
+            continue;
+        }
+        *frozen = row(&live, frozen["lang"].as_str().expect("lang"), &text);
+    }
+    files.sort_by(|a, b| a["path"].as_str().cmp(&b["path"].as_str()));
+    let summary = summarize(files);
+    doc["summary"] = summary;
+    let text = serde_json::to_string_pretty(&doc).expect("frozen doc json") + "\n";
+    std::fs::write(doc_path, text).expect(doc_path);
 }
