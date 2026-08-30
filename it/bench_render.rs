@@ -9,10 +9,9 @@ use crate::bench_support::render::{doc, latest, measured, rows_with, s};
 use crate::common;
 use serde_json::Value;
 
-/// docs/BENCH.md, whole file.
-fn render_md(d: &Value) -> String {
-    let mut out = String::from(
-        "# Benchmarks — replayed, never hand-filled\n\n\
+/// The prose above the series: what produced these numbers, and what a
+/// reader may and may not conclude from them.
+const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > Generated from [contracts/bench/bench.json](../contracts/bench/bench.json) by\n\
          > `cli/tests/it/bench_render.rs` (`CE_BLESS=1` to regenerate). Every series row was\n\
          > measured by `cli/tests/it/bench.rs` (`bench_append` for a checkout, `bench_backfill`\n\
@@ -26,10 +25,20 @@ fn render_md(d: &Value) -> String {
          > (version-over-version on constant hardware) and a warning about the one it\n\
          > cannot: none of these milliseconds transfer to other hardware, and no CI\n\
          > runner replays them (PERF-BUDGET.md opens with why a shared runner cannot\n\
-         > host a latency budget).\n\n\
+         > host a latency budget).\n\
+         >\n\
+         > One machine is not one machine-state. Re-measuring v1.2.0 — its own tree,\n\
+         > its own binaries — four days after its row was first taken came back 7-18 %\n\
+         > slower on every metric, which is wider than most deltas a reader would try\n\
+         > to read out of this table. So the series is replayed WHOLE, in one sitting,\n\
+         > whenever a release joins it: every row shares one measured date, and rows\n\
+         > carrying different dates are not comparable.\n\n\
          ## Latency series (self repository)\n\n\
-         | version | metric | p50 ms | p95 ms | n | host | measured |\n|---|---|---|---|---|---|---|\n",
-    );
+         | version | metric | p50 ms | p95 ms | n | host | measured |\n|---|---|---|---|---|---|---|\n";
+
+/// docs/BENCH.md, whole file.
+fn render_md(d: &Value) -> String {
+    let mut out = String::from(HEADER);
     out.push_str(&rows_with(d, "rows", |r| {
         format!(
             "| {} | {} | {} | {} | {} | {} | {} |\n",
