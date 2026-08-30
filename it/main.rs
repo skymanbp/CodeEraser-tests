@@ -114,6 +114,7 @@ mod rescache_face;
 mod root_anchor;
 mod sarif_face;
 mod scan_classes;
+mod site_roast;
 mod sonar_whitepaper;
 mod structure_knobs;
 mod symbol_visibility;
