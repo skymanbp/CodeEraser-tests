@@ -133,6 +133,16 @@ fn manifest(root: &Path) -> Vec<Fact> {
     ]
 }
 
+/// The arms of `CE.Structure.Axes.axes` — one per structure axis.
+/// The check score's axes are a DIFFERENT roster (`count:axes#word`,
+/// linked to score::knobs::AXES); the two are equal today and are not
+/// the same list, which is the whole reason this fact exists.
+fn structure_axis_arms(axes_hs: &str) -> usize {
+    between(axes_hs, "axes :: Knobs -> Facts", "\n where")
+        .matches("count (")
+        .count()
+}
+
 /// The `Some(...)` arms of `Lang::grammar` — one per tree-sitter
 /// grammar (TypeScript and TSX are two grammars from one crate, so
 /// the Cargo dependency lines undercount).
@@ -171,6 +181,12 @@ fn scrapes(root: &Path) -> Vec<Fact> {
             grammar_arms(&read(root, "cli/src/scan/lang.rs")),
             "cli/src/scan/lang.rs::Lang::grammar (Some arms)",
             "Lang has no variant iterator; promote = Lang::judged() + grammar().is_some()",
+        ),
+        scraped(
+            "count:structure_axes#word",
+            structure_axis_arms(&read(root, "core/app/CE/Structure/Axes.hs")),
+            "core/app/CE/Structure/Axes.hs::axes (count arms)",
+            "a Haskell list read by line; promote = the axis roster on the structure wire",
         ),
         scraped(
             "count:screens#word",

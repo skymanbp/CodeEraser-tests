@@ -7,6 +7,10 @@
 //! what this pin renders (CE_BLESS=1 rewrites them locally); the two
 //! languages of one diagram share every byte of geometry and differ
 //! only in text; every `sources` path an IR cites exists in the tree.
+//! And the zh twin speaks one language: archify writes some chrome of
+//! its own that no IR key reaches, so the renderer carries a map for it
+//! (`CHROME` in scripts/diagram_svg.mjs) and the fifth leg reads that
+//! map back out to prove every term in it actually left the file.
 
 use crate::common::repo_root;
 use crate::facts::{blessing, read};
@@ -122,6 +126,50 @@ fn the_two_languages_share_one_geometry_and_cite_real_paths() {
                 root.join(&path).exists(),
                 "{name}: cited source {path} is not in the tree"
             );
+        }
+    }
+}
+
+/// The `zh` terms of the renderer's chrome map, read from its source:
+/// the gate must not carry a second copy of a list whose whole job is
+/// to be applied.
+fn chrome_terms(root: &Path) -> Vec<String> {
+    let js = read(root, "scripts/diagram_svg.mjs");
+    let table = js
+        .split_once("const CHROME = { zh: {")
+        .expect("diagram_svg.mjs declares CHROME.zh")
+        .1
+        .split_once('}')
+        .expect("the zh table closes")
+        .0;
+    table
+        .split(',')
+        .filter_map(|pair| pair.split_once(':'))
+        .map(|(key, _)| key.trim().trim_matches('"').to_string())
+        .filter(|key| !key.is_empty())
+        .collect()
+}
+
+#[test]
+fn the_chinese_diagrams_carry_no_chrome_the_renderer_should_have_mapped() {
+    let root = repo_root();
+    let terms = chrome_terms(&root);
+    assert!(
+        !terms.is_empty(),
+        "the chrome map is empty; nothing is held"
+    );
+    for name in DIAGRAMS {
+        for dir in ["docs/assets", "site/assets"] {
+            let svg = read(&root, &format!("{dir}/{name}.zh.svg"));
+            for term in &terms {
+                assert!(
+                    !svg.contains(&format!(">{term}</text>")),
+                    "{dir}/{name}.zh.svg still says {term:?}: the renderer maps it \
+                     (scripts/diagram_svg.mjs CHROME.zh) but this file was rendered \
+                     without the map, or by an older one — re-render with \
+                     `node scripts/diagram.mjs --write`"
+                );
+            }
         }
     }
 }
