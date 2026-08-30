@@ -97,25 +97,14 @@ fn latest_md(d: &Value) -> String {
     )
 }
 
-fn frozen_md_rows(d: &Value) -> String {
-    rows_with(d, "frozen", |point| {
-        format!(
-            "| `{}` | {} | `{}` |\n",
-            s(point, "metric"),
-            s(point, "value"),
-            s(point, "source")
-        )
-    })
-}
-
+/// The README block carries the latest version's latency only; the
+/// frozen evaluation points render whole into docs/BENCH.md and both
+/// site dashboards (plan v2.21 #30, the README trim), which the
+/// block's own tail links.
 fn render_readme(d: &Value, zh: bool) -> String {
-    let (latest_h, metric, frozen_h, value, source, note, bench, site) = if zh {
+    let (latest_h, note, bench, site) = if zh {
         (
             "最新版本延迟",
-            "指标",
-            "冻结评估点",
-            "值",
-            "来源",
             "所有值均由 `contracts/bench/bench.json` 生成；本块手改会被测试拒绝。",
             "完整回放说明与逐版本系列",
             "网站完整仪表盘",
@@ -123,20 +112,15 @@ fn render_readme(d: &Value, zh: bool) -> String {
     } else {
         (
             "Latest-version latency",
-            "metric",
-            "Frozen evaluation points",
-            "value",
-            "source",
             "Every value is generated from `contracts/bench/bench.json`; the test rejects hand edits to this block.",
             "Full replay notes and per-version series",
             "Complete website dashboard",
         )
     };
     format!(
-        "### {latest_h} · v{}\n\n{}\n### {frozen_h}\n\n| {metric} | {value} | {source} |\n|---|---|---|\n{}\n{note} [{bench}](docs/BENCH.md) · [{site}](https://codeeraser.dev{}/bench/)\n",
+        "### {latest_h} · v{}\n\n{}\n{note} [{bench}](docs/BENCH.md) · [{site}](https://codeeraser.dev{}/bench/)\n",
         latest(d),
         latest_md(d),
-        frozen_md_rows(d),
         if zh { "/zh" } else { "" }
     )
 }
