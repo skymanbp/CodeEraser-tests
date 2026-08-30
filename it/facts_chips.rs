@@ -16,8 +16,8 @@ const M: &str = "docs/reference/methodology/";
 
 /// (repo-relative surface, chip count, Chinese?).
 const SURFACES: &[(&str, usize, bool)] = &[
-    ("README.md", 33, EN),
-    ("README.zh.md", 33, ZH),
+    ("README.md", 35, EN),
+    ("README.zh.md", 35, ZH),
     ("contracts/DAEMON.md", 2, ZH),
     ("contracts/VERSIONING.md", 6, ZH),
     ("docs/RELEASE.md", 5, ZH),

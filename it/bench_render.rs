@@ -28,7 +28,7 @@ const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > host a latency budget).\n\
          >\n\
          > One machine is not one machine-state. Re-measuring v1.2.0 — its own tree,\n\
-         > its own binaries — four days after its row was first taken came back 7-18 %\n\
+         > its own binaries — four days after its row was first taken came back 4-18 %\n\
          > slower on every metric, which is wider than most deltas a reader would try\n\
          > to read out of this table. So the series is replayed WHOLE, in one sitting,\n\
          > whenever a release joins it: every row shares one measured date, and rows\n\
