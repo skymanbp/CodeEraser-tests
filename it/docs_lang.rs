@@ -38,8 +38,20 @@ const RUN: usize = 4;
 /// The static SVGs, docs/ twin first where one exists.
 const SVGS: &[(&str, Option<&str>)] = &[
     (
-        "docs/assets/architecture.svg",
-        Some("site/assets/architecture.svg"),
+        "docs/assets/architecture.en.svg",
+        Some("site/assets/architecture.en.svg"),
+    ),
+    (
+        "docs/assets/architecture.zh.svg",
+        Some("site/assets/architecture.zh.svg"),
+    ),
+    (
+        "docs/assets/judgment.en.svg",
+        Some("site/assets/judgment.en.svg"),
+    ),
+    (
+        "docs/assets/judgment.zh.svg",
+        Some("site/assets/judgment.zh.svg"),
     ),
     ("docs/assets/stack.svg", Some("site/assets/stack.svg")),
     ("site/assets/methodology.svg", None),
@@ -159,9 +171,12 @@ fn svg_title(root: &Path, rel: &str) -> String {
     let text = crate::facts::read(root, rel);
     let open = text.find('>').expect("an svg opening tag") + 1;
     let rest = text[open..].trim_start();
+    // `<title id="…">` is the accessible-name form archify emits
+    // (aria-labelledby points at the id); attributes are allowed
     let title = rest
-        .strip_prefix("<title>")
-        .and_then(|t| t.split_once("</title>"))
+        .strip_prefix("<title")
+        .and_then(|t| t.split_once('>'))
+        .and_then(|(_, t)| t.split_once("</title>"))
         .map(|(t, _)| t.trim().to_string())
         .unwrap_or_default();
     assert!(

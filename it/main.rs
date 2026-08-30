@@ -49,6 +49,7 @@ mod docs_citations_parts;
 mod docs_consts;
 mod docs_consts_parts;
 mod docs_consts_stack;
+mod docs_diagrams;
 mod docs_gate;
 mod docs_lang;
 mod docs_nav;
