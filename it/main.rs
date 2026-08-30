@@ -94,6 +94,7 @@ mod graph_provenance;
 mod graph_wire;
 mod guard_hook;
 mod guard_novelty;
+mod guard_say;
 mod health_plugin;
 mod history_recipes;
 mod hs_grammar_pin;

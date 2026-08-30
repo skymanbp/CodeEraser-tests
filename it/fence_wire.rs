@@ -204,6 +204,18 @@ fn the_guard_judges_shipped_budgets_while_the_config_drifts() {
         reason.contains("drifted from the fenced baseline"),
         "the reason names the fence: {reason}"
     );
+    // the same refusal in Chinese. Both clauses come from guard/say.rs
+    // and are asked as a set in guard_hook; the fence note is the one
+    // only this test has the setup to reach.
+    let out = common::run_hook_env(&dir, &["probe", "--hook"], &env, &[("CE_LANG", "zh")]);
+    let decision: Value = serde_json::from_str(out.trim()).expect("decision json");
+    let chinese = decision["hookSpecificOutput"]["permissionDecisionReason"]
+        .as_str()
+        .expect("reason");
+    assert!(
+        chinese.contains("越过 750 行的硬预算") && chinese.contains("已偏离围栏基线"),
+        "the same refusal, in Chinese: {chinese}"
+    );
     // the fence act re-pins under the declared config: the declared
     // budget (none) judges again
     expect_exit(&dir, &["baseline", ".", "--core", &core], FENCE, 0);

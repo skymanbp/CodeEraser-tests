@@ -7,13 +7,7 @@
 use std::path::Path;
 
 use crate::common;
-use crate::common::{rust_fn, tmp};
-
-/// Project with a.rs indexed; guard mode written to ce.toml.
-fn seed_project(dir: &Path, mode: &str) {
-    common::seed_sources(dir, mode);
-    common::build_index(dir);
-}
+use crate::common::{rust_fn, seed_project, tmp};
 
 use crate::common::pretooluse_envelope as envelope;
 

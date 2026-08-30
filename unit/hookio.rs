@@ -15,14 +15,20 @@ fn envelope_intake_is_capped() {
 
 /// B4 acceptance half 1: the clip is identity under budget, caps
 /// at budget with the on-disk pointer over it, and never splits a
-/// multi-byte char (the marker itself starts with one).
+/// multi-byte char (the marker itself starts with one). The tail is
+/// asserted through `clip_mark`, not as a literal: the marker is a
+/// sentence a person reads, so it answers CE_LANG, and the language
+/// is pinned once per PROCESS (i18n's OnceLock) — a literal here
+/// would turn an operator's ambient `CE_LANG=zh` into a red test.
+/// Both halves of the marker are asked from the binary in guard_hook.
 #[test]
 fn clip_caps_at_budget_and_respects_char_boundaries() {
     assert_eq!(clip("short", WARN_BUDGET_TOKENS), "short");
     let long = "预算".repeat(400); // 800 chars, 2400 bytes
     let clipped = clip(&long, WARN_BUDGET_TOKENS);
     assert!(clipped.len() <= WARN_BUDGET_TOKENS * CHARS_PER_TOKEN);
-    assert!(clipped.ends_with("observe.ndjson)"));
+    assert!(clipped.ends_with(clip_mark()), "{clipped}");
+    assert!(clip_mark().contains("observe.ndjson"), "points at the feed");
     assert!(clipped.chars().count() > 0); // boundary-safe slice
 }
 

@@ -81,6 +81,14 @@ pub fn expect_write_denied(dir: &Path, rel: &str, content: &str, needle: &str) -
     reason
 }
 
+/// A project with a.rs indexed and a guard mode declared — the two
+/// calls every PreToolUse battery opens with, in one place because two
+/// batteries now open with them.
+pub fn seed_project(dir: &Path, mode: &str) {
+    super::seed_sources(dir, mode);
+    super::build_index(dir);
+}
+
 /// Stop envelope; `stop_hook_active` = the loop-prevention flag.
 pub fn stop_envelope(dir: &Path, stop_hook_active: bool) -> String {
     serde_json::json!({
@@ -112,6 +120,11 @@ pub fn run_hook_env(dir: &Path, args: &[&str], stdin: &str, env: &[(&str, &str)]
         .env("CE_DAEMON_IDLE_SECS", "120")
         // no battery reaches the release index by accident (mod.rs)
         .env("CE_UPDATE_CHECK", "0")
+        // the i18n charter's default road, the way cli_bare guards it:
+        // an operator's ambient CE_LANG must not move a hook assertion.
+        // A row that IS testing Chinese passes it in `env`, and .envs()
+        // lands after this, so it still wins.
+        .env_remove("CE_LANG")
         .envs(env.iter().copied())
         .current_dir(dir)
         .stdin(Stdio::piped())

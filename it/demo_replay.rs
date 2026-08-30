@@ -2,9 +2,11 @@
 //! project in the tree, run once without CodeEraser and once with
 //! it). `demo/run.js --check` re-runs both trees against THIS build
 //! of `ce` and the resolved core and fails if any committed output —
-//! the transcripts, the SVGs, the summary JSON, or the three embedded
-//! tables — would change: a verdict whose wording moved fails CI
-//! rather than leaving a stale picture in the README.
+//! the transcripts, the SVGs, the summary JSON, the close-up scenes,
+//! or any marked README block — would change: a verdict whose wording
+//! moved fails CI rather than leaving a stale picture in the README.
+//! The block set is a table in run.js (`EMBEDS`, marker column), so a
+//! new family of blocks is gated here without a line changing.
 
 use crate::common::{core_bin, repo_root};
 
