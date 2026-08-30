@@ -8,6 +8,7 @@
 
 use crate::common::{DaemonGuard, daemon_command, tmp};
 use std::io::{BufRead, BufReader};
+use std::path::Path;
 use std::process::Stdio;
 
 #[test]
@@ -23,13 +24,21 @@ fn the_daemon_leaves_its_root_for_the_temp_dir() {
         .map(|l| l.expect("stderr line"))
         .find(|l| l.contains("serving"))
         .expect("daemon stderr ended before the serving line");
-    let away = std::env::temp_dir().display().to_string();
-    let away = away.trim_end_matches(['\\', '/']);
-    assert!(serving.contains(&format!("(cwd {away})")), "{serving}");
-    assert!(
-        !serving.contains(&format!("(cwd {}", root.display())),
+    // the cwd is a path, not a substring: the daemon prints what the
+    // kernel answers after the chdir, and macOS resolves the temp dir
+    // through /private while Windows carries a trailing separator. Both
+    // sides go through one canonicaliser or the comparison is a lie.
+    let named = serving
+        .rsplit_once("(cwd ")
+        .and_then(|(_, tail)| tail.strip_suffix(')'))
+        .unwrap_or_else(|| panic!("the serving line names no cwd: {serving}"));
+    let real = |p: &Path| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    assert_eq!(
+        real(Path::new(named)),
+        real(&std::env::temp_dir()),
         "{serving}"
     );
+    assert_ne!(real(Path::new(named)), real(&root), "{serving}");
     // the decisive form on Windows: with the daemon alive, the root is
     // "not empty" (ERROR_DIR_NOT_EMPTY 145), never "in use"
     // (ERROR_SHARING_VIOLATION 32)
