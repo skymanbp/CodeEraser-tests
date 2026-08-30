@@ -87,13 +87,20 @@ fn git_out(dir: &Path, args: &[&str]) -> (bool, String) {
 }
 
 /// `git show <rev>:<path>` and `git archive <rev> <path>` on one line.
+///
+/// The inline-code span's closing backtick ends a recipe: Chinese prose
+/// puts CJK punctuation straight after it, so splitting on whitespace
+/// alone swallowed `），同一个` into the path. Leg 1 already tokenises on
+/// this delimiter set; this parser was the one that did not.
 fn recipes(text: &str) -> Vec<(String, String)> {
     let mut out = Vec::new();
     for (cmd, colon) in [("git show ", true), ("git archive ", false)] {
         let mut rest = text;
         while let Some(i) = rest.find(cmd) {
             rest = &rest[i + cmd.len()..];
-            let mut toks = rest.split_whitespace().map(|t| t.trim_matches('`'));
+            let mut toks = rest
+                .split(|c: char| c.is_whitespace() || c == '`' || c == '"')
+                .filter(|t| !t.is_empty());
             let (rev, path) = match (colon, toks.next(), toks.next()) {
                 (true, Some(spec), _) => match spec.split_once(':') {
                     Some((r, p)) => (r, p),
@@ -116,6 +123,23 @@ fn recipes(text: &str) -> Vec<(String, String)> {
 fn is_rev(rev: &str) -> bool {
     let bare = rev.split(['^', '~']).next().unwrap_or("");
     bare.len() >= 4 && bare.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+/// The corpus is bilingual, so the parser is pinned on both. A path that
+/// keeps its trailing punctuation resolves in no tree, so the failure
+/// reads as a missing file rather than as a parser that cannot read
+/// Chinese — which is how this was found.
+#[test]
+fn a_recipe_ends_at_its_closing_backtick_in_either_language() {
+    let hit = |p: &str| vec![("6da4463".to_string(), p.to_string())];
+    for line in [
+        "英文之外：`git show 6da4463:contracts/bench/bench.json`），同一个 tag。",
+        "reproduce with `git show 6da4463:contracts/bench/bench.json` and diff.",
+        "| `git show 6da4463:contracts/bench/bench.json` | one cell |",
+    ] {
+        assert_eq!(recipes(line), hit("contracts/bench/bench.json"), "{line}");
+    }
+    assert_eq!(recipes("`git archive 6da4463 docs`）打包"), hit("docs"));
 }
 
 /// Leg 1: no `git checkout`/`git rm` naming a declared submodule path

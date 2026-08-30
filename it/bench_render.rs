@@ -27,12 +27,13 @@ const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > runner replays them (PERF-BUDGET.md opens with why a shared runner cannot\n\
          > host a latency budget).\n\
          >\n\
-         > One machine is not one machine-state. Re-measuring v1.2.0 — its own tree,\n\
-         > its own binaries — four days after its row was first taken came back 4-18 %\n\
-         > slower on every metric, which is wider than most deltas a reader would try\n\
-         > to read out of this table. So the series is replayed WHOLE, in one sitting,\n\
-         > whenever a release joins it: every row shares one measured date, and rows\n\
-         > carrying different dates are not comparable.\n\n\
+         > One machine is not one machine-state. v1.2.0's row was first taken on\n\
+         > 2026-08-26; replaying that same tag four days later — its own tree, its own\n\
+         > binaries — moved every one of its seven metrics, from 11 % faster to 12 %\n\
+         > slower, which is wider than most deltas a reader would try to read out of\n\
+         > this table. So the series is replayed WHOLE, in one sitting, whenever a\n\
+         > release joins it: every row shares one measured date, and rows carrying\n\
+         > different dates are not comparable.\n\n\
          ## Latency series (self repository)\n\n\
          | version | metric | p50 ms | p95 ms | n | host | measured |\n|---|---|---|---|---|---|---|\n";
 
