@@ -91,8 +91,9 @@ fn read(rel: &str) -> String {
     std::fs::read_to_string(repo_root().join(rel)).unwrap_or_else(|e| panic!("{rel}: {e}"))
 }
 
-/// clap's subcommand roster: every `Name {` / `Name(Args),` variant.
-fn cli_subcommands() -> BTreeSet<String> {
+/// clap's subcommand roster: every `Name {` / `Name(Args),` variant
+/// (cli_table.rs closes the README carrier table against it).
+pub(crate) fn cli_subcommands() -> BTreeSet<String> {
     let src = read("cli/src/main_cli.rs");
     let body = src.split("pub(crate) enum Cmd {").nth(1).expect("Cmd enum");
     body.lines()
@@ -266,29 +267,9 @@ fn render(zh: bool) -> String {
 
 #[test]
 fn the_readme_parity_tables_match_their_rendering() {
-    let mut drift = Vec::new();
-    for (page, zh) in [("README.md", false), ("README.zh.md", true)] {
-        let text = read(page);
-        let (head, rest) = text
-            .split_once("<!-- parity:begin -->\n")
-            .unwrap_or_else(|| panic!("{page}: no parity:begin"));
-        let (_, tail) = rest
-            .split_once("<!-- parity:end -->")
-            .unwrap_or_else(|| panic!("{page}: no parity:end"));
-        let want = format!(
-            "{head}<!-- parity:begin -->\n{}<!-- parity:end -->{tail}",
-            render(zh)
-        );
-        if want != text {
-            if crate::facts::blessing() {
-                std::fs::write(repo_root().join(page), want).expect("bless");
-            } else {
-                drift.push(page);
-            }
-        }
-    }
-    assert!(
-        drift.is_empty(),
-        "parity table drifted in {drift:?} — CE_BLESS=1 regenerates"
-    );
+    let drift: Vec<String> = [("README.md", false), ("README.zh.md", true)]
+        .into_iter()
+        .filter_map(|(page, zh)| crate::facts::block::splice(page, "parity", &render(zh)))
+        .collect();
+    assert!(drift.is_empty(), "{}", drift.join("\n"));
 }

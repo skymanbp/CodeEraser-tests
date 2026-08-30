@@ -119,28 +119,9 @@ fn render_site(d: &Value, zh: bool) -> String {
     )
 }
 
-/// Splice one page's marker block; CE_BLESS writes, a plain run
-/// byte-compares the block only (the rest of the page is authored).
-fn gate_site(path: &str, zh: bool) {
-    let (b, e) = ("<!-- bench:begin -->", "<!-- bench:end -->");
-    let page = std::fs::read_to_string(path)
-        .expect(path)
-        .replace("\r\n", "\n");
-    let (head, rest) = page
-        .split_once(b)
-        .unwrap_or_else(|| panic!("{path}: no {b}"));
-    let (block, tail) = rest
-        .split_once(e)
-        .unwrap_or_else(|| panic!("{path}: no {e}"));
-    let want = format!("\n{}", render_site(&doc(), zh));
-    if crate::facts::blessing() {
-        std::fs::write(path, format!("{head}{b}{want}{e}{tail}")).expect("bless site");
-        return;
-    }
-    assert_eq!(
-        block, want,
-        "{path}: bench block drifted — CE_BLESS=1 to regenerate"
-    );
+/// One page's bench block through the shared splicer (facts::block).
+fn gate_site(rel: &str, zh: bool) {
+    crate::facts::block::assert_current(rel, "bench", &render_site(&doc(), zh));
 }
 
 #[test]
@@ -150,6 +131,6 @@ fn bench_md_matches_its_regeneration() {
 
 #[test]
 fn site_bench_blocks_match() {
-    gate_site("../site/index.html", false);
-    gate_site("../site/zh/index.html", true);
+    gate_site("site/index.html", false);
+    gate_site("site/zh/index.html", true);
 }

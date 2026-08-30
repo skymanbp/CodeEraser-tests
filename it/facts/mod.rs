@@ -22,6 +22,7 @@
 //! blessing and on CI refuses by name. bless_guard.rs holds the census
 //! (one reader, and the workflows never spell the switch).
 
+pub mod block;
 pub mod chip;
 pub mod count;
 pub mod form;
@@ -146,6 +147,21 @@ fn canonical(id: &str) -> String {
 /// The text a surface in the language `zh` says carries for `id`.
 pub fn render(id: &str, zh: bool) -> String {
     Form::of(id).render(&resolve(id), zh)
+}
+
+/// The closure every derived table is held to, both ways: what
+/// ships is claimed, and what is claimed ships. Returns the two
+/// differences as one note, or `None` when the sets agree.
+pub fn both_ways(
+    label: &str,
+    shipped: &BTreeSet<String>,
+    claimed: &BTreeSet<String>,
+) -> Option<String> {
+    let unclaimed: Vec<&String> = shipped.difference(claimed).collect();
+    let phantom: Vec<&String> = claimed.difference(shipped).collect();
+    (!unclaimed.is_empty() || !phantom.is_empty()).then(|| {
+        format!("{label}: shipped but unclaimed {unclaimed:?}; claimed but not shipped {phantom:?}")
+    })
 }
 
 pub fn scraped_count() -> usize {

@@ -190,27 +190,9 @@ fn digits(text: &str) -> Vec<&str> {
         .collect()
 }
 
-fn gate(path: &str, marker: &str, rendered: String) {
-    let begin = format!("<!-- {marker}:begin -->");
-    let end = format!("<!-- {marker}:end -->");
-    let page = std::fs::read_to_string(path)
-        .expect(path)
-        .replace("\r\n", "\n");
-    let (head, rest) = page
-        .split_once(&begin)
-        .unwrap_or_else(|| panic!("{path}: no {begin}"));
-    let (block, tail) = rest
-        .split_once(&end)
-        .unwrap_or_else(|| panic!("{path}: no {end}"));
-    let want = format!("\n{rendered}");
-    if crate::facts::blessing() {
-        std::fs::write(path, format!("{head}{begin}{want}{end}{tail}")).expect("bless block");
-    } else {
-        assert_eq!(
-            block, want,
-            "{path}: {marker} block drifted; CE_BLESS=1 to regenerate"
-        );
-    }
+/// One page's dashboard block through the shared splicer (facts::block).
+fn gate(rel: &str, marker: &str, rendered: String) {
+    crate::facts::block::assert_current(rel, marker, &rendered);
 }
 
 #[test]
@@ -218,27 +200,27 @@ fn website_dashboard_blocks_match() {
     let d = doc();
     let (en, zh) = (render_dashboard(&d, false), render_dashboard(&d, true));
     assert_eq!(digits(&en), digits(&zh), "dashboard numeric facts drifted");
-    gate("../site/bench/index.html", "bench", en);
-    gate("../site/zh/bench/index.html", "bench", zh);
+    gate("site/bench/index.html", "bench", en);
+    gate("site/zh/bench/index.html", "bench", zh);
 }
 
 #[test]
 fn readme_dashboard_blocks_match() {
     let d = doc();
-    gate("../README.md", "bench", render_readme(&d, false));
-    gate("../README.zh.md", "bench", render_readme(&d, true));
+    gate("README.md", "bench", render_readme(&d, false));
+    gate("README.zh.md", "bench", render_readme(&d, true));
 }
 
 #[test]
 fn stack_fpr_blocks_match() {
     let d = doc();
     gate(
-        "../site/stack/index.html",
+        "site/stack/index.html",
         "bench-stack",
         render_stack_fpr(&d, false),
     );
     gate(
-        "../site/zh/stack/index.html",
+        "site/zh/stack/index.html",
         "bench-stack",
         render_stack_fpr(&d, true),
     );
