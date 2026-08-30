@@ -10,7 +10,10 @@ use crate::common::repo_root;
 use std::collections::BTreeSet;
 
 /// Drawn but untracked on purpose — the tree itself says so.
-const IGNORED: &[&str] = &["memory"];
+/// cc-memory renamed its handoff directory `memory/` -> `.ccm/` on
+/// 2026-08-30; the plan's tree followed, and this name follows the
+/// plan, because the pair is what the gate compares.
+const IGNORED: &[&str] = &[".ccm"];
 
 /// The top-level entries of the layout tree: lines `├── name/` or
 /// `└── name/` at depth one inside the §5.10 fence.
