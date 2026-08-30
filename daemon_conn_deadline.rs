@@ -23,6 +23,12 @@ use std::time::Duration;
 
 #[path = "it/common/mod.rs"]
 mod common;
+// common's golden comparator reads the bless switch through the one
+// reader (plan v2.21 gate 1); this binary never blesses, hence the
+// allow on the unused function.
+#[allow(dead_code)]
+#[path = "it/facts/mod.rs"]
+mod facts;
 use common::tmp as project_dir;
 
 /// server.rs's MAX_CONNS. Private there and unreachable from an

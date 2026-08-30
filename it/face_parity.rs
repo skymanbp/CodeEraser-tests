@@ -280,7 +280,7 @@ fn the_readme_parity_tables_match_their_rendering() {
             render(zh)
         );
         if want != text {
-            if std::env::var("CE_BLESS").is_ok_and(|v| v == "1") {
+            if crate::facts::blessing() {
                 std::fs::write(repo_root().join(page), want).expect("bless");
             } else {
                 drift.push(page);

@@ -147,11 +147,9 @@ pub fn golden_path(name: &str) -> PathBuf {
 }
 
 /// CE_BLESS=1 regenerates the golden; otherwise byte-compare
-/// (CRLF-normalized). Exactly "1": any-value is_ok() would let
-/// CE_BLESS=0 or an empty var silently bless-and-pass
-/// (attack-review finding).
+/// (CRLF-normalized). The switch is read by `facts::blessing()` alone.
 pub fn assert_matches_golden(json: &str, path: &Path) {
-    if std::env::var("CE_BLESS").as_deref() == Ok("1") {
+    if crate::facts::blessing() {
         std::fs::create_dir_all(path.parent().expect("golden dir")).expect("mkdir");
         std::fs::write(path, format!("{json}\n")).expect("bless golden");
         return;

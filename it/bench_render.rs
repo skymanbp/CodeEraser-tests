@@ -133,7 +133,7 @@ fn gate_site(path: &str, zh: bool) {
         .split_once(e)
         .unwrap_or_else(|| panic!("{path}: no {e}"));
     let want = format!("\n{}", render_site(&doc(), zh));
-    if std::env::var("CE_BLESS").as_deref() == Ok("1") {
+    if crate::facts::blessing() {
         std::fs::write(path, format!("{head}{b}{want}{e}{tail}")).expect("bless site");
         return;
     }

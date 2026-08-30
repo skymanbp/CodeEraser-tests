@@ -203,7 +203,7 @@ fn gate(path: &str, marker: &str, rendered: String) {
         .split_once(&end)
         .unwrap_or_else(|| panic!("{path}: no {end}"));
     let want = format!("\n{rendered}");
-    if std::env::var("CE_BLESS").as_deref() == Ok("1") {
+    if crate::facts::blessing() {
         std::fs::write(path, format!("{head}{begin}{want}{end}{tail}")).expect("bless block");
     } else {
         assert_eq!(

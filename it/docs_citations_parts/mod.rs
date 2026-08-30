@@ -156,7 +156,7 @@ pub fn ledger_errors(root: &Path, citations: &[Citation], ledger: &Ledger) -> Ve
 
 pub fn assert_ledger(root: &Path, citations: &[Citation], current: &Ledger) {
     let path = root.join("contracts/docs-citations.json");
-    if std::env::var("CE_BLESS").as_deref() == Ok("1") {
+    if crate::facts::blessing() {
         let rendered = json(current);
         let status = match fs::read_to_string(&path) {
             Ok(old) if old.replace("\r\n", "\n") == rendered => "unchanged",

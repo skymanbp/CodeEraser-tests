@@ -2,21 +2,9 @@
 //! back to their owning source. Evaluation values are deliberately
 //! absent: bench_render_dashboard owns those generated blocks.
 
+use crate::common::repo_root;
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-
-/// The one member of the repo_root class that KEEPS a private copy:
-/// this file is compiled twice — as its own test target and as
-/// `mod docs_consts_stack` inside docs_consts.rs — so `mod common;`
-/// resolves to tests/docs_consts_stack/common.rs in the second mode
-/// and `crate::common` does not exist in the first. Neither spelling
-/// works in both, so the definition stays here with its reason.
-fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("cli/ has a parent")
-        .to_path_buf()
-}
+use std::path::Path;
 
 fn constants(path: &Path) -> BTreeMap<String, String> {
     let page = std::fs::read_to_string(path).expect("read stack page");
