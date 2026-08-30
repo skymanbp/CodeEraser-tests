@@ -28,6 +28,7 @@ pub mod count;
 pub mod form;
 pub mod gate;
 pub mod report;
+pub mod restate;
 pub mod ver;
 
 pub use form::Form;
@@ -147,6 +148,15 @@ fn canonical(id: &str) -> String {
 /// The text a surface in the language `zh` says carries for `id`.
 pub fn render(id: &str, zh: bool) -> String {
     Form::of(id).render(&resolve(id), zh)
+}
+
+/// The same, with a document-local `restate:` id resolved against the
+/// document it sits in and every other id against the registry.
+pub fn render_in(doc: &str, id: &str, zh: bool) -> String {
+    if id.starts_with("restate:") {
+        return Form::of(id).render(&restate::resolve(doc, id), zh);
+    }
+    render(id, zh)
 }
 
 /// The closure every derived table is held to, both ways: what

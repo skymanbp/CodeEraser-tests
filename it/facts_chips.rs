@@ -40,7 +40,7 @@ const BOOKLETS: &str = "
 07-the-three-signal-join.md=1
 10-score-trajectory-the-trend-slope-verdict.md=1
 11-fpr-discipline-and-the-guard-tier-ladder.md=1
-13-unmentioned-declaration-advisory.md=1
+13-unmentioned-declaration-advisory.md=12
 ";
 
 fn surfaces() -> Vec<(String, usize, bool)> {
@@ -67,7 +67,8 @@ fn every_chip_surface_renders_to_itself() {
             count,
             "{rel}: chip count — enroll or retire the chip by name"
         );
-        let (rendered, notes) = chip::render(&text, &rel, zh, &|id| facts::render(id, zh));
+        let (rendered, notes) =
+            chip::render(&text, &rel, zh, &|id| facts::render_in(&text, id, zh));
         if rendered != text {
             if bless {
                 std::fs::write(root.join(&rel), rendered).expect("rewrite chips");

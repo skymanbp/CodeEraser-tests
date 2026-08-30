@@ -5,7 +5,10 @@
 /// integer (rendered with thousands commas from 1,000) · `#schemaver`
 /// a report id `ce.<name>/<ver>` · `#word` a count 1..=20 rendered as
 /// the surface language's number word · `#Word` the same, capitalized
-/// at a sentence start (Chinese has no case: identical).
+/// at a sentence start (Chinese has no case: identical) · `#lead` /
+/// `#paren` a table cell's integer as the table spells it (restate.rs;
+/// no grouping — the cell has none) · `#lead-pct1` / `#paren-pct1`
+/// the ratio of two such cells to one decimal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Form {
     V,
@@ -14,6 +17,8 @@ pub enum Form {
     SchemaVer,
     Word,
     WordCap,
+    Cell,
+    Decimal,
 }
 
 impl Form {
@@ -25,6 +30,8 @@ impl Form {
             Some((_, "schemaver")) => Form::SchemaVer,
             Some((_, "word")) => Form::Word,
             Some((_, "Word")) => Form::WordCap,
+            Some((_, "lead" | "paren")) => Form::Cell,
+            Some((_, "lead-pct1" | "paren-pct1")) => Form::Decimal,
             _ => panic!("fact id {id:?}: no known #form suffix"),
         }
     }
@@ -34,8 +41,9 @@ impl Form {
     /// these characters (chip.rs).
     pub fn token_char(self, zh: bool, c: char) -> bool {
         match self {
-            Form::V | Form::VMinor => c.is_ascii_digit() || c == '.',
+            Form::V | Form::VMinor | Form::Decimal => c.is_ascii_digit() || c == '.',
             Form::Digits => c.is_ascii_digit() || c == ',',
+            Form::Cell => c.is_ascii_digit(),
             Form::SchemaVer => c.is_ascii_alphanumeric() || matches!(c, '.' | '/' | '-'),
             Form::Word | Form::WordCap if zh => "〇一两二三四五六七八九十".contains(c),
             Form::Word | Form::WordCap => c.is_ascii_alphabetic(),
@@ -47,8 +55,8 @@ impl Form {
     pub fn admits(self, value: &str) -> bool {
         match self {
             Form::V => dotted(value, 3),
-            Form::VMinor => dotted(value, 2),
-            Form::Digits => dotted(value, 1),
+            Form::VMinor | Form::Decimal => dotted(value, 2),
+            Form::Digits | Form::Cell => dotted(value, 1),
             Form::SchemaVer => value
                 .strip_prefix("ce.")
                 .and_then(|rest| rest.split_once('/'))
