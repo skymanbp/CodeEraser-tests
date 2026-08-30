@@ -103,11 +103,16 @@ fn render_site(d: &Value, zh: bool) -> String {
             "<div class=\"install\"><span class=\"k\">{label}</span><code>{val} {unit}</code></div>\n"
         )
     };
+    // The corpus belongs in the label. Five of these chips measure this
+    // repository; `hook_probe` measures the two-file fixture bench.rs
+    // rebuilds per tag, and a chip that omits that reads as a whole-tree
+    // figure — the same omission the BENCH header and both READMEs were
+    // corrected for, which has to reach every surface quoting the number.
     let (h, note, hook, scan, dedup, fpr, prec) = if zh {
         (
             "实测",
             "每个数字由回放产生（cli/tests/it/bench.rs），单源 contracts/bench/bench.json——绝不手填。",
-            "hook 探针 p50",
+            "hook 探针 p50（两文件夹具）",
             "全仓扫描 p50",
             "增量索引 p50 (warm)",
             "守卫误报（人裁 630 事件）",
@@ -117,7 +122,7 @@ fn render_site(d: &Value, zh: bool) -> String {
         (
             "Measured",
             "Every number is produced by replay (cli/tests/it/bench.rs) from one source, contracts/bench/bench.json — never hand-filled.",
-            "hook probe p50",
+            "hook probe p50 (two-file fixture)",
             "full scan p50",
             "incremental index p50 (warm)",
             "guard false positives (630 arbitrated events)",
