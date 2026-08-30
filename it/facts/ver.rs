@@ -1,7 +1,7 @@
 //! Versions, revisions and the toolchain (the report-id family is
 //! report.rs).
 
-use super::{Fact, linked, scraped};
+use super::{Fact, linked, read, scraped};
 use crate::common::repo_root;
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -62,10 +62,6 @@ fn typed() -> Vec<Fact> {
             "cli/src/dedup/struct_fp.rs::STRUCT_REV",
         ),
     ]
-}
-
-fn read(root: &Path, rel: &str) -> String {
-    std::fs::read_to_string(root.join(rel)).unwrap_or_else(|e| panic!("{rel}: {e}"))
 }
 
 /// The plugin's pinned release, through the product's manifest parser.

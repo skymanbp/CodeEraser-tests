@@ -2,10 +2,13 @@
 //! in prose or a code span. Markdown and HTML both hide the comment,
 //! so a chip is invisible to a reader and portable across the README,
 //! the contracts, the booklets and the site. A span is read as maximal
-//! runs of the id's form characters (Form::token_char) and must hold
-//! exactly ONE such run — that rule is what makes a bless safe: the
-//! run is replaced, the surrounding text (backticks, a bold marker, a
-//! `v` prefix) is untouched.
+//! runs of the id's form characters (Form::token_char, in the
+//! surface's language) and must hold exactly ONE such run — that rule
+//! is what makes a bless safe: the run is replaced, the surrounding
+//! text (backticks, a bold marker, a `v` prefix, a measure word) is
+//! untouched. Not a chip carrier: a `<title>` or an attribute value,
+//! where a comment is literal text — those sites are source-literal
+//! assertions (facts_registry.rs).
 
 use super::Form;
 use std::ops::Range;
@@ -50,11 +53,11 @@ pub fn chips(text: &str, label: &str) -> Vec<Chip> {
 }
 
 /// Maximal runs of `form` characters in `s`, as byte ranges.
-fn tokens(s: &str, form: Form) -> Vec<Range<usize>> {
+fn tokens(s: &str, form: Form, zh: bool) -> Vec<Range<usize>> {
     let mut runs = Vec::new();
     let mut start = None;
     for (i, c) in s.char_indices() {
-        match (start, form.token_char(c)) {
+        match (start, form.token_char(zh, c)) {
             (None, true) => start = Some(i),
             (Some(b), false) => {
                 runs.push(b..i);
@@ -69,18 +72,23 @@ fn tokens(s: &str, form: Form) -> Vec<Range<usize>> {
     runs
 }
 
-/// `text` with every chip span rewritten to its resolved value, plus
-/// one note per value that moved (`label: id old → new`). A span
-/// holding zero or several tokens of its form, or a malformed one, is
-/// a refusal — never a guess about which run to replace.
-pub fn render(text: &str, label: &str, resolve: &dyn Fn(&str) -> String) -> (String, Vec<String>) {
+/// `text` with every chip span rewritten to what `render` returns for
+/// its id, plus one note per value that moved (`label: id old → new`).
+/// A span holding zero or several tokens of its form, or a token that
+/// starts or ends on a separator, is a refusal — never a guess about
+/// which run to replace.
+pub fn render(
+    text: &str,
+    label: &str,
+    zh: bool,
+    render: &dyn Fn(&str) -> String,
+) -> (String, Vec<String>) {
     let mut out = String::with_capacity(text.len());
     let mut notes = Vec::new();
     let mut last = 0;
     for chip in chips(text, label) {
         let body = &text[chip.span.clone()];
-        let form = Form::of(&chip.id);
-        let runs = tokens(body, form);
+        let runs = tokens(body, Form::of(&chip.id), zh);
         assert_eq!(
             runs.len(),
             1,
@@ -90,11 +98,11 @@ pub fn render(text: &str, label: &str, resolve: &dyn Fn(&str) -> String) -> (Str
         );
         let have = &body[runs[0].clone()];
         assert!(
-            form.admits(have),
+            !have.starts_with(['.', ',']) && !have.ends_with(['.', ',']),
             "{label}: chip {} span {body:?} holds a malformed token {have:?}",
             chip.id
         );
-        let want = resolve(&chip.id);
+        let want = render(&chip.id);
         if have != want {
             notes.push(format!("{label}: {} {have} → {want}", chip.id));
         }
