@@ -92,8 +92,9 @@ fn is_cjk(c: char) -> bool {
     matches!(c, '\u{3000}'..='\u{303F}' | '\u{3400}'..='\u{4DBF}' | '\u{4E00}'..='\u{9FFF}' | '\u{FF00}'..='\u{FFEF}')
 }
 
+/// A word starts with a letter; `--fail-under` and `-q` are flags.
 fn is_word(token: &str) -> bool {
-    !token.is_empty()
+    token.starts_with(|c: char| c.is_ascii_alphabetic())
         && token
             .chars()
             .all(|c| c.is_ascii_alphabetic() || matches!(c, '\'' | '’' | '-'))
@@ -205,7 +206,7 @@ fn the_cuts_leave_only_prose() {
         ["hi", "中文"]
     );
     assert_eq!(english_run("这 is a long enough run 了").0, 5);
-    assert_eq!(english_run("ce check --fail-under 946").0, 1);
+    assert_eq!(english_run("ce check --fail-under 946").0, 2);
     assert!(errors_of("p.html", false, "<p>中文</p>").is_empty());
     assert_eq!(
         errors_of("p.html", false, "<p>中文 与 English</p>").len(),
