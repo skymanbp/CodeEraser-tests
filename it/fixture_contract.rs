@@ -9,6 +9,7 @@
 //! name instead of waiting for a human to recount.
 
 use crate::common::repo_root;
+use crate::facts::ver::ANCHOR;
 use codeeraser::corelink::PROTO;
 use std::path::PathBuf;
 
@@ -27,10 +28,6 @@ pub const GOLDEN_FILES: [&str; 12] = [
     "erase/golden.ndjson",
     "audit/golden.ndjson",
 ];
-
-/// The request anchor (§3): the major every request line stands at,
-/// re-anchored on each major and deliberately skewed between.
-const ANCHOR: &str = "6.0.0";
 
 fn fixture(rel: &str) -> PathBuf {
     repo_root().join("contracts/fixtures").join(rel)
@@ -91,13 +88,11 @@ fn the_versioning_triple_is_derived_from_the_files() {
     let (anchored, _) = tally();
     let text =
         std::fs::read_to_string(repo_root().join("contracts/VERSIONING.md")).expect("VERSIONING");
-    // the anchor and its count sit on two lines of the prose
+    // the count sits on two lines of the prose; the anchor, the §4
+    // row and the `当前` value are chips (facts_chips.rs)
     for want in [
-        format!("今日锚在 **{ANCHOR}**"),
         format!("（{anchored} 行，server 恒答 {PROTO}）"),
         format!("server 走 {PROTO}）"),
-        format!("| 协议 | {PROTO} |"),
-        format!("当前 **{PROTO}**"),
     ] {
         assert!(text.contains(&want), "VERSIONING carries {want:?}");
     }
