@@ -1,0 +1,4 @@
+# Plan v2.21 ⑧, the suite's own EOL rule: fixtures, goldens, the
+# baseline and the proptest regressions are read and compared by byte
+# — LF on every checkout, on every platform; binaries stay binary.
+* text=auto eol=lf

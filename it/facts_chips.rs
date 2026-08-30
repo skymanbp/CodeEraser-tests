@@ -43,7 +43,7 @@ const BOOKLETS: &str = "
 13-unmentioned-declaration-advisory.md=12
 ";
 
-fn surfaces() -> Vec<(String, usize, bool)> {
+pub(crate) fn surfaces() -> Vec<(String, usize, bool)> {
     let booklets = BOOKLETS.lines().filter(|l| !l.is_empty()).map(|l| {
         let (name, n) = l.split_once('=').expect("file=count");
         (format!("{M}{name}"), n.parse().expect("a chip count"), EN)

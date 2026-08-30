@@ -1,18 +1,19 @@
-use crate::common::repo_root;
+//! The how-page constant chips (`<ul class="consts">` per numbered
+//! family on site/how ×2): the two languages carry the same families
+//! and values, and every chip not on the allowlist resolves to exactly
+//! one source constant with the same number. The source harvest lives
+//! in docs_consts_parts; this half parses the pages and judges.
 
+use crate::common::repo_root;
+use crate::docs_consts_parts::{
+    Def, defs_in, first_number, haskell_line, normalize, rust_line, value_for,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone)]
 struct Chip {
-    name: String,
-    value: String,
-}
-
-#[derive(Debug, Clone)]
-struct Def {
-    file: PathBuf,
     name: String,
     value: String,
 }
@@ -95,108 +96,6 @@ fn parse_page(text: &str, label: &str) -> Families {
     }
     families
 }
-fn source_files(root: &Path, dir: &str, ext: &str) -> Vec<PathBuf> {
-    fn visit(dir: &Path, ext: &str, out: &mut Vec<PathBuf>) {
-        for entry in fs::read_dir(dir).unwrap_or_else(|e| panic!("read source dir {dir:?}: {e}")) {
-            let path = entry.expect("source directory entry").path();
-            if path.is_dir() {
-                visit(&path, ext, out);
-            } else if path.extension().is_some_and(|x| x == ext) {
-                out.push(path);
-            }
-        }
-    }
-    let mut out = Vec::new();
-    visit(&root.join(dir), ext, &mut out);
-    out.sort();
-    out
-}
-
-/// The ONE walk-and-parse shell every grammar shares; the per-line
-/// grammar is the only thing that differs, so it is the parameter.
-fn defs_in(
-    root: &Path,
-    dir: &str,
-    ext: &str,
-    parse: fn(&str) -> Option<(String, String)>,
-) -> Vec<Def> {
-    source_files(root, dir, ext)
-        .into_iter()
-        .flat_map(|file| {
-            let text = fs::read_to_string(&file).expect("read source file");
-            text.lines()
-                .filter_map(parse)
-                .map(|(name, value)| Def {
-                    file: file.clone(),
-                    name,
-                    value,
-                })
-                .collect::<Vec<_>>()
-        })
-        .collect()
-}
-
-/// Shared `const NAME` prefix: (name, remainder of the line).
-fn rust_const(line: &str) -> Option<(&str, &str)> {
-    let marker = line.find("const ")? + "const ".len();
-    let rest = &line[marker..];
-    let name_len = rest.find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))?;
-    Some((&rest[..name_len], &rest[name_len..]))
-}
-
-fn rust_line(line: &str) -> Option<(String, String)> {
-    let (name, rest) = rust_const(line)?;
-    let value = rest.split_once('=')?.1.trim().trim_end_matches(';').trim();
-    (!value.is_empty()).then(|| (name.to_string(), value.to_string()))
-}
-
-/// `const NAME: [T; N]` — the declared arity is itself a code fact,
-/// registered as `NAME.len` so a count chip binds to the array's type
-/// (collision routing) instead of number-hunting the array body.
-fn rust_arity(line: &str) -> Option<(String, String)> {
-    let (name, rest) = rust_const(line)?;
-    let arity = rest
-        .split_once(": [")?
-        .1
-        .split_once(']')?
-        .0
-        .rsplit_once(';')?
-        .1
-        .trim();
-    (!arity.is_empty() && arity.bytes().all(|b| b.is_ascii_digit()))
-        .then(|| (format!("{name}.len"), arity.to_string()))
-}
-
-fn haskell_line(line: &str) -> Option<(String, String)> {
-    let rest = line.trim_start();
-    let name_len = rest.find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))?;
-    let after = rest[name_len..].trim_start();
-    let value = after.strip_prefix('=')?.trim();
-    (name_len > 0 && !value.is_empty()).then(|| (rest[..name_len].to_string(), value.to_string()))
-}
-
-fn normalize(mut value: String) -> String {
-    value = value.replace('_', "");
-    while value.ends_with(".0") {
-        value.truncate(value.len() - 2);
-    }
-    value
-}
-
-fn first_number(value: &str) -> Option<String> {
-    let start = value
-        .char_indices()
-        .find(|(_, c)| c.is_ascii_digit())
-        .map(|(i, _)| i)?;
-    let tail = &value[start..];
-    let end = tail
-        .char_indices()
-        .take_while(|(_, c)| c.is_ascii_digit() || *c == '_' || *c == '.')
-        .map(|(i, c)| i + c.len_utf8())
-        .last()
-        .unwrap_or(1);
-    Some(normalize(tail[..end].to_string()))
-}
 
 fn allowlist() -> BTreeSet<&'static str> {
     // "since proto": the erase family's wire BIRTH version — owned by
@@ -228,21 +127,8 @@ fn defs_for<'a>(defs: &'a [Def], family: &str, name: &str) -> Vec<&'a Def> {
         .collect()
 }
 
-fn value_for(def: &Def, defs: &[Def], seen: &mut BTreeSet<String>) -> Option<String> {
-    if let Some(value) = first_number(&def.value) {
-        return Some(value);
-    }
-    let alias = def.value.rsplit("::").next()?.trim();
-    if !seen.insert(alias.to_string()) {
-        return None;
-    }
-    let next = defs.iter().find(|d| d.name == alias)?;
-    value_for(next, defs, seen)
-}
-
 fn assert_sources(root: &Path, families: &Families) {
     let mut defs = defs_in(root, "cli/src", "rs", rust_line);
-    defs.extend(defs_in(root, "cli/src", "rs", rust_arity));
     defs.extend(defs_in(root, "core/app", "hs", haskell_line));
     let allow = allowlist();
     for (family, chips) in families {
