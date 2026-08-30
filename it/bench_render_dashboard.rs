@@ -39,13 +39,16 @@ fn frozen_rows(d: &Value) -> String {
 }
 
 fn render_dashboard(d: &Value, zh: bool) -> String {
-    let (latency, frozen, metric, host, measured, note) = if zh {
+    let (latency, frozen, metric, host, measured, version, value, source, note) = if zh {
         (
             "逐版本延迟",
             "冻结评估点",
             "指标",
             "主机",
             "实测日期",
+            "版本",
+            "值",
+            "来源",
             "行来自发布版回放；冻结点保留其账本来源。完整冻结说明仍在 bench.json。",
         )
     } else {
@@ -55,11 +58,14 @@ fn render_dashboard(d: &Value, zh: bool) -> String {
             "metric",
             "host",
             "measured",
+            "version",
+            "value",
+            "source",
             "Series rows come from release-build replay; frozen points retain their ledger source. Full freeze notes remain in bench.json.",
         )
     };
     format!(
-        "<h2>{latency}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>version</th><th>{metric}</th><th>p50 ms</th><th>p95 ms</th><th>n</th><th>{host}</th><th>{measured}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n<h2>{frozen}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{metric}</th><th>value</th><th>source</th></tr></thead><tbody>\n{}</tbody></table></div><p class=\"cap\">{note}</p></div>\n",
+        "<h2>{latency}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{version}</th><th>{metric}</th><th>p50 ms</th><th>p95 ms</th><th>n</th><th>{host}</th><th>{measured}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n<h2>{frozen}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{metric}</th><th>{value}</th><th>{source}</th></tr></thead><tbody>\n{}</tbody></table></div><p class=\"cap\">{note}</p></div>\n",
         dashboard_rows(d),
         frozen_rows(d)
     )
