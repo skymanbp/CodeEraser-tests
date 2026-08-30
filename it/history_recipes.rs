@@ -13,10 +13,9 @@
 //! every extraction recipe resolves in the parent's history, and git
 //! still behaves the way the wording relies on.
 
-use crate::common;
+use crate::common::{self, git_out};
 use codeeraser::gitmodules;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// Every markdown under docs/ and at the root, plus the suite's own
 /// instrument headers — the corpus that carries recipes.
@@ -71,19 +70,6 @@ fn lines_of(root: &Path) -> Vec<(String, usize, String)> {
         );
     }
     out
-}
-
-fn git_out(dir: &Path, args: &[&str]) -> (bool, String) {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(dir)
-        .args(args)
-        .output()
-        .expect("git");
-    (
-        out.status.success(),
-        String::from_utf8_lossy(&out.stdout).into_owned(),
-    )
 }
 
 /// `git show <rev>:<path>` and `git archive <rev> <path>` on one line.
