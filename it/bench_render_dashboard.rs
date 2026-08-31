@@ -2,7 +2,9 @@
 //! page chips. CE_BLESS=1 owns only marked blocks; a plain run byte-
 //! compares them. All values originate in contracts/bench/bench.json.
 
-use crate::bench_support::render::{doc, latest, measured, rows_with, s};
+use crate::bench_support::render::{
+    doc, latest, measured, names_the_release, rows_with, s, unmeasured_note,
+};
 use serde_json::Value;
 
 fn esc(text: &str) -> String {
@@ -97,30 +99,33 @@ fn latest_md(d: &Value) -> String {
     )
 }
 
-/// The README block carries the latest version's latency only; the
-/// frozen evaluation points render whole into docs/BENCH.md and both
-/// site dashboards (plan v2.21 #30, the README trim), which the
-/// block's own tail links.
+/// The README block carries the newest measured version's latency
+/// only; the frozen evaluation points render whole into docs/BENCH.md
+/// and both site dashboards (plan v2.21 #30, the README trim), which
+/// the block's own tail links. The heading names the version the
+/// numbers came from — never "the latest", which stops being true the
+/// moment a release does not join the series.
 fn render_readme(d: &Value, zh: bool) -> String {
-    let (latest_h, note, bench, site) = if zh {
+    let (head, note, bench, site) = if zh {
         (
-            "最新版本延迟",
+            "延迟",
             "所有值均由 `contracts/bench/bench.json` 生成；本块手改会被测试拒绝。",
             "完整回放说明与逐版本系列",
             "网站完整仪表盘",
         )
     } else {
         (
-            "Latest-version latency",
+            "Latency",
             "Every value is generated from `contracts/bench/bench.json`; the test rejects hand edits to this block.",
             "Full replay notes and per-version series",
             "Complete website dashboard",
         )
     };
     format!(
-        "### {latest_h} · v{}\n\n{}\n{note} [{bench}](docs/BENCH.md) · [{site}](https://codeeraser.dev{}/bench/)\n",
+        "### {head} · v{}\n\n{}\n{note}{} [{bench}](docs/BENCH.md) · [{site}](https://codeeraser.dev{}/bench/)\n",
         latest(d),
         latest_md(d),
+        unmeasured_note(d, zh),
         if zh { "/zh" } else { "" }
     )
 }
@@ -191,6 +196,11 @@ fn website_dashboard_blocks_match() {
 #[test]
 fn readme_dashboard_blocks_match() {
     let d = doc();
+    // Byte-equal to its regeneration is not the same as true: both
+    // READMEs were headed "Latest-version latency · v1.3.0" all through
+    // v1.3.1, green, because only the generator was ever consulted.
+    names_the_release("README.md", &render_readme(&d, false));
+    names_the_release("README.zh.md", &render_readme(&d, true));
     gate("README.md", "bench", render_readme(&d, false));
     gate("README.zh.md", "bench", render_readme(&d, true));
 }

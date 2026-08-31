@@ -5,7 +5,9 @@
 //! forbids ("禁手填"). docs/BENCH.md is written whole; the two site
 //! pages own only the block between their bench markers.
 
-use crate::bench_support::render::{doc, latest, measured, rows_with, s};
+use crate::bench_support::render::{
+    doc, latest, measured, names_the_release, rows_with, s, unmeasured_note,
+};
 use crate::common;
 use serde_json::Value;
 
@@ -38,13 +40,28 @@ const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > slower, which is wider than most deltas a reader would try to read out of\n\
          > this table. So the series is replayed WHOLE, in one sitting, whenever a\n\
          > release joins it: every row shares one measured date, and rows carrying\n\
-         > different dates are not comparable.\n\n\
-         ## Latency series (self repository)\n\n\
+         > different dates are not comparable.\n\
+         >\n\
+         > A release joins only when there is something new to measure. One that ships\n\
+         > the same `cli/src` and `core/app` as its predecessor gets no row of its own:\n\
+         > replaying the whole series to add a duplicate measurement would publish that\n\
+         > drift under a new version number. So every surface printing these numbers\n\
+         > beside a version names the version MEASURED — never \"the latest\" — and says\n\
+         > so when the shipped release is a different one.\n";
+
+/// The series table's own heading, split from the prose above it so the
+/// derived sentence about an unmeasured release can sit between them.
+const SERIES: &str = "\n## Latency series (self repository)\n\n\
          | version | metric | p50 ms | p95 ms | n | host | measured |\n|---|---|---|---|---|---|---|\n";
 
 /// docs/BENCH.md, whole file.
 fn render_md(d: &Value) -> String {
     let mut out = String::from(HEADER);
+    let unmeasured = unmeasured_note(d, false);
+    if !unmeasured.is_empty() {
+        out.push_str(&format!("\n{}\n", unmeasured.trim()));
+    }
+    out.push_str(SERIES);
     out.push_str(&rows_with(d, "rows", |r| {
         format!(
             "| {} | {} | {} | {} | {} | {} | {} |\n",
@@ -96,6 +113,9 @@ fn frozen_value(d: &Value, metric: &str) -> String {
 
 /// The site's bench block (between the page's bench markers). One
 /// renderer, two languages — the labels differ, the numbers cannot.
+/// `v` is the newest version the series MEASURED, which is not always
+/// the version the project ships; when they part, the caption says so
+/// rather than leaving a reader to wonder whether the page is stale.
 fn render_site(d: &Value, zh: bool) -> String {
     let v = latest(d);
     let chip = |label: &str, val: String, unit: &str| {
@@ -130,12 +150,13 @@ fn render_site(d: &Value, zh: bool) -> String {
         )
     };
     format!(
-        "<h2>{h} · v{v}</h2>\n<div class=\"installs\">\n{}{}{}{}{}</div>\n<p class=\"cap\">{note}</p>\n",
+        "<h2>{h} · v{v}</h2>\n<div class=\"installs\">\n{}{}{}{}{}</div>\n<p class=\"cap\">{note}{}</p>\n",
         chip(hook, latest_p50(d, "hook_probe"), "ms"),
         chip(scan, latest_p50(d, "scan"), "ms"),
         chip(dedup, latest_p50(d, "dedup_warm"), "ms"),
         chip(fpr, frozen_value(d, "guard_fpr_per500"), ""),
         chip(prec, frozen_value(d, "docdup_d3_precision"), ""),
+        unmeasured_note(d, zh),
     )
 }
 
@@ -153,4 +174,14 @@ fn bench_md_matches_its_regeneration() {
 fn site_bench_blocks_match() {
     gate_site("site/index.html", false);
     gate_site("site/zh/index.html", true);
+}
+
+/// The byte gates above prove each surface equals its regeneration —
+/// they cannot notice that the regeneration itself went stale.
+#[test]
+fn the_generated_bench_surfaces_name_the_shipped_release() {
+    let d = doc();
+    names_the_release("docs/BENCH.md", &render_md(&d));
+    names_the_release("site/index.html", &render_site(&d, false));
+    names_the_release("site/zh/index.html", &render_site(&d, true));
 }
