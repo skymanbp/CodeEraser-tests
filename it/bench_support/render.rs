@@ -42,19 +42,30 @@ pub fn release_without_a_row(d: &Value) -> Option<&'static str> {
     (latest(d) != release).then_some(release)
 }
 
+/// What joins a sentence to whatever else shares its line. English
+/// takes a space; Chinese takes nothing at all — a space after 。 is a
+/// typographic error, not a nicety. Every bilingual surface that
+/// concatenates prose asks this, so it is asked in one place.
+pub fn join(zh: bool) -> &'static str {
+    if zh { "" } else { " " }
+}
+
 /// That fact as one sentence, for any surface that shows the numbers.
 /// Plain text: it goes into a Markdown paragraph and an HTML caption
 /// unchanged, and carries no character either of them would escape.
 /// Empty when the release did join — the sentence must not appear on a
 /// page whose heading already names the current version.
 pub fn unmeasured_note(d: &Value, zh: bool) -> String {
-    match (release_without_a_row(d), zh) {
-        (None, _) => String::new(),
-        // The separator between two sentences is language-specific:
-        // English joins with a space, Chinese with nothing at all —
-        // a space after 。 is a typographic error, not a nicety.
-        (Some(v), true) => format!("当前发布 v{v} 没有自己的行。"),
-        (Some(v), false) => format!(" The current release, v{v}, has no row of its own."),
+    match release_without_a_row(d) {
+        None => String::new(),
+        Some(v) => {
+            let sentence = if zh {
+                format!("当前发布 v{v} 没有自己的行。")
+            } else {
+                format!("The current release, v{v}, has no row of its own.")
+            };
+            format!("{}{sentence}", join(zh))
+        }
     }
 }
 

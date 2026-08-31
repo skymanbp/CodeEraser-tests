@@ -3,7 +3,7 @@
 //! compares them. All values originate in contracts/bench/bench.json.
 
 use crate::bench_support::render::{
-    doc, latest, measured, names_the_release, rows_with, s, unmeasured_note,
+    doc, join, latest, measured, names_the_release, rows_with, s, unmeasured_note,
 };
 use serde_json::Value;
 
@@ -122,11 +122,12 @@ fn render_readme(d: &Value, zh: bool) -> String {
         )
     };
     format!(
-        "### {head} · v{}\n\n{}\n{note}{} [{bench}](docs/BENCH.md) · [{site}](https://codeeraser.dev{}/bench/)\n",
-        latest(d),
-        latest_md(d),
-        unmeasured_note(d, zh),
-        if zh { "/zh" } else { "" }
+        "### {head} · v{version}\n\n{table}\n{note}{unmeasured}{gap}[{bench}](docs/BENCH.md) · [{site}](https://codeeraser.dev{zh_path}/bench/)\n",
+        version = latest(d),
+        table = latest_md(d),
+        unmeasured = unmeasured_note(d, zh),
+        gap = join(zh),
+        zh_path = if zh { "/zh" } else { "" },
     )
 }
 
