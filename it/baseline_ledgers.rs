@@ -12,7 +12,11 @@
 /// cleanups are this tool's whole point and retire BY NAME, never
 /// silently. A listed id back in the baseline = a stale entry,
 /// refused — the ledger can only ever describe the present.
-pub const RETIRED: [(u64, &str); 12] = [
+pub const RETIRED: [(u64, &str); 13] = [
+    (
+        17681371623117319386,
+        "v2.23 step 3: LangSpec spelled `&'static [&'static str]` once per \n         field, so windows of its declarations rhymed with each other; \n         naming the type (`pub type Kinds`) dissolved the run this member \n         belonged to",
+    ),
     (
         15941172437324464441,
         "v0.6 P3: budget_breach's scope+size stanza folded into the \

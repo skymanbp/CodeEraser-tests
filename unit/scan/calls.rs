@@ -25,93 +25,101 @@ fn arcs(lang: Lang, src: &str) -> Vec<(String, String)> {
         .collect()
 }
 
-fn arc(from: &str, to: &str) -> (String, String) {
-    (from.to_string(), to.to_string())
-}
+/// (language, snippet, the arcs it must mint, why the row is here).
+/// A table rather than a test apiece: the cases differ only in their
+/// data, and the repeated per-case scaffold is duplication this repo
+/// prices (the metric batteries carry their whys the same way).
+type Case = (
+    Lang,
+    &'static str,
+    &'static [(&'static str, &'static str)],
+    &'static str,
+);
+
+const CASES: &[Case] = &[
+    (
+        Lang::Rust,
+        "fn f(n: u32) -> u32 { if n == 0 { 0 } else { f(n - 1) } }",
+        &[("f", "f")],
+        "a bare self-call is a cycle of length one",
+    ),
+    (
+        Lang::Rust,
+        "struct S; impl S { fn g(&self) { self.h(); Self::h(); } fn h() {} }",
+        &[("g", "h")],
+        "self.h() and Self::h() reach the same sibling: one arc, not two",
+    ),
+    (
+        Lang::Rust,
+        "struct D; impl D { fn path(&self) -> u8 { self.dent.path() } }",
+        &[],
+        "the measured false positive: self.dent.path() is a DIFFERENT path",
+    ),
+    (
+        Lang::Rust,
+        "struct A; struct B;\n\
+         impl A { fn path(&self) -> u8 { self.path() } }\n\
+         impl B { fn path(&self) -> u8 { 0 } }",
+        &[],
+        "two callables spell `path`; undercount beats a guess",
+    ),
+    (
+        Lang::Rust,
+        "fn a(n: u32) -> u32 { b(n) }\nfn b(n: u32) -> u32 { a(n) }",
+        &[("a", "b"), ("b", "a")],
+        "mutual recursion inside one file mints both arcs",
+    ),
+    (
+        Lang::Rust,
+        "fn f() {\n    let g = || f();\n}",
+        &[("(anonymous)", "f")],
+        "the caller is the closure, never its host (a Rust closure hangs \
+         off a let_declaration, so name_of leaves it anonymous)",
+    ),
+    (
+        Lang::Python,
+        "def f(n):\n    return f(n - 1)\n\n\
+         class R:\n    def prepare(self):\n        p = P()\n        p.prepare()\n",
+        &[("f", "f")],
+        "Request.prepare calling p.prepare() is the measured twin: not self",
+    ),
+    (
+        Lang::Python,
+        "class C:\n    def g(self):\n        self.g()\n",
+        &[("g", "g")],
+        "self reaches a sibling method",
+    ),
+    (
+        Lang::Go,
+        "package p\nfunc (t *T) g() { t.g() }\nfunc h() { g() }\n",
+        &[("(*T) g", "(*T) g")],
+        "the receiver binding resolves; a bare g() cannot reach a method",
+    ),
+    (
+        Lang::TypeScript,
+        "function f(n: number): number { return f(n - 1); }\n\
+         class C { g() { this.g(); } }",
+        &[("f", "f"), ("g", "g")],
+        "this and a bare name both resolve",
+    ),
+    (
+        Lang::Haskell,
+        "go :: Int -> Int\ngo n = n\n\nh x = go x\n  where go k = go (k - 1)\n",
+        &[],
+        "a where-local `go` and a top-level one are two callables",
+    ),
+];
 
 #[test]
-fn a_function_that_calls_itself_gets_a_self_arc() {
-    let src = "fn f(n: u32) -> u32 { if n == 0 { 0 } else { f(n - 1) } }";
-    assert_eq!(arcs(Lang::Rust, src), vec![arc("f", "f")]);
-}
-
-#[test]
-fn a_method_reaches_its_sibling_through_self_and_through_the_type() {
-    let src = "struct S; impl S { fn g(&self) { self.h(); Self::h(); } fn h() {} }";
-    assert_eq!(
-        arcs(Lang::Rust, src),
-        vec![arc("g", "h")],
-        "one arc, not two"
-    );
-}
-
-#[test]
-fn a_nested_receiver_is_not_my_own() {
-    // The false positive measured on the Rust corpus: DirEntry::path
-    // calling self.dent.path() reaches a DIFFERENT path.
-    let src = "struct D; impl D { fn path(&self) -> u8 { self.dent.path() } }";
-    assert!(arcs(Lang::Rust, src).is_empty());
-}
-
-#[test]
-fn a_name_two_callables_share_resolves_to_neither() {
-    let src = "struct A; struct B;\n\
-               impl A { fn path(&self) -> u8 { self.path() } }\n\
-               impl B { fn path(&self) -> u8 { 0 } }";
-    assert!(arcs(Lang::Rust, src).is_empty(), "undercount beats a guess");
-}
-
-#[test]
-fn mutual_recursion_inside_one_file_yields_both_arcs() {
-    let src = "fn a(n: u32) -> u32 { b(n) }\nfn b(n: u32) -> u32 { a(n) }";
-    assert_eq!(arcs(Lang::Rust, src), vec![arc("a", "b"), arc("b", "a")]);
-}
-
-#[test]
-fn a_call_inside_a_closure_belongs_to_the_closure() {
-    // A Rust closure hangs off a let_declaration, not the
-    // variable_declarator name_of climbs, so it stays anonymous — the
-    // point here is the caller, which is the closure and never f.
-    let src = "fn f() {\n    let g = || f();\n}";
-    assert_eq!(
-        arcs(Lang::Rust, src),
-        vec![arc("(anonymous)", "f")],
-        "not f -> f"
-    );
-}
-
-#[test]
-fn python_reads_self_but_not_another_object_of_the_same_shape() {
-    // Request.prepare calling p.prepare() is the measured twin.
-    let src = "def f(n):\n    return f(n - 1)\n\n\
-               class R:\n    def prepare(self):\n        p = P()\n        p.prepare()\n";
-    assert_eq!(arcs(Lang::Python, src), vec![arc("f", "f")]);
-}
-
-#[test]
-fn python_reaches_a_sibling_method_through_self() {
-    let src = "class C:\n    def g(self):\n        self.g()\n";
-    assert_eq!(arcs(Lang::Python, src), vec![arc("g", "g")]);
-}
-
-#[test]
-fn a_go_method_answers_its_receiver_and_ignores_a_bare_call() {
-    let src = "package p\nfunc (t *T) g() { t.g() }\nfunc h() { g() }\n";
-    assert_eq!(
-        arcs(Lang::Go, src),
-        vec![arc("(*T) g", "(*T) g")],
-        "a bare g() cannot reach a method"
-    );
-}
-
-#[test]
-fn typescript_reads_this_and_bare_names() {
-    let src = "function f(n: number): number { return f(n - 1); }\n\
-               class C { g() { this.g(); } }";
-    assert_eq!(
-        arcs(Lang::TypeScript, src),
-        vec![arc("f", "f"), arc("g", "g")]
-    );
+fn every_case_mints_exactly_the_arcs_it_proves() {
+    for (lang, src, want, why) in CASES {
+        let got = arcs(*lang, src);
+        let want: Vec<_> = want
+            .iter()
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .collect();
+        assert_eq!(got, want, "{why}\n--- source ---\n{src}");
+    }
 }
 
 #[test]
@@ -121,15 +129,6 @@ fn haskell_equations_of_one_function_are_one_callable() {
     // The recursing equation reaches both equations; the base case
     // calls nothing, so it stays outside the cycle on its own.
     assert_eq!(arcs, vec![(1, 0), (1, 1)]);
-}
-
-#[test]
-fn a_where_local_and_a_top_level_of_one_name_cancel() {
-    let src = "go :: Int -> Int\ngo n = n\n\nh x = go x\n  where go k = go (k - 1)\n";
-    assert!(
-        arcs(Lang::Haskell, src).is_empty(),
-        "two callables spell `go`; neither is proved"
-    );
 }
 
 #[test]

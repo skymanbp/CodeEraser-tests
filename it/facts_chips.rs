@@ -85,7 +85,7 @@ fn every_chip_surface_renders_to_itself() {
 
 /// Documents that DESCRIBE the chip syntax (the ADR-009 text) rather
 /// than carry one: every open tag there must sit in a code span.
-const DESCRIBES: &[&str] = &["docs/DEVELOPMENT_PLAN.md"];
+const DESCRIBES: &[&str] = &["docs/DEVELOPMENT_PLAN.md", "docs/CHANGELOG-ARCHIVE.md"];
 
 #[test]
 fn no_unenrolled_document_carries_a_chip() {
