@@ -32,7 +32,8 @@ fn listen(root: &Path) -> Listener {
 /// says NOTHING for `hold` (from the accept, which the client's own
 /// connect drives) before dropping the connection: the refusal's
 /// text, how long the client waited, the gauge before it asked, and
-/// the daemon's thread to join.
+/// the daemon's thread to join. The deadline is the caller's — the
+/// race leg pins it at zero.
 struct Probe {
     err: String,
     elapsed: Duration,
@@ -40,7 +41,7 @@ struct Probe {
     held: std::thread::JoinHandle<()>,
 }
 
-fn probe(tag: &str, hold: Duration, canceller: Canceller) -> Probe {
+fn probe(tag: &str, hold: Duration, deadline: Duration, canceller: Canceller) -> Probe {
     let root = crate::testutil::scratch(tag);
     let listener = listen(&root);
     let held = std::thread::spawn(move || {
@@ -50,7 +51,7 @@ fn probe(tag: &str, hold: Duration, canceller: Canceller) -> Probe {
     });
     let parked = PARKED.load(SeqCst);
     let started = Instant::now();
-    let err = bounded_with(&root, &Request::Ping, false, DEADLINE, canceller)
+    let err = bounded_with(&root, &Request::Ping, false, deadline, canceller)
         .expect_err("silence must not be an answer")
         .to_string();
     Probe {
@@ -175,7 +176,12 @@ fn stale_orders_minors_and_distrusts_garbage() {
 #[test]
 fn a_silent_daemon_meets_the_deadline_not_forever() {
     let _turn = GAUGE.lock().unwrap_or_else(|e| e.into_inner());
-    let p = probe("client-silent", Duration::from_secs(5), Canceller::new());
+    let p = probe(
+        "client-silent",
+        Duration::from_secs(5),
+        DEADLINE,
+        Canceller::new(),
+    );
     assert!(
         p.elapsed < DEADLINE + GRACE,
         "the worker came back inside the grace, not at its end: {:?}",
@@ -190,25 +196,26 @@ fn a_silent_daemon_meets_the_deadline_not_forever() {
     p.held.join().expect("stub");
 }
 
-/// The counterfactual that proves the cancel is what tore the
-/// worker down: with an INERT canceller (the pre-O64 behaviour) the
-/// same silent daemon leaves the worker parked past the whole grace,
-/// the refusal says so by name, and the gauge counts it — until the
-/// daemon drops the connection and the worker returns, at which
-/// point the gauge goes back down. The daemon holds for longer than
-/// deadline + grace so the detach is certain, not a race.
-#[test]
-fn an_inert_canceller_leaves_the_worker_parked_and_counted() {
+/// One inert-canceller conversation, held to the full parked
+/// contract: the whole grace is spent, the residue is named with
+/// its stage, the gauge counts the detached worker, and it settles
+/// back once the daemon lets go. The daemon holds for longer than
+/// deadline + grace, and the inert canceller blinds every deadline
+/// observation the worker could bail on, so the detach is certain
+/// under any scheduling.
+fn parked_contract(tag: &str, deadline: Duration) {
     let _turn = GAUGE.lock().unwrap_or_else(|e| e.into_inner());
     let p = probe(
-        "client-inert",
+        tag,
         GRACE + Duration::from_secs(2),
+        deadline,
         Canceller::inert(),
     );
     assert!(
-        p.elapsed >= DEADLINE + GRACE,
-        "the whole grace was spent: {:?}",
-        p.elapsed
+        p.elapsed >= deadline + GRACE,
+        "the whole grace was spent: {:?} — {}",
+        p.elapsed,
+        p.err
     );
     assert!(
         p.err.contains("still reading") && p.err.contains("detached"),
@@ -222,4 +229,29 @@ fn an_inert_canceller_leaves_the_worker_parked_and_counted() {
     );
     p.held.join().expect("stub");
     settles(p.parked, Duration::from_secs(3));
+}
+
+/// The counterfactual that proves the cancel is what tore the
+/// worker down: with an INERT canceller (the pre-O64 behaviour) the
+/// same silent daemon leaves the worker parked past the whole grace,
+/// the refusal says so by name, and the gauge counts it — until the
+/// daemon drops the connection and the worker returns, at which
+/// point the gauge goes back down.
+#[test]
+fn an_inert_canceller_leaves_the_worker_parked_and_counted() {
+    parked_contract("client-inert", DEADLINE);
+}
+
+/// The race the 2026-08-31 CI red exposed, pinned at its extreme: a
+/// ZERO deadline always fires before the worker can register (on
+/// that runner a ~1s scheduling stall did the same to the 300ms
+/// leg — elapsed 1.306s, generic refusal, no residue). An inert
+/// canceller that still let `register` refuse had the worker come
+/// straight back and the grace end early: the counterfactual never
+/// armed. Now the inert canceller blinds that refusal too, so the
+/// worker parks on its read and the whole grace is spent even when
+/// the deadline wins every race.
+#[test]
+fn an_inert_canceller_arms_even_when_the_deadline_wins_the_race() {
+    parked_contract("client-inert-race", Duration::ZERO);
 }
