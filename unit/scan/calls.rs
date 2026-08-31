@@ -90,6 +90,22 @@ const CASES: &[Case] = &[
         "self reaches a sibling method",
     ),
     (
+        Lang::Python,
+        "class A:\n    def run(self):\n        self.step()\nclass B:\n    def step(self):\n        self.run()\n",
+        &[],
+        "a sibling CLASS is not the caller's container: each member \
+         comes from elsewhere, and a file-wide lookup minted a FALSE \
+         2-cycle out of the two spellings",
+    ),
+    (
+        Lang::Python,
+        "from utils import helper\nclass A:\n    def helper(self):\n        top()\ndef top():\n    helper()\n",
+        &[("helper", "top")],
+        "a bare name reaches only what the call site can see: A.helper \
+         sees the module-level top, while top's helper() is the import \
+         and can never be the class method",
+    ),
+    (
         Lang::Go,
         "package p\nfunc (t *T) g() { t.g() }\nfunc h() { g() }\n",
         &[("(*T) g", "(*T) g")],
