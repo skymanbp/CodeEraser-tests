@@ -2,7 +2,10 @@
 //! a document sees, and the token class a chip span is read with.
 
 /// `#v` three-part SemVer · `#vminor` major.minor · `#digits` a bare
-/// integer (rendered with thousands commas from 1,000) · `#schemaver`
+/// integer (rendered with thousands commas from 1,000) · `#name` an
+/// integer that NAMES rather than counts — a Rust edition — rendered
+/// bare, because grouping a name breaks it (`2,024` is not an edition
+/// and matches nothing a reader greps for) · `#schemaver`
 /// a report id `ce.<name>/<ver>` · `#word` a count 1..=20 rendered as
 /// the surface language's number word · `#Word` the same, capitalized
 /// at a sentence start (Chinese has no case: identical) · `#lead` /
@@ -14,6 +17,7 @@ pub enum Form {
     V,
     VMinor,
     Digits,
+    Name,
     SchemaVer,
     Word,
     WordCap,
@@ -27,6 +31,7 @@ impl Form {
             Some((_, "v")) => Form::V,
             Some((_, "vminor")) => Form::VMinor,
             Some((_, "digits")) => Form::Digits,
+            Some((_, "name")) => Form::Name,
             Some((_, "schemaver")) => Form::SchemaVer,
             Some((_, "word")) => Form::Word,
             Some((_, "Word")) => Form::WordCap,
@@ -43,7 +48,7 @@ impl Form {
         match self {
             Form::V | Form::VMinor | Form::Decimal => c.is_ascii_digit() || c == '.',
             Form::Digits => c.is_ascii_digit() || c == ',',
-            Form::Cell => c.is_ascii_digit(),
+            Form::Cell | Form::Name => c.is_ascii_digit(),
             Form::SchemaVer => c.is_ascii_alphanumeric() || matches!(c, '.' | '/' | '-'),
             Form::Word | Form::WordCap if zh => "〇一两二三四五六七八九十".contains(c),
             Form::Word | Form::WordCap => c.is_ascii_alphabetic(),
@@ -56,7 +61,7 @@ impl Form {
         match self {
             Form::V => dotted(value, 3),
             Form::VMinor | Form::Decimal => dotted(value, 2),
-            Form::Digits | Form::Cell => dotted(value, 1),
+            Form::Digits | Form::Cell | Form::Name => dotted(value, 1),
             Form::SchemaVer => value
                 .strip_prefix("ce.")
                 .and_then(|rest| rest.split_once('/'))

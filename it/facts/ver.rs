@@ -131,7 +131,7 @@ fn toolchain(root: &Path) -> Vec<Fact> {
             "the pin lives in the workflow alone; promote = one toolchain file CI and the docs both read",
         ),
         scraped(
-            "tool:edition#digits",
+            "tool:edition#name",
             dep("edition "),
             "cli/Cargo.toml::edition",
             TOML_DEBT,

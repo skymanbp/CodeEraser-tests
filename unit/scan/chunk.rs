@@ -54,6 +54,44 @@ fn chunk_plan_counts_every_request_dimension() {
     assert!(empty[0].rows.is_empty() && empty[0].span == (0..0));
 }
 
+/// The class column is the sixth dimension `CE.Scan.overCap` sums,
+/// and it is one entry per row — so a classed run buys half as many
+/// rows per chunk. Before this was priced, a classed tree sent the
+/// core a request the core answered `degraded`, which wire.rs turns
+/// into a hard "cap mirror drift" error the user cannot act on.
+#[test]
+fn a_class_column_costs_a_row_its_own_seat() {
+    let rows = [[0u64, 1]; 4];
+    let blocks = [2usize, 2];
+    let classes = [0u64; 4];
+    let bare = plan_req(&rows, &[], &blocks, &[]);
+    assert_eq!(
+        plan(&bare, 4).expect("unclassed fits").len(),
+        1,
+        "4 rows, budget 4: one chunk"
+    );
+    let mut classed = plan_req(&rows, &[], &blocks, &[]);
+    classed.row_classes = Some(&classes);
+    let cuts = plan(&classed, 4).expect("each file still fits");
+    assert_eq!(
+        cuts.iter().map(|c| c.span.clone()).collect::<Vec<_>>(),
+        vec![0..2, 2..4],
+        "the same 4 rows weigh 8 with a class column"
+    );
+    // and a single file whose classed weight passes the budget is
+    // refused by name rather than sent to be degraded
+    let one = {
+        let mut r = plan_req(&rows, &[], &[4], &[]);
+        r.row_classes = Some(&classes);
+        r
+    };
+    let err = plan(&one, 5).err().expect("4 classed rows weigh 8");
+    assert!(
+        err.to_string().contains("must not straddle a chunk"),
+        "{err}"
+    );
+}
+
 /// The invariant the call table needs (6.5.0): a boundary falls
 /// BETWEEN files, never inside one. Without it an arc stated in row
 /// indices would be cut in half by the split and silently lost.
@@ -101,8 +139,13 @@ fn a_file_past_the_budget_is_refused_by_name() {
     let err = plan(&plan_req(&rows, &[], &[5], &[]), 3)
         .err()
         .expect("one file, no room");
+    let said = err.to_string();
+    assert!(said.contains("must not straddle a chunk"), "{said}");
+    // a deliberate refusal must not READ like a broken build: this
+    // literal once carried the 14 spaces a lost `\` continuation
+    // leaves behind, and no gate could see it
     assert!(
-        err.to_string().contains("must not straddle a chunk"),
-        "{err}"
+        !said.contains("  "),
+        "run of spaces in the refusal: {said:?}"
     );
 }

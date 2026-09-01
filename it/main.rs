@@ -15,6 +15,7 @@ mod baseline_bridge;
 mod baseline_ledgers;
 mod baseline_policy;
 mod bench;
+mod bench_backfill;
 mod bench_render;
 mod bench_render_dashboard;
 mod bench_seat;

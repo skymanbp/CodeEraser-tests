@@ -2,10 +2,10 @@
 //! produced by REPLAY — this file — and lands in
 //! contracts/bench/bench.json, the single source the site, README
 //! and GUI render from (hand-filling a surface re-opens the D7
-//! defect class). Two ignored drivers and one live gate:
+//! defect class). One ignored driver and one live gate here; the
+//! per-tag backfill driver is bench_backfill.rs, which borrows this
+//! module's `measure_tree` and `git_out`:
 //!   bench_append   — measure THIS checkout's built binaries
-//!   bench_backfill — per release tag: detached worktree, build the
-//!                    tag's own ce + ce-core, measure with THEM
 //!   bench_doc_is_wellformed — CI: the committed doc stays sound
 //! Run in RELEASE; a debug measurement is refused, not annotated
 //! (PERF-BUDGET.md:60-62):
@@ -25,9 +25,32 @@ fn fresh_db(tag: &str, i: usize) -> PathBuf {
     p
 }
 
+/// Point a command at the tag's own core TWO ways: the env var modern
+/// versions read, and the PATH early ones resolve the bare name
+/// `ce-core` through.
+///
+/// The second is not belt-and-braces. v0.1.0's `ce` takes the core as a
+/// `--core` flag defaulting to the bare name and reads CE_CORE_BIN only
+/// on its daemon path, so with PATH untouched it reaches whatever
+/// ce-core is INSTALLED on the machine — which on this machine answers
+/// a protocol six majors newer and kills the run by name. A tag whose
+/// installed neighbour happened to be compatible would be worse: the
+/// row would be measured against a foreign core and say nothing about
+/// the tag. BENCH.md promises the tag's own binaries; this is what
+/// makes that true for every tag rather than the recent ones.
+fn with_core(c: &mut Command, core: &Path) {
+    c.env("CE_CORE_BIN", core);
+    if let Some(dir) = core.parent() {
+        let sep = if cfg!(windows) { ";" } else { ":" };
+        let rest = std::env::var("PATH").unwrap_or_default();
+        c.env("PATH", format!("{}{sep}{rest}", dir.display()));
+    }
+}
+
 fn ce_cmd(ce: &Path, core: &Path, root: &Path, args: &[&str]) -> Command {
     let mut c = Command::new(ce);
-    c.args(args).arg(root).env("CE_CORE_BIN", core);
+    c.args(args).arg(root);
+    with_core(&mut c, core);
     c
 }
 
@@ -35,7 +58,7 @@ fn ce_cmd(ce: &Path, core: &Path, root: &Path, args: &[&str]) -> Command {
 /// rows re-run over a primed cache. Counts are deliberately absent
 /// here — console wording drifts across tags, and a parsed count
 /// that silently mis-greps would be a fabricated number.
-fn measure_tree(
+pub fn measure_tree(
     root: &Path,
     ce: &Path,
     core: &Path,
@@ -145,10 +168,10 @@ fn hook_once(ce: &Path, core: &Path, root: &Path, envelope: &str) -> anyhow::Res
     // daemon that INHERITS the handle and outlives the probe, so a
     // piped wait_with_output blocks on an EOF that never comes
     let out_path = root.join("bench-hook.out");
-    let mut child = Command::new(ce)
-        .args(["probe", "--hook"])
-        .current_dir(root)
-        .env("CE_CORE_BIN", core)
+    let mut cmd = Command::new(ce);
+    cmd.args(["probe", "--hook"]).current_dir(root);
+    with_core(&mut cmd, core);
+    let mut child = cmd
         .stdin(std::process::Stdio::piped())
         .stdout(std::fs::File::create(&out_path)?)
         .stderr(std::process::Stdio::null())
@@ -173,7 +196,7 @@ fn hook_envelope(dir: &Path, content: &str) -> String {
     .to_string()
 }
 
-fn git_out(args: &[&str]) -> String {
+pub fn git_out(args: &[&str]) -> String {
     let out = Command::new("git").args(args).output().expect("git");
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
@@ -195,80 +218,6 @@ fn bench_append() {
     let n = rows.len();
     bs::merge_rows(rows).expect("merge");
     println!("bench_append: {n} rows merged into contracts/bench/bench.json");
-}
-
-/// Per-tag backfill (user ruling ④): detached worktree, the tag's
-/// submodules seated (bench_support::seat_submodules — from v1.3.0 the
-/// tests are one, and an unseated one is refused by name), the tag's
-/// OWN ce + ce-core built and measured. v0.0.1-m0 is structurally
-/// absent (no product exists there) and is skipped by the range.
-#[test]
-#[ignore = "bench backfill: builds every release tag; slow (an hour-class run)"]
-fn bench_backfill() {
-    if cfg!(debug_assertions) {
-        panic!("bench numbers are release-only (PERF-BUDGET.md:60-62)");
-    }
-    // CE_BENCH_TAGS (comma list) re-runs a subset — an hour-class run
-    // must not be the only way to replace one contaminated tag.
-    let only = std::env::var("CE_BENCH_TAGS").ok();
-    let tags: Vec<String> = git_out(&["tag", "--sort=creatordate"])
-        .lines()
-        .filter(|t| *t != "v0.0.1-m0")
-        .filter(|t| {
-            only.as_deref()
-                .is_none_or(|f| f.split(',').any(|x| x == *t))
-        })
-        .map(str::to_string)
-        .collect();
-    for tag in &tags {
-        println!("== {tag}");
-        backfill_one(tag).expect(tag);
-    }
-    println!("bench_backfill: {} tags done", tags.len());
-}
-
-fn backfill_one(tag: &str) -> anyhow::Result<()> {
-    let wt = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("bench-wt-{tag}"));
-    let _ = Command::new("git")
-        .args(["worktree", "remove", "--force"])
-        .arg(&wt)
-        .output();
-    let ok = Command::new("git")
-        .args(["worktree", "add", "--detach"])
-        .arg(&wt)
-        .arg(tag)
-        .status()?;
-    anyhow::ensure!(ok.success(), "worktree add {tag}");
-    let seated = bs::seat_submodules(&wt)?;
-    println!("   seated {} submodule(s)", seated.len());
-    let build = |dir: &str, prog: &str, args: &[&str]| -> anyhow::Result<()> {
-        let st = Command::new(prog)
-            .args(args)
-            .current_dir(wt.join(dir))
-            .status()?;
-        anyhow::ensure!(st.success(), "{prog} {args:?} at {tag}");
-        Ok(())
-    };
-    build("cli", "cargo", &["build", "--release", "--locked"])?;
-    build("core", "cabal", &["build", "all"])?;
-    let core_out = Command::new("cabal")
-        .args(["list-bin", "ce-core"])
-        .current_dir(wt.join("core"))
-        .output()?;
-    let core = PathBuf::from(String::from_utf8_lossy(&core_out.stdout).trim());
-    let ce = wt.join(if cfg!(windows) {
-        "cli/target/release/ce.exe"
-    } else {
-        "cli/target/release/ce"
-    });
-    let commit = git_out(&["rev-parse", &format!("{tag}^{{commit}}")]);
-    let rows = measure_tree(&wt, &ce, &core, &commit, false, Some(tag))?;
-    bs::merge_rows(rows)?;
-    let _ = Command::new("git")
-        .args(["worktree", "remove", "--force"])
-        .arg(&wt)
-        .output();
-    Ok(())
 }
 
 /// CI gate: the committed doc stays sound — schema pinned, every

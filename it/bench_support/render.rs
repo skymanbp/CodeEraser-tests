@@ -69,9 +69,24 @@ pub fn unmeasured_note(d: &Value, zh: bool) -> String {
     }
 }
 
+/// The sentence docs/BENCH.md owes its reader either way: which release
+/// the newest row is, or — when this release did not join — that it has
+/// no row at all. The README and the site name the version in their
+/// heading instead; this page's heading is a link anchor other documents
+/// point at, so it stays stable and the version lives in prose.
+pub fn series_note(d: &Value) -> String {
+    match release_without_a_row(d) {
+        Some(_) => unmeasured_note(d, false).trim().to_string(),
+        None => format!(
+            "The newest row, v{}, is the release this build is.",
+            latest(d)
+        ),
+    }
+}
+
 /// Every surface printing a version beside these numbers must name the
 /// release this build IS — in its heading when that release joined the
-/// series, in `unmeasured_note` when it did not.
+/// series, in `series_note` / `unmeasured_note` when it did not.
 ///
 /// v1.3.1 shipped with all four surfaces headed "v1.3.0" and every byte
 /// gate green: a gate that compares a file to its own generator cannot

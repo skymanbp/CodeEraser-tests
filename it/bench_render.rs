@@ -6,7 +6,7 @@
 //! pages own only the block between their bench markers.
 
 use crate::bench_support::render::{
-    doc, latest, measured, names_the_release, rows_with, s, unmeasured_note,
+    doc, latest, measured, names_the_release, rows_with, s, series_note, unmeasured_note,
 };
 use crate::common;
 use serde_json::Value;
@@ -16,10 +16,10 @@ use serde_json::Value;
 const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > Generated from [contracts/bench/bench.json](../contracts/bench/bench.json) by\n\
          > `cli/tests/it/bench_render.rs` (`CE_BLESS=1` to regenerate). Every series row was\n\
-         > measured by `cli/tests/it/bench.rs` (`bench_append` for a checkout, `bench_backfill`\n\
-         > per release tag — the tag's submodules seated, its OWN binaries, release builds\n\
-         > only, fresh index per cold run). Frozen points carry their sealed-ledger source;\n\
-         > points that cannot\n\
+         > measured by `cli/tests/it/bench.rs` (`bench_append`, for a checkout) or by\n\
+         > `cli/tests/it/bench_backfill.rs` (`bench_backfill`, per release tag — the tag’s\n\
+         > submodules seated, its OWN binaries, release builds only, fresh index per cold\n\
+         > run). Frozen points carry their sealed-ledger source; points that cannot\n\
          > honestly become a per-version series say why in their epoch clause.\n\
          >\n\
          > Six of the seven metrics run against this repository. `hook_probe` does\n\
@@ -47,7 +47,9 @@ const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > replaying the whole series to add a duplicate measurement would publish that\n\
          > drift under a new version number. So every surface printing these numbers\n\
          > beside a version names the version MEASURED — never \"the latest\" — and says\n\
-         > so when the shipped release is a different one.\n";
+         > so when the shipped release is a different one. The backfill driver applies\n\
+         > this rule itself and names every tag it turns away, so the table and the\n\
+         > rule cannot drift apart again.\n";
 
 /// The series table's own heading, split from the prose above it so the
 /// derived sentence about an unmeasured release can sit between them.
@@ -57,10 +59,7 @@ const SERIES: &str = "\n## Latency series (self repository)\n\n\
 /// docs/BENCH.md, whole file.
 fn render_md(d: &Value) -> String {
     let mut out = String::from(HEADER);
-    let unmeasured = unmeasured_note(d, false);
-    if !unmeasured.is_empty() {
-        out.push_str(&format!("\n{}\n", unmeasured.trim()));
-    }
+    out.push_str(&format!("\n{}\n", series_note(d)));
     out.push_str(SERIES);
     out.push_str(&rows_with(d, "rows", |r| {
         format!(
