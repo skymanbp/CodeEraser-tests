@@ -99,14 +99,18 @@ fn parse_page(text: &str, label: &str) -> Families {
 }
 
 /// Chips the gate cannot bind, each for a reason that is a PROPERTY
-/// of the chip and not of the parser (v2.24 emptied the rest — see
-/// `label_binding`). Three kinds and nothing else:
+/// of the chip and not of the parser (v2.24 emptied the label cases —
+/// see `label_binding`; v2.25 bound the six that named a constant
+/// under a display name: `kgram` / `window` are `Params` defaults,
+/// `scale` is `structScale`, `row + knob cap` is `trendRowCap`, `feed
+/// schema` is `OBSERVE_SCHEMA`, and each family's `schema` chip is
+/// that family's `SCHEMA_ID`, routed by file in `collision`). Three
+/// kinds and nothing else:
 ///
-/// - prose or external facts with no source constant at all: `kgram`,
-///   `window`, `guarantee t`, `near-miss band`, `schema`, `scale`,
-///   `legs cross at`, `tsconfig extends`, `precision gate`, `knob
-///   codes`, `row + knob cap`, `full-scale grid`, `zone_tiers`, `FPR
-///   gate`, `feed schema`, `wire`, and `since proto` — the erase
+/// - prose or external facts with no source constant at all:
+///   `guarantee t`, `near-miss band`, `legs cross at`, `tsconfig
+///   extends`, `precision gate`, `knob codes`, `full-scale grid`,
+///   `zone_tiers`, `FPR gate`, `wire`, and `since proto` — the erase
 ///   family's wire BIRTH version, owned by VERSIONING.md's 2.16.0
 ///   entry rather than by any binding;
 /// - ratio chips naming a pair of constants through a slash rather
@@ -115,7 +119,7 @@ fn parse_page(text: &str, label: &str) -> Families {
 ///   and `minPoints` / `declineFloorMicro` live as rows of
 ///   `CE.Trend.Cost.knobTable`, not as named bindings.
 fn allowlist() -> BTreeSet<&'static str> {
-    "kgram\nwindow\nguarantee t\nnear-miss band\nschema\nscale\nlegs cross at\ntsconfig extends\nprecision gate\nrewriteNum/Den\ntolNum/tolDen\nknob codes\ndestFloor\nrow + knob cap\nfull-scale grid\ndeclineFloorMicro\nzone_tiers\nFPR gate\nfeed schema\nwire\nminPoints\nsince proto"
+    "guarantee t\nnear-miss band\nlegs cross at\ntsconfig extends\nprecision gate\nrewriteNum/Den\ntolNum/tolDen\nknob codes\ndestFloor\nfull-scale grid\ndeclineFloorMicro\nzone_tiers\nFPR gate\nwire\nminPoints\nsince proto"
         .lines()
         .collect()
 }
@@ -137,6 +141,13 @@ fn label_binding(name: &str) -> Vec<&str> {
         "[softMin, softMax]" => vec!["softMin", "softMax"],
         "file_lines_warn S" => vec!["Thresholds::file_lines_warn"],
         "file_lines_fail H" => vec!["Thresholds::file_lines_fail"],
+        // v2.25: display names over a source constant (each was
+        // allowlisted as "prose" while a binding sat one hop away)
+        "kgram" => vec!["Params::kgram"],
+        "window" => vec!["Params::window"],
+        "scale" => vec!["structScale"],
+        "row + knob cap" => vec!["trendRowCap"],
+        "feed schema" => vec!["OBSERVE_SCHEMA"],
         _ => vec![name],
     }
 }
@@ -151,6 +162,12 @@ fn collision<'a>(family: &str, name: &'a str) -> (Option<&'static str>, &'a str)
         ("06" | "07", "entryMask") => (Some("core/app/CE/Graph/Cost.hs"), name),
         ("12", "classes") => (Some("cli/src/erase/model.rs"), "CLASS_NAMES.len"),
         ("12", "reason codes") => (Some("cli/src/erase/model.rs"), "REASON_NAMES.len"),
+        // every family's `schema` chip is its own report's SCHEMA_ID;
+        // the name is shared across the tree, so the file decides
+        ("01", "schema") => (Some("cli/src/dedup/mod.rs"), "SCHEMA_ID"),
+        ("02", "schema") => (Some("cli/src/dedup/t3/mod.rs"), "SCHEMA_ID"),
+        ("07", "schema") => (Some("cli/src/join/mod.rs"), "SCHEMA_ID"),
+        ("10", "schema") => (Some("cli/src/trend/report.rs"), "SCHEMA_ID"),
         _ => (None, name),
     }
 }

@@ -191,6 +191,7 @@ fn apply_refuses_a_target_below_a_gitlink() {
         path: "suite/stray.md".into(),
         span: None,
         provenance: String::new(),
+        sites: 0,
         hash: codeeraser::dedup::tokens::fnv1a(&bytes),
     });
     let err = erase::apply_plan(&sup, None, &core, &plan).expect_err("refuses");

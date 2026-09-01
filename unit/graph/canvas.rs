@@ -32,7 +32,7 @@ fn fixture() -> (GraphWire, Report) {
         dead: vec![crate::graph::deadcode::DeadRow {
             path: "b.rs".into(),
             verdict: "unref_private",
-            why: "no kept in-edge and no entry flag".into(),
+            why_code: 0,
             conf: Some(2),
         }],
         reported: vec![],
@@ -70,10 +70,20 @@ fn sections_collapse_packages_drop_and_cycles_count() {
     // a live file carries no trust column either: absence is null,
     // never a fabricated 0, which on this scale means UNVOUCHED
     assert_eq!(doc["files"][0]["conf"], Value::Null);
-    assert_eq!(doc["files"][1]["verdict"], "unref_private");
-    assert_eq!(doc["files"][1]["why"], "no kept in-edge and no entry flag");
-    assert_eq!(doc["files"][1]["conf"], 2);
-    assert_eq!(doc["files"][1]["pos"], json!([2, 0, 4, 2, 1]));
+    // the dead row's four verdict columns as one object — 0.4.0 (O23)
+    // added `whyCode` beside the English sentence so a face can render
+    // the reason in its own language; a live row has neither
+    let dead = &doc["files"][1];
+    let verdict_columns = |row: &Value| json!({"verdict": row["verdict"], "why": row["why"], "whyCode": row["whyCode"], "conf": row["conf"]});
+    assert_eq!(
+        verdict_columns(dead),
+        json!({"verdict": "unref_private", "why": "no kept in-edge and no entry flag", "whyCode": 0, "conf": 2})
+    );
+    assert_eq!(
+        verdict_columns(&doc["files"][0]),
+        json!({"verdict": null, "why": null, "whyCode": null, "conf": null})
+    );
+    assert_eq!(dead["pos"], json!([2, 0, 4, 2, 1]));
     assert_eq!(doc["unresolvedSites"], 7);
     assert_eq!(doc["degraded"], Value::Null);
     assert_eq!(doc["schema"], SCHEMA_ID);

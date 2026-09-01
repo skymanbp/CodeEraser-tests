@@ -37,7 +37,7 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
     assert_eq!(r.dead.len(), 1);
     let d = &r.dead[0];
     assert_eq!(
-        (d.path.as_str(), d.verdict, d.why.as_str(), d.conf),
+        (d.path.as_str(), d.verdict, d.why(), d.conf),
         (
             "a.rs",
             "unref_private",
@@ -76,4 +76,28 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
             "the absent key is refused by name: {text}"
         );
     }
+}
+
+/// O23 (plan v2.25): the liveness reason is a CODE and every code has
+/// both words — the English the machine faces print and the Chinese
+/// the console prints under --lang zh. A row missing either half would
+/// ship one language blank, which is the leak this table exists to end.
+#[test]
+fn every_liveness_reason_has_both_words() {
+    for (i, (en, zh)) in super::WHY_CODES.iter().enumerate() {
+        assert!(en.is_ascii() && !en.is_empty(), "code {i} en half: {en:?}");
+        assert!(
+            !zh.is_ascii() && !zh.is_empty(),
+            "code {i} zh half is not Chinese: {zh:?}"
+        );
+    }
+    let row = super::DeadRow {
+        path: "a.rs".into(),
+        verdict: "unreach_private",
+        why_code: 1,
+        conf: None,
+    };
+    assert_eq!(row.why(), super::WHY_CODES[1].0);
+    // the default language is English: the console word IS the machine word
+    assert_eq!(row.why_line(), row.why());
 }

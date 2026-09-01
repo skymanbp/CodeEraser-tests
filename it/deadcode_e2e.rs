@@ -182,7 +182,7 @@ fn the_report_document_carries_the_advisory_only_when_asked() {
         "the orphan dies beside the advisory"
     );
     let asked = codeeraser::report::deadcode_json(&report);
-    assert_eq!(asked["schema"], "ce.deadcode-report/0.3.0");
+    assert_eq!(asked["schema"], "ce.deadcode-report/0.4.0");
     assert_eq!(
         (&asked["unmentioned_dropped"], &asked["unmentioned_cut"]),
         (&serde_json::json!(false), &serde_json::json!(false))
@@ -205,7 +205,7 @@ fn the_report_document_carries_the_advisory_only_when_asked() {
     let quiet = codeeraser::report::deadcode_json(
         &deadcode::judge_report(&dir, &core, &w).expect("judged"),
     );
-    assert_eq!(quiet["schema"], "ce.deadcode-report/0.3.0");
+    assert_eq!(quiet["schema"], "ce.deadcode-report/0.4.0");
     assert!(
         ["unmentioned", "unmentioned_dropped", "unmentioned_cut"]
             .iter()
