@@ -6,7 +6,8 @@
 
 use crate::common::repo_root;
 use crate::docs_consts_parts::{
-    Def, defs_in, first_number, haskell_line, normalize, rust_line, value_for,
+    Def, default_impls_in, defs_in, first_number, haskell_line, normalize, numbers, rust_line,
+    value_for,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -97,12 +98,47 @@ fn parse_page(text: &str, label: &str) -> Families {
     families
 }
 
+/// Chips the gate cannot bind, each for a reason that is a PROPERTY
+/// of the chip and not of the parser (v2.24 emptied the rest — see
+/// `label_binding`). Three kinds and nothing else:
+///
+/// - prose or external facts with no source constant at all: `kgram`,
+///   `window`, `guarantee t`, `near-miss band`, `schema`, `scale`,
+///   `legs cross at`, `tsconfig extends`, `precision gate`, `knob
+///   codes`, `row + knob cap`, `full-scale grid`, `zone_tiers`, `FPR
+///   gate`, `feed schema`, `wire`, and `since proto` — the erase
+///   family's wire BIRTH version, owned by VERSIONING.md's 2.16.0
+///   entry rather than by any binding;
+/// - ratio chips naming a pair of constants through a slash rather
+///   than a value: `rewriteNum/Den`, `tolNum/tolDen`;
+/// - values that are not literals: `destFloor` is derived (`go 1`),
+///   and `minPoints` / `declineFloorMicro` live as rows of
+///   `CE.Trend.Cost.knobTable`, not as named bindings.
 fn allowlist() -> BTreeSet<&'static str> {
-    // "since proto": the erase family's wire BIRTH version — owned by
-    // VERSIONING.md's 2.16.0 entry, not by any source binding
-    "kgram\nwindow\nguarantee t\nnear-miss band\nschema\nscale\nsizeHard H\n[softMin, softMax]\nsizeCeil fallback\nlegs cross at\ntsconfig extends\nprecision gate\nrewriteNum/Den\ntolNum/tolDen\nseamSoft S\nseamHard H\nseamPMax\nknob codes\ndestFloor\nrow + knob cap\nfull-scale grid\ndeclineFloorMicro\nfile_lines_warn S\nfile_lines_fail H\nzone_tiers\nFPR gate\nfeed schema\nwire\nminPoints\nsince proto"
+    "kgram\nwindow\nguarantee t\nnear-miss band\nschema\nscale\nlegs cross at\ntsconfig extends\nprecision gate\nrewriteNum/Den\ntolNum/tolDen\nknob codes\ndestFloor\nrow + knob cap\nfull-scale grid\ndeclineFloorMicro\nzone_tiers\nFPR gate\nfeed schema\nwire\nminPoints\nsince proto"
         .lines()
         .collect()
+}
+
+/// Chip label → the source constant(s) it names. A chip's label is a
+/// DISPLAY name and a constant's is a source name; the gate assumed
+/// they were one vocabulary, so every chip whose label adds the role
+/// letter the docs call it by (`sizeHard H`) resolved to nothing and
+/// was allowlisted to keep the gate green — leaving the hard line
+/// printed on four surfaces with no executor at all, the same
+/// lying-generator class the v1.4.1 audit chased. Absent = the label
+/// IS the binding, which is the ordinary case.
+fn label_binding(name: &str) -> Vec<&str> {
+    match name {
+        "sizeHard H" => vec!["sizeHard"],
+        "seamHard H" => vec!["seamHard"],
+        "seamSoft S" => vec!["seamSoft"],
+        "sizeCeil fallback" => vec!["sizeCeil"],
+        "[softMin, softMax]" => vec!["softMin", "softMax"],
+        "file_lines_warn S" => vec!["Thresholds::file_lines_warn"],
+        "file_lines_fail H" => vec!["Thresholds::file_lines_fail"],
+        _ => vec![name],
+    }
 }
 
 /// Collision routing: (owning file, source binding) for the chip
@@ -130,43 +166,53 @@ fn defs_for<'a>(defs: &'a [Def], family: &str, name: &str) -> Vec<&'a Def> {
 fn assert_sources(root: &Path, families: &Families) {
     let mut defs = defs_in(root, "cli/src", "rs", rust_line);
     defs.extend(defs_in(root, "core/app", "hs", haskell_line));
+    defs.extend(default_impls_in(root, "cli/src"));
     let allow = allowlist();
     for (family, chips) in families {
         for chip in chips {
             if allow.contains(chip.name.as_str()) {
                 continue;
             }
-            let matches = defs_for(&defs, family, &chip.name);
-            assert_eq!(
-                matches.len(),
-                1,
-                "family {family} chip {}: expected exactly one source constant, found {}",
+            let wanted = label_binding(&chip.name);
+            let documented = numbers(&chip.value);
+            assert!(
+                documented.len() >= wanted.len(),
+                "family {family} chip {}: names {} constants but shows {} numbers ({})",
                 chip.name,
-                matches.len()
-            );
-            let mut seen = BTreeSet::new();
-            let source = value_for(matches[0], &defs, &mut seen).unwrap_or_else(|| {
-                panic!(
-                    "family {family} chip {}: source has no numeric value ({})",
-                    chip.name, matches[0].value
-                )
-            });
-            let documented = first_number(&chip.value).unwrap_or_else(|| {
-                panic!(
-                    "family {family} chip {}: value has no leading number ({})",
-                    chip.name, chip.value
-                )
-            });
-            assert_eq!(
-                normalize(source),
-                normalize(documented),
-                "family {family} chip {}: source {} != documented {}",
-                chip.name,
-                matches[0].value,
+                wanted.len(),
+                documented.len(),
                 chip.value
             );
+            for (want, shown) in wanted.iter().zip(&documented) {
+                assert_source(&defs, family, &chip.name, want, shown);
+            }
         }
     }
+}
+
+/// One (chip half → source constant) binding: exactly one definition,
+/// a numeric reading of it, and the number the page shows.
+fn assert_source(defs: &[Def], family: &str, chip: &str, want: &str, shown: &str) {
+    let matches = defs_for(defs, family, want);
+    assert_eq!(
+        matches.len(),
+        1,
+        "family {family} chip {chip}: expected exactly one source constant for {want}, found {}",
+        matches.len()
+    );
+    let mut seen = BTreeSet::new();
+    let source = value_for(matches[0], defs, &mut seen).unwrap_or_else(|| {
+        panic!(
+            "family {family} chip {chip}: {want} has no numeric value ({})",
+            matches[0].value
+        )
+    });
+    assert_eq!(
+        normalize(source),
+        normalize(shown.to_string()),
+        "family {family} chip {chip}: source {} ({want}) != documented {shown}",
+        matches[0].value
+    );
 }
 
 /// K46: the producer's cut of the `unmentioned` table and the core's

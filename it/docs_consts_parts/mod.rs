@@ -95,19 +95,81 @@ pub fn normalize(mut value: String) -> String {
     value
 }
 
+/// Every numeric run in a value, normalized. A chip whose label names
+/// TWO constants (`[softMin, softMax]`) must be checked against both
+/// halves, and reading only the first is how such a chip looked
+/// unbindable rather than merely two-valued (v2.24).
+pub fn numbers(value: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = value;
+    while let Some(start) = rest.find(|c: char| c.is_ascii_digit()) {
+        let tail = &rest[start..];
+        let end = tail
+            .char_indices()
+            .take_while(|(_, c)| c.is_ascii_digit() || *c == '_' || *c == '.')
+            .map(|(i, c)| i + c.len_utf8())
+            .last()
+            .unwrap_or(1);
+        out.push(normalize(tail[..end].to_string()));
+        rest = &tail[end..];
+    }
+    out
+}
+
 pub fn first_number(value: &str) -> Option<String> {
-    let start = value
-        .char_indices()
-        .find(|(_, c)| c.is_ascii_digit())
-        .map(|(i, _)| i)?;
-    let tail = &value[start..];
-    let end = tail
-        .char_indices()
-        .take_while(|(_, c)| c.is_ascii_digit() || *c == '_' || *c == '.')
-        .map(|(i, c)| i + c.len_utf8())
-        .last()
-        .unwrap_or(1);
-    Some(normalize(tail[..end].to_string()))
+    numbers(value).into_iter().next()
+}
+
+/// Struct-field defaults as `Type::field` definitions. The authority
+/// for every `[thresholds]` key is `impl Default for Thresholds`, a
+/// shape the `const` grammar above cannot see at all — which is why
+/// the ce.toml key chips (`file_lines_fail H` and its siblings) sat
+/// on the allowlist with NO executor, printing 750 on four surfaces
+/// that nothing checked. Qualifying the name by its impl target keeps
+/// these out of the way of the const namespace.
+pub fn default_impls_in(root: &Path, dir: &str) -> Vec<Def> {
+    let mut files = Vec::new();
+    files_with_ext(&root.join(dir), "rs", &mut files);
+    files.sort();
+    let mut out = Vec::new();
+    for file in files {
+        let text = std::fs::read_to_string(&file).expect("read source file");
+        let (mut ty, mut depth) = (None, 0i32);
+        for line in text.lines() {
+            if let Some(rest) = line.trim_start().strip_prefix("impl Default for ") {
+                ty = rest.split_whitespace().next().map(str::to_string);
+                depth = 0;
+            }
+            if ty.is_none() {
+                continue;
+            }
+            depth += line.matches('{').count() as i32 - line.matches('}').count() as i32;
+            if let (Some(t), Some((name, value))) = (&ty, field_line(line)) {
+                out.push(Def {
+                    file: file.clone(),
+                    name: format!("{t}::{name}"),
+                    value,
+                });
+            }
+            if depth <= 0 {
+                ty = None;
+            }
+        }
+    }
+    out
+}
+
+/// One `field: value,` line of a struct literal — name and value only
+/// where the name is an identifier, so `Self {` and the `fn default`
+/// header contribute nothing.
+fn field_line(line: &str) -> Option<(String, String)> {
+    let (name, rest) = line.trim().split_once(':')?;
+    let name = name.trim();
+    if name.is_empty() || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
+        return None;
+    }
+    let value = rest.trim().trim_end_matches(',').trim();
+    (!value.is_empty()).then(|| (name.to_string(), value.to_string()))
 }
 
 /// The numeric value of a definition, following one alias hop per
