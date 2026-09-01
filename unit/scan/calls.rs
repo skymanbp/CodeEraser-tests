@@ -134,6 +134,17 @@ const SCOPE_CASES: &[ScopeCase] = &[
          module body holds no members, so bare names still resolve there",
     ),
     (
+        Lang::Rust,
+        "fn symlink(s: u8) { use std::os::unix::fs::symlink; symlink(s); }",
+        "fn walk(n: u8) { use std::fs::read; walk(n) }",
+        &[("walk", "walk")],
+        "an import written inside a body is the innermost binding of \
+         that name, so the bare call is the imported function — the \
+         crosscheck corpus held this exact shape and it was the only \
+         unit in four corpora the increment moved — while an import of \
+         some OTHER name shadows nothing and the recursion still counts",
+    ),
+    (
         Lang::Python,
         "class A:\n    def run(self):\n        self.step()\nclass B:\n    def step(self):\n        self.run()\n",
         "from utils import helper\nclass A:\n    def helper(self):\n        top()\ndef top():\n    helper()\n",

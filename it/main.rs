@@ -24,6 +24,7 @@ mod churn;
 mod cli_bare;
 mod cli_table;
 mod coc_haskell;
+mod coc_recursion;
 mod coldstart_state;
 mod common;
 mod concurrent_writers;
