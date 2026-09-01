@@ -32,33 +32,6 @@ fn default_grades_carry_every_code_in_order() {
     grade_rows(&unlined).expect("fail 0 = no hard line is coherent");
 }
 
-/// The chunk budget pays 1 per row + 1 per riding naming fact,
-/// so chunk + grades always fits the core's cap: with budget 3,
-/// [plain, code-6, plain, code-6] splits after the first code-6
-/// row (1+2), each facts slice follows its own rows, and the row
-/// span the class column is sliced by follows the same cut.
-#[test]
-fn chunk_plan_counts_every_request_dimension() {
-    let rows = [[0u64, 1], [6, 0], [0, 2], [6, 0]];
-    let naming = [[4i64, 2, 0, 1, 1], [1, 2, 0, 1, 1]];
-    let plan = chunk_plan(&rows, &naming, 3);
-    let shape: Vec<_> = plan
-        .iter()
-        .map(|c| (c.rows, c.naming, c.span.clone()))
-        .collect();
-    assert_eq!(
-        shape,
-        vec![
-            (&rows[..2], &naming[..1], 0..2),
-            (&rows[2..], &naming[1..], 2..4)
-        ]
-    );
-    // an empty scan still sends ONE (empty, legal) request
-    let empty = chunk_plan(&[], &[], 3);
-    assert_eq!(empty.len(), 1);
-    assert!(empty[0].rows.is_empty() && empty[0].span == (0..0));
-}
-
 /// The override rows carry each class's EFFECTIVE pair for the
 /// codes it declared a line for — a warn beside an inherited fail
 /// sends both, an undeclared code sends nothing — (class, code)

@@ -11,6 +11,7 @@
 //! (Ratchet.hs, by design) — the coverage leg here is what closes
 //! that door for core files.
 
+use crate::common;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -62,7 +63,7 @@ fn ratchet_ceilings_dominate_the_retired_awk_gate_per_file() {
         "vacuous universe: only {} .hs files found",
         files.len()
     );
-    let current: HashMap<u64, u64> = codeeraser::score::continuous_rows(root)
+    let current: HashMap<u64, u64> = codeeraser::score::continuous_rows(root, &common::core_bin())
         .expect("continuous assembly")
         .into_iter()
         .filter(|r| r[1] == 0)

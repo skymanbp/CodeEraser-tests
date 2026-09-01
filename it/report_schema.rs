@@ -31,6 +31,7 @@ fn sample() -> Vec<FileMetrics> {
             name_ok: false,
             naming: [0, 1, 1, 0, 0],
         }],
+        calls: Vec::new(),
     }]
 }
 

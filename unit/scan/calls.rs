@@ -90,22 +90,6 @@ const CASES: &[Case] = &[
         "self reaches a sibling method",
     ),
     (
-        Lang::Python,
-        "class A:\n    def run(self):\n        self.step()\nclass B:\n    def step(self):\n        self.run()\n",
-        &[],
-        "a sibling CLASS is not the caller's container: each member \
-         comes from elsewhere, and a file-wide lookup minted a FALSE \
-         2-cycle out of the two spellings",
-    ),
-    (
-        Lang::Python,
-        "from utils import helper\nclass A:\n    def helper(self):\n        top()\ndef top():\n    helper()\n",
-        &[("helper", "top")],
-        "a bare name reaches only what the call site can see: A.helper \
-         sees the module-level top, while top's helper() is the import \
-         and can never be the class method",
-    ),
-    (
         Lang::Go,
         "package p\nfunc (t *T) g() { t.g() }\nfunc h() { g() }\n",
         &[("(*T) g", "(*T) g")],
@@ -126,15 +110,71 @@ const CASES: &[Case] = &[
     ),
 ];
 
+/// One rule, two halves per row: the shape it must REFUSE, and the
+/// neighbouring shape it must still resolve. The pairing is the
+/// claim — a negative leg on its own cannot show that a rule is not
+/// simply wider than the code it was written against.
+type ScopeCase = (
+    Lang,
+    &'static str,
+    &'static str,
+    &'static [(&'static str, &'static str)],
+    &'static str,
+);
+
+const SCOPE_CASES: &[ScopeCase] = &[
+    (
+        Lang::Rust,
+        "struct L; impl Drop for L { fn drop(&mut self) { drop(self.x.take()); } }",
+        "mod m { fn a() { b() } fn b() { a() } }",
+        &[("a", "b"), ("b", "a")],
+        "a bare name never reaches a method: inside `fn drop` the bare \
+         `drop` is the prelude's free function, and this repository was \
+         measured charging itself a recursion point for it — while a \
+         module body holds no members, so bare names still resolve there",
+    ),
+    (
+        Lang::Python,
+        "class A:\n    def run(self):\n        self.step()\nclass B:\n    def step(self):\n        self.run()\n",
+        "from utils import helper\nclass A:\n    def helper(self):\n        top()\ndef top():\n    helper()\n",
+        &[("helper", "top")],
+        "a sibling CLASS is not the caller's container — a file-wide \
+         lookup minted a FALSE 2-cycle out of those two spellings — \
+         while a bare name still reaches what the call site CAN see: \
+         A.helper sees module-level top, and top's helper() is the \
+         import, never the class method",
+    ),
+];
+
+fn named(want: &[(&str, &str)]) -> Vec<(String, String)> {
+    want.iter()
+        .map(|(a, b)| (a.to_string(), b.to_string()))
+        .collect()
+}
+
 #[test]
 fn every_case_mints_exactly_the_arcs_it_proves() {
     for (lang, src, want, why) in CASES {
-        let got = arcs(*lang, src);
-        let want: Vec<_> = want
-            .iter()
-            .map(|(a, b)| (a.to_string(), b.to_string()))
-            .collect();
-        assert_eq!(got, want, "{why}\n--- source ---\n{src}");
+        assert_eq!(
+            arcs(*lang, src),
+            named(want),
+            "{why}\n--- source ---\n{src}"
+        );
+    }
+}
+
+#[test]
+fn a_callee_is_reached_only_where_the_call_site_can_see_it() {
+    for (lang, refused, resolved, want, why) in SCOPE_CASES {
+        assert!(
+            arcs(*lang, refused).is_empty(),
+            "{why}\n--- source ---\n{refused}"
+        );
+        assert_eq!(
+            arcs(*lang, resolved),
+            named(want),
+            "the rule is wider than it should be: {why}\n--- source ---\n{resolved}"
+        );
     }
 }
 
