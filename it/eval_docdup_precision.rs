@@ -13,7 +13,7 @@
 //! Regenerate — the `--ignored` generator half retired in 0c7c936
 //! (M7.5a); revive it with its coeval support (EVAL-SET.md「再生成」):
 //!   git show 0c7c936^:cli/tests/eval_docdup_precision.rs > cli/tests/eval_docdup_precision.rs && git archive 0c7c936^ cli/tests/eval_support | tar -x
-//!   cargo test --release --test eval_docdup_precision -- --ignored --nocapture   # per corpus; corpora under .ce-eval/corpora; CE_CORE_BIN
+//!   cargo test --release --test it -- --ignored eval_docdup_precision:: --nocapture   # per corpus; corpora under .ce-eval/corpora; CE_CORE_BIN
 //!   rm -rf cli/tests/eval_docdup_precision.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 #[path = "eval_docdup_precision_parts/mod.rs"]
@@ -87,10 +87,10 @@ fn precision_contract_and_refusals() {
     );
 }
 
-/// F12 (DEDUP-CALIBRATION.md:107): the requests corpus's six pure
-/// docstring misses are now split by mechanism — the models.py
-/// __bool__/__nonzero__ family is REPORTED by the docdup judge, and
-/// api.py's post/put/patch trio sits in the below_floor ledger by
+/// F12 (DEDUP-CALIBRATION.md:107 `post/put/patch`): the requests
+/// corpus's six pure docstring misses are now split by mechanism —
+/// the models.py __bool__/__nonzero__ family is REPORTED by the
+/// docdup judge, and api.py's trio sits in the below_floor ledger by
 /// name (the skeleton strip leaves them under 50 words).
 #[test]
 fn f12_calibration_misses_resolved() {

@@ -66,10 +66,21 @@ fn render_dashboard(d: &Value, zh: bool) -> String {
             "Series rows come from release-build replay; frozen points retain their ledger source. Full freeze notes remain in bench.json.",
         )
     };
+    // the heading names the version MEASURED and the caption names
+    // the release this build is when the two differ (docs/BENCH.md):
+    // these two pages are the most detailed public latency surface,
+    // and they were the two of seven surfaces that said neither
+    let unmeasured = unmeasured_note(d, zh);
+    let caption = if unmeasured.is_empty() {
+        String::new()
+    } else {
+        format!("<p class=\"cap\">{}</p>\n", unmeasured.trim())
+    };
     format!(
-        "<h2>{latency}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{version}</th><th>{metric}</th><th>p50 ms</th><th>p95 ms</th><th>n</th><th>{host}</th><th>{measured}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n<h2>{frozen}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{metric}</th><th>{value}</th><th>{source}</th></tr></thead><tbody>\n{}</tbody></table></div><p class=\"cap\">{note}</p></div>\n",
+        "<h2>{latency} · v{measured_version}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{version}</th><th>{metric}</th><th>p50 ms</th><th>p95 ms</th><th>n</th><th>{host}</th><th>{measured}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n{caption}<h2>{frozen}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{metric}</th><th>{value}</th><th>{source}</th></tr></thead><tbody>\n{}</tbody></table></div><p class=\"cap\">{note}</p></div>\n",
         dashboard_rows(d),
-        frozen_rows(d)
+        frozen_rows(d),
+        measured_version = latest(d),
     )
 }
 

@@ -12,11 +12,11 @@
 //! such, exactly as the plan anticipated ("recall 报告但不设
 //! 作弊性 100% 门").
 //!
-//! Run (the CI gate — no core, no local data): cargo test --test fpr_fourclass
+//! Run (the CI gate — no core, no local data): cargo test --test it -- fpr_fourclass::
 //! Regenerate — the `--ignored` replay half retired in 0c7c936
 //! (M7.5a); revive it with its coeval support (EVAL-SET.md「再生成」):
 //!   git show 0c7c936^:cli/tests/fpr_fourclass.rs > cli/tests/fpr_fourclass.rs && git archive 0c7c936^ cli/tests/eval_support | tar -x
-//!   CE_CORE_BIN=$(cd core && cabal list-bin ce-core) cargo test --test fpr_fourclass -- --ignored --nocapture
+//!   CE_CORE_BIN=$(cd core && cabal list-bin ce-core) cargo test --test it -- --ignored fpr_fourclass:: --nocapture
 //!   rm -rf cli/tests/fpr_fourclass.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 use crate::eval_support::{eval_doc, load};

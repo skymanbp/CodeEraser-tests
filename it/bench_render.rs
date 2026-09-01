@@ -6,7 +6,8 @@
 //! pages own only the block between their bench markers.
 
 use crate::bench_support::render::{
-    doc, latest, measured, names_the_release, rows_with, s, series_note, unmeasured_note,
+    NoRow, VERSION_BEARING_SURFACES, doc, latest, measured, names_the_release, no_row_sentence,
+    rows_with, s, series_note, unmeasured_note,
 };
 use crate::common;
 use serde_json::Value;
@@ -47,9 +48,11 @@ const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > replaying the whole series to add a duplicate measurement would publish that\n\
          > drift under a new version number. So every surface printing these numbers\n\
          > beside a version names the version MEASURED — never \"the latest\" — and says\n\
-         > so when the shipped release is a different one. The backfill driver applies\n\
-         > this rule itself and names every tag it turns away, so the table and the\n\
-         > rule cannot drift apart again.\n";
+         > so when the shipped release is a different one. Both row writers apply the\n\
+         > rule: the backfill names every tag it turns away, and a checkout that\n\
+         > brings nothing new is refused rather than measured a second time. So the\n\
+         > table cannot gain a row the rule forbids, and a release that earns one\n\
+         > says which of the two reasons it has none yet.\n";
 
 /// The series table's own heading, split from the prose above it so the
 /// derived sentence about an unmeasured release can sit between them.
@@ -162,6 +165,55 @@ fn render_site(d: &Value, zh: bool) -> String {
 /// One page's bench block through the shared splicer (facts::block).
 fn gate_site(rel: &str, zh: bool) {
     crate::facts::block::assert_current(rel, "bench", &render_site(&doc(), zh));
+}
+
+/// Every surface that prints these numbers beside a version names the
+/// release this build IS — asked of the COMMITTED files, not of the
+/// generators, because generator coverage was five of the seven for a
+/// whole release: the two dashboard pages, the most detailed public
+/// latency surface, showed 1.4.0 as the newest row while the site
+/// shipped 1.4.1 and said nothing about the gap.
+///
+/// It reads what the blessing tests WRITE, and those run beside it, so
+/// under `CE_BLESS=1` it would race them and fail on a file that is
+/// about to become correct. A bless is a local write mode — CI never
+/// blesses (`facts::blessing` refuses it there) — so this asks its
+/// question on the plain run that follows, where nothing is writing.
+#[test]
+fn every_version_bearing_surface_names_the_release() {
+    if crate::facts::blessing() {
+        return;
+    }
+    let release = env!("CARGO_PKG_VERSION");
+    for rel in VERSION_BEARING_SURFACES {
+        let text = std::fs::read_to_string(common::repo_root().join(rel)).expect(rel);
+        assert!(
+            text.contains(&format!("v{release}")),
+            "{rel} prints latency numbers beside a version and never names \
+             v{release}, the release this build is"
+        );
+    }
+}
+
+/// None of the derived sentences reads like a broken build. Each is a
+/// line-continued literal, and a lost `\` leaves the source
+/// indentation inside the string — two of these four shipped that way
+/// while every byte gate stayed green, because each of the seven
+/// surfaces is compared with the one generator carrying the same gap.
+#[test]
+fn no_generated_sentence_carries_a_lost_continuation() {
+    let mut said = vec![series_note(&doc())];
+    for why in [NoRow::NothingNew, NoRow::ReplayOwed] {
+        for zh in [false, true] {
+            said.push(no_row_sentence(&why, "9.9.9", zh));
+        }
+    }
+    for line in &said {
+        assert!(
+            !line.contains("  "),
+            "a run of spaces inside a sentence this build publishes: {line:?}"
+        );
+    }
 }
 
 #[test]

@@ -6,30 +6,10 @@
 //!
 //!   cargo test --release --test it -- --ignored bench_backfill
 
-use crate::bench::{git_out, measure_tree};
+use crate::bench::measure_tree;
 use crate::bench_support as bs;
 use std::path::PathBuf;
 use std::process::Command;
-
-/// BENCH.md's joining rule, executable (docs/BENCH.md:31-36): a release
-/// joins only when there is something new to measure. One shipping the
-/// same `cli/src` and `core/app` as its predecessor gets no row —
-/// replaying the whole series to add a duplicate measurement publishes
-/// machine drift under a new version number, which is the one thing
-/// that page's own header warns readers against. The pathspecs are
-/// top-level (`:/`) because this harness runs from `cli/`.
-fn brings_something_new(prev: &str, tag: &str) -> bool {
-    !git_out(&[
-        "diff",
-        "--name-only",
-        prev,
-        tag,
-        "--",
-        ":/cli/src",
-        ":/core/app",
-    ])
-    .is_empty()
-}
 
 /// Every tag that earns a row, oldest first, plus the ones the rule
 /// turns away. v0.0.1-m0 is structurally absent (no product exists
@@ -37,7 +17,7 @@ fn brings_something_new(prev: &str, tag: &str) -> bool {
 /// so asking for a subset can never smuggle in a tag the whole-series
 /// run would have skipped.
 fn series_tags(only: Option<&str>) -> (Vec<String>, Vec<String>) {
-    let all: Vec<String> = git_out(&["tag", "--sort=creatordate"])
+    let all: Vec<String> = bs::git_out(&["tag", "--sort=creatordate"])
         .lines()
         .filter(|t| *t != "v0.0.1-m0")
         .map(str::to_string)
@@ -46,7 +26,7 @@ fn series_tags(only: Option<&str>) -> (Vec<String>, Vec<String>) {
     for (i, tag) in all.iter().enumerate() {
         // the oldest tag has no predecessor: all of it is new
         match i.checked_sub(1) {
-            Some(p) if !brings_something_new(&all[p], tag) => turned_away.push(tag.clone()),
+            Some(p) if !bs::brings_something_new(&all[p], tag) => turned_away.push(tag.clone()),
             _ => joins.push(tag.clone()),
         }
     }
@@ -61,9 +41,7 @@ fn series_tags(only: Option<&str>) -> (Vec<String>, Vec<String>) {
 #[test]
 #[ignore = "bench backfill: builds every release tag; slow (an hour-class run)"]
 fn bench_backfill() {
-    if cfg!(debug_assertions) {
-        panic!("bench numbers are release-only (PERF-BUDGET.md:60-62)");
-    }
+    bs::release_only();
     // CE_BENCH_TAGS (comma list) re-runs a subset — an hour-class run
     // must not be the only way to replace one contaminated tag.
     let only = std::env::var("CE_BENCH_TAGS").ok();
@@ -117,7 +95,7 @@ fn backfill_one(tag: &str) -> anyhow::Result<()> {
     } else {
         "cli/target/release/ce"
     });
-    let commit = git_out(&["rev-parse", &format!("{tag}^{{commit}}")]);
+    let commit = bs::git_out(&["rev-parse", &format!("{tag}^{{commit}}")]);
     let rows = measure_tree(&wt, &ce, &core, &commit, false, Some(tag))?;
     bs::merge_rows(rows)?;
     let _ = Command::new("git")

@@ -18,13 +18,38 @@ pub fn s<'a>(v: &'a Value, key: &str) -> &'a str {
     v[key].as_str().unwrap_or("")
 }
 
-/// The newest series version present (rows are sorted by version).
-pub fn latest(d: &Value) -> &str {
+/// One field of the newest series row. Rows are sorted by version, so
+/// the last one is the newest; two readers asked it two ways until the
+/// dedup gate said they were one.
+fn newest<'a>(d: &'a Value, key: &str) -> &'a str {
     d["rows"]
         .as_array()
         .and_then(|rows| rows.last())
-        .map(|row| s(row, "version"))
+        .map(|row| s(row, key))
         .unwrap_or("")
+}
+
+/// The newest series version present.
+pub fn latest(d: &Value) -> &str {
+    newest(d, "version")
+}
+
+/// The commit the newest series row was measured at — the tree any
+/// candidate row must differ from to earn one of its own.
+pub fn newest_row_commit(d: &Value) -> &str {
+    newest(d, "commit")
+}
+
+/// WHY the series holds no row for the release this build IS. There are
+/// two reasons and a reader must be able to tell them apart.
+pub enum NoRow {
+    /// The rule turned this release away: it ships the same measured
+    /// code as the newest row, and a second measurement of the same
+    /// program is machine drift wearing a version number.
+    NothingNew,
+    /// It earns a row and does not have one yet — the whole series is
+    /// replayed in one sitting, and that happens after the tag.
+    ReplayOwed,
 }
 
 /// The release this build IS, when the series holds no row for it.
@@ -37,9 +62,25 @@ pub fn latest(d: &Value) -> &str {
 /// deltas a reader would try to read. The heading then quietly went on
 /// naming v1.3.0 as the latest, which it no longer was. Nothing but
 /// this comparison can notice that, so every surface asks it.
-pub fn release_without_a_row(d: &Value) -> Option<&'static str> {
+///
+/// v1.4.1 then shipped in the OTHER case and no surface could say so:
+/// it changed `cli/src`, earned a row, and the replay had not run yet,
+/// so every page printed the sentence written for a release that ships
+/// the same program — which a reader joins to the rule stated three
+/// lines above and reads as "no code changed". The case is asked here,
+/// with the same predicate the two row writers use.
+pub fn release_without_a_row(d: &Value) -> Option<(&'static str, NoRow)> {
     let release = env!("CARGO_PKG_VERSION");
-    (latest(d) != release).then_some(release)
+    if latest(d) == release {
+        return None;
+    }
+    let newest = newest_row_commit(d).to_string();
+    let case = if newest.is_empty() || super::brings_something_new(&newest, "HEAD") {
+        NoRow::ReplayOwed
+    } else {
+        NoRow::NothingNew
+    };
+    Some((release, case))
 }
 
 /// What joins a sentence to whatever else shares its line. English
@@ -56,16 +97,35 @@ pub fn join(zh: bool) -> &'static str {
 /// Empty when the release did join — the sentence must not appear on a
 /// page whose heading already names the current version.
 pub fn unmeasured_note(d: &Value, zh: bool) -> String {
-    match release_without_a_row(d) {
-        None => String::new(),
-        Some(v) => {
-            let sentence = if zh {
-                format!("当前发布 v{v} 没有自己的行。")
-            } else {
-                format!("The current release, v{v}, has no row of its own.")
-            };
-            format!("{}{sentence}", join(zh))
+    let Some((v, why)) = release_without_a_row(d) else {
+        return String::new();
+    };
+    format!("{}{}", join(zh), no_row_sentence(&why, v, zh))
+}
+
+/// The four sentences — two reasons × two languages — apart from the
+/// reading that picks one, so a gate can ask all four at once. They
+/// are line-continued literals, and a lost `\` leaves the source
+/// indentation inside the string; it then reads as a broken build on
+/// the page, in both READMEs and on four site pages, where no byte
+/// gate can see it because every one of those compares a file with
+/// this generator (`bench_render::no_generated_sentence_…`).
+pub fn no_row_sentence(why: &NoRow, v: &str, zh: bool) -> String {
+    match (why, zh) {
+        (NoRow::NothingNew, true) => {
+            format!("当前发布 v{v} 与最新一行是同一份被测代码，故没有自己的行。")
         }
+        (NoRow::NothingNew, false) => format!(
+            "The current release, v{v}, ships the same measured code as \
+             the newest row and gets none of its own."
+        ),
+        (NoRow::ReplayOwed, true) => {
+            format!("当前发布 v{v} 该有自己的行，而全序列重跑在打 tag 之后，尚未落表。")
+        }
+        (NoRow::ReplayOwed, false) => format!(
+            "The current release, v{v}, earns a row and does not have one \
+             yet: the whole series is replayed in one sitting after the tag."
+        ),
     }
 }
 
@@ -83,6 +143,22 @@ pub fn series_note(d: &Value) -> String {
         ),
     }
 }
+
+/// Which surfaces owe the reader that sentence: every one that prints
+/// these numbers beside a version. The list is here rather than at the
+/// call sites because it was five of the seven for a release — the two
+/// dashboard pages, the most detailed public latency surface, printed
+/// 1.4.0 as the newest row while the site shipped 1.4.1 and said
+/// nothing about the gap.
+pub const VERSION_BEARING_SURFACES: [&str; 7] = [
+    "docs/BENCH.md",
+    "README.md",
+    "README.zh.md",
+    "site/index.html",
+    "site/zh/index.html",
+    "site/bench/index.html",
+    "site/zh/bench/index.html",
+];
 
 /// Every surface printing a version beside these numbers must name the
 /// release this build IS — in its heading when that release joined the

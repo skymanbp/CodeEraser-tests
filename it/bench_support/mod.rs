@@ -2,7 +2,7 @@
 //! percentiles, the bench.json row grammar and its merge. The
 //! conventions are inherited, each from a named precedent — sorted
 //! nearest-rank P50/P95 (the retired perf_budget.rs shape), refuse
-//! debug-build numbers outright (PERF-BUDGET.md:60-62), every row
+//! debug-build numbers outright (`release_only`), every row
 //! bound to {version, commit, dirty, host} (attack-review F1), a
 //! failed measurement reported by name and never recorded as a
 //! number (the trend measure() stance).
@@ -17,6 +17,58 @@ use std::process::Command;
 use std::time::Instant;
 
 pub const BENCH_SCHEMA: &str = "ce.bench/0.1.0";
+
+/// A debug measurement is refused, never annotated
+/// (PERF-BUDGET.md:82-84 `NOT admissible`). Both drivers ask here, so
+/// the rule and the citation backing it have one owner.
+pub fn release_only() {
+    if cfg!(debug_assertions) {
+        panic!("bench numbers are release-only — build with --release");
+    }
+}
+
+/// A git command that MUST succeed, run from the cli/ test cwd.
+///
+/// The joining rule below reads "nothing changed" from an empty
+/// stdout, so a git that failed — a missing rev, a shallow clone —
+/// would be indistinguishable from a release that brings nothing new,
+/// and the series would quietly stop growing. It is a named refusal
+/// instead.
+pub fn git_out(args: &[&str]) -> String {
+    let out = Command::new("git").args(args).output().expect("git");
+    assert!(
+        out.status.success(),
+        "git {args:?} failed: {}",
+        String::from_utf8_lossy(&out.stderr).trim()
+    );
+    String::from_utf8_lossy(&out.stdout).trim().to_string()
+}
+
+/// BENCH.md's joining rule, executable
+/// (docs/BENCH.md:31-40 `joins only when`): a release joins the
+/// series only when there is something new to measure. One
+/// shipping the same `cli/src` and `core/app` as the row before it gets
+/// none — replaying the whole series to add a duplicate measurement
+/// publishes machine drift under a new version number, which is the one
+/// thing that page's own header warns readers against.
+///
+/// Both row writers ask it, and so does the renderer: a surface that
+/// says a release has no row must be able to say WHICH of the two
+/// reasons applies, or a reader takes "no row" to mean "no code
+/// changed". The pathspecs are top-level (`:/`) because the harness
+/// runs from `cli/`.
+pub fn brings_something_new(prev: &str, rev: &str) -> bool {
+    !git_out(&[
+        "diff",
+        "--name-only",
+        prev,
+        rev,
+        "--",
+        ":/cli/src",
+        ":/core/app",
+    ])
+    .is_empty()
+}
 
 /// contracts/bench/bench.json relative to the cli/ test cwd.
 pub fn bench_path() -> std::path::PathBuf {

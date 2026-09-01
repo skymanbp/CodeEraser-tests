@@ -2,7 +2,7 @@
 //! `ce scan --json` and `ce dedup --format json` (plan §7.1 / M2
 //! review R10 — any shape change must bump the schema id and
 //! deliberately regenerate with
-//! `CE_BLESS=1 cargo test --test report_schema`).
+//! `CE_BLESS=1 cargo test --test it -- report_schema::`).
 
 use codeeraser::config::Thresholds;
 use codeeraser::scan::metrics::{FileMetrics, FnMetrics};

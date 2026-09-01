@@ -10,7 +10,7 @@
 //! Regenerate — the `--ignored` generator half retired in 0c7c936
 //! (M7.5a); revive it with its coeval support (EVAL-SET.md「再生成」):
 //!   git show 0c7c936^:cli/tests/eval_t3_candidates.rs > cli/tests/eval_t3_candidates.rs && git archive 0c7c936^ cli/tests/eval_support | tar -x
-//!   cargo test --release --test eval_t3_candidates -- --ignored --nocapture   # per corpus: CE_SLICE_REPO + CE_GRAPH_NAME + CE_GRAPH_TIP
+//!   cargo test --release --test it -- --ignored eval_t3_candidates:: --nocapture   # per corpus: CE_SLICE_REPO + CE_GRAPH_NAME + CE_GRAPH_TIP
 //!   rm -rf cli/tests/eval_t3_candidates.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 use crate::eval_support::*;

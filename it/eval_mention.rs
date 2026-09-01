@@ -16,12 +16,19 @@
 //! here) and never in CI. Every index is a scratch database — nothing
 //! is written into a corpus. Run:
 //!   cargo test --release --test it -- eval_mention --ignored --nocapture
+//!
+//! The self leg runs in CI, so booklet 13's self census row — the one
+//! row the page promises is re-taken on the commit that ships it — is
+//! written from that run rather than typed from it (`parts`).
+
+#[path = "eval_mention_parts/mod.rs"]
+mod parts;
 
 use crate::common;
 use crate::eval_support::mention::{Ledger, ledger};
 use crate::mention_universe::{Formula, formula};
 use codeeraser::mention::rates::{census, declarations};
-use serde_json::json;
+use serde_json::{Value, json};
 use std::path::Path;
 
 /// The pinned tips (docs/EVAL-SET-M5-3.md, 语料树钉定): a ledger row
@@ -42,10 +49,12 @@ const RIPGREP_TEST_DIRS: [&str; 4] = [
 
 /// One corpus through the instrument: scratch index, mention pass,
 /// formula pin, census, ledger; the ledger printed as one JSON line
-/// (the booklet's numbers are copied from this output, never typed —
-/// every term of the formula rides, so `listed − Σ terms = U` closes
-/// inside the line).
-fn measure(name: &str, root: &Path) -> (Formula, Ledger) {
+/// (the four external corpora's booklet numbers are copied from this
+/// output, never typed — every term of the formula rides, so
+/// `listed − Σ terms = U` closes inside the line; the self row is not
+/// copied at all, it is written by `parts::check_booklet` from the
+/// census returned here).
+fn measure(name: &str, root: &Path) -> (Formula, Ledger, Value) {
     let scratch = common::tmp(&format!("eval-mention-{name}"));
     let (idx, _db) = codeeraser::dedup::refreshed_index(root, Some(scratch.join("index.db")))
         .expect("scratch index");
@@ -86,19 +95,20 @@ fn measure(name: &str, root: &Path) -> (Formula, Ledger) {
         l.js_domain, 0,
         "{name}: ② the JS arm silenced a domain name"
     );
-    (f, l)
+    (f, l, serde_json::to_value(&rates).expect("census"))
 }
 
 #[test]
 fn the_self_corpus_holds_the_preregistered_zeros() {
     let root = common::repo_root();
-    let (f, l) = measure("self", &root);
+    let (f, l, rates) = measure("self", &root);
     assert!(f.universe() > 500, "the repository itself is the corpus");
     assert!(
         l.pkg_test_dirs.is_empty(),
         "no package-root benches/examples here: {:?}",
         l.pkg_test_dirs
     );
+    parts::check_booklet(&f, &rates);
 }
 
 #[test]
@@ -123,7 +133,7 @@ fn the_external_corpora_hold_the_preregistered_zeros() {
             tip,
             "{name}: not the pinned tip"
         );
-        let (_f, l) = measure(name, &root);
+        let (_f, l, _rates) = measure(name, &root);
         assert_eq!(
             l.test_singular_files, 0,
             "{name}: ③ a `test` (singular) component"

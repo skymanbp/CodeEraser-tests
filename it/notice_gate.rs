@@ -231,7 +231,7 @@ fn notice_text(root: &Path) -> String {
          Copyright 2026 skymanbp\n\
          Licensed under the Apache License, Version 2.0 (see LICENSE).\n\n\
          This distribution bundles the third-party components below.\n\
-         Regenerate with: CE_BLESS=1 cargo test --test notice_gate\n",
+         Regenerate with: CE_BLESS=1 cargo test --test it -- notice_gate::\n",
     );
     let hs = hs_rows(root);
     s += "\n== ce / GUI (Rust crates; cargo metadata over both lockfiles) ==\n\n";

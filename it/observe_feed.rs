@@ -5,7 +5,7 @@
 //! stop audit, precommit — volatile fields normalized (ts_ms,
 //! elapsed_ms, absolute file path); key sets, schema/event tags,
 //! counts, mode, and degraded flags must match byte-for-byte.
-//! Bless flow: `CE_BLESS=1 cargo test --test observe_feed`.
+//! Bless flow: `CE_BLESS=1 cargo test --test it -- observe_feed::`.
 //!
 //! `session_id` is deliberately NOT normalized: the hook envelopes
 //! carry the literal "t", so the golden pins that the id survives the

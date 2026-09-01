@@ -8,8 +8,8 @@
 //!   bench_append   — measure THIS checkout's built binaries
 //!   bench_doc_is_wellformed — CI: the committed doc stays sound
 //! Run in RELEASE; a debug measurement is refused, not annotated
-//! (PERF-BUDGET.md:60-62):
-//!   cargo test --release --test bench -- --ignored --nocapture
+//! (`bench_support::release_only`):
+//!   cargo test --release --test it -- --ignored bench:: --nocapture
 
 use crate::bench_support as bs;
 use crate::common;
@@ -196,24 +196,27 @@ fn hook_envelope(dir: &Path, content: &str) -> String {
     .to_string()
 }
 
-pub fn git_out(args: &[&str]) -> String {
-    let out = Command::new("git").args(args).output().expect("git");
-    String::from_utf8_lossy(&out.stdout).trim().to_string()
-}
-
 /// Measure THIS checkout with its release binaries. Debug builds are
 /// refused outright — a debug number in the series would poison
-/// every comparison it touches.
+/// every comparison it touches, and a checkout that brings nothing new
+/// is refused by name for the same reason the backfill turns a tag
+/// away: a second measurement of the same program is machine drift
+/// wearing a version number.
 #[test]
 #[ignore = "bench: run in release; writes contracts/bench/bench.json"]
 fn bench_append() {
-    if cfg!(debug_assertions) {
-        panic!("bench numbers are release-only (PERF-BUDGET.md:60-62)");
-    }
+    bs::release_only();
     let ce = PathBuf::from(env!("CARGO_BIN_EXE_ce"));
     let core = PathBuf::from(std::env::var("CE_CORE_BIN").expect("CE_CORE_BIN"));
-    let commit = git_out(&["rev-parse", "HEAD"]);
-    let dirty = !git_out(&["status", "--porcelain"]).is_empty();
+    let commit = bs::git_out(&["rev-parse", "HEAD"]);
+    let dirty = !bs::git_out(&["status", "--porcelain"]).is_empty();
+    let newest = bs::render::newest_row_commit(&bs::render::doc()).to_string();
+    assert!(
+        newest.is_empty() || bs::brings_something_new(&newest, "HEAD"),
+        "this checkout ships the same cli/src and core/app as the newest \
+         row ({newest}) — measuring it again would publish machine drift \
+         under a new version number (docs/BENCH.md)"
+    );
     let rows = measure_tree(Path::new(".."), &ce, &core, &commit, dirty, None).expect("measure");
     let n = rows.len();
     bs::merge_rows(rows).expect("merge");

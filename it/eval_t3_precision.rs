@@ -11,7 +11,7 @@
 //! Regenerate — the `--ignored` generator half retired in 0c7c936
 //! (M7.5a); revive it with its coeval support (EVAL-SET.md「再生成」):
 //!   git show 0c7c936^:cli/tests/eval_t3_precision.rs > cli/tests/eval_t3_precision.rs && git archive 0c7c936^ cli/tests/eval_support | tar -x
-//!   cargo test --test eval_t3_precision -- --ignored --nocapture   # all five corpora, one invocation; corpora repos under .ce-eval/corpora/; CE_CORE_BIN; CE_ACCEPT_T3=1 re-blesses a grown wrong ledger
+//!   cargo test --test it -- --ignored eval_t3_precision:: --nocapture   # all five corpora, one invocation; corpora repos under .ce-eval/corpora/; CE_CORE_BIN; CE_ACCEPT_T3=1 re-blesses a grown wrong ledger
 //!   rm -rf cli/tests/eval_t3_precision.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 use crate::eval_support;
