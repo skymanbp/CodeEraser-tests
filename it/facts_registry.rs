@@ -35,9 +35,10 @@ fn every_fact_resolves_and_the_scraped_tier_only_shrinks() {
 
 /// (file, template, Chinese?) — `{id}` placeholders render through
 /// the registry in the site's language; the file must contain the
-/// result. Beside the comments and SVG text nodes: the how pages'
-/// `<title>` / `<meta>` and the stack pages' `alt`, where a comment
-/// would be literal text.
+/// result. Beside the comments and SVG text nodes (the two hand-drawn
+/// diagrams in both languages): the how pages' `<title>` / `<meta>`
+/// and the `alt` text of the stack and architecture pictures, where a
+/// comment would be literal text.
 const LITERALS: &[(&str, &str, bool)] = &[
     (
         "cli/src/score/model.rs",
@@ -98,6 +99,52 @@ const LITERALS: &[(&str, &str, bool)] = &[
     (
         "site/zh/stack/index.html",
         "NDJSON wire 与{count:families#word}个判决族、",
+        true,
+    ),
+    (
+        "site/assets/methodology.svg",
+        "— {count:fail_conditions#word} named conditions",
+        false,
+    ),
+    (
+        "site/assets/methodology.zh.svg",
+        "ce check . --fail-under {gate:floor.main#digits}</text>",
+        true,
+    ),
+    (
+        "site/assets/methodology.zh.svg",
+        "——{count:fail_conditions#word}个具名条件",
+        true,
+    ),
+    (
+        "site/assets/stack.zh.svg",
+        ">proto {ver:proto#v} · SemVer<",
+        true,
+    ),
+    ("site/assets/stack.zh.svg", "GHC {tool:ghc#v}</text>", true),
+    (
+        "site/assets/stack.zh.svg",
+        "地板 {gate:floor.main#digits}</text>",
+        true,
+    ),
+    (
+        "site/index.html",
+        "NDJSON wire of {count:families#word} families to the Haskell",
+        false,
+    ),
+    (
+        "site/zh/index.html",
+        "经一条{count:families#word}个家族的 NDJSON wire",
+        true,
+    ),
+    (
+        "README.md",
+        "NDJSON wire of {count:families#word} families to the Haskell",
+        false,
+    ),
+    (
+        "README.zh.md",
+        "经一条{count:families#word}个家族的 NDJSON wire",
         true,
     ),
 ];

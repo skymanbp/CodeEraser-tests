@@ -10,7 +10,8 @@
 //! And the zh twin speaks one language: archify writes some chrome of
 //! its own that no IR key reaches, so the renderer carries a map for it
 //! (`CHROME` in scripts/diagram_svg.mjs) and the fifth leg reads that
-//! map back out to prove every term in it actually left the file.
+//! map back out to prove every term in it actually left the file —
+//! anywhere in it: two of the terms are aria-labels, not text nodes.
 
 use crate::common::repo_root;
 use crate::facts::{blessing, read};
@@ -163,8 +164,8 @@ fn the_chinese_diagrams_carry_no_chrome_the_renderer_should_have_mapped() {
             let svg = read(&root, &format!("{dir}/{name}.zh.svg"));
             for term in &terms {
                 assert!(
-                    !svg.contains(&format!(">{term}</text>")),
-                    "{dir}/{name}.zh.svg still says {term:?}: the renderer maps it \
+                    !svg.contains(term.as_str()),
+                    "{dir}/{name}.zh.svg still carries {term:?}: the renderer maps it \
                      (scripts/diagram_svg.mjs CHROME.zh) but this file was rendered \
                      without the map, or by an older one — re-render with \
                      `node scripts/diagram.mjs --write`"

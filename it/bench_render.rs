@@ -120,9 +120,12 @@ fn frozen_value(d: &Value, metric: &str) -> String {
 /// rather than leaving a reader to wonder whether the page is stale.
 fn render_site(d: &Value, zh: bool) -> String {
     let v = latest(d);
+    // `install metric`: the key is a metric's full name, which the sheet
+    // keeps in its own case and gives one column width; the unit carries
+    // its own leading space, so a unitless value ends the cell itself.
     let chip = |label: &str, val: String, unit: &str| {
         format!(
-            "<div class=\"install\"><span class=\"k\">{label}</span><code>{val} {unit}</code></div>\n"
+            "<div class=\"install metric\"><span class=\"k\">{label}</span><code>{val}{unit}</code></div>\n"
         )
     };
     // The corpus belongs in the label. Five of these chips measure this
@@ -130,32 +133,35 @@ fn render_site(d: &Value, zh: bool) -> String {
     // rebuilds per tag, and a chip that omits that reads as a whole-tree
     // figure — the same omission the BENCH header and both READMEs were
     // corrected for, which has to reach every surface quoting the number.
+    // So does the metric's own name where the label does not spell it:
+    // `dedup_warm` is the dashboard's row, and "incremental index" alone
+    // gave a reader nothing to find that row by.
     let (h, note, hook, scan, dedup, fpr, prec) = if zh {
         (
             "实测",
-            "每个数字由回放产生（cli/tests/it/bench.rs），单源 contracts/bench/bench.json——绝不手填。",
+            "每个数字由回放产生（cli/tests/it/bench.rs 与 bench_backfill.rs），单源 contracts/bench/bench.json——绝不手填。",
             "hook 探针 p50（两文件夹具）",
             "全仓扫描 p50",
-            "增量索引 p50 (warm)",
+            "增量索引 p50（暖跑，dedup_warm）",
             "守卫误报（人裁 630 事件）",
             "docdup 判准（冻结黄金集）",
         )
     } else {
         (
             "Measured",
-            "Every number is produced by replay (cli/tests/it/bench.rs) from one source, contracts/bench/bench.json — never hand-filled.",
+            "Every number is produced by replay (cli/tests/it/bench.rs and bench_backfill.rs) from one source, contracts/bench/bench.json — never hand-filled.",
             "hook probe p50 (two-file fixture)",
             "full scan p50",
-            "incremental index p50 (warm)",
+            "incremental index p50 (warm, dedup_warm)",
             "guard false positives (630 arbitrated events)",
             "docdup precision (frozen golden set)",
         )
     };
     format!(
         "<h2>{h} · v{v}</h2>\n<div class=\"installs\">\n{}{}{}{}{}</div>\n<p class=\"cap\">{note}{}</p>\n",
-        chip(hook, latest_p50(d, "hook_probe"), "ms"),
-        chip(scan, latest_p50(d, "scan"), "ms"),
-        chip(dedup, latest_p50(d, "dedup_warm"), "ms"),
+        chip(hook, latest_p50(d, "hook_probe"), " ms"),
+        chip(scan, latest_p50(d, "scan"), " ms"),
+        chip(dedup, latest_p50(d, "dedup_warm"), " ms"),
         chip(fpr, frozen_value(d, "guard_fpr_per500"), ""),
         chip(prec, frozen_value(d, "docdup_d3_precision"), ""),
         unmeasured_note(d, zh),
@@ -202,16 +208,19 @@ fn every_version_bearing_surface_names_the_release() {
 /// surfaces is compared with the one generator carrying the same gap.
 #[test]
 fn no_generated_sentence_carries_a_lost_continuation() {
-    let mut said = vec![series_note(&doc())];
+    let d = doc();
+    let mut said = vec![series_note(&d)];
     for why in [NoRow::NothingNew, NoRow::ReplayOwed] {
         for zh in [false, true] {
             said.push(no_row_sentence(&why, "9.9.9", zh));
         }
     }
+    // the chips too: a unitless value used to end its cell in a space
+    said.extend([render_site(&d, false), render_site(&d, true)]);
     for line in &said {
         assert!(
-            !line.contains("  "),
-            "a run of spaces inside a sentence this build publishes: {line:?}"
+            !line.contains("  ") && !line.contains(" </code>"),
+            "a run of spaces, or a space before a closing tag, in text this build publishes: {line:?}"
         );
     }
 }

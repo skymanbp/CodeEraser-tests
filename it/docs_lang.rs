@@ -54,7 +54,9 @@ const SVGS: &[(&str, Option<&str>)] = &[
         Some("site/assets/judgment.zh.svg"),
     ),
     ("docs/assets/stack.svg", Some("site/assets/stack.svg")),
+    ("docs/assets/stack.zh.svg", Some("site/assets/stack.zh.svg")),
     ("site/assets/methodology.svg", None),
+    ("site/assets/methodology.zh.svg", None),
 ];
 
 /// Every `open` … `close` span replaced by one space.

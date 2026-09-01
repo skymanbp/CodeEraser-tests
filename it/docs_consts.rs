@@ -66,10 +66,12 @@ fn parse_page(text: &str, label: &str) -> Families {
         let ul = cursor + rel;
         let end = seek(text, ul, "</ul>", &format!("{label}: consts block"));
         let before = &text[..ul];
+        // the number span, not the <h3> around it: the heading carries
+        // an id (`<h3 id="fNN">`) so the page's jump list can reach it
         let heading = before
-            .rfind(r#"<h3><span class="n">"#)
+            .rfind(r#"<span class="n">"#)
             .unwrap_or_else(|| panic!("{label}: consts block with no preceding numbered heading"));
-        let n_start = heading + r#"<h3><span class="n">"#.len();
+        let n_start = heading + r#"<span class="n">"#.len();
         let n_end = seek(
             text,
             n_start,

@@ -15,7 +15,7 @@
 //! through, since Tauri on Windows is WebView2 — over report documents
 //! the CLI produced, which are the documents the webview itself would
 //! have received (`ce … --format json` and `faces::*` call the same
-//! `report_json` over the same `judge::run`). The five legs below hold
+//! `report_json` over the same `judge::run`). The six legs below hold
 //! what that script cannot.
 //!
 //! The freshness leg is deliberately blunt — ANY commit to `gui/ui`
@@ -158,6 +158,27 @@ fn every_picture_is_a_whole_app_window() {
             WINDOW,
             "{name} is not the app's window — re-shoot it:\n  {REGEN}"
         );
+    }
+}
+
+/// Leg 2b: each page reserves the picture's box before its bytes land.
+/// `width`/`height` on the `<img>` are the window, so a lazy picture
+/// arriving does not move the text under it — and a re-shoot at some
+/// other window would leave the attributes lying about the file.
+#[test]
+fn every_page_reserves_the_window_before_the_picture_loads() {
+    let root = repo_root();
+    let attrs = format!("width=\"{}\" height=\"{}\"", WINDOW.0, WINDOW.1);
+    for page in PAGES {
+        let text =
+            std::fs::read_to_string(root.join(page)).unwrap_or_else(|e| panic!("{page}: {e}"));
+        for name in SHOTS {
+            let tag = format!("<img src=\"/assets/{name}\" {attrs} ");
+            assert!(
+                text.contains(&tag),
+                "{page}: the <img> for {name} does not reserve the app window ({attrs})"
+            );
+        }
     }
 }
 

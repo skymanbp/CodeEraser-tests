@@ -77,7 +77,7 @@ fn render_dashboard(d: &Value, zh: bool) -> String {
         format!("<p class=\"cap\">{}</p>\n", unmeasured.trim())
     };
     format!(
-        "<h2>{latency} · v{measured_version}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{version}</th><th>{metric}</th><th>p50 ms</th><th>p95 ms</th><th>n</th><th>{host}</th><th>{measured}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n{caption}<h2>{frozen}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{metric}</th><th>{value}</th><th>{source}</th></tr></thead><tbody>\n{}</tbody></table></div><p class=\"cap\">{note}</p></div>\n",
+        "<h2>{latency} · v{measured_version}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{version}</th><th>{metric}</th><th>p50 ms</th><th>p95 ms</th><th>n</th><th>{host}</th><th>{measured}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n{caption}<h2>{frozen}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{metric}</th><th>{value}</th><th>{source}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n<p class=\"cap\">{note}</p>\n",
         dashboard_rows(d),
         frozen_rows(d),
         measured_version = latest(d),
@@ -162,13 +162,18 @@ fn render_stack_fpr(d: &Value, zh: bool) -> String {
     let guard = frozen(d, "guard_fpr_per500");
     let nums = natural_numbers(s(guard, "detail"));
     let guard_record = format!("{}/{}", nums.last().expect("guard false count"), nums[0]);
-    let (title, classifier, probe, false_label, tail) = if zh {
+    // the joins are punctuation, and punctuation has a language: the
+    // Chinese sentence takes ：；。 with no space after them
+    let (title, classifier, probe, false_label, tail, colon, semi, stop) = if zh {
         (
             "误报纪律",
             "判定层",
             "写入探针",
             "误报",
             "其余规则保持 observe。每次晋级都须写入 CHANGELOG 台账。",
+            "：",
+            "；",
+            "。",
         )
     } else {
         (
@@ -177,10 +182,13 @@ fn render_stack_fpr(d: &Value, zh: bool) -> String {
             "write probe",
             "false positives",
             "Every other class stays observe. Each promotion is recorded in the CHANGELOG ledger.",
+            ": ",
+            "; ",
+            ". ",
         )
     };
     format!(
-        "<div class=\"card\"><b>{title}</b><p>{classifier}: <code>{}</code>; {probe}: <code>{guard_record} {false_label}</code>. {tail}</p></div>\n",
+        "<div class=\"card\"><h3>{title}</h3><p>{classifier}{colon}<code>{}</code>{semi}{probe}{colon}<code>{guard_record} {false_label}</code>{stop}{tail}</p></div>\n",
         esc(s(fourclass, "value"))
     )
 }
