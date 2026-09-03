@@ -29,8 +29,8 @@ use std::path::{Path, PathBuf};
 pub struct Citation {
     pub citing: String,
     pub citing_line: usize,
-    /// The human-readable half — `Cost.hs:42-55` in
-    /// `[Cost.hs:42-55](…#L42)`; a rendering since S6.
+    /// The human-readable half — `<file>:<a>-<b>` in
+    /// `[<file>:<a>-<b>](…#L<a>)`; a rendering since S6.
     pub label: String,
     pub link: String,
     pub target: String,

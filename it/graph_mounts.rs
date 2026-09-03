@@ -35,7 +35,8 @@
 //! sharing the file's path (the row map below must not collapse the
 //! two). A phantom file node — an edge target nothing walked — is
 //! not producible here: every rung resolves against the walked set
-//! (ladder/md.rs:75), so that shape is index skew and the unit leg
+//! (ladder/md.rs:86 `scope.files.contains`), so that shape is index
+//! skew and the unit leg
 //! witnesses its `[0,0,0]` row; `facts` keys itself by the walked set
 //! it reads from the index, never by node paths, so an `internal/`
 //! path on such a node could not earn it a bit either way. The code

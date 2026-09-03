@@ -1,5 +1,5 @@
-//! The frozen set (plan v2.21 ⑦): CHANGELOG.md, the EVAL-SET records
-//! and FIELD-TEST.md are history — every number on them was a fact on
+//! The frozen set (plan v2.21 ⑦): CHANGELOG.md with its archive, the
+//! EVAL-SET records and FIELD-TEST.md are history — every number on them was a fact on
 //! its day, and a writer that "fixed" one would rewrite the record.
 //! No generator scans or writes them: no chip, no generated block, no
 //! chip enrolment, and an explicit opt-out from the citation gate,
@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 
 pub const FROZEN: &[&str] = &[
     "CHANGELOG.md",
+    "docs/CHANGELOG-ARCHIVE.md",
     "docs/EVAL-SET.md",
     "docs/EVAL-SET-M5-3.md",
     "docs/EVAL-SET-M5-CLOSE.md",

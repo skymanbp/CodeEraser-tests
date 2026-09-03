@@ -40,8 +40,9 @@ const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > binaries — moved every one of its seven metrics, from 11 % faster to 12 %\n\
          > slower, which is wider than most deltas a reader would try to read out of\n\
          > this table. So the series is replayed WHOLE, in one sitting, whenever a\n\
-         > release joins it: every row shares one measured date, and rows carrying\n\
-         > different dates are not comparable.\n\
+         > release joins it, and a tag whose minutes were disturbed is measured again\n\
+         > alone on that same day: every row shares one measured date (a test below\n\
+         > holds that line), and rows carrying different dates are not comparable.\n\
          >\n\
          > A release joins only when there is something new to measure. One that ships\n\
          > the same `cli/src` and `core/app` as its predecessor gets no row of its own:\n\
@@ -244,4 +245,22 @@ fn the_generated_bench_surfaces_name_the_shipped_release() {
     names_the_release("docs/BENCH.md", &render_md(&d));
     names_the_release("site/index.html", &render_site(&d, false));
     names_the_release("site/zh/index.html", &render_site(&d, true));
+}
+
+/// HEADER promises one measured date for every row. A sitting that
+/// crosses UTC midnight breaks that silently — 28 rows once shipped so.
+#[test]
+fn every_row_shares_one_measured_date() {
+    let d = doc();
+    let dates: std::collections::BTreeSet<&str> = d["rows"]
+        .as_array()
+        .expect("rows")
+        .iter()
+        .map(|r| s(r, "measured_at"))
+        .collect();
+    assert_eq!(
+        dates.len(),
+        1,
+        "bench.json rows carry {dates:?}: measure the odd tags again"
+    );
 }

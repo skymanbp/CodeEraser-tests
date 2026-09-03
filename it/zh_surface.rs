@@ -122,7 +122,8 @@ fn has_prose(s: &str) -> bool {
 /// that grants it. The whole residue is here: anything else the leak
 /// rule flags is a defect, not a convention.
 fn accepted_residue(shape: &[&str], l: &str) -> bool {
-    // clap's own framework vocabulary — main_lang.rs:11-12 rules that
+    // clap's own framework vocabulary — main_lang.rs:11-12 `framework vocabulary`
+    // rules that
     // `error:`, `Usage:` and the auto-generated `help` subcommand row
     // stay English, the same stance `check` takes with FAIL/pass
     let clap_frame = l.trim_start().starts_with("help ") && l.contains("Print this message");
