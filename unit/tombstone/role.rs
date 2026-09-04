@@ -55,9 +55,10 @@ fn version_marks_are_read_by_shape() {
         (
             Witness::Path.name(),
             Witness::Ledger.name(),
-            Witness::Segment.name()
+            Witness::Segment.name(),
+            Witness::Declared.name()
         ),
-        ("path", "ledger", "segment")
+        ("path", "ledger", "segment", "declared")
     );
 }
 

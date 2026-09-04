@@ -47,6 +47,16 @@ fn stop_tombstone(dir: &Path) -> serde_json::Value {
     t
 }
 
+/// The Stop leg on one fixture written over the erased repo: its
+/// sites are exactly `expected`, its exemptions exactly `exempt`.
+fn stop_judges(tag: &str, doc: &str, expected: &[String], exempt: serde_json::Value) {
+    let dir = erased(tag);
+    common::write_doc(&dir, doc);
+    let t = stop_tombstone(&dir);
+    assert_eq!(sites(&t), expected, "{t}");
+    assert_eq!(t["exempt"], exempt, "{t}");
+}
+
 #[test]
 fn a_name_erased_in_one_file_and_framed_in_another_is_one_site() {
     // ④ the changeset is the whole diff, not one file
@@ -96,18 +106,28 @@ fn a_changelog_role_document_is_exempt_and_counted() {
 fn a_ledger_segment_is_exempt_by_line_and_counted() {
     // the third witness (plan v2.27): the README's banner is a version
     // ledger by itself — exempt as a segment, the section below judged
-    let dir = erased("tomb-audit-segment");
-    common::write_doc(
-        &dir,
+    stop_judges(
+        "tomb-audit-segment",
         "--- README.md\n# Intro\n\n> v1.5.1 2026-09-02 47efc44 · v1.5.0 2026-09-01 · v1.4.1 65928ac — \
          braise_pork is no longer needed.\n\n## Without braise_pork\n\nSince 1.6.0.\n",
-    );
-    let t = stop_tombstone(&dir);
-    assert_eq!(sites(&t), [site("README.md", 5, "bare")], "{t}");
-    assert_eq!(
-        t["exempt"],
+        &[site("README.md", 5, "bare")],
         serde_json::json!([{"file": "README.md", "line": 3, "why": "segment"}]),
-        "{t}"
+    );
+}
+
+#[test]
+fn a_declared_ledger_is_exempt_whole_and_a_term_is_never_a_name() {
+    // `[tombstone] ledger` (plan v2.27 step 3): the repository's own
+    // word for a ledger no witness reads — exempt whole, feed `declared`;
+    // `terms` keeps `pork` out of every name, so `braise_pork` erased
+    // leaves only `braise` to bind, and the README's heading binds it
+    stop_judges(
+        "tomb-audit-declared",
+        "--- ce.toml\n[guard]\nmode = \"observe\"\n\n[tombstone]\nledger = [\"docs/\"]\nterms = [\"pork\"]\n\
+         --- docs/plan.md\n# Plan\n\n## Without braise_pork\n\n- Sides (no braise)\n\
+         --- README.md\n# Intro\n\n## Without braise\n",
+        &[site("README.md", 3, "bare")],
+        serde_json::json!([{"file": "docs/plan.md", "why": "declared"}]),
     );
 }
 

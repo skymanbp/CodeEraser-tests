@@ -11,6 +11,7 @@
 //! CE_TOMBSTONE_LIMIT = how many commits, newest first (default: all).
 
 use codeeraser::fourclass::session;
+use codeeraser::tombstone::Policy;
 use codeeraser::tombstone::role::Witness;
 use codeeraser::tombstone::texts::{self, Side};
 use codeeraser::tombstone::{self, PairText};
@@ -49,7 +50,11 @@ fn measure_commit(root: &Path, sha: &str) -> Option<tombstone::Findings> {
             lang: l.lang,
         })
         .collect();
-    Some(tombstone::measure(&pairs, &BTreeSet::new()))
+    Some(tombstone::measure(
+        &pairs,
+        &BTreeSet::new(),
+        &Policy::default(),
+    ))
 }
 
 /// The segment exemptions of one measurement (the third witness).

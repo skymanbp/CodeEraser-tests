@@ -1,5 +1,6 @@
 use super::*;
 use std::collections::BTreeSet;
+use std::path::Path;
 
 /// A changeset pair from its four parts — the one constructor the
 /// hub, names and surfaces tests share (three local copies were the
@@ -11,6 +12,11 @@ pub(super) fn pair<'a>(rel: &'a str, before: &'a str, after: &'a str, lang: Lang
         after,
         lang,
     }
+}
+
+/// A changeset measured with nothing declared in ce.toml.
+fn plain(pairs: &[PairText], session: &BTreeSet<u64>) -> Findings {
+    measure(pairs, session, &Policy::default())
 }
 
 fn none() -> BTreeSet<u64> {
@@ -33,7 +39,7 @@ fn a_heading_that_frames_the_erased_name_is_a_label_site() {
         "# Tomato and Egg (no Dongpo Pork)\n\nStir.\n",
         Lang::Markdown,
     )];
-    let f = measure(&pairs, &none());
+    let f = plain(&pairs, &none());
     assert_eq!((f.label, f.prose), (1, 0));
     assert_eq!(
         f.sites,
@@ -63,7 +69,7 @@ fn a_ledger_segment_exempts_its_own_surfaces_only() {
         &after,
         Lang::Markdown,
     )];
-    let f = measure(&pairs, &none());
+    let f = plain(&pairs, &none());
     assert_eq!(
         exempt_rows(&f),
         [("plan.md".to_string(), Some(3), Witness::Segment, 7)]
@@ -78,7 +84,7 @@ fn a_ledger_segment_exempts_its_own_surfaces_only() {
     // comment exempts nothing
     let rs = "// ledger: v1.5.1 2026-09-02 47efc44 v1.5.0 2026-09-01 v1.4.1 65928ac\n\
               // braise_dongpo_pork is no longer used.\nfn cook() {}\n";
-    let f = measure(
+    let f = plain(
         &[pair("k.rs", "fn braise_dongpo_pork() {}\n", rs, Lang::Rust)],
         &none(),
     );
@@ -89,7 +95,7 @@ fn a_ledger_segment_exempts_its_own_surfaces_only() {
 fn an_identifier_and_a_docstring_are_the_bare_and_prose_sites() {
     let before = "fn braise_dongpo_pork() {}\n";
     let after = "/// This recipe no longer uses braise_dongpo_pork.\nfn cook_without_dongpo() {}\n";
-    let f = measure(&[pair("kitchen.rs", before, after, Lang::Rust)], &none());
+    let f = plain(&[pair("kitchen.rs", before, after, Lang::Rust)], &none());
     assert_eq!((f.label, f.prose), (1, 1), "{:?}", f.sites);
     let sites: Vec<(usize, Kind)> = f.sites.iter().map(|s| (s.line, s.kind)).collect();
     assert_eq!(sites, [(2, Kind::Bare), (1, Kind::Prose)]);
@@ -104,7 +110,7 @@ fn a_mark_without_a_name_or_a_name_without_a_mark_is_nothing() {
     // name in the next is two sentences about two things
     let split = "/// We no longer simmer. See braise_dongpo_pork for the old way.\nfn cook() {}\n";
     for after in [mark_only, name_only, split] {
-        let f = measure(&[pair("kitchen.rs", before, after, Lang::Rust)], &none());
+        let f = plain(&[pair("kitchen.rs", before, after, Lang::Rust)], &none());
         assert_eq!((f.label, f.prose), (0, 0), "{after}");
         assert!(!f.erased.is_empty(), "the name was erased all the same");
     }
@@ -121,11 +127,63 @@ fn a_changelog_is_exempt_whole_and_counted() {
             Lang::Markdown,
         ),
     ];
-    let f = measure(&pairs, &none());
+    let f = plain(&pairs, &none());
     assert_eq!((f.label, f.prose), (0, 0));
     assert_eq!(
         exempt_rows(&f),
         [("CHANGELOG.md".to_string(), None, Witness::Path, 0)]
+    );
+}
+
+/// `[tombstone] ledger` exempts a file whole by the repository's own
+/// word — a code file too — and counts it `declared`; a word in
+/// `terms` spells no name, whole or inside a compound, while the
+/// compound's other word still does.
+#[test]
+fn the_table_declares_ledgers_and_vocabulary() {
+    let cfg: crate::config::Config =
+        toml::from_str("[tombstone]\nledger = [\"notes/\"]\nterms = [\"Pork\"]\n").unwrap();
+    let policy = Policy::of(Path::new("."), &cfg);
+    let pairs = [
+        pair(
+            "kitchen.rs",
+            "fn braise_pork() {}\nfn stew_beef() {}\n",
+            "fn stew_beef() {}\n",
+            Lang::Rust,
+        ),
+        pair(
+            "notes/log.rs",
+            "",
+            "/// This recipe no longer uses braise_pork.\n",
+            Lang::Rust,
+        ),
+        pair(
+            "notes/a.md",
+            "",
+            "# Removed\n\nSee the log.\n",
+            Lang::Markdown,
+        ),
+    ];
+    let f = measure(&pairs, &none(), &policy);
+    let erased: Vec<&str> = f.erased.iter().map(|n| n.text.as_str()).collect();
+    assert_eq!(
+        erased,
+        ["braise"],
+        "pork is vocabulary, whole or in a compound"
+    );
+    assert_eq!((f.label, f.prose), (0, 0), "{:?}", f.sites);
+    assert_eq!(
+        exempt_rows(&f),
+        [
+            ("notes/log.rs".into(), None, Witness::Declared, 0),
+            ("notes/a.md".into(), None, Witness::Declared, 0),
+        ]
+    );
+    assert_eq!(feed_json(&f, None)["exempt"][0]["why"], "declared");
+    let bare = plain(&pairs, &none());
+    assert!(
+        bare.label + bare.prose >= 1 && bare.exempt.is_empty(),
+        "undeclared, the notes are sites"
     );
 }
 
@@ -138,11 +196,11 @@ fn a_name_erased_earlier_in_the_session_still_binds() {
         "# Menu\n\n## Sides (no dongpo)\n",
         Lang::Markdown,
     )];
-    let f = measure(&pairs, &session);
+    let f = plain(&pairs, &session);
     assert_eq!(f.label, 1);
     assert!(f.erased.is_empty(), "this edit erased nothing itself");
     assert!(
-        measure(&pairs, &none()).sites.is_empty(),
+        plain(&pairs, &none()).sites.is_empty(),
         "without the session there is nothing to bind"
     );
 }
@@ -155,7 +213,7 @@ fn the_feed_object_carries_counts_keys_and_sites_but_no_name() {
         "# Tomato (no Dongpo Pork)\n",
         Lang::Markdown,
     )];
-    let f = measure(&pairs, &none());
+    let f = plain(&pairs, &none());
     let j = feed_json(&f, Some(3));
     assert_eq!(j["rev"], TOMBSTONE_REV);
     assert_eq!(
@@ -181,7 +239,7 @@ fn sites_are_capped_while_the_counts_stay_exact() {
         .map(|i| format!("# Sides {i} (no dongpo)\n"))
         .collect();
     let pairs = [pair("r.md", "# dongpo\n", &after, Lang::Markdown)];
-    let f = measure(&pairs, &none());
+    let f = plain(&pairs, &none());
     assert_eq!(f.label, 12);
     assert_eq!(
         feed_json(&f, None)["sites"].as_array().map(Vec::len),

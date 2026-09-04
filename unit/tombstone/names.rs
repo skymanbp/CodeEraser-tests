@@ -5,7 +5,7 @@ use crate::tombstone::tests::pair;
 /// R of a changeset, the added sets read the way the hub reads them.
 fn r(pairs: &[PairText]) -> Erased {
     let added: Vec<_> = pairs.iter().map(added_lines).collect();
-    erased(pairs, &added)
+    erased(pairs, &added, &Policy::default())
 }
 
 /// R of one Markdown document rewritten from `before` to `after`.
@@ -16,7 +16,7 @@ fn md(before: &str, after: &str) -> Erased {
 /// The names of one text must hold every `present` spelling and no
 /// `absent` one.
 fn expect(text: &str, lang: Lang, present: &[&str], absent: &[&str]) {
-    let names = names_of(text, lang);
+    let names = names_of(text, lang, &Policy::default());
     let got: Vec<&str> = names.iter().map(|n| n.text.as_str()).collect();
     let missing: Vec<&&str> = present.iter().filter(|n| !got.contains(n)).collect();
     let extra: Vec<&&str> = absent.iter().filter(|n| got.contains(n)).collect();
@@ -41,8 +41,14 @@ fn the_floor_admits_names_not_absence_or_reserved_words() {
     // too short / one wide char / no letter / a reserved word alone /
     // a frame word inside / an absence word inside
     let no = ["ab", "无", "123", "data", "no_cache", "is_empty"];
-    assert!(yes.iter().all(|s| admitted(s)), "{yes:?}");
-    let leaked: Vec<&&str> = no.iter().filter(|s| admitted(s)).collect();
+    assert!(
+        yes.iter().all(|s| admitted(s, &Policy::default())),
+        "{yes:?}"
+    );
+    let leaked: Vec<&&str> = no
+        .iter()
+        .filter(|s| admitted(s, &Policy::default()))
+        .collect();
     assert!(leaked.is_empty(), "{leaked:?}");
 }
 
