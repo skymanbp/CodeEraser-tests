@@ -126,6 +126,7 @@ mod source_citations_parts;
 mod structure_knobs;
 mod symbol_visibility;
 mod tombstone_audit;
+mod tombstone_commitmsg;
 mod tombstone_guard;
 mod tombstone_replay;
 mod trend_rebuild;

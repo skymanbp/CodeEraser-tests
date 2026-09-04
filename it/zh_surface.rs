@@ -45,6 +45,7 @@ const SHAPES: &[&[&str]] = &[
     &["graph", "--sites"],
     &["graph", "--mentions", "--db", "{db}"],
     &["precommit"],
+    &["commitmsg", "{msg}"],
     &["doctor"],
     &["probe"],
     &["audit"],
@@ -60,23 +61,24 @@ fn repo_root() -> std::path::PathBuf {
 }
 
 fn run(args: &[&str], zh: bool) -> Output {
-    // one scratch db PER LEG: the two legs run in parallel, and `tmp`
+    // one scratch dir PER LEG: the two legs run in parallel, and `tmp`
     // wipes its directory on every call — a shared name put one leg's
     // wipe under the other leg's live mention pass (`database is
     // locked` once, in a 305 s full-suite run; green alone)
-    let db = crate::common::tmp(if zh {
-        "zh-surface-db-zh"
-    } else {
-        "zh-surface-db-en"
-    })
-    .join("index.db")
-    .to_string_lossy()
-    .into_owned();
+    let scratch = crate::common::tmp(if zh { "zh-surface-zh" } else { "zh-surface-en" });
+    let db = scratch.join("index.db").to_string_lossy().into_owned();
+    // the commit-msg face reads a message file: one line, no name to bind
+    let msg_path = scratch.join("COMMIT_EDITMSG");
+    std::fs::write(&msg_path, "Tidy the surface.\n").expect("message");
+    let msg = msg_path.to_string_lossy().into_owned();
     let mut c = Command::new(env!("CARGO_BIN_EXE_ce"));
-    c.current_dir(repo_root()).env_remove("CE_LANG").args(
-        args.iter()
-            .map(|a| if *a == "{db}" { db.as_str() } else { a }),
-    );
+    c.current_dir(repo_root())
+        .env_remove("CE_LANG")
+        .args(args.iter().map(|a| match *a {
+            "{db}" => db.as_str(),
+            "{msg}" => msg.as_str(),
+            _ => a,
+        }));
     if zh {
         c.env("CE_LANG", "zh");
     }

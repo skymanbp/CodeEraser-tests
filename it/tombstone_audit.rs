@@ -19,7 +19,7 @@ const FRAMED: &str = "--- README.md\n# Intro\n\n## Without braise_pork\n";
 /// mode — the two files the cross-file fixtures move a name between —
 /// with a.py already deleted from the working tree: `braise_pork` is
 /// erased unless a later write brings it back.
-fn erased(name: &str) -> PathBuf {
+pub(crate) fn erased(name: &str) -> PathBuf {
     let dir = common::tmp(name);
     common::write_doc(
         &dir,
@@ -38,6 +38,16 @@ fn precommit(dir: &Path) -> (bool, String, serde_json::Value) {
     let line = common::last_observe(dir);
     assert_eq!(line["event"], "precommit", "{line}");
     (out.status.success(), stdout, line)
+}
+
+/// A deny-tier refusal as every git-hook face words it: the class's
+/// budget named, the site named, and the feed line's judgment `over`.
+pub(crate) fn assert_refused(text: &str, site: &str, line: &serde_json::Value) {
+    assert!(
+        text.contains("[tombstone] budget") && text.contains(site),
+        "{text}"
+    );
+    assert_eq!(line["tombstone"]["judged"]["over"], true, "{line}");
 }
 
 /// The `tombstone` object of the Stop audit's feed line.
@@ -175,11 +185,7 @@ fn a_deny_tier_over_its_budget_blocks_the_commit_and_the_feed_says_over() {
     common::git(&dir, &["add", "-A"]);
     let (ok, stdout, line) = precommit(&dir);
     assert!(!ok, "deny past the budget blocks: {stdout}");
-    assert!(
-        stdout.contains("[tombstone] budget") && stdout.contains(&site("README.md", 3, "bare")),
-        "{stdout}"
-    );
-    assert_eq!(line["tombstone"]["judged"]["over"], true, "{line}");
+    assert_refused(&stdout, &site("README.md", 3, "bare"), &line);
     common::assert_stop_blocks(&dir, "[tombstone] budget");
     let stop = common::last_observe(&dir);
     assert_eq!(stop["tombstone"]["judged"]["over"], true, "{stop}");

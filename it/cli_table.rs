@@ -18,7 +18,8 @@ ping: daemon liveness probe, not a judgment
 probe: the PreToolUse hook's private face
 audit: the Stop hook's private face
 health: the SessionStart hook's private face
-precommit: the git hook's private face
+precommit: the git pre-commit hook's private face
+commitmsg: the git commit-msg hook's private face
 ";
 
 /// The subcommand names the table's first column spells: every

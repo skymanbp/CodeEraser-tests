@@ -3,7 +3,7 @@
 //! golden. One deterministic run of every producer — probe, budget
 //! (§4.2 step 2), zone unarmed AND armed (plan v2.6 §A / v2.7 ①),
 //! tombstone (plan v2.26, the per-edit leg; the Stop and precommit
-//! lines carry its object), stop audit, precommit — volatile fields
+//! lines carry its object), stop audit, precommit, commitmsg — volatile fields
 //! normalized (ts_ms,
 //! elapsed_ms, absolute file path); key sets, schema/event tags,
 //! counts, mode, and degraded flags must match byte-for-byte.
@@ -11,8 +11,9 @@
 //!
 //! `session_id` is deliberately NOT normalized: the hook envelopes
 //! carry the literal "t", so the golden pins that the id survives the
-//! whole path — and that precommit, which is not a hook and owns no
-//! session, records null instead of borrowing one.
+//! whole path — and that the git-hook faces (precommit, commitmsg),
+//! which are not hooks of the session and own none, record null
+//! instead of borrowing one.
 
 use crate::common;
 /// The whole feed, volatile fields zeroed, as pretty JSON.
@@ -84,6 +85,20 @@ fn feed_shape_matches_golden() {
     );
     // entry 11: precommit (observe mode reports but exits 0)
     assert!(common::run_ce(&dir, &["precommit"]).status.success());
+    // entry 12: commitmsg — the staged set now erases a.rs's `work_1`
+    // and the message argues it away: precommit's line shape under its
+    // own event, the message's own site, session null
+    common::git(&dir, &["rm", "-q", "a.rs"]);
+    std::fs::write(
+        dir.join(".git/COMMIT_EDITMSG"),
+        "Drop a.rs\n\nwork_1 is no longer needed.\n",
+    )
+    .expect("message");
+    assert!(
+        common::run_ce(&dir, &["commitmsg", ".git/COMMIT_EDITMSG"])
+            .status
+            .success()
+    );
     common::assert_matches_golden(
         &normalized_feed(&dir),
         &common::golden_path("observe-feed/feed.golden.json"),
