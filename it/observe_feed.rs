@@ -1,8 +1,10 @@
-//! Observe-feed contract (ce.observe/0.7.0): the NDJSON feed is the
+//! Observe-feed contract (ce.observe/0.8.0): the NDJSON feed is the
 //! M4 evaluation-set raw material, so its line shape is pinned by a
 //! golden. One deterministic run of every producer — probe, budget
 //! (§4.2 step 2), zone unarmed AND armed (plan v2.6 §A / v2.7 ①),
-//! stop audit, precommit — volatile fields normalized (ts_ms,
+//! tombstone (plan v2.26, the per-edit leg; the Stop and precommit
+//! lines carry its object), stop audit, precommit — volatile fields
+//! normalized (ts_ms,
 //! elapsed_ms, absolute file path); key sets, schema/event tags,
 //! counts, mode, and degraded flags must match byte-for-byte.
 //! Bless flow: `CE_BLESS=1 cargo test --test it -- observe_feed::`.
@@ -32,6 +34,10 @@ fn normalized_feed(dir: &std::path::Path) -> String {
         .collect();
     serde_json::to_string_pretty(&entries).expect("serialize")
 }
+
+/// A docstring with a mark and a `without_` unit, over a file that
+/// declared `work_1`.
+const TOMB: &str = "/// This file no longer needs work_1.\nfn without_work() {}\n";
 
 #[test]
 fn feed_shape_matches_golden() {
@@ -66,13 +72,17 @@ fn feed_shape_matches_golden() {
     let deep = "// filler\n".repeat(600);
     let env4 = common::pretooluse_envelope(&dir, "Write", &deep);
     common::run_hook(&dir, &["probe", "--hook"], &env4);
-    // entry 6: stop audit (staged b.rs = one touched duplicate)
+    // entries 8+9: a Write erasing `work_1` and writing it back as an
+    // absence logs the 0.8.0 tombstone line after its own probe
+    let tomb = common::pretooluse_envelope_at(&dir, "a.rs", "Write", TOMB);
+    common::run_hook(&dir, &["probe", "--hook"], &tomb);
+    // entry 10: stop audit (staged b.rs = one touched duplicate)
     common::run_hook(
         &dir,
         &["audit", "--hook"],
         &common::stop_envelope(&dir, false),
     );
-    // entry 7: precommit (observe mode reports but exits 0)
+    // entry 11: precommit (observe mode reports but exits 0)
     assert!(common::run_ce(&dir, &["precommit"]).status.success());
     common::assert_matches_golden(
         &normalized_feed(&dir),
