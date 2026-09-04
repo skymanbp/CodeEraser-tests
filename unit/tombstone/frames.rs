@@ -125,8 +125,20 @@ fn a_mark_is_a_whole_phrase_at_word_boundaries() {
         ("nothing to see here", false),
     ];
     for (text, expect) in cases {
-        assert_eq!(has_mark(text), expect, "{text}");
+        assert_eq!(marks(text) > 0, expect, "{text}");
     }
+}
+
+#[test]
+fn marks_are_counted_per_occurrence_and_overlapping_phrases_both_count() {
+    assert_eq!(marks("We no longer simmer; we removed the wok."), 2);
+    assert_eq!(
+        marks("braise_pork is no longer needed"),
+        2,
+        "`no longer` inside `is no longer needed`: the floor's input, not a tally"
+    );
+    assert_eq!(marks("此前由它负责，现已删除"), 2);
+    assert_eq!(marks("the previously_seen set"), 0);
 }
 
 #[test]

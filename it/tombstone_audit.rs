@@ -1,9 +1,11 @@
-//! The Stop / precommit leg of the tombstone measurement through the
-//! real hook and the real terminal face (plan v2.26 step 5): the whole
-//! session's diff is one changeset, so a name erased in one file and
-//! written back as an absence in another is one site; a changelog-
-//! role document is exempt and COUNTED; a move keeps the name alive;
-//! precommit says what fired, once, and stays exit 0 in observe.
+//! The Stop / precommit leg of the tombstone class through the real
+//! hook and the real terminal face (plan v2.26 step 5, judged over the
+//! wire since v2.27 step 4): the whole session's diff is one changeset,
+//! so a name erased in one file and written back as an absence in
+//! another is one site; a changelog-role document is exempt and
+//! COUNTED; a move keeps the name alive; precommit says what fired,
+//! once, and stays exit 0 in observe — and blocks at the class's own
+//! deny tier past its budget.
 
 use crate::common;
 use crate::tombstone_guard::{site, sites};
@@ -28,15 +30,14 @@ fn erased(name: &str) -> PathBuf {
     dir
 }
 
-/// `ce precommit` on the staged set: exit 0 (observe never blocks),
-/// its stdout, and the feed line it wrote.
-fn precommit(dir: &Path) -> (String, serde_json::Value) {
+/// `ce precommit` on the staged set: its exit status, its stdout, and
+/// the feed line it wrote.
+fn precommit(dir: &Path) -> (bool, String, serde_json::Value) {
     let out = common::run_ce(dir, &["precommit"]);
     let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
-    assert!(out.status.success(), "observe mode never blocks: {stdout}");
     let line = common::last_observe(dir);
     assert_eq!(line["event"], "precommit", "{line}");
-    (stdout, line)
+    (out.status.success(), stdout, line)
 }
 
 /// The `tombstone` object of the Stop audit's feed line.
@@ -64,10 +65,9 @@ fn a_name_erased_in_one_file_and_framed_in_another_is_one_site() {
     common::write_doc(&dir, FRAMED);
     let t = stop_tombstone(&dir);
     assert_eq!(sites(&t), [site("README.md", 3, "bare")], "{t}");
-    assert_eq!(
-        (t["label"].as_u64(), t["prose"].as_u64()),
-        (Some(1), Some(0))
-    );
+    assert_eq!(t["judged"]["label"], 1, "{t}");
+    assert_eq!(t["judged"]["prose"], 0, "{t}");
+    assert_eq!(t["judged"]["over"], false, "no budget declared: {t}");
     assert!(t["erased"].as_u64().expect("erased") >= 1);
     assert!(
         t.get("erased_hashes").is_none(),
@@ -141,7 +141,7 @@ fn a_move_keeps_the_name_alive() {
     );
     let t = stop_tombstone(&dir);
     assert_eq!(
-        (t["erased"].as_u64(), t["label"].as_u64()),
+        (t["erased"].as_u64(), t["judged"]["label"].as_u64()),
         (Some(0), Some(0)),
         "{t}"
     );
@@ -152,10 +152,37 @@ fn precommit_says_what_fired_once_and_stays_open() {
     let dir = erased("tomb-audit-precommit");
     common::write_doc(&dir, FRAMED);
     common::git(&dir, &["add", "-A"]);
-    let (stdout, line) = precommit(&dir);
+    let (ok, stdout, line) = precommit(&dir);
+    assert!(ok, "observe never blocks: {stdout}");
     assert_eq!(stdout.matches("tombstone site").count(), 1, "{stdout}");
     assert!(stdout.contains(&site("README.md", 3, "bare")), "{stdout}");
-    assert_eq!(line["tombstone"]["label"], 1, "{line}");
+    assert_eq!(line["tombstone"]["judged"]["label"], 1, "{line}");
+}
+
+#[test]
+fn a_deny_tier_over_its_budget_blocks_the_commit_and_the_feed_says_over() {
+    // plan v2.27 step 4: the class's own tier and the core's `over`,
+    // both — the framed README fails the commit with the class's
+    // sentence naming the site, the Stop blocks with it, and the
+    // Stop's object carries the same judgment
+    let dir = erased("tomb-audit-deny");
+    common::write_doc(
+        &dir,
+        &format!(
+            "{FRAMED}--- ce.toml\n[guard]\nmode = \"observe\"\n\n[tombstone]\ntier = \"deny\"\nbudget = 0\n"
+        ),
+    );
+    common::git(&dir, &["add", "-A"]);
+    let (ok, stdout, line) = precommit(&dir);
+    assert!(!ok, "deny past the budget blocks: {stdout}");
+    assert!(
+        stdout.contains("[tombstone] budget") && stdout.contains(&site("README.md", 3, "bare")),
+        "{stdout}"
+    );
+    assert_eq!(line["tombstone"]["judged"]["over"], true, "{line}");
+    common::assert_stop_blocks(&dir, "[tombstone] budget");
+    let stop = common::last_observe(&dir);
+    assert_eq!(stop["tombstone"]["judged"]["over"], true, "{stop}");
 }
 
 #[test]
@@ -169,8 +196,8 @@ fn an_unborn_head_erases_nothing_on_precommit_and_says_nothing_on_stop() {
     );
     common::git(&dir, &["init", "-q"]);
     common::git(&dir, &["add", "-A"]);
-    let (stdout, line) = precommit(&dir);
-    assert!(!stdout.contains("tombstone"), "{stdout}");
+    let (ok, stdout, line) = precommit(&dir);
+    assert!(ok && !stdout.contains("tombstone"), "{stdout}");
     assert_eq!(line["tombstone"]["erased"], 0, "{line}");
     let stop = common::stop_observe(&dir);
     assert!(stop.get("tombstone").is_none(), "{stop}");

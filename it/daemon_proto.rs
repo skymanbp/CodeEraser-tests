@@ -41,6 +41,10 @@ fn requests() -> Vec<Request> {
                 (None, Some("new.rs".into())),
             ],
         },
+        Request::Tombstone {
+            rows: vec![[0, 0, 1], [2, 1, 1]],
+            budget: Some(3),
+        },
         Request::Shutdown,
     ]
 }
@@ -64,6 +68,9 @@ fn replies() -> Vec<Response> {
         Response::FourClassReport {
             report: json!({"pairs": [], "degraded": null}),
         },
+        Response::TombstoneReport {
+            reply: json!({"sites": [0], "counts": {"label": 1, "prose": 0, "rows": 2}, "over": false}),
+        },
         Response::Error {
             message: "bad request: expected value".into(),
         },
@@ -78,6 +85,7 @@ fn req_tag(r: &Request) -> &'static str {
         Request::Dedup { .. } => "dedup",
         Request::Probe { .. } => "probe",
         Request::FourClass { .. } => "four_class",
+        Request::Tombstone { .. } => "tombstone",
         Request::Shutdown => "shutdown",
     }
 }
@@ -90,6 +98,7 @@ fn resp_tag(r: &Response) -> &'static str {
         Response::DedupReport { .. } => "dedup_report",
         Response::ProbeReport { .. } => "probe_report",
         Response::FourClassReport { .. } => "four_class_report",
+        Response::TombstoneReport { .. } => "tombstone_report",
         Response::Error { .. } => "error",
         Response::Bye => "bye",
     }
@@ -136,14 +145,15 @@ fn wire_shapes_are_frozen() {
     // breaks req_tag/resp_tag at COMPILE time, and these two lines
     // are where the walk ends — bump each count WITH its fixture
     // line, or the "every variant is frozen" claim silently rots
-    // (clearance review). requests() carries 7 items over 6 variants
-    // (Dedup appears twice to pin the null-optional shape).
+    // (clearance review). requests() carries 9 items over 7 variants
+    // (Dedup appears twice to pin the null-optional shape, Hello twice
+    // for the tokenless line).
     assert_eq!(
         requests().len(),
-        8,
-        "request battery: 6 variants + the None-Dedup and tokenless-hello shapes"
+        9,
+        "request battery: 7 variants + the None-Dedup and tokenless-hello shapes"
     );
-    assert_eq!(replies().len(), 8, "reply battery covers all 8 variants");
+    assert_eq!(replies().len(), 9, "reply battery covers all 9 variants");
     freeze(requests(), req_tag, "daemon/requests.ndjson");
     freeze(replies(), resp_tag, "daemon/replies.ndjson");
 }

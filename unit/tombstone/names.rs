@@ -189,8 +189,11 @@ fn a_wide_name_survives_only_as_a_whole_word() {
     let e = md("# 东坡肉\n", "# 番茄炒蛋（无东坡肉）\n");
     assert!(e.has(key("东坡肉")), "无东坡肉 is another word");
     assert_eq!(
-        (e.wide_in("东坡肉做法的段落"), e.wide_in("番茄炒蛋")),
-        (Some("东坡肉"), None)
+        (
+            e.wide_all("东坡肉做法的段落").collect::<Vec<_>>(),
+            e.wide_all("番茄炒蛋").count()
+        ),
+        (vec!["东坡肉"], 0)
     );
     let longer = md("# 东坡肉\n", "# 东坡肉做法\n");
     assert!(
@@ -200,15 +203,28 @@ fn a_wide_name_survives_only_as_a_whole_word() {
 }
 
 #[test]
-fn spelled_in_reads_every_window_and_a_long_run() {
+fn spelled_all_reads_every_window_and_a_long_run_once_per_key() {
     let text = "uses parse_http_header_line here";
-    let found = |name: &str| spelled_in(text, |k| k == key(name));
+    let found = |name: &str| spelled_all(text, |k| k == key(name));
     assert_eq!(
-        found("parse_http_header_line").as_deref(),
-        Some("parse_http_header_line"),
+        found("parse_http_header_line"),
+        ["parse_http_header_line"],
         "four words: beyond a window, its own spelling"
     );
-    assert_eq!(found("uses_parse").as_deref(), Some("uses_parse"));
-    assert_eq!(found("header_line").as_deref(), Some("header_line"));
-    assert_eq!(found("header_here"), None, "windows are adjacent words");
+    assert_eq!(found("uses_parse"), ["uses_parse"]);
+    assert_eq!(found("header_line"), ["header_line"]);
+    assert!(
+        found("header_here").is_empty(),
+        "windows are adjacent words"
+    );
+    let twice = "header_line first, header_line again";
+    assert_eq!(
+        spelled_all(twice, |k| k == key("header_line")),
+        ["header_line"],
+        "a key is counted once however often it is spelled"
+    );
+    let two = spelled_all("uses_parse and header_line", |k| {
+        k == key("uses_parse") || k == key("header_line")
+    });
+    assert_eq!(two.len(), 2, "{two:?}");
 }

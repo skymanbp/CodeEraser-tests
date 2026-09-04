@@ -1,20 +1,21 @@
-//! FPR replay for the tombstone measurement (plan v2.26 step 6; the
-//! ledger is docs/FPR-TOMBSTONE.md): every first-parent commit of a
-//! history is one changeset — parent blob before, child blob after,
-//! the same `measure` the hooks run — and every site is printed for
-//! arbitration. A git-history instrument like bench_backfill, so it
-//! stays as a standing ignored leg under the EVAL-SET retirement rule.
+//! FPR replay for the tombstone class (plan v2.26 step 6; the ledger
+//! is docs/FPR-TOMBSTONE.md): every first-parent commit of a history
+//! is one changeset — parent blob before, child blob after, the same
+//! `measure` the hooks run, the same tombstone/1 judgment over one
+//! core link — and every seated site is printed for arbitration. A
+//! git-history instrument like bench_backfill, so it stays as a
+//! standing ignored leg under the EVAL-SET retirement rule.
 //!
 //!   cargo test --release --test it -- --ignored tombstone_replay --nocapture
 //!
 //! CE_TOMBSTONE_REPO = the checkout to walk (default: this repo);
 //! CE_TOMBSTONE_LIMIT = how many commits, newest first (default: all).
 
+use codeeraser::corelink::Link;
 use codeeraser::fourclass::session;
-use codeeraser::tombstone::Policy;
 use codeeraser::tombstone::role::Witness;
 use codeeraser::tombstone::texts::{self, Side};
-use codeeraser::tombstone::{self, PairText};
+use codeeraser::tombstone::{self, Judged, PairText, Policy, wire};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -65,23 +66,25 @@ fn segments(f: &tombstone::Findings) -> Vec<&tombstone::Exempt> {
         .collect()
 }
 
-/// One commit's table row: the counts, every site with the name it
-/// bound, its segment's ledger tokens and an excerpt, and every
-/// segment the third witness exempted with its tokens — for
-/// arbitration by reading, and for setting `SEGMENT_TOKENS`.
-fn row(sha: &str, f: &tombstone::Findings) -> String {
+/// One commit's table row: the counts, every seated site with the
+/// name it bound, its wire integers, its segment's ledger tokens and
+/// an excerpt, and every segment the third witness exempted with its
+/// tokens — for arbitration by reading, and for setting
+/// `SEGMENT_TOKENS`.
+fn row(sha: &str, f: &tombstone::Findings, j: &Judged) -> String {
     let mut sites: Vec<String> = f
-        .sites
-        .iter()
-        .map(|s| {
+        .judged_rows(j)
+        .map(|r| {
             format!(
-                "{}:{} {} [{}] ledger={} «{}»",
-                s.file,
-                s.line,
-                s.kind.name(),
-                s.name,
-                s.ledger,
-                s.excerpt.replace('|', "\\|").replace('\n', " ")
+                "{}:{} {} [{}] marks={} names={} ledger={} «{}»",
+                r.file,
+                r.line,
+                r.kind.name(),
+                r.name,
+                r.marks,
+                r.names,
+                r.ledger,
+                r.excerpt.replace('|', "\\|").replace('\n', " ")
             )
         })
         .collect();
@@ -96,8 +99,8 @@ fn row(sha: &str, f: &tombstone::Findings) -> String {
     format!(
         "| {} | {} | {} | {} | {} | {} |",
         &sha[..10],
-        f.label,
-        f.prose,
+        j.label,
+        j.prose,
         f.erased.len(),
         f.exempt.len(),
         sites.join("; ")
@@ -112,10 +115,12 @@ fn tombstone_replay() {
         .ok()
         .and_then(|s| s.parse().ok());
     let shas = commits(&root, limit);
+    let mut link: Link = codeeraser::lockstep::open_family(&crate::common::core_bin(), wire::CAP)
+        .expect("a core offering tombstone/1");
     let (mut walked, mut fired, mut label, mut prose, mut exempt, mut seg) =
         (0usize, 0usize, 0usize, 0usize, 0usize, 0usize);
     println!(
-        "| commit | label | prose | erased | exempt | sites (kind, name bound, segment ledger tokens, excerpt) + exempt segments |"
+        "| commit | label | prose | erased | exempt | sites (kind, name bound, wire integers, segment ledger tokens, excerpt) + exempt segments |"
     );
     println!("|---|---|---|---|---|---|");
     for sha in &shas {
@@ -125,15 +130,20 @@ fn tombstone_replay() {
         walked += 1;
         exempt += f.exempt.len();
         seg += segments(&f).len();
-        if f.label + f.prose == 0 && segments(&f).is_empty() {
+        let j = if f.rows.is_empty() {
+            Judged::default()
+        } else {
+            wire::judge(&mut link, &f, None).unwrap_or_else(|why| panic!("{sha}: {why}"))
+        };
+        if j.sites.is_empty() && segments(&f).is_empty() {
             continue;
         }
-        if f.label + f.prose > 0 {
+        if !j.sites.is_empty() {
             fired += 1;
         }
-        label += f.label;
-        prose += f.prose;
-        println!("{}", row(sha, &f));
+        label += j.label;
+        prose += j.prose;
+        println!("{}", row(sha, &f, &j));
     }
     println!();
     println!(
