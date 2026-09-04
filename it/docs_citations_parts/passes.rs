@@ -19,7 +19,9 @@
 //!      through CE_ALLOW_RENAME=1);
 //!   4. orphans — entries no citation claimed: extra when their text
 //!      still exists (a bless drops them), vanished when it does not
-//!      (dropped only by name: CE_DROP_VANISHED=<hash16,…>).
+//!      (dropped only by name: CE_DROP_VANISHED=<hash16,…>; a named
+//!      entry is retired before pass 1 can claim it, so a cited line
+//!      rewritten in place re-signs by name at the same number).
 
 use super::anchor::{self, Window};
 use super::ledger::{Resolution, Resolved, first_line, hash16, shifted_end, stated_end};
@@ -76,7 +78,15 @@ impl<'a> Pass<'a> {
     }
 
     pub(super) fn resolve_one(&mut self, c: &Citation, out: &mut Resolution) {
-        if let Some(entry) = self.claim(c, |e| e.line == c.line) {
+        // a drop named by hash retires its entry before any pass can
+        // claim it: a cited line rewritten IN PLACE keeps its number,
+        // so pass 1 would claim the stale window by line and report
+        // it vanished whatever was named — the drop had no door.
+        // Retired, the entry falls to the orphan pass (where the name
+        // is honoured) and the citation seeds afresh at its line.
+        let drops = named_drops();
+        let live = |e: &LedgerEntry| e.line == c.line && !drops.contains(&hash16(&e.text));
+        if let Some(entry) = self.claim(c, live) {
             self.by_line(c, entry, out);
         } else if let Some(r) = self.by_window(c) {
             out.resolved.push(Some(r));

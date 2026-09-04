@@ -11,6 +11,7 @@
 //! CE_TOMBSTONE_LIMIT = how many commits, newest first (default: all).
 
 use codeeraser::fourclass::session;
+use codeeraser::tombstone::role::Witness;
 use codeeraser::tombstone::texts::{self, Side};
 use codeeraser::tombstone::{self, PairText};
 use std::collections::BTreeSet;
@@ -51,23 +52,42 @@ fn measure_commit(root: &Path, sha: &str) -> Option<tombstone::Findings> {
     Some(tombstone::measure(&pairs, &BTreeSet::new()))
 }
 
-/// One commit's table row: the counts and every site with the name
-/// it bound and an excerpt, for arbitration by reading.
+/// The segment exemptions of one measurement (the third witness).
+fn segments(f: &tombstone::Findings) -> Vec<&tombstone::Exempt> {
+    f.exempt
+        .iter()
+        .filter(|e| e.why == Witness::Segment)
+        .collect()
+}
+
+/// One commit's table row: the counts, every site with the name it
+/// bound, its segment's ledger tokens and an excerpt, and every
+/// segment the third witness exempted with its tokens — for
+/// arbitration by reading, and for setting `SEGMENT_TOKENS`.
 fn row(sha: &str, f: &tombstone::Findings) -> String {
-    let sites: Vec<String> = f
+    let mut sites: Vec<String> = f
         .sites
         .iter()
         .map(|s| {
             format!(
-                "{}:{} {} [{}] «{}»",
+                "{}:{} {} [{}] ledger={} «{}»",
                 s.file,
                 s.line,
                 s.kind.name(),
                 s.name,
+                s.ledger,
                 s.excerpt.replace('|', "\\|").replace('\n', " ")
             )
         })
         .collect();
+    sites.extend(segments(f).iter().map(|e| {
+        format!(
+            "{}:{} segment ledger={}",
+            e.file,
+            e.line.unwrap_or(0),
+            e.tokens
+        )
+    }));
     format!(
         "| {} | {} | {} | {} | {} | {} |",
         &sha[..10],
@@ -87,9 +107,11 @@ fn tombstone_replay() {
         .ok()
         .and_then(|s| s.parse().ok());
     let shas = commits(&root, limit);
-    let (mut walked, mut fired, mut label, mut prose, mut exempt) =
-        (0usize, 0usize, 0usize, 0usize, 0usize);
-    println!("| commit | label | prose | erased | exempt | sites (kind, name bound, excerpt) |");
+    let (mut walked, mut fired, mut label, mut prose, mut exempt, mut seg) =
+        (0usize, 0usize, 0usize, 0usize, 0usize, 0usize);
+    println!(
+        "| commit | label | prose | erased | exempt | sites (kind, name bound, segment ledger tokens, excerpt) + exempt segments |"
+    );
     println!("|---|---|---|---|---|---|");
     for sha in &shas {
         let Some(f) = measure_commit(&root, sha) else {
@@ -97,17 +119,20 @@ fn tombstone_replay() {
         };
         walked += 1;
         exempt += f.exempt.len();
-        if f.label + f.prose == 0 {
+        seg += segments(&f).len();
+        if f.label + f.prose == 0 && segments(&f).is_empty() {
             continue;
         }
-        fired += 1;
+        if f.label + f.prose > 0 {
+            fired += 1;
+        }
         label += f.label;
         prose += f.prose;
         println!("{}", row(sha, &f));
     }
     println!();
     println!(
-        "walked {walked} of {} commits at {}: {fired} with a site — label {label}, prose {prose}; {exempt} changelog-role exemptions",
+        "walked {walked} of {} commits at {}: {fired} with a site — label {label}, prose {prose}; {exempt} changelog-role exemptions, {seg} of them segments",
         shas.len(),
         root.display()
     );

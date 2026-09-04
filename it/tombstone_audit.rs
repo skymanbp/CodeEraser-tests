@@ -81,6 +81,7 @@ fn a_changelog_role_document_is_exempt_and_counted() {
         .expect("exempt")
         .iter()
         .map(|e| {
+            assert!(e.get("line").is_none(), "a file-level entry: {e}");
             format!(
                 "{} {}",
                 e["file"].as_str().unwrap(),
@@ -89,6 +90,25 @@ fn a_changelog_role_document_is_exempt_and_counted() {
         })
         .collect();
     assert_eq!(exempt, ["CHANGELOG.md path", "docs/notes.md ledger"]);
+}
+
+#[test]
+fn a_ledger_segment_is_exempt_by_line_and_counted() {
+    // the third witness (plan v2.27): the README's banner is a version
+    // ledger by itself — exempt as a segment, the section below judged
+    let dir = erased("tomb-audit-segment");
+    common::write_doc(
+        &dir,
+        "--- README.md\n# Intro\n\n> v1.5.1 2026-09-02 47efc44 · v1.5.0 2026-09-01 · v1.4.1 65928ac — \
+         braise_pork is no longer needed.\n\n## Without braise_pork\n\nSince 1.6.0.\n",
+    );
+    let t = stop_tombstone(&dir);
+    assert_eq!(sites(&t), [site("README.md", 5, "bare")], "{t}");
+    assert_eq!(
+        t["exempt"],
+        serde_json::json!([{"file": "README.md", "line": 3, "why": "segment"}]),
+        "{t}"
+    );
 }
 
 #[test]

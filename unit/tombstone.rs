@@ -17,6 +17,14 @@ fn none() -> BTreeSet<u64> {
     BTreeSet::new()
 }
 
+/// The exemptions as rows: (file, segment start, witness, tokens).
+fn exempt_rows(f: &Findings) -> Vec<(String, Option<usize>, Witness, usize)> {
+    f.exempt
+        .iter()
+        .map(|e| (e.file.clone(), e.line, e.why, e.tokens))
+        .collect()
+}
+
 #[test]
 fn a_heading_that_frames_the_erased_name_is_a_label_site() {
     let pairs = [pair(
@@ -35,8 +43,46 @@ fn a_heading_that_frames_the_erased_name_is_a_label_site() {
             kind: Kind::Bracketed,
             name: "dongpo".into(),
             excerpt: "Tomato and Egg (no Dongpo Pork)".into(),
+            ledger: 0,
         }]
     );
+}
+
+#[test]
+fn a_ledger_segment_exempts_its_own_surfaces_only() {
+    // the third witness (plan v2.27): a banner that is a version
+    // ledger by itself is exempt as a segment and counted once; the
+    // section below it, with one version in it, is judged as before
+    let banner = "> **v1.5.1** 2026-09-02 47efc44 · v1.5.0 2026-09-01 · v1.4.1 65928ac · \
+                  dongpo is no longer braised.\n> a second banner line.\n";
+    let after =
+        format!("# Plan\n\n{banner}\n## Sides (no dongpo)\n\nSince 1.6.0 they are stir-fried.\n");
+    let pairs = [pair(
+        "plan.md",
+        "# Plan\n\n## dongpo\n",
+        &after,
+        Lang::Markdown,
+    )];
+    let f = measure(&pairs, &none());
+    assert_eq!(
+        exempt_rows(&f),
+        [("plan.md".to_string(), Some(3), Witness::Segment, 7)]
+    );
+    assert_eq!((f.label, f.prose), (1, 0), "{:?}", f.sites);
+    assert_eq!((f.sites[0].line, f.sites[0].ledger), (6, 1));
+    assert_eq!(
+        feed_json(&f, None)["exempt"][0],
+        serde_json::json!({"file": "plan.md", "line": 3, "why": "segment"})
+    );
+    // a code file narrates nothing by job: the same ledger in a
+    // comment exempts nothing
+    let rs = "// ledger: v1.5.1 2026-09-02 47efc44 v1.5.0 2026-09-01 v1.4.1 65928ac\n\
+              // braise_dongpo_pork is no longer used.\nfn cook() {}\n";
+    let f = measure(
+        &[pair("k.rs", "fn braise_dongpo_pork() {}\n", rs, Lang::Rust)],
+        &none(),
+    );
+    assert_eq!((f.prose, f.exempt.len(), f.sites[0].ledger), (1, 0, 0));
 }
 
 #[test]
@@ -77,7 +123,10 @@ fn a_changelog_is_exempt_whole_and_counted() {
     ];
     let f = measure(&pairs, &none());
     assert_eq!((f.label, f.prose), (0, 0));
-    assert_eq!(f.exempt, [("CHANGELOG.md".to_string(), Witness::Path)]);
+    assert_eq!(
+        exempt_rows(&f),
+        [("CHANGELOG.md".to_string(), None, Witness::Path, 0)]
+    );
 }
 
 #[test]
