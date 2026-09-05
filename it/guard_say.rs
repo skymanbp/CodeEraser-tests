@@ -148,14 +148,9 @@ fn scenes() -> Vec<Scene> {
     ]
 }
 
-/// The whole set, asked in both languages (guard/say.rs). The Stop
-/// audit has answered `CE_LANG=zh` in Chinese since M8-G3b; this face —
-/// the only one that ever refuses a write, and so the one a person
-/// reads most — answered in English on every line it had, because the
-/// templates sat inline at six call sites across two files and nothing
-/// ever asked them as a set. Three of these rows had no test in any
-/// language: the degraded note, the clip marker, the unreadable
-/// baseline.
+/// The whole set, asked in both languages (guard/say.rs) — why this
+/// battery exists, and which three rows had no test before it, is the
+/// module header's story, told once.
 #[test]
 fn every_sentence_the_guard_speaks_answers_in_both_languages() {
     for s in scenes() {
