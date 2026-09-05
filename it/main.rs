@@ -129,6 +129,7 @@ mod similar_wire;
 mod site_roast;
 mod site_screenshots;
 mod site_shoot_motion;
+mod site_shots_receipt;
 mod sonar_whitepaper;
 mod source_citations;
 mod source_citations_parts;

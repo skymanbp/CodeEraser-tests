@@ -15,15 +15,20 @@
 //! through, since Tauri on Windows is WebView2 — over report documents
 //! the CLI produced, which are the documents the webview itself would
 //! have received (`ce … --format json` and `faces::*` call the same
-//! `report_json` over the same `judge::run`). The six legs below hold
-//! what that script cannot.
+//! `report_json` over the same `judge::run`). The legs below, the
+//! receipt leg in site_shots_receipt.rs and the motion leg in
+//! site_shoot_motion.rs hold what that script cannot.
 //!
 //! The freshness leg is deliberately blunt — ANY commit to `gui/ui`
 //! after a picture's commit fails it. Re-shooting is one command, and
 //! the alternative (judging which UI edits are "visible") is the
 //! judgement call that let four of them through. It is also not
 //! sufficient alone, which is why the receipt leg exists: the join
-//! schema moved twice under a picture while `gui/ui` stood still.
+//! schema moved twice under a picture while `gui/ui` stood still —
+//! and it reads COMMITS, so an edit to `gui/ui` not yet committed is
+//! invisible to it (a local run stayed green while CI went red on the
+//! commit, v2.29 steps 6 and 8). The receipt's `ui` tree digest is
+//! the leg that sees the working tree itself.
 //!
 //! Deliberately NOT held: that the numbers inside the pictures are
 //! current. A screenshot samples one run and the page claims no more;
@@ -31,30 +36,29 @@
 //! it. Gating pixel currency would mean a `ce join` run per commit.
 
 use crate::common::{git_out, repo_root};
-use serde_json::Value;
-use sha2::{Digest, Sha256};
 use std::path::Path;
 
 /// The pictures the homepage carries, in the order it shows them.
-const SHOTS: [&str; 3] = ["gui-structure.png", "gui-tree.png", "gui-candidates.png"];
+pub(crate) const SHOTS: [&str; 3] = ["gui-structure.png", "gui-tree.png", "gui-candidates.png"];
 
 /// The shipped app's default window, as `scripts/shoot_gui.js`
 /// captures it.
-const WINDOW: (u32, u32) = (1424, 892);
+pub(crate) const WINDOW: (u32, u32) = (1424, 892);
 
 /// What a failure tells the operator to run. One string, because four
 /// legs quote it and a stale instruction is its own bug.
-const REGEN: &str = "node scripts/shoot_gui.js --out site/assets";
+pub(crate) const REGEN: &str = "node scripts/shoot_gui.js --out site/assets";
 
 /// Both homepages, which are the pictures' only home (they left the
 /// READMEs at v1.3.0).
 const PAGES: [&str; 2] = ["site/index.html", "site/zh/index.html"];
 
-/// The receipt `scripts/shoot_gui.js` leaves beside the pictures.
-const RECEIPT: &str = "contracts/gui-shots.json";
+/// The receipt `scripts/shoot_gui.js` leaves beside the pictures, read
+/// by site_shots_receipt.rs.
+pub(crate) const RECEIPT: &str = "contracts/gui-shots.json";
 
 /// The rendering surface the pictures are photographs of.
-const UI: &str = "gui/ui";
+pub(crate) const UI: &str = "gui/ui";
 
 /// The last commit that touched any of `paths`. A clone with no
 /// history cannot answer when a picture was taken, so it refuses by
@@ -86,10 +90,6 @@ fn png_window(bytes: &[u8], name: &str) -> (u32, u32) {
     );
     let read = |at: usize| u32::from_be_bytes(bytes[at..at + 4].try_into().expect("four bytes"));
     (read(16), read(20))
-}
-
-fn digest(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
 }
 
 /// The `<figure>` blocks that carry a shot, as (alt, caption).
@@ -222,57 +222,6 @@ fn no_page_hand_types_a_number_beside_a_picture() {
                 );
             }
         }
-    }
-}
-
-/// Leg 4: the receipt names the schemas this code declares, and the
-/// bytes actually shot.
-///
-/// Leg 1 alone would not have caught the bug that started this road.
-/// The candidates screen showed `ce.join-report/0.1.0` through two
-/// schema bumps, and `gui/ui` never had to change for that: the SHAPE
-/// a screen renders can move underneath a picture while the rendering
-/// code stands still. So the shoot leaves a receipt, read here against
-/// the constants themselves — and against the files on disk, because a
-/// receipt nothing binds to the pixels is three strings anyone can
-/// edit green.
-#[test]
-fn the_receipt_names_what_the_pictures_show() {
-    let root = repo_root();
-    let text = std::fs::read_to_string(root.join(RECEIPT))
-        .unwrap_or_else(|e| panic!("{RECEIPT}: {e} — the pictures have no receipt:\n  {REGEN}"));
-    let receipt: Value = serde_json::from_str(&text).expect("the receipt is JSON");
-
-    assert_eq!(
-        receipt["window"],
-        serde_json::json!([WINDOW.0, WINDOW.1]),
-        "the receipt names another window"
-    );
-
-    for (face, live) in [
-        ("structure", codeeraser::structure::judge::SCHEMA_ID),
-        ("join", codeeraser::join::SCHEMA_ID),
-        ("dedup", codeeraser::dedup::SCHEMA_ID),
-    ] {
-        assert_eq!(
-            receipt["schemas"][face].as_str(),
-            Some(live),
-            "the {face} screen was photographed against a schema this code \
-             no longer speaks — the picture shows a report shape that is \
-             gone. Re-shoot:\n  {REGEN}"
-        );
-    }
-
-    for name in SHOTS {
-        let bytes = std::fs::read(root.join("site/assets").join(name))
-            .unwrap_or_else(|e| panic!("{name}: {e}"));
-        assert_eq!(
-            receipt["shots"][name].as_str(),
-            Some(digest(&bytes).as_str()),
-            "{name} is not the file the receipt was written for — either \
-             the picture was replaced by hand or the receipt was. \
-             Re-shoot:\n  {REGEN}"
-        );
     }
 }
 
