@@ -5,8 +5,14 @@
 //! of its own, because ce.toml excludes them from the self walk —
 //! queries the rest of its corpus under two arms, bare and
 //! PPMI-widened, and the top-5 of each arm rides out with its evidence
-//! integers. A deterministic stratified sample of queries (sha256
-//! rank, quotas in `parts`) is frozen for arbitration as
+//! integers. Since step 3 the corpus is the PERSISTED one: each corpus
+//! is indexed into a scratch `.ce/index.db`, the bags are read back
+//! through the product's reader, and every query is ranked off the
+//! tables — with the in-memory corpus built from the same stored bags
+//! asserted to agree hit for hit, so the frozen numbers below pin the
+//! store and the differential upkeep as well as the scoring. A
+//! deterministic stratified sample of queries (sha256 rank, quotas in
+//! `parts`) is frozen for arbitration as
 //! `contracts/eval/similar-sample-v1.json` under CE_BLESS=1; the
 //! arbitration record and the metrics gate live beside it once the
 //! oracle is frozen (eval_similar_precision). Standing `--ignored`
@@ -22,9 +28,10 @@
 use crate::common;
 use crate::similar_replay_parts as parts;
 use codeeraser::dedup;
-use codeeraser::similar::bm25::{Corpus, Doc, Hit};
+use codeeraser::similar::bm25::{self, Corpus, Doc, Hit, Postings, QueryTerm};
 use codeeraser::similar::file_bags;
-use codeeraser::similar::ppmi::Table;
+use codeeraser::similar::ppmi::{self, Table};
+use codeeraser::similar::reader::Reader;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -43,8 +50,9 @@ pub const CORPORA: [(&str, &str); 5] = [
     ("typescript", "contracts/fixtures/crosscheck/typescript"),
 ];
 
-/// One corpus measured: its index, its PPMI table, every unit's two
-/// top-K lists (bare, widened), and the texts for the packet.
+/// One corpus measured: its bags (as stored), its PPMI table, every
+/// unit's two top-K lists (bare, widened), and the texts for the
+/// packet.
 pub struct Measured {
     pub name: &'static str,
     pub corpus: Corpus,
@@ -53,60 +61,79 @@ pub struct Measured {
     pub texts: BTreeMap<String, String>,
 }
 
-/// Index one corpus through the product's own walk and the product's
-/// own unit universe, then bag every unit from the text the index
-/// saw. The identity multiset of the bags must equal the unitsig
-/// rows — the drift ensure that keeps "the bag universe is the T3
-/// universe" a fact rather than a sentence.
-fn corpus_docs(root: &Path, name: &str) -> (Vec<Doc>, BTreeMap<String, String>) {
-    let scratch = common::tmp(&format!("similar-replay-{name}"));
-    let (idx, _db) =
-        dedup::refreshed_index(root, Some(scratch.join("index.db"))).expect("scratch index");
-    let rows = dedup::unitcache::unit_rows(&idx).expect("unit rows");
-    let mut paths: Vec<&str> = rows.iter().map(|r| r.path.as_str()).collect();
+/// The stored bags must be exactly what the term road builds from the
+/// text the index saw — identity for identity (the bag universe IS the
+/// unitsig universe: the reader seats every own unitsig row, the
+/// fresh bags come from the same throat) and term for term (index and
+/// query share one road, and the store lost nothing on the way in).
+/// Returns the texts, read once through the judgment-side decode.
+fn round_trip(root: &Path, name: &str, docs: &[Doc]) -> BTreeMap<String, String> {
+    let mut texts = BTreeMap::new();
+    let mut paths: Vec<&str> = docs.iter().map(|d| d.path.as_str()).collect();
     paths.dedup();
-    let (mut docs, mut texts) = (Vec::new(), BTreeMap::new());
+    let mut seen = 0;
     for path in paths {
         let (text, lang) = dedup::walked_text(root, path).expect("walked text");
-        for bag in file_bags(&text, lang) {
-            docs.push(Doc {
-                path: path.to_string(),
-                bag,
-            });
+        let mut fresh = file_bags(&text, lang);
+        fresh.sort_by(|a, b| (&a.key, a.nth).cmp(&(&b.key, b.nth)));
+        let stored: Vec<&Doc> = docs.iter().filter(|d| d.path == path).collect();
+        assert_eq!(fresh.len(), stored.len(), "{name}: {path}: unit count");
+        for (f, s) in fresh.iter().zip(&stored) {
+            let want = (&f.key, f.nth, f.start_line, f.end_line, &f.terms);
+            let got = (
+                &s.bag.key,
+                s.bag.nth,
+                s.bag.start_line,
+                s.bag.end_line,
+                &s.bag.terms,
+            );
+            assert_eq!(
+                got, want,
+                "{name}: {path}: stored bag drifted from the term road"
+            );
+            seen += 1;
         }
         texts.insert(path.to_string(), text);
     }
-    let want: Vec<(&str, &str, i64)> = rows
-        .iter()
-        .map(|r| (r.path.as_str(), r.key.as_str(), r.nth))
-        .collect();
-    let mut got: Vec<(&str, &str, i64)> = docs
-        .iter()
-        .map(|d| (d.path.as_str(), d.bag.key.as_str(), d.bag.nth))
-        .collect();
-    got.sort_unstable();
-    assert_eq!(
-        got, want,
-        "{name}: bag universe drifted from the unitsig universe"
-    );
-    (docs, texts)
+    assert_eq!(seen, docs.len(), "{name}: every stored unit has a file");
+    texts
 }
 
-/// Every unit of a corpus against the rest under both arms.
+/// Both arms of one query, ranked off the tables — and off the
+/// in-memory corpus built from the same stored bags, which must agree
+/// hit for hit: one ranking road, two posting sources.
+fn arms(reader: &Reader<'_>, corpus: &Corpus, table: &Table, i: usize) -> (Vec<Hit>, Vec<Hit>) {
+    let bare = corpus.query_of(i);
+    let (mut widened, mut in_memory) = (bare.clone(), bare.clone());
+    ppmi::expand(reader, &mut widened).expect("cooc rows");
+    ppmi::expand(table, &mut in_memory).expect("in-memory");
+    assert_eq!(widened, in_memory, "seat {i}: widened query");
+    let rank = |q: &[QueryTerm]| {
+        let hits = bm25::top_k(reader, q, K, Some(i)).expect("tables");
+        assert_eq!(
+            hits,
+            bm25::top_k(corpus, q, K, Some(i)).expect("in-memory"),
+            "seat {i}: the persisted and in-memory roads rank apart"
+        );
+        hits
+    };
+    (rank(&bare), rank(&widened))
+}
+
+/// Index one corpus through the product's own walk into a scratch
+/// index, read the bags back, and rank every unit against the rest
+/// under both arms.
 pub fn measure(root: &Path, name: &'static str) -> Measured {
-    let (docs, texts) = corpus_docs(root, name);
+    let scratch = common::tmp(&format!("similar-replay-{name}"));
+    let (idx, _db) =
+        dedup::refreshed_index(root, Some(scratch.join("index.db"))).expect("scratch index");
+    let reader = Reader::open(&idx).expect("reader");
+    let docs = reader.docs().expect("stored bags");
+    let texts = round_trip(root, name, &docs);
     let corpus = Corpus::build(docs);
     let table = Table::build(&corpus);
     let ranked = (0..corpus.docs.len())
-        .map(|i| {
-            let bare = corpus.query_of(i);
-            let mut widened = bare.clone();
-            table.expand(&mut widened);
-            (
-                corpus.top_k(&bare, K, Some(i)),
-                corpus.top_k(&widened, K, Some(i)),
-            )
-        })
+        .map(|i| arms(&reader, &corpus, &table, i))
         .collect();
     Measured {
         name,

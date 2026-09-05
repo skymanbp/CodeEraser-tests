@@ -6,7 +6,7 @@ use super::score;
 use super::stats::Stats;
 use super::translation;
 use crate::similar_replay::Measured;
-use codeeraser::similar::bm25::QueryTerm;
+use codeeraser::similar::bm25::{self, QueryTerm};
 
 pub struct Frame {
     pub doc: usize,
@@ -16,9 +16,13 @@ pub struct Frame {
 
 impl Frame {
     pub fn build(m: &Measured, doc: usize) -> Self {
-        let hits = m
-            .corpus
-            .top_k(&m.corpus.query_of(doc), m.corpus.docs.len(), Some(doc));
+        let hits = bm25::top_k(
+            &m.corpus,
+            &m.corpus.query_of(doc),
+            m.corpus.docs.len(),
+            Some(doc),
+        )
+        .expect("in-memory");
         let mut base = vec![None; m.corpus.docs.len()];
         for h in &hits {
             base[h.doc] = Some(i128::from(h.score));
@@ -130,8 +134,8 @@ pub fn retrieve(m: &Measured, s: &Stats, f: &Frame, p: &Prepared<'_>) -> Vec<Ran
     let seats: Vec<_> = if all {
         (0..m.corpus.docs.len()).filter(|i| *i != f.doc).collect()
     } else {
-        m.corpus
-            .top_k(&p.query, m.corpus.docs.len(), Some(f.doc))
+        bm25::top_k(&m.corpus, &p.query, m.corpus.docs.len(), Some(f.doc))
+            .expect("in-memory")
             .iter()
             .map(|h| h.doc)
             .collect()

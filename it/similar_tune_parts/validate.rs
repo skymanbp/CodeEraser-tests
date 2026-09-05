@@ -2,6 +2,7 @@
 use super::data::{self, Pool};
 use super::ranking::{Frame, Ranked};
 use crate::similar_replay::Measured;
+use codeeraser::similar::{bm25, ppmi};
 
 pub fn baseline(m: &Measured, p: &Pool<'_>, f: &Frame, ranks: &[Ranked]) {
     for r in ranks {
@@ -45,8 +46,8 @@ pub fn baseline(m: &Measured, p: &Pool<'_>, f: &Frame, ranks: &[Ranked]) {
 
 pub fn widened(m: &Measured, query: usize, ranks: &[Ranked]) {
     let mut q = m.corpus.query_of(query);
-    m.table.expand(&mut q);
-    let live = m.corpus.top_k(&q, m.corpus.docs.len(), Some(query));
+    ppmi::expand(&m.table, &mut q).expect("in-memory");
+    let live = bm25::top_k(&m.corpus, &q, m.corpus.docs.len(), Some(query)).expect("in-memory");
     for r in ranks {
         let want = live.iter().find(|h| h.doc == r.doc).map_or(0, |h| h.score);
         assert_eq!(r.score, i128::from(want), "PPMI mirror score");

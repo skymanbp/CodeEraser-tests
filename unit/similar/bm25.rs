@@ -101,7 +101,7 @@ fn twelve_units() -> Corpus {
 fn ranking_prefers_shared_rare_terms_and_reads_role_evidence() {
     let corpus = twelve_units();
     let q = corpus.query_of(0);
-    let hits = corpus.top_k(&q, 3, Some(0));
+    let hits = top_k(&corpus, &q, 3, Some(0)).expect("in-memory");
     assert_eq!(hits[0].doc, 1, "shares user + query + shape");
     assert_eq!(hits[0].hits, [1, 1, 1, 0, 0, 0]);
     assert!(

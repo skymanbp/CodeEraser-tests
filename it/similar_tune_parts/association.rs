@@ -16,7 +16,7 @@ pub fn expanded(
     let mut q = bare.to_vec();
     let kind = c.text("assoc", "none");
     if kind == "v1" {
-        m.table.expand(&mut q);
+        ppmi::expand(&m.table, &mut q).expect("in-memory");
         return q;
     }
     if kind == "none" || !gate(s, bare, c.text("gate", "always")) {
