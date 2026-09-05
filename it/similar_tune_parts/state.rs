@@ -23,4 +23,8 @@ pub struct Run {
     pub measured: Vec<serde_json::Value>,
     pub pairs: Vec<roles::Pair>,
     pub directory: PathBuf,
+    /// sha256 of the oracle text this run read — the generation it
+    /// re-ranked against, named in the metadata (a v2 run once
+    /// stamped the v1 file's sha because the path was spelled here).
+    pub oracle_sha: String,
 }

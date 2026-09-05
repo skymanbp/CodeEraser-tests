@@ -23,7 +23,12 @@ use std::time::Instant;
 
 pub fn run() {
     let root = crate::common::repo_root();
-    let path = root.join("contracts/eval/similar-oracle-v1.json");
+    // CE_SIMILAR_ORACLE=<n> re-ranks against a later oracle generation
+    // (the holdout); outputs land beside the first's, suffixed.
+    let generation: u32 = std::env::var("CE_SIMILAR_ORACLE")
+        .map(|g| g.parse().expect("CE_SIMILAR_ORACLE: a generation number"))
+        .unwrap_or(1);
+    let path = root.join(format!("contracts/eval/similar-oracle-v{generation}.json"));
     let text = std::fs::read_to_string(&path).expect("read frozen oracle");
     let oracle: Oracle = serde_json::from_str(&text).expect("oracle schema");
     let configs = config::configs();
@@ -35,7 +40,8 @@ pub fn run() {
         coverage: Vec::new(),
         measured: Vec::new(),
         pairs: Vec::new(),
-        directory: root.join("cli/target/similar-tune"),
+        directory: root.join(format!("cli/target/similar-tune-v{generation}")),
+        oracle_sha: crate::eval_support::content_sha(&text),
     };
     std::fs::create_dir_all(&run.directory).expect("result directory");
     output::write(&run.directory, "configurations.txt", config::TABLE);

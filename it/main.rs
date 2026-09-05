@@ -70,6 +70,7 @@ mod eval_l2_register;
 mod eval_labels;
 mod eval_mention;
 mod eval_similar_precision;
+mod eval_similar_precision_parts;
 mod eval_support;
 mod eval_t3_candidates;
 mod eval_t3_precision;
