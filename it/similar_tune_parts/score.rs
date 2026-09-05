@@ -2,7 +2,7 @@
 use super::config::Config;
 use super::stats::Stats;
 use crate::similar_replay::Measured;
-use codeeraser::similar::bm25::{self, QueryTerm};
+use codeeraser::similar::bm25::{self, Postings, QueryTerm};
 
 pub fn query(m: &Measured, s: &Stats, doc: usize, c: &Config) -> Vec<QueryTerm> {
     let weights = c.weights();
@@ -13,7 +13,8 @@ pub fn query(m: &Measured, s: &Stats, doc: usize, c: &Config) -> Vec<QueryTerm> 
     }
     q.retain(|t| {
         t.weight > 0
-            && m.corpus.df(t.term) as i128 * c.int("dfdiv", 0) <= m.corpus.docs.len() as i128
+            && m.corpus.df(t.term).expect("in-memory") as i128 * c.int("dfdiv", 0)
+                <= m.corpus.docs.len() as i128
     });
     if c.int("select", 0) > 0 {
         q.sort_by_key(|t| (std::cmp::Reverse(t.weight * idf(s, t.term, c)), t.term));

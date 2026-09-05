@@ -48,7 +48,7 @@ fn a_query_widens_to_its_co_occurring_terms_only() {
         word_term(Channel::Name, "render"),
     );
     assert_eq!(table.ppmi(fetch, render), 0, "never co-occur");
-    let n = table.neighbours(fetch);
+    let n = neighbours(&table, fetch).expect("in-memory");
     assert_eq!(
         n.len(),
         1,
@@ -59,7 +59,7 @@ fn a_query_widens_to_its_co_occurring_terms_only() {
 
     let mut q = query_of(&doc(&["fetch"]).bag);
     let before = q.len();
-    table.expand(&mut q);
+    expand(&table, &mut q).expect("in-memory");
     let added: Vec<&QueryTerm> = q.iter().filter(|t| !t.spelled).collect();
     assert_eq!(added.len(), 1, "load, at the floor, is appended");
     assert_eq!(q.len(), before + added.len());
@@ -86,7 +86,7 @@ fn expansion_weight_is_a_capped_fraction_of_the_parent() {
         "2·8 / (2·2) = 4 → two bits"
     );
     let mut q = query_of(&doc(&["a"]).bag);
-    table.expand(&mut q);
+    expand(&table, &mut q).expect("in-memory");
     let added = q.iter().find(|t| !t.spelled).expect("b appended");
     assert_eq!(added.term, b);
     assert_eq!(added.weight, 3 * W_UNIT * (2 << IDF_FRAC_BITS) / PPMI_SCALE);
