@@ -29,13 +29,22 @@ fn ext(path: &str) -> &str {
     path.rsplit('.').next().unwrap_or("")
 }
 
+/// A row's file identity: sha256 of the text with CRLF folded to LF —
+/// the blob's bytes on every checkout. The bag never sees a `\r`, so
+/// the checkout's line endings must not change who a row is (the
+/// first freeze hashed this machine's mixed tree: 29 self files CRLF,
+/// 158 LF; a clean checkout matched 29).
+pub fn identity_sha(text: &str) -> String {
+    content_sha(&text.replace("\r\n", "\n"))
+}
+
 /// The identity fields every unit row carries: where it lives, its
 /// file's content sha (so a later gate can tell a row whose file still
 /// reads the same from one whose file moved on), and its span.
 fn identity(m: &Measured, d: &Doc) -> serde_json::Map<String, Value> {
     let v = json!({
         "path": d.path, "key": d.bag.key, "nth": d.bag.nth,
-        "sha": content_sha(&m.texts[&d.path]),
+        "sha": identity_sha(&m.texts[&d.path]),
         "start_line": d.bag.start_line, "end_line": d.bag.end_line,
     });
     v.as_object().expect("object").clone()
