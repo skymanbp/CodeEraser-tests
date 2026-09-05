@@ -69,3 +69,37 @@ fn consume_relays_the_verdict_and_names_every_non_judgment() {
         "{short:?}"
     );
 }
+
+/// A malformed reply is never read as a healthy one (codex review
+/// 2026-09-04): the site table must ascend, the counts must add up to
+/// it, and `over` must be a boolean.
+#[test]
+fn consume_refuses_a_reply_that_is_not_this_core_s_shape() {
+    let counts = json!({"label": 1, "prose": 1});
+    let bad = [
+        (
+            json!({"sites": [2, 0], "counts": counts, "over": false}),
+            "ascend",
+        ),
+        (
+            json!({"sites": [0, 0], "counts": counts, "over": false}),
+            "ascend",
+        ),
+        (
+            json!({"sites": [0, 2], "counts": {"label": 1, "prose": 0}, "over": false}),
+            "counts disagree",
+        ),
+        (json!({"sites": [0, 2], "counts": counts}), "over"),
+        (
+            json!({"sites": [0, 2], "counts": counts, "over": "yes"}),
+            "over",
+        ),
+    ];
+    for (reply, why) in bad {
+        let got = consume(&reply, 3);
+        assert!(
+            got.as_ref().is_err_and(|e| e.contains(why)),
+            "{reply}: {got:?}"
+        );
+    }
+}

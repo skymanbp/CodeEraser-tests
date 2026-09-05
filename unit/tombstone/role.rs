@@ -78,6 +78,11 @@ fn ledger_tokens_are_versions_dates_and_commits_read_once() {
         3,
         "CJK punctuation splits"
     );
+    assert_eq!(
+        ledger_tokens("bind 10.0.0.1 or 1.2.3.4"),
+        0,
+        "four parts are an address, not a release"
+    );
 }
 
 #[test]
@@ -88,7 +93,7 @@ fn the_segment_is_the_quote_run_or_the_section_body_around_a_line() {
     let cases = [
         (3, 3, 4, "the quote run, lines 3-4"),
         (4, 3, 4, "the same run from its second line"),
-        (6, 1, 5, "the preamble body, quote included"),
+        (6, 1, 1, "the preamble body, its quote run excluded"),
         (8, 8, 1, "a heading line is in its own body"),
         (10, 8, 1, "a body ends at the next heading of any level"),
         (14, 12, 1, "a level-3 body"),

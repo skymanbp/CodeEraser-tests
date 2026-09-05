@@ -68,21 +68,55 @@ fn a_deny_tier_past_its_budget_refuses_the_commit_and_names_the_message_line() {
     assert_refused(&text, &site("COMMIT_EDITMSG", 3, "prose"), &line);
 }
 
-#[test]
-fn the_comment_prefix_is_the_repository_s_own() {
-    // git reads `core.commentChar` / `core.commentString` as aliases,
-    // last one set wins: under `;` the `;` line is the comment, so the
-    // argument on line 4 is the one site (under `#` line 2 would be one too)
-    let dir = staged("tomb-commitmsg-prefix", "");
-    common::git(&dir, &["config", "core.commentChar", ";"]);
-    let msg = "Drop the pork module\n; braise_pork is no longer needed.\n\nbraise_pork is no longer needed.\n";
+/// The sites `ce commitmsg` seats for one message under the repository's
+/// own git config (exit 0, observe): the staged deletion of a.py is R.
+fn sites_under(tag: &str, config: &[(&str, &str)], msg: &str) -> Vec<String> {
+    let dir = staged(tag, "");
+    for (key, value) in config {
+        common::git(&dir, &["config", key, value]);
+    }
     let (code, text, line) = commitmsg(&dir, msg);
     assert_eq!(code, Some(0), "{text}");
-    assert_eq!(
-        sites(&line["tombstone"]),
-        [site("COMMIT_EDITMSG", 4, "prose")],
-        "{line}"
-    );
+    sites(&line["tombstone"])
+}
+
+#[test]
+fn the_message_is_read_with_the_repository_s_own_comment_prefix() {
+    // git reads `core.commentChar` / `core.commentString` as aliases, last
+    // one set wins; the two keys are matched by their exact names and the
+    // value kept byte for byte (codex review 2026-09-04: `core.commentary`
+    // is somebody else's key, and a trailing space is part of the prefix —
+    // git strips `// ` lines, not `//x` ones). And a message is a SURFACE:
+    // its subject line is its one label, and `- braise_pork …` as a list
+    // lead — a structural position that keeps a name alive in a file —
+    // declares nothing here, so the item is a site.
+    type Probe<'a> = (&'a str, &'a [(&'a str, &'a str)], &'a str, Vec<String>);
+    let cases: [Probe; 3] = [
+        (
+            "tomb-commitmsg-prefix",
+            &[("core.commentChar", ";")],
+            "Drop the pork module\n; braise_pork is no longer needed.\n\nbraise_pork is no longer needed.\n",
+            vec![site("COMMIT_EDITMSG", 4, "prose")],
+        ),
+        (
+            "tomb-commitmsg-exact",
+            &[("core.commentString", "// "), ("core.commentary", "zzz")],
+            "Drop the pork module\n// braise_pork is no longer needed.\n//x braise_pork is no longer needed.\n",
+            vec![site("COMMIT_EDITMSG", 3, "prose")],
+        ),
+        (
+            "tomb-commitmsg-surface",
+            &[],
+            "Sides (no braise_pork)\n\n- braise_pork is no longer needed.\n",
+            vec![
+                site("COMMIT_EDITMSG", 1, "bracketed"),
+                site("COMMIT_EDITMSG", 3, "prose"),
+            ],
+        ),
+    ];
+    for (tag, config, msg, want) in cases {
+        assert_eq!(sites_under(tag, config, msg), want, "{tag}");
+    }
 }
 
 #[test]

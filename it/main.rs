@@ -128,6 +128,7 @@ mod symbol_visibility;
 mod tombstone_audit;
 mod tombstone_commitmsg;
 mod tombstone_guard;
+mod tombstone_guard_session;
 mod tombstone_replay;
 mod trend_rebuild;
 mod trend_submodule;

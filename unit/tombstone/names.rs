@@ -1,10 +1,10 @@
 use super::*;
-use crate::tombstone::surfaces::added_lines;
+use crate::tombstone::surfaces::added;
 use crate::tombstone::tests::pair;
 
 /// R of a changeset, the added sets read the way the hub reads them.
 fn r(pairs: &[PairText]) -> Erased {
-    let added: Vec<_> = pairs.iter().map(added_lines).collect();
+    let added: Vec<_> = pairs.iter().map(added).collect();
     erased(pairs, &added, &Policy::default())
 }
 

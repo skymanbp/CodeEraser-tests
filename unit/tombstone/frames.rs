@@ -112,6 +112,9 @@ fn chinese_frames_live_inside_one_run() {
     assert_eq!(bound("番茄炒蛋（无东坡肉）"), one("东坡肉", true));
     assert_eq!(bound("东坡肉已移除"), one("东坡肉", false));
     assert_eq!(bound("无cache"), one("cache", false));
+    // the mirror: a Chinese suffix form as a word of its own closes at
+    // the ASCII word before it (codex review 2026-09-04)
+    assert_eq!(bound("cache已移除"), one("cache", false));
     assert!(bound("无").is_empty());
 }
 

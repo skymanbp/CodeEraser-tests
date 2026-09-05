@@ -15,11 +15,11 @@ pub(super) fn pair<'a>(rel: &'a str, before: &'a str, after: &'a str, lang: Lang
 }
 
 /// A changeset measured with nothing declared in ce.toml.
-fn plain(pairs: &[PairText], session: &BTreeSet<u64>) -> Findings {
+pub(super) fn plain(pairs: &[PairText], session: &BTreeSet<u64>) -> Findings {
     measure(pairs, session, &Policy::default())
 }
 
-fn none() -> BTreeSet<u64> {
+pub(super) fn none() -> BTreeSet<u64> {
     BTreeSet::new()
 }
 
@@ -33,7 +33,7 @@ fn exempt_rows(f: &Findings) -> Vec<(String, Option<usize>, Witness, usize)> {
 
 /// The candidate rows as the wire will see them, with their line:
 /// (line, kind, marks, binds an erased name).
-fn rows(f: &Findings) -> Vec<(usize, Kind, usize, bool)> {
+pub(super) fn rows(f: &Findings) -> Vec<(usize, Kind, usize, bool)> {
     f.rows
         .iter()
         .map(|r| (r.line, r.kind, r.marks, r.names > 0))
@@ -42,6 +42,11 @@ fn rows(f: &Findings) -> Vec<(usize, Kind, usize, bool)> {
 
 /// A judgment naming every row a site — what the feed renders; the
 /// conjunction itself is the core's (contracts/fixtures/tombstone).
+/// The policy a `[tombstone]` table declares, as the hooks build it.
+pub(super) fn declared(table: &str) -> Policy {
+    Policy::of(Path::new("."), &toml::from_str(table).unwrap())
+}
+
 fn judged_all(f: &Findings, label: usize, prose: usize) -> Judgment {
     Ok(Judged {
         sites: (0..f.rows.len()).collect(),
@@ -177,9 +182,7 @@ fn a_changelog_is_exempt_whole_and_counted() {
 /// compound's other word still does.
 #[test]
 fn the_table_declares_ledgers_and_vocabulary() {
-    let cfg: crate::config::Config =
-        toml::from_str("[tombstone]\nledger = [\"notes/\"]\nterms = [\"Pork\"]\n").unwrap();
-    let policy = Policy::of(Path::new("."), &cfg);
+    let policy = declared("[tombstone]\nledger = [\"notes/\"]\nterms = [\"Pork\"]\n");
     let pairs = [
         pair(
             "kitchen.rs",

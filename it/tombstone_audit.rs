@@ -59,13 +59,20 @@ fn stop_tombstone(dir: &Path) -> serde_json::Value {
 }
 
 /// The Stop leg on one fixture written over the erased repo: its
-/// sites are exactly `expected`, its exemptions exactly `exempt`.
-fn stop_judges(tag: &str, doc: &str, expected: &[String], exempt: serde_json::Value) {
+/// sites are exactly `expected`, its exemptions exactly `exempt`; the
+/// object comes back for whatever else a case asserts.
+fn stop_judges(
+    tag: &str,
+    doc: &str,
+    expected: &[String],
+    exempt: serde_json::Value,
+) -> serde_json::Value {
     let dir = erased(tag);
     common::write_doc(&dir, doc);
     let t = stop_tombstone(&dir);
     assert_eq!(sites(&t), expected, "{t}");
     assert_eq!(t["exempt"], exempt, "{t}");
+    t
 }
 
 #[test]
@@ -139,6 +146,22 @@ fn a_declared_ledger_is_exempt_whole_and_a_term_is_never_a_name() {
         &[site("README.md", 3, "bare")],
         serde_json::json!([{"file": "docs/plan.md", "why": "declared"}]),
     );
+}
+
+#[test]
+fn an_excluded_path_is_measured_by_nobody() {
+    // codex review 2026-09-04: the config's walk scope — a vendored copy
+    // framing the name is outside the changeset the class reads, while
+    // a.py's erasure stays in it
+    let t = stop_judges(
+        "tomb-audit-exclude",
+        "--- ce.toml\n[guard]\nmode = \"observe\"\nexclude = [\"vendor/**\"]\n\
+         --- vendor/notes.md\n# Intro\n\n## Without braise_pork\n",
+        &[],
+        serde_json::json!([]),
+    );
+    assert_eq!(t["rows"], 0, "{t}");
+    assert!(t["erased"].as_u64().expect("erased") >= 1, "{t}");
 }
 
 #[test]

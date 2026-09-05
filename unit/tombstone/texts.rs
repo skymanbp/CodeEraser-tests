@@ -81,8 +81,8 @@ fn an_absent_side_is_empty_and_a_missing_or_unjudged_pair_drops() {
     let (got, unread) = loaded(&root, &pairs, Side::Worktree);
     assert_eq!(
         (got.len(), unread),
-        (1, 0),
-        "the missing blob and the unjudged file drop"
+        (1, 1),
+        "the missing blob is counted unread; the unjudged file is no pair at all"
     );
     assert_eq!(
         (got[0].before.as_str(), got[0].after.as_str()),
