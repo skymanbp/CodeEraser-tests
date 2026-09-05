@@ -1,9 +1,12 @@
-//! Observe-feed contract (ce.observe/0.9.0): the NDJSON feed is the
+//! Observe-feed contract (ce.observe/0.10.0): the NDJSON feed is the
 //! M4 evaluation-set raw material, so its line shape is pinned by a
 //! golden. One deterministic run of every producer — probe, budget
 //! (§4.2 step 2), zone unarmed AND armed (plan v2.6 §A / v2.7 ①),
 //! tombstone (plan v2.26, the per-edit leg; the Stop and precommit
-//! lines carry its object), stop audit, precommit, commitmsg — volatile fields
+//! lines carry its object), stop audit (whose `similar` object, 0.10.0,
+//! is ABSENT here by design: the staged twin shares one name word and
+//! the core's role bit wants two — similar_face.rs seeds the pair that
+//! earns it), precommit, commitmsg — volatile fields
 //! normalized (ts_ms,
 //! elapsed_ms, absolute file path); key sets, schema/event tags,
 //! counts, mode, and degraded flags must match byte-for-byte.

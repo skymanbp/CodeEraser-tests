@@ -35,6 +35,7 @@ three-signal join | 三信号联判 | join | tab:candidates, join_report | mcp:j
 tree-scale structure (seven axes, split pricing) | 树尺度结构（七轴、拆分定价） | structure | tab:structure, structure_report | mcp:structure | |
 score trajectory | 分数轨迹 | trend | tab:trend, trend_report | mcp:trend | |
 score, ratchet and floor | 分数、棘轮与地板 | check | tab:score, check_report | mcp:check | |
+same-role advisor (similar units, associative view) | 同角色顾问（相似单元、联想视图） | similar | tab:similar, similar_report | mcp:similar_units | |
 baseline writes | 基线写入 | baseline | | | CLI only: a machine surface never writes a baseline | 只在 CLI：机器面永不写基线
 erase plan | 擦除计划 | erase | tab:erase, erase_preview | mcp:erase, skill:erase | |
 erase apply | 擦除执行 | erase --apply | tab:erase, erase_apply | | no MCP face: applying is a human act | 无 MCP 面：执行是人类动作

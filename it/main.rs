@@ -119,6 +119,7 @@ mod rescache_face;
 mod root_anchor;
 mod sarif_face;
 mod scan_classes;
+mod similar_face;
 mod similar_replay;
 mod similar_replay_parts;
 mod similar_tune;
