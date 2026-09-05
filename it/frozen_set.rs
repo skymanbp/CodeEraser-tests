@@ -16,6 +16,7 @@ pub const FROZEN: &[&str] = &[
     "docs/EVAL-SET.md",
     "docs/EVAL-SET-M5-3.md",
     "docs/EVAL-SET-M5-CLOSE.md",
+    "docs/EVAL-SET-SIMILAR.md",
     "docs/FIELD-TEST.md",
 ];
 
