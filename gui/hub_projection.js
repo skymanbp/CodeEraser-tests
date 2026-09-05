@@ -70,4 +70,23 @@ say(body.includes(">DedupCfg<"), "the symbol cell carries the name");
 const wide = { ...row, extra: "sixth" };
 say(!headers(sandbox.hubTable(["wide", [wide]])).includes("extra"), "the projection really cuts at five columns");
 
+// The similar report's candidate row (ce.similar-report/0.1.0, plan
+// v2.29 step 6) was NAMED for this cut: its five leading scalars in
+// alphabetical order are where, what, and the two judged numbers —
+// `hits` is an array and `widened` / `shape_equal` fall past five.
+const candidate = {
+  at: "a.rs:2-4",
+  key: "fetch_user_row/1",
+  nth: 0,
+  role: true,
+  score: 12,
+  hits: [2, 3, 0, 2, 3, 0],
+  shape_equal: true,
+  widened: false,
+};
+say(
+  headers(sandbox.hubTable(["candidates", [candidate]])).join(",") === "at,key,nth,role,score",
+  "a similar candidate projects to at,key,nth,role,score"
+);
+
 process.exit(problems.length === 0 ? 0 : 1);

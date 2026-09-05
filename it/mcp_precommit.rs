@@ -2,52 +2,14 @@
 //! a 0.x preview acceptance item) + pre-commit gate e2e on a real
 //! git repo with staged duplication.
 
-use std::io::{BufRead, BufReader, Write as _};
-use std::process::{Command, Stdio};
-
 use crate::common;
-use crate::common::{git, rust_fn, tmp};
+use crate::common::{McpSession, git, rust_fn, tmp};
 
-/// Server over a seeded project + a request closure; EOF on drop.
-struct McpSession {
-    child: std::process::Child,
-    stdin: std::process::ChildStdin,
-    lines: std::io::Lines<BufReader<std::process::ChildStdout>>,
-}
-
+/// Server over a seeded project (the harness lives in common/mcp.rs).
 fn mcp_session(name: &str) -> McpSession {
     let dir = tmp(name);
     common::seed_clone_pair(&dir);
     McpSession::over(&dir)
-}
-
-impl McpSession {
-    fn over(dir: &std::path::Path) -> McpSession {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_ce"))
-            .arg("mcp")
-            .arg(dir)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .expect("spawn mcp");
-        let stdin = child.stdin.take().expect("stdin");
-        let lines = BufReader::new(child.stdout.take().expect("stdout")).lines();
-        McpSession {
-            child,
-            stdin,
-            lines,
-        }
-    }
-    fn ask(&mut self, req: serde_json::Value) -> serde_json::Value {
-        writeln!(self.stdin, "{req}").expect("write");
-        self.stdin.flush().expect("flush");
-        serde_json::from_str(&self.lines.next().expect("reply").expect("line")).expect("json")
-    }
-    fn finish(mut self) {
-        drop(self.stdin); // EOF ends serve()
-        let _ = self.child.wait();
-    }
 }
 
 #[test]
@@ -84,6 +46,7 @@ fn mcp_initialize_and_list() {
             "erase",
             "doctor",
             "trend",
+            "similar_units",
             "update_check",
         ]
     );

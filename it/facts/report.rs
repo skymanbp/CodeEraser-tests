@@ -22,6 +22,7 @@ const LINKED: &[(&str, &str)] = &[
     ("mentions", codeeraser::mention::face::SCHEMA_ID),
     ("observe", codeeraser::hookio::OBSERVE_SCHEMA),
     ("scan", codeeraser::scan::report::SCHEMA),
+    ("similar", codeeraser::similar::face::SCHEMA_ID),
     ("sites", codeeraser::graph::SCHEMA_ID),
     ("structure", codeeraser::structure::judge::SCHEMA_ID),
     ("update", codeeraser::update::SCHEMA_ID),
