@@ -14,7 +14,7 @@ use codeeraser::corelink::PROTO;
 use std::path::PathBuf;
 
 /// The wire golden files both consumers read, in Spec.hs's order.
-pub const GOLDEN_FILES: [&str; 13] = [
+pub const GOLDEN_FILES: [&str; 14] = [
     "handshake/hello-ok.ndjson",
     "handshake/wire-errors.ndjson",
     "fourclass/golden.ndjson",
@@ -28,6 +28,7 @@ pub const GOLDEN_FILES: [&str; 13] = [
     "erase/golden.ndjson",
     "audit/golden.ndjson",
     "tombstone/golden.ndjson",
+    "similar/golden.ndjson",
 ];
 
 fn fixture(rel: &str) -> PathBuf {
