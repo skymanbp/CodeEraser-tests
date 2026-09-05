@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 pub const FROZEN: &[&str] = &[
     "CHANGELOG.md",
     "docs/CHANGELOG-ARCHIVE.md",
+    "docs/CHANGELOG-ARCHIVE-v1.4.md",
     "docs/EVAL-SET.md",
     "docs/EVAL-SET-M5-3.md",
     "docs/EVAL-SET-M5-CLOSE.md",

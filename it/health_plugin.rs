@@ -107,7 +107,9 @@ fn plugin_manifests_parse_and_wire_real_subcommands() {
 /// the mirrors, replacing a hardcoded "0.1." prefix the 0.2.0 bump
 /// broke). The v0.1.0 era proved the drift class: a 0.1.0
 /// plugin.json beside a 0.1.1 crate while binaries reported 0.0.1.
-/// Cargo.lock mirrors are already machine-checked by --locked.
+/// Cargo.lock mirrors are already machine-checked by --locked. The
+/// npm pointer package rides too (O74): it lives in the tree since
+/// plan v2.29 step 9, so its version can no longer drift unseen.
 #[test]
 fn version_mirrors_move_with_the_crate() {
     let crate_version = env!("CARGO_PKG_VERSION");
@@ -115,6 +117,7 @@ fn version_mirrors_move_with_the_crate() {
     for json_mirror in [
         "plugin/.claude-plugin/plugin.json",
         "gui/src-tauri/tauri.conf.json",
+        "npm/package.json",
     ] {
         let doc: serde_json::Value = serde_json::from_str(
             &std::fs::read_to_string(root.join(json_mirror)).expect(json_mirror),
