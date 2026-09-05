@@ -1,10 +1,13 @@
 //! `ce erase` end-to-end against the contract's own acceptance list
 //! (docs/reference/erase.md §acceptance): the three classes plan and
-//! apply on a fixture tree with a converging re-run, a live T2 twin
-//! is never planned, refusals (dirty worktree / drifted hash /
-//! non-repo) fire BY NAME without touching anything, and two plans
-//! over one tree are byte-identical. The self-repo zero-row gate is
-//! CI's `ce erase .. --check` leg, not this file.
+//! apply on a fixture tree with a converging re-run — a PRIVATE dead
+//! twin through the t1_twin class itself (7.0.0, O51: before the
+//! dead-verdict code rode the row, the class could only ever refuse),
+//! a public one refused by RG10 — a live T2 twin is never planned,
+//! refusals (dirty worktree / drifted hash / non-repo) fire BY NAME
+//! without touching anything, and two plans over one tree are
+//! byte-identical. The self-repo zero-row gate is CI's
+//! `ce erase .. --check` leg, not this file.
 
 use crate::common::gitio::git;
 use crate::common::{self, commit_all, core_bin, tmp};
@@ -50,6 +53,23 @@ const FN_T2: &str = "def sum_amounts(entries):
     return outcome
 ";
 
+/// A second whole unit, PRIVATE by Python's underscore rule and of a
+/// different shape from FN_T1 (no T2 kinship): its dead copy is the
+/// erase the twin class exists to license.
+const FN_PRIV: &str = "def _spare_total(items, base):
+    items = list(items)
+    index = 0
+    total = base
+    while index < len(items):
+        current = items[index]
+        total = total + current * current
+        index = index + 1
+    if total > 100:
+        total = total - 100
+    print(total, index, base)
+    return total
+";
+
 fn seed(dir: &Path) {
     let w = |name: &str, text: String| std::fs::write(dir.join(name), text).expect(name);
     w(
@@ -58,8 +78,9 @@ fn seed(dir: &Path) {
     );
     w("doc2.md", format!("# second\n\n{PARA}\n"));
     w("orphan.md", "an unlinked note nobody references\n".into());
-    w("__main__.py", format!("import t2\n\n{FN_T1}"));
+    w("__main__.py", format!("import t2\n\n{FN_T1}\n{FN_PRIV}"));
     w("copy.py", FN_T1.into());
+    w("spare.py", FN_PRIV.into());
     w("t2.py", FN_T2.into());
     git(dir, &["init", "-q"]);
     commit_all(dir, "seed");
@@ -86,8 +107,29 @@ fn plan_names_all_classes_and_is_deterministic() {
     seed(&dir);
     let core = core_bin();
     let p = erase::plan(&dir, None, &core).expect("plan");
-    assert_eq!(p.counts.eraseable, 2, "orphan + doc2 span");
+    assert_eq!(p.counts.eraseable, 3, "orphan + doc2 span + spare twin");
     assert!(row(&p, "dead_file", "orphan.md").eraseable);
+    // spare.py's dead verdict is unref_private, so the twin row carries
+    // a dead code outside publicDeadVerdicts and the core licenses it;
+    // the plan's closure keeps THIS row over the dead_file row for the
+    // same path because it names the live unit it duplicates (7.0.0)
+    let spare = row(&p, "t1_twin", "spare.py");
+    assert!(
+        spare.eraseable && spare.reason == "eraseable",
+        "{}",
+        spare.reason
+    );
+    assert!(
+        spare.provenance.contains("covers unit _spare_total"),
+        "{}",
+        spare.provenance
+    );
+    assert!(
+        !p.rows
+            .iter()
+            .any(|r| r.class == "dead_file" && r.path == "spare.py"),
+        "one row per whole-file target"
+    );
     // copy.py declares `def compute_total(...)` — an export surface, so
     // its dead verdict is unref_public and RG10 forbids acting on it
     // (6.1.0). Before the firewall reached this face the plan proposed
@@ -119,6 +161,7 @@ fn plan_names_all_classes_and_is_deterministic() {
     for needle in [
         "+++ /dev/null",
         "## dead_file",
+        "## t1_twin",
         "## verbatim_doc",
         "fnv1a64:",
     ] {
@@ -145,15 +188,16 @@ fn apply_refuses_by_name_then_converges() {
     // a fresh plan applies, converges, and leaves the audit trail
     let plan = erase::plan(&dir, None, &core).expect("re-plan");
     let n = erase::apply_plan(&dir, None, &core, &plan).expect("apply");
-    assert_eq!(n, 2);
+    assert_eq!(n, 3);
     assert!(!dir.join("orphan.md").exists());
+    assert!(!dir.join("spare.py").exists(), "the private twin is erased");
     // the export surface survives the apply, not just the plan (6.1.0)
     assert!(dir.join("copy.py").exists(), "RG10 holds through apply");
     let doc2 = std::fs::read_to_string(dir.join("doc2.md")).expect("doc2");
     assert!(!doc2.contains("alpha beta gamma"), "span spliced out");
     assert!(doc2.contains("# second"), "the rest of the file survives");
     let log = std::fs::read_to_string(dir.join(".ce/erase-log.ndjson")).expect("log");
-    assert_eq!(log.lines().count(), 2, "one record per applied row");
+    assert_eq!(log.lines().count(), 3, "one record per applied row");
     assert!(log.lines().all(|l| l.contains("ce.erase-log/0.1.0")));
     let after = erase::plan(&dir, None, &core).expect("post-plan");
     assert_eq!(after.counts.eraseable, 0, "converged");

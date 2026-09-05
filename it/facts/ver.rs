@@ -10,7 +10,7 @@ use std::path::Path;
 /// line stands at, re-anchored on each major and deliberately skewed
 /// between. fixture_contract.rs derives the rest of the triple from
 /// the files against this one.
-pub const ANCHOR: &str = "6.0.0";
+pub const ANCHOR: &str = "7.0.0";
 
 pub fn facts() -> Vec<Fact> {
     let root = repo_root();

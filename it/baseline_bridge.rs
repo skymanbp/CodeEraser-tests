@@ -8,7 +8,7 @@
 //! Plus the ADR-006 independence pair: the --fail-under floor and
 //! the ratchet each fail ALONE.
 
-use crate::baseline_ledgers::{RETIRED, rekeyed_pairs, suite_pairs};
+use crate::baseline_ledgers::{RETIRED, reanchored, reanchored_rows, rekeyed_pairs, suite_pairs};
 use crate::common;
 use crate::common::core_bin;
 use codeeraser::score::{self, Opts};
@@ -97,6 +97,12 @@ fn pre_haskell_members_survive_every_generation() {
         .collect();
     assert_eq!(old.len(), 40, "the frozen set is the 3j-close 40");
     let suite_ledger = suite_pairs();
+    // 7.0.0: every surviving key is looked up under its container-anchor
+    // successor (REANCHORED); a key the migration ledger never saw is a
+    // named failure, not a silent miss
+    let anchored = |id: &u64| -> u64 {
+        reanchored(*id).unwrap_or_else(|| panic!("member {id} has no REANCHORED successor"))
+    };
     for m in &old {
         if let Some((_, why)) = RETIRED.iter().find(|(id, _)| id == m) {
             assert!(
@@ -112,7 +118,7 @@ fn pre_haskell_members_survive_every_generation() {
             );
             let Some((_, sk)) = suite_ledger.iter().find(|(id, _)| id == new) else {
                 assert!(
-                    now.contains(new),
+                    now.contains(&anchored(new)),
                     "re-keyed member {m}'s successor {new} is missing — the rename ledger \
                      promised the duplication survived the move"
                 );
@@ -123,15 +129,39 @@ fn pre_haskell_members_survive_every_generation() {
                 "member {new} moved to the suite yet is back in the superproject's baseline — stale REKEYED_SUITE entry"
             );
             assert!(
-                suite.contains(sk),
+                suite.contains(&anchored(sk)),
                 "member {new}'s suite key {sk} is missing from the suite's baseline — the second-generation ledger promised the duplication survived the move"
             );
             continue;
         }
         assert!(
-            now.contains(m),
+            now.contains(&anchored(m)),
             "pre-Haskell member {m} vanished from the committed baseline without a \
              named retirement — corpus growth must never rewrite the pre-generation set"
+        );
+    }
+}
+
+/// The REANCHORED documents can only describe the present: no 6.x key
+/// survives in either baseline, and every successor is seated in its
+/// own baseline unless a later cleanup retired it BY NAME.
+#[test]
+fn reanchored_ledgers_describe_the_present() {
+    let now = discrete_members("../ce-baseline.json");
+    let suite = discrete_members("../cli/tests/ce-baseline.json");
+    for (old, new, in_suite) in reanchored_rows() {
+        let (home, name) = if in_suite {
+            (&suite, "suite")
+        } else {
+            (&now, "superproject")
+        };
+        assert!(
+            !now.contains(&old) && !suite.contains(&old),
+            "6.x key {old} is back in a baseline — stale REANCHORED entry"
+        );
+        assert!(
+            home.contains(&new) || RETIRED.iter().any(|(id, _)| *id == new),
+            "REANCHORED successor {new} is missing from the {name} baseline and no RETIRED entry names it"
         );
     }
 }

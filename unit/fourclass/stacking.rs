@@ -2,14 +2,15 @@ use super::*;
 use crate::scan::lang::Lang;
 
 /// Red/green for the stacking evidence. The green direction: a
-/// genuine top-level duplicate fires. The red direction, one row
-/// per measured or attack-reviewed false-positive shape: methods
-/// under different Python classes, anonymous Rust closures
-/// (fpr-fourclass 8/600 before the top-level scoping), methods
-/// under different Rust impls, impl containers themselves
-/// (inherent + trait impl of one type — the FPR replay caught the
-/// unqualified key colliding), and Go methods on different
-/// receivers (attack review F7).
+/// genuine top-level duplicate fires, and every after-side occurrence
+/// rides as its own `[hash, start, end]` row (7.0.0) so the core can
+/// place the novel mass. The red direction, one row per measured or
+/// attack-reviewed false-positive shape: methods under different
+/// Python classes, anonymous Rust closures (fpr-fourclass 8/600 before
+/// the top-level scoping), methods under different Rust impls, impl
+/// containers themselves (inherent + trait impl of one type — the FPR
+/// replay caught the unqualified key colliding), and Go methods on
+/// different receivers (attack review F7).
 #[test]
 fn dup_evidence_is_top_level_and_named() {
     let real = PairInput {
@@ -17,7 +18,21 @@ fn dup_evidence_is_top_level_and_named() {
         after: "fn one() {}\nfn work(a: i32) -> i32 { a }\nfn work(a: i32) -> i32 { a + 1 }\n",
         lang: Lang::Rust,
     };
-    assert_eq!(dup_units(&real).len(), 1, "top-level duplicate is evidence");
+    let hash = fnv1a(b"work/1");
+    assert_eq!(
+        dup_spans(&real),
+        vec![[hash, 2, 2], [hash, 3, 3]],
+        "both occurrences of the duplicated key, with their spans"
+    );
+    let grown = PairInput {
+        before: "fn work(a: i32) -> i32 { a }\nfn work(a: i32) -> i32 { a + 1 }\n",
+        after: "fn work(a: i32) -> i32 { a }\nfn work(a: i32) -> i32 { a + 1 }\n",
+        lang: Lang::Rust,
+    };
+    assert!(
+        dup_spans(&grown).is_empty(),
+        "a duplicate that was already there is not NEW"
+    );
     let none: [(&str, Lang, &str); 5] = [
         (
             "class A:\n    def add(self, x):\n        pass\n\nclass B:\n    def add(self, x):\n        pass\n",
@@ -52,8 +67,8 @@ fn dup_evidence_is_top_level_and_named() {
             lang,
         };
         assert_eq!(
-            dup_units(&input),
-            Vec::<u64>::new(),
+            dup_spans(&input),
+            Vec::<[u64; 3]>::new(),
             "{what} are not evidence"
         );
     }
