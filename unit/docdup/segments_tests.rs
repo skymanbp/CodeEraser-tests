@@ -27,6 +27,15 @@ fn rows(src: &str, lang: Lang) -> Vec<(i64, i64, i64)> {
         .collect()
 }
 
+/// The (start, end) spans alone — the geometry legs that assert
+/// adjacency, not kind.
+fn spans(src: &str, lang: Lang) -> Vec<(i64, i64)> {
+    rows(src, lang)
+        .into_iter()
+        .map(|(_, a, b)| (a, b))
+        .collect()
+}
+
 #[test]
 fn fenced_inline_and_html_comment_text_is_invisible() {
     let text = "para alpha beta\n\n```\nfence secret\n```\n\ngamma `inline secret` delta\n\n<!-- comment secret -->\n";
@@ -42,13 +51,12 @@ fn fenced_inline_and_html_comment_text_is_invisible() {
 #[test]
 fn headings_tables_and_bare_markers_break_paragraphs() {
     let text = "one two\n# Head\nthree four\n| a | b |\nfive six\n-\nseven eight\n- item text\n";
-    let bounds: Vec<(i64, i64)> = md_segs(text)
-        .iter()
-        .map(|s| (s.start_line, s.end_line))
-        .collect();
     // each excluded line severs adjacency; the list item WITH text is
     // content and joins the preceding run
-    assert_eq!(bounds, [(1, 1), (3, 3), (5, 5), (7, 8)]);
+    assert_eq!(
+        spans(text, Lang::Markdown),
+        [(1, 1), (3, 3), (5, 5), (7, 8)]
+    );
 }
 
 #[test]
@@ -73,6 +81,25 @@ fn rust_block_and_line_comments_extract() {
         rows(rs, Lang::Rust),
         [(KIND_COMMENT, 1, 2), (KIND_COMMENT, 4, 5)]
     );
+}
+
+/// DOCDUP_REV 5 (v2.28 amendment): tree-sitter-rust's doc-comment node
+/// ends at column 0 of the NEXT row, so before the fix every `///`
+/// line was its own segment ending one row late — (1, 2), (2, 3),
+/// (3, 4) for the three-line `///` block. A run is one paragraph
+/// whatever its marker, a `///` run continued by `//` at the same
+/// column is still one run, and a column change breaks it.
+#[test]
+fn rust_doc_comment_runs_merge_like_plain_runs() {
+    let cases: [(&str, &[(i64, i64)]); 3] = [
+        ("//! crate doc\n//! second\n\nfn f() {}\n", &[(1, 2)]),
+        ("/// a\n/// b.\n/// c\nfn f() {}\n", &[(1, 3)]),
+        ("/// d\n// e\n    // f\nfn g() {}\n", &[(1, 2), (3, 3)]),
+    ];
+    for (src, want) in cases {
+        assert!(rows(src, Lang::Rust).iter().all(|r| r.0 == KIND_COMMENT));
+        assert_eq!(spans(src, Lang::Rust), want, "{src:?}");
+    }
 }
 
 /// Seeded counterfactual for the 2026-08-14 amendment's md half: a
