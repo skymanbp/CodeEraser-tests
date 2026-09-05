@@ -8,7 +8,7 @@ use crate::similar_replay::{CORPORA, K, Measured};
 use codeeraser::similar::bm25::{self, Doc, Hit};
 use codeeraser::similar::{Channel, SIMILAR_REV, docs, ppmi};
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
 /// Sample quotas per corpus under the BARE arm's top-1 role bit:
@@ -118,12 +118,31 @@ pub fn row(m: &Measured, i: usize) -> Value {
     Value::Object(row)
 }
 
+/// The ranks every earlier generation of the oracle arbitrated — the
+/// set a holdout draw must skip, read from the frozen oracles so the
+/// holdout is reproducible from the docs alone.
+pub fn arbitrated_before(generation: u32) -> BTreeSet<String> {
+    (1..generation)
+        .flat_map(|g| {
+            let doc =
+                crate::eval_support::load(&crate::eval_support::eval_doc_v("similar-oracle", g));
+            doc["rows"]
+                .as_array()
+                .expect("rows")
+                .iter()
+                .map(|r| r["rank"].as_str().expect("rank").to_string())
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
 /// The stratified draw: per corpus, the rank-order prefix of answered
 /// queries whose bare top-1 carries the role bit, and of those whose
-/// top-1 does not, up to the quotas. Returns the rows (rank-sorted)
-/// and the per-corpus counts actually drawn (a short stratum is
-/// reported, never padded from the other).
-pub fn sample(measured: &[Measured]) -> (Vec<Value>, Value) {
+/// top-1 does not, up to the quotas, skipping the ranks in `exclude`
+/// (a holdout generation skips what the earlier ones arbitrated).
+/// Returns the rows (rank-sorted) and the per-corpus counts actually
+/// drawn (a short stratum is reported, never padded from the other).
+pub fn sample(measured: &[Measured], exclude: &BTreeSet<String>) -> (Vec<Value>, Value) {
     let mut rows = Vec::new();
     let mut drawn = serde_json::Map::new();
     for m in measured {
@@ -132,13 +151,17 @@ pub fn sample(measured: &[Measured]) -> (Vec<Value>, Value) {
         } else {
             QUOTA_FIXTURE
         };
-        let mut order: Vec<usize> = (0..m.corpus.docs.len()).collect();
-        order.sort_by_cached_key(|&i| {
-            let d = &m.corpus.docs[i];
-            rank(m.name, &d.path, &d.bag.key, d.bag.nth)
-        });
+        let ranked: Vec<(String, usize)> = (0..m.corpus.docs.len())
+            .map(|i| {
+                let d = &m.corpus.docs[i];
+                (rank(m.name, &d.path, &d.bag.key, d.bag.nth), i)
+            })
+            .filter(|(r, _)| !exclude.contains(r))
+            .collect();
+        let mut order: Vec<(String, usize)> = ranked;
+        order.sort();
         let mut took = [0usize; 2];
-        for i in order {
+        for (_, i) in order {
             let Some(top) = m.ranked[i].0.first() else {
                 continue;
             };
@@ -182,7 +205,7 @@ pub fn document(measured: &[Measured], summary: Value, rows: Vec<Value>) -> Valu
         "constants": constants(),
         "corpus": {"tip": head.trim(), "dirty": !status.trim().is_empty()},
         "generated_from": {"ce": env!("CARGO_PKG_VERSION")},
-        "method": "every unit of each corpus (the product's unitsig universe, bagged from the text the index saw) queries the rest of its corpus; bare arm = the unit's own bag at channel weights, widened arm = the same plus each spelled word term's top-m PPMI neighbours at a capped fraction of its weight; integer BM25, fixed-point idf; role = (N ≥ 1 ∧ C ≥ 1) ∨ (N ≥ 2 ∧ shape equal). Sample = per corpus the sha256-rank prefix of role = 1 and of role = 0 bare top-1 queries up to the quotas; candidates = the union of both arms' top-k with one evidence row each. Arbitration labels every candidate; precision at 1 and hit at 5 are computed over the arbitrated rows only — no oracle here knows every same-role partner, so recall has no denominator and is not claimed.",
+        "method": "every unit of each corpus (the product's unitsig universe, bagged from the text the index saw) queries the rest of its corpus; bare arm = the unit's own bag at channel weights, widened arm = the same plus each spelled word term's top-m PPMI neighbours at a capped fraction of its weight; integer BM25, fixed-point idf; role = (N ≥ 1 ∧ C ≥ 1) ∨ (N ≥ 2 ∧ shape equal). Sample = per corpus the sha256-rank prefix of role = 1 and of role = 0 bare top-1 queries up to the quotas, a generation ≥ 2 skipping every rank an earlier generation's oracle arbitrated (the holdout); candidates = the union of both arms' top-k with one evidence row each. Arbitration labels every candidate; precision at 1 and hit at 5 are computed over the arbitrated rows only — no oracle here knows every same-role partner, so recall has no denominator and is not claimed.",
         "summary": summary,
         "units": measured.iter().map(|m| (m.name, m.corpus.docs.len())).collect::<BTreeMap<_, _>>(),
         "rows": rows,

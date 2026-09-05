@@ -108,7 +108,14 @@ pub fn by_sha(doc: &Value) -> HashMap<&str, &Value> {
 /// The canonical path of a contracts/eval document, derived from its
 /// name so a generator and its CI gate can never drift apart.
 pub fn eval_doc(name: &str) -> String {
-    format!("../contracts/eval/{name}-v1.json")
+    eval_doc_v(name, 1)
+}
+
+/// A later generation of the same document (a holdout sample drawn
+/// after the first was arbitrated keeps the first's name and counts
+/// up), so both live under one naming rule.
+pub fn eval_doc_v(name: &str, generation: u32) -> String {
+    format!("../contracts/eval/{name}-v{generation}.json")
 }
 
 /// A JSON array of integers as `Vec<u64>`.

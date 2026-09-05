@@ -21,8 +21,7 @@ pub fn checkpoint(run: &Run, oracle: &Oracle) {
     let complete = run.coverage.len() == CORPORA.len();
     write(&run.directory, "metadata.json", &json!({"complete": complete,
         "coverage": run.coverage, "measured": run.measured,
-        "frozen_oracle_sha256": crate::eval_support::content_sha(
-            &std::fs::read_to_string(crate::common::repo_root().join("contracts/eval/similar-oracle-v1.json")).expect("oracle")),
+        "frozen_oracle_sha256": run.oracle_sha,
         "comparison": "current full-corpus statistics, SHA-matched labelled pools; fixed frozen query strata",
     }).to_string());
     write(

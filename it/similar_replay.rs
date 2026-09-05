@@ -24,6 +24,9 @@
 //! CE_BLESS=1 writes the sample doc; CE_SIMILAR_PACKET=<file> also
 //! writes the arbiter's packet (verbatim source of every sampled
 //! query and candidate — RM18: texts only, no judgment fields).
+//! CE_SIMILAR_SAMPLE_GEN=<n> draws generation n: the same quotas over
+//! the ranks no earlier generation's oracle arbitrated — the holdout
+//! the step-2 candidates are retested on (`similar-sample-v<n>.json`).
 
 use crate::common;
 use crate::similar_replay_parts as parts;
@@ -193,11 +196,25 @@ fn similar_replay() {
         println!("{}", json!({"corpus": m.name, "tally": t}));
         summary.insert(m.name.to_string(), t);
     }
-    let (rows, drawn) = parts::sample(&measured);
-    println!("{}", json!({"sample": drawn, "rows": rows.len()}));
-    let doc = parts::document(&measured, Value::Object(summary), rows);
+    let generation: u32 = std::env::var("CE_SIMILAR_SAMPLE_GEN")
+        .map(|g| {
+            g.parse()
+                .expect("CE_SIMILAR_SAMPLE_GEN: a generation number")
+        })
+        .unwrap_or(1);
+    let exclude = parts::arbitrated_before(generation);
+    let (rows, drawn) = parts::sample(&measured, &exclude);
+    println!(
+        "{}",
+        json!({"sample": drawn, "rows": rows.len(), "generation": generation, "excluded": exclude.len()})
+    );
+    let mut doc = parts::document(&measured, Value::Object(summary), rows);
+    doc["generation"] = json!(generation);
+    if generation > 1 {
+        doc["holdout_of"] = json!(format!("similar-oracle-v{}", generation - 1));
+    }
     if crate::facts::blessing() {
-        let path = crate::eval_support::eval_doc("similar-sample");
+        let path = crate::eval_support::eval_doc_v("similar-sample", generation);
         std::fs::write(
             &path,
             serde_json::to_string_pretty(&doc).expect("json") + "\n",
