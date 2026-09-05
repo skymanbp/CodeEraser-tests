@@ -57,6 +57,7 @@ fn wire_goldens_roundtrip() {
         "../contracts/fixtures/erase/golden.ndjson",
         "../contracts/fixtures/audit/golden.ndjson",
         "../contracts/fixtures/tombstone/golden.ndjson",
+        "../contracts/fixtures/similar/golden.ndjson",
     ] {
         for (n, (request, expected)) in fixture_pairs(file).into_iter().enumerate() {
             writeln!(stdin, "{request}").expect("write");
