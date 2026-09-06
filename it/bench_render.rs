@@ -44,8 +44,12 @@ const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > alone on that same day: every row shares one measured date (a test below\n\
          > holds that line), and rows carrying different dates are not comparable.\n\
          >\n\
-         > A release joins only when there is something new to measure. One that ships\n\
-         > the same `cli/src` and `core/app` as its predecessor gets no row of its own:\n\
+         > A release joins only when there is something new to measure. What is measured\n\
+         > is `cli/src` and `core/app` together with the manifests, lockfiles and\n\
+         > toolchain pin that decide what those sources compile into: a dependency bump\n\
+         > re-times the tokenizer without moving a line of source, and a rule reading\n\
+         > two directories would turn that release away. One shipping all of those\n\
+         > unchanged, its own version stamp apart, gets no row of its own:\n\
          > replaying the whole series to add a duplicate measurement would publish that\n\
          > drift under a new version number. So every surface printing these numbers\n\
          > beside a version names the version MEASURED — never \"the latest\" — and says\n\
@@ -74,7 +78,7 @@ fn render_md(d: &Value) -> String {
             r["p95"],
             r["n"],
             s(r, "host"),
-            measured(r),
+            measured(r, false),
         )
     }));
     out.push_str("\n## Frozen evaluation points\n\n| metric | value | source |\n|---|---|---|\n");
@@ -103,14 +107,16 @@ fn latest_p50(d: &Value, metric: &str) -> String {
 
 /// A frozen point's value BY LOOKUP — the first draft hard-coded the
 /// two frozen chips in this renderer, which is precisely the
-/// hand-filled surface the whole batch exists to forbid.
-fn frozen_value(d: &Value, metric: &str) -> String {
+/// hand-filled surface the whole batch exists to forbid. The language
+/// is the page's: `bench_support::frozen` holds the one table of
+/// Chinese sentences, spliced with the numbers the ledger states.
+fn frozen_value(d: &Value, metric: &str, zh: bool) -> String {
     d["frozen"]
         .as_array()
         .into_iter()
         .flatten()
         .find(|f| s(f, "metric") == metric)
-        .map(|f| s(f, "value").to_string())
+        .map(|f| crate::bench_support::frozen::value(f, zh))
         .unwrap_or_else(|| "—".into())
 }
 
@@ -163,8 +169,8 @@ fn render_site(d: &Value, zh: bool) -> String {
         chip(hook, latest_p50(d, "hook_probe"), " ms"),
         chip(scan, latest_p50(d, "scan"), " ms"),
         chip(dedup, latest_p50(d, "dedup_warm"), " ms"),
-        chip(fpr, frozen_value(d, "guard_fpr_per500"), ""),
-        chip(prec, frozen_value(d, "docdup_d3_precision"), ""),
+        chip(fpr, frozen_value(d, "guard_fpr_per500", zh), ""),
+        chip(prec, frozen_value(d, "docdup_d3_precision", zh), ""),
         unmeasured_note(d, zh),
     )
 }

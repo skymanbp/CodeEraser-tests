@@ -15,9 +15,15 @@
 //! (`CHROME` in scripts/diagram_svg.mjs) and the fifth leg reads that
 //! map back out to prove every term in it actually left the file —
 //! anywhere in it: two of the terms are aria-labels, not text nodes.
+//!
+//! And the IR itself is hand-written: four of its sublabels spell
+//! facts the registry owns (proto and the family count, the grammars,
+//! the GUI screens, the MCP tools). A sixth leg renders those ids and
+//! holds the committed IR to what they say, so a bump that moves one
+//! cannot ship a stale picture quietly.
 
 use crate::common::{expect_ok, node, repo_root};
-use crate::facts::{blessing, read};
+use crate::facts::{self, blessing, read};
 use serde_json::Value;
 use std::path::Path;
 
@@ -124,6 +130,48 @@ fn chrome_terms(root: &Path) -> Vec<String> {
         .map(|(key, _)| key.trim().trim_matches('"').to_string())
         .filter(|key| !key.is_empty())
         .collect()
+}
+
+/// The architecture sublabels that spell a derived fact: `node|en|zh`,
+/// one row per component, `{id}` rendered through the registry
+/// (facts::template — the same channel the source-literal sites use).
+/// One literal rather than a table of same-shaped tuples: such a table
+/// is a clone of every other one by construction (facts_chips.rs).
+const SPELLED: &str = "
+scan|tree-sitter · {count:grammars#word} grammars|tree-sitter · {count:grammars#word}套语法
+wire|proto {ver:proto#v} · {count:families#word} families|proto {ver:proto#v} · {count:families#word}个家族
+gui|Tauri · {count:screens#word} screens|Tauri · {count:screens#word}屏
+mcp|{count:mcp_tools#word} read-only tools|{count:mcp_tools#word}个只读工具
+";
+
+/// The `sublabel` of one architecture component, by id.
+fn sublabel(ir: &Value, id: &str) -> String {
+    ir["components"]
+        .as_array()
+        .expect("the architecture IR carries components")
+        .iter()
+        .find(|c| c["id"] == id)
+        .unwrap_or_else(|| panic!("the architecture IR has no component {id:?}"))["sublabel"]
+        .as_str()
+        .expect("a component sublabel")
+        .to_string()
+}
+
+#[test]
+fn the_architecture_sublabels_spell_the_registry_values() {
+    let root = repo_root();
+    for row in SPELLED.lines().filter(|l| !l.is_empty()) {
+        let (id, rest) = row.split_once('|').expect("node|en|zh");
+        let (en, zh) = rest.split_once('|').expect("node|en|zh");
+        for (lang, template, is_zh) in [("en", en, false), ("zh", zh, true)] {
+            assert_eq!(
+                sublabel(&ir(&root, "architecture", lang), id),
+                facts::template(template, is_zh),
+                "docs/diagrams/architecture.{lang}.json: component {id} drifted from the \
+                 registry — edit the IR, then re-render with `node scripts/diagram.mjs --write`"
+            );
+        }
+    }
 }
 
 #[test]

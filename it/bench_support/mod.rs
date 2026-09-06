@@ -9,6 +9,8 @@
 
 #![allow(dead_code)] // shared across the bench targets; each binary uses its slice
 
+pub mod frozen;
+pub mod joins;
 pub mod render;
 
 use serde_json::{Value, json};
@@ -29,7 +31,7 @@ pub fn release_only() {
 
 /// A git command that MUST succeed, run from the cli/ test cwd.
 ///
-/// The joining rule below reads "nothing changed" from an empty
+/// The joining rule (`joins`) reads "nothing changed" from an empty
 /// stdout, so a git that failed — a missing rev, a shallow clone —
 /// would be indistinguishable from a release that brings nothing new,
 /// and the series would quietly stop growing. It is a named refusal
@@ -42,32 +44,6 @@ pub fn git_out(args: &[&str]) -> String {
         String::from_utf8_lossy(&out.stderr).trim()
     );
     String::from_utf8_lossy(&out.stdout).trim().to_string()
-}
-
-/// BENCH.md's joining rule, executable
-/// (docs/BENCH.md:31-40 `joins only when`): a release joins the
-/// series only when there is something new to measure. One
-/// shipping the same `cli/src` and `core/app` as the row before it gets
-/// none — replaying the whole series to add a duplicate measurement
-/// publishes machine drift under a new version number, which is the one
-/// thing that page's own header warns readers against.
-///
-/// Both row writers ask it, and so does the renderer: a surface that
-/// says a release has no row must be able to say WHICH of the two
-/// reasons applies, or a reader takes "no row" to mean "no code
-/// changed". The pathspecs are top-level (`:/`) because the harness
-/// runs from `cli/`.
-pub fn brings_something_new(prev: &str, rev: &str) -> bool {
-    !git_out(&[
-        "diff",
-        "--name-only",
-        prev,
-        rev,
-        "--",
-        ":/cli/src",
-        ":/core/app",
-    ])
-    .is_empty()
 }
 
 /// contracts/bench/bench.json relative to the cli/ test cwd.

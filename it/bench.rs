@@ -212,10 +212,11 @@ fn bench_append() {
     let dirty = !bs::git_out(&["status", "--porcelain"]).is_empty();
     let newest = bs::render::newest_row_commit(&bs::render::doc()).to_string();
     assert!(
-        newest.is_empty() || bs::brings_something_new(&newest, "HEAD"),
-        "this checkout ships the same cli/src and core/app as the newest \
-         row ({newest}) — measuring it again would publish machine drift \
-         under a new version number (docs/BENCH.md)"
+        newest.is_empty() || bs::joins::brings_something_new(&newest, "HEAD"),
+        "this checkout ships the same measured tree as the newest row \
+         ({newest}) — sources, manifests, locks and toolchain pin all \
+         unchanged, its version stamp apart — and measuring it again would \
+         publish machine drift under a new version number (docs/BENCH.md)"
     );
     let rows = measure_tree(Path::new(".."), &ce, &core, &commit, dirty, None).expect("measure");
     let n = rows.len();

@@ -56,7 +56,8 @@ pub enum NoRow {
 ///
 /// The heading used to call `latest` the "latest version", which was
 /// true only while every release joined the series. v1.3.1 shipped the
-/// same `cli/src` and `core/app` as v1.3.0 and so did not join — a row
+/// same measured tree as v1.3.0 — sources, manifests, lockfiles and
+/// toolchain pin, its own version stamp apart — and so did not join: a row
 /// for an identical program publishes machine drift as if it were a
 /// version delta, which the BENCH header warns is wider than most
 /// deltas a reader would try to read. The heading then quietly went on
@@ -75,7 +76,7 @@ pub fn release_without_a_row(d: &Value) -> Option<(&'static str, NoRow)> {
         return None;
     }
     let newest = newest_row_commit(d).to_string();
-    let case = if newest.is_empty() || super::brings_something_new(&newest, "HEAD") {
+    let case = if newest.is_empty() || super::joins::brings_something_new(&newest, "HEAD") {
         NoRow::ReplayOwed
     } else {
         NoRow::NothingNew
@@ -179,18 +180,16 @@ pub fn names_the_release(surface: &str, text: &str) {
     );
 }
 
-/// The measured-at label with the dirty suffix — one spelling on
-/// every surface (dates are digits and dashes, safe in md and html).
-pub fn measured(row: &Value) -> String {
-    format!(
-        "{}{}",
-        s(row, "measured_at"),
-        if row["dirty"] == Value::Bool(true) {
-            " (dirty)"
-        } else {
-            ""
-        }
-    )
+/// The measured-at label with the dirty suffix — one spelling per
+/// language on every surface (dates are digits and dashes, safe in
+/// md and html; the suffix is a word, and takes the page's language).
+pub fn measured(row: &Value, zh: bool) -> String {
+    let dirty = match (row["dirty"] == Value::Bool(true), zh) {
+        (false, _) => "",
+        (true, false) => " (dirty)",
+        (true, true) => "（脏树）",
+    };
+    format!("{}{dirty}", s(row, "measured_at"))
 }
 
 /// Concatenate one rendered line per row of `d[key]` — the table

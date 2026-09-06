@@ -149,24 +149,11 @@ const LITERALS: &[(&str, &str, bool)] = &[
     ),
 ];
 
-fn render_template(template: &str, zh: bool) -> String {
-    let mut out = String::new();
-    let mut rest = template;
-    while let Some(i) = rest.find('{') {
-        out.push_str(&rest[..i]);
-        let j = rest[i..].find('}').expect("closing brace") + i;
-        out.push_str(&facts::render(&rest[i + 1..j], zh));
-        rest = &rest[j + 1..];
-    }
-    out.push_str(rest);
-    out
-}
-
 #[test]
 fn source_literal_sites_spell_the_registry_value() {
     let root = repo_root();
     for (rel, template, zh) in LITERALS {
-        let want = render_template(template, *zh);
+        let want = facts::template(template, *zh);
         let text = std::fs::read_to_string(root.join(rel)).unwrap_or_else(|e| panic!("{rel}: {e}"));
         assert!(
             text.contains(&want),

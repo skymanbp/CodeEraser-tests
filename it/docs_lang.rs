@@ -11,12 +11,16 @@
 //! The same step gave every static SVG a `<title>` — the name a browser
 //! tab or a raw-file view shows — so the second leg holds that, and
 //! holds the docs/ and site/ twins to identical bytes.
+//!
+//! Cutting the generated blocks leaves a hole exactly the size of a
+//! renderer that was never given a language. `docs_lang_generated`
+//! reads that half, over these same surfaces.
 
 use crate::common::repo_root;
 use std::path::Path;
 
 /// (page, Chinese?)
-const SURFACES: &[(&str, bool)] = &[
+pub const SURFACES: &[(&str, bool)] = &[
     ("README.md", false),
     ("README.zh.md", true),
     ("site/index.html", false),

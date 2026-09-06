@@ -26,7 +26,9 @@ fn series_tags(only: Option<&str>) -> (Vec<String>, Vec<String>) {
     for (i, tag) in all.iter().enumerate() {
         // the oldest tag has no predecessor: all of it is new
         match i.checked_sub(1) {
-            Some(p) if !bs::brings_something_new(&all[p], tag) => turned_away.push(tag.clone()),
+            Some(p) if !bs::joins::brings_something_new(&all[p], tag) => {
+                turned_away.push(tag.clone())
+            }
             _ => joins.push(tag.clone()),
         }
     }
@@ -50,7 +52,8 @@ fn bench_backfill() {
         // named, never silent: a reader of this log must be able to see
         // which releases the series deliberately has no row for
         println!(
-            "no row (same cli/src + core/app as predecessor): {}",
+            "no row (same measured tree as predecessor — sources, \
+             manifests, locks and toolchain pin): {}",
             turned_away.join(", ")
         );
     }

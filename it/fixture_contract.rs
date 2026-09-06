@@ -1,12 +1,14 @@
 //! O66 (plan v2.18 step #14, 6.4.0): the golden fixture ledger,
-//! DERIVED. VERSIONING §3 spells a hand-written triple — the request
-//! anchor, the count of request lines standing at it, the version the
-//! server answers — and each consumer (core/test/Spec.hs, this suite)
-//! carries its own list of the files. This leg derives the triple
-//! from the files and reads the prose, and checks the two lists are
-//! one, so a regeneration that moved a count, a golden pair added to
-//! one consumer, or a reply line left at an old version fails by
-//! name instead of waiting for a human to recount.
+//! DERIVED. VERSIONING §3 spells a triple — the request anchor, the
+//! count of request lines standing at it, the version the server
+//! answers — and each consumer (core/test/Spec.hs, this suite)
+//! carries its own list of the files. Two of the three now REACH the
+//! page as chips (`count:golden_requests#digits`, `ver:proto#v`);
+//! this leg derives them from the files, holds the registry's count
+//! to the one Spec.hs's list yields, and reads the prose, so a
+//! regeneration that moved a count, a golden pair added to one
+//! consumer, or a reply line left at an old version fails by name
+//! instead of waiting for a human to recount.
 
 use crate::common::repo_root;
 use crate::facts::ver::ANCHOR;
@@ -88,13 +90,22 @@ fn every_reply_answers_the_current_proto_and_the_handshake_follows_it() {
 #[test]
 fn the_versioning_triple_is_derived_from_the_files() {
     let (anchored, _) = tally();
+    // one number, two derivations: the registry globs the fixture
+    // directories, this leg counts the files Spec.hs names
+    assert_eq!(
+        crate::facts::resolve("count:golden_requests#digits"),
+        anchored.to_string(),
+        "the registry's golden request count is not the one Spec.hs's list yields"
+    );
     let text =
         std::fs::read_to_string(repo_root().join("contracts/VERSIONING.md")).expect("VERSIONING");
-    // the count sits on two lines of the prose; the anchor, the §4
-    // row and the `当前` value are chips (facts_chips.rs)
+    // the count and the answered version are chips too (facts_chips.rs
+    // renders them); the anchor is the hand-written const this file
+    // holds every request line to
     for want in [
-        format!("（{anchored} 行，server 恒答 {PROTO}）"),
-        format!("server 走 {PROTO}）"),
+        format!("<!--ce:count:golden_requests#digits-->{anchored}<!--/ce--> 行"),
+        format!("server 恒答 <!--ce:ver:proto#v-->{PROTO}<!--/ce-->"),
+        format!("server 走 <!--ce:ver:proto#v-->{PROTO}<!--/ce-->"),
     ] {
         assert!(text.contains(&want), "VERSIONING carries {want:?}");
     }

@@ -1,10 +1,11 @@
 //! The count family: every number the prose spells as a word — axes,
 //! languages, grammars, screens, hooks, MCP tools, wire families,
 //! booklets, fail conditions, erase names, verdict codes, release
-//! binaries, dogfood gates — plus the one large cap the README spells
-//! with a comma. Counted off a typed path or the tree where one
-//! exists; scraped, with the debt named, where the product keeps the
-//! list private or in another language.
+//! binaries, dogfood gates — plus the two the prose spells in digits:
+//! the golden request lines VERSIONING §3 counts and the one large cap
+//! the README spells with a comma. Counted off a typed path or the
+//! tree where one exists; scraped, with the debt named, where the
+//! product keeps the list private or in another language.
 
 use super::{Fact, linked, read, scraped};
 use std::path::Path;
@@ -73,6 +74,30 @@ fn entries(root: &Path, dir: &str, ext: Option<&str>) -> usize {
         .count()
 }
 
+/// Request lines across the wire golden files: those files are
+/// request/reply pairs, so half of every `contracts/fixtures/
+/// */golden.ndjson`'s non-empty lines. GLOBBED, not listed —
+/// fixture_contract.rs counts the same lines through the list
+/// core/test/Spec.hs reads and asserts the two agree, so a family
+/// whose golden file no consumer names cannot hide in this number.
+fn golden_requests(root: &Path) -> usize {
+    let lines: usize = std::fs::read_dir(root.join("contracts/fixtures"))
+        .expect("contracts/fixtures")
+        .flatten()
+        .map(|e| e.path().join("golden.ndjson"))
+        .filter(|p| p.is_file())
+        .map(|p| {
+            std::fs::read_to_string(&p)
+                .unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+                .lines()
+                .filter(|l| !l.is_empty())
+                .count()
+        })
+        .sum();
+    assert_eq!(lines % 2, 0, "the golden files are request/reply pairs");
+    lines / 2
+}
+
 /// Counts off the tree and the contract JSONs.
 fn tree(root: &Path) -> Vec<Fact> {
     let hooks = json(root, "plugin/hooks/hooks.json");
@@ -85,6 +110,12 @@ fn tree(root: &Path) -> Vec<Fact> {
             "count:families#word",
             capabilities.iter().filter(|c| c != &"hello").count(),
             "contracts/fixtures/handshake/hello-ok.ndjson::capabilities (minus hello)",
+        ),
+        linked(
+            "count:golden_requests#digits",
+            golden_requests(root),
+            "contracts/fixtures/*/golden.ndjson (request lines; the pairing is \
+             cli/tests/it/fixture_contract.rs)",
         ),
         linked(
             "count:hooks#word",

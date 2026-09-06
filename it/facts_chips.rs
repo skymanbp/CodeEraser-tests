@@ -18,8 +18,9 @@ const M: &str = "docs/reference/methodology/";
 const SURFACES: &[(&str, usize, bool)] = &[
     ("README.md", 36, EN),
     ("README.zh.md", 36, ZH),
+    ("plugin/README.md", 4, ZH),
     ("contracts/DAEMON.md", 2, ZH),
-    ("contracts/VERSIONING.md", 6, ZH),
+    ("contracts/VERSIONING.md", 10, ZH),
     ("docs/RELEASE.md", 5, ZH),
     ("site/index.html", 5, EN),
     ("site/zh/index.html", 5, ZH),

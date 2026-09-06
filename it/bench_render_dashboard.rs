@@ -2,6 +2,7 @@
 //! page chips. CE_BLESS=1 owns only marked blocks; a plain run byte-
 //! compares them. All values originate in contracts/bench/bench.json.
 
+use crate::bench_support::frozen;
 use crate::bench_support::render::{
     doc, join, latest, measured, names_the_release, rows_with, s, unmeasured_note,
 };
@@ -14,7 +15,7 @@ fn esc(text: &str) -> String {
         .replace('"', "&quot;")
 }
 
-fn dashboard_rows(d: &Value) -> String {
+fn dashboard_rows(d: &Value, zh: bool) -> String {
     rows_with(d, "rows", |row| {
         format!(
             "<tr><td><code>{}</code></td><td><code>{}</code></td><td>{}</td><td>{}</td><td>{}</td><td><code>{}</code></td><td>{}</td></tr>\n",
@@ -24,17 +25,23 @@ fn dashboard_rows(d: &Value) -> String {
             row["p95"],
             row["n"],
             esc(s(row, "host")),
-            measured(row)
+            measured(row, zh)
         )
     })
 }
 
-fn frozen_rows(d: &Value) -> String {
+/// The metric and the source are identifiers — a name a reader looks
+/// up and a path they open — and stay as the ledger spells them in
+/// both languages. Only the value column is prose, and it had been
+/// English on the Chinese page since the table was first drawn:
+/// `bench_support::frozen` holds the one table of Chinese sentences,
+/// each spliced with the numbers the ledger's own value states.
+fn frozen_rows(d: &Value, zh: bool) -> String {
     rows_with(d, "frozen", |point| {
         format!(
             "<tr><td><code>{}</code></td><td>{}</td><td><code>{}</code></td></tr>\n",
             esc(s(point, "metric")),
-            esc(s(point, "value")),
+            esc(&frozen::value(point, zh)),
             esc(s(point, "source"))
         )
     })
@@ -78,13 +85,17 @@ fn render_dashboard(d: &Value, zh: bool) -> String {
     };
     format!(
         "<h2>{latency} · v{measured_version}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{version}</th><th>{metric}</th><th>p50 ms</th><th>p95 ms</th><th>n</th><th>{host}</th><th>{measured}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n{caption}<h2>{frozen}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{metric}</th><th>{value}</th><th>{source}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n<p class=\"cap\">{note}</p>\n",
-        dashboard_rows(d),
-        frozen_rows(d),
+        dashboard_rows(d, zh),
+        frozen_rows(d, zh),
         measured_version = latest(d),
     )
 }
 
-fn latest_md(d: &Value) -> String {
+/// The newest measured version's row as a Markdown table. The leading
+/// column HEADS the percentiles and is prose, so it takes the page's
+/// language; `p50 ms` and `p95 ms` name a metric and its unit and do
+/// not.
+fn latest_md(d: &Value, percentile: &str) -> String {
     let version = latest(d);
     let rows: Vec<_> = d["rows"]
         .as_array()
@@ -99,7 +110,7 @@ fn latest_md(d: &Value) -> String {
             .join(" | ")
     };
     format!(
-        "| percentile | {} |\n|---|{}|\n| p50 ms | {} |\n| p95 ms | {} |\n",
+        "| {percentile} | {} |\n|---|{}|\n| p50 ms | {} |\n| p95 ms | {} |\n",
         rows.iter()
             .map(|row| format!("`{}`", s(row, "metric")))
             .collect::<Vec<_>>()
@@ -117,9 +128,10 @@ fn latest_md(d: &Value) -> String {
 /// numbers came from — never "the latest", which stops being true the
 /// moment a release does not join the series.
 fn render_readme(d: &Value, zh: bool) -> String {
-    let (head, note, bench, site) = if zh {
+    let (head, percentile, note, bench, site) = if zh {
         (
             "延迟",
+            "百分位",
             "所有值均由 `contracts/bench/bench.json` 生成；本块手改会被测试拒绝。",
             "完整回放说明与逐版本系列",
             "网站完整仪表盘",
@@ -127,6 +139,7 @@ fn render_readme(d: &Value, zh: bool) -> String {
     } else {
         (
             "Latency",
+            "percentile",
             "Every value is generated from `contracts/bench/bench.json`; the test rejects hand edits to this block.",
             "Full replay notes and per-version series",
             "Complete website dashboard",
@@ -135,14 +148,14 @@ fn render_readme(d: &Value, zh: bool) -> String {
     format!(
         "### {head} · v{version}\n\n{table}\n{note}{unmeasured}{gap}[{bench}](docs/BENCH.md) · [{site}](https://codeeraser.dev{zh_path}/bench/)\n",
         version = latest(d),
-        table = latest_md(d),
+        table = latest_md(d, percentile),
         unmeasured = unmeasured_note(d, zh),
         gap = join(zh),
         zh_path = if zh { "/zh" } else { "" },
     )
 }
 
-fn frozen<'a>(d: &'a Value, metric: &str) -> &'a Value {
+fn frozen_point<'a>(d: &'a Value, metric: &str) -> &'a Value {
     d["frozen"]
         .as_array()
         .expect("frozen")
@@ -151,16 +164,10 @@ fn frozen<'a>(d: &'a Value, metric: &str) -> &'a Value {
         .unwrap_or_else(|| panic!("missing frozen metric {metric}"))
 }
 
-fn natural_numbers(text: &str) -> Vec<&str> {
-    text.split(|c: char| !c.is_ascii_digit())
-        .filter(|part| !part.is_empty())
-        .collect()
-}
-
 fn render_stack_fpr(d: &Value, zh: bool) -> String {
-    let fourclass = frozen(d, "fourclass_fpr");
-    let guard = frozen(d, "guard_fpr_per500");
-    let nums = natural_numbers(s(guard, "detail"));
+    let fourclass = frozen_point(d, "fourclass_fpr");
+    let guard = frozen_point(d, "guard_fpr_per500");
+    let nums = frozen::numbers(s(guard, "detail"));
     let guard_record = format!("{}/{}", nums.last().expect("guard false count"), nums[0]);
     // the joins are punctuation, and punctuation has a language: the
     // Chinese sentence takes ：；。 with no space after them
@@ -189,13 +196,24 @@ fn render_stack_fpr(d: &Value, zh: bool) -> String {
     };
     format!(
         "<div class=\"card\"><h3>{title}</h3><p>{classifier}{colon}<code>{}</code>{semi}{probe}{colon}<code>{guard_record} {false_label}</code>{stop}{tail}</p></div>\n",
-        esc(s(fourclass, "value"))
+        esc(&frozen::value(fourclass, zh))
     )
 }
 
-fn digits(text: &str) -> Vec<&str> {
-    text.split(|c: char| !(c.is_ascii_digit() || c == '.'))
-        .filter(|part| part.chars().any(|c| c.is_ascii_digit()))
+/// The numbers each rendered LINE states, sorted. The two dashboards
+/// must state one set of facts; word order inside a cell belongs to
+/// the language — 「600 个样本命中 0 个」 says what `0/600 flagged`
+/// says with the corpus size first — so the comparison is per line
+/// and over the multiset, which still catches a number dropped,
+/// invented, or moved into another row.
+fn numeric_facts(block: &str) -> Vec<Vec<&str>> {
+    block
+        .lines()
+        .map(|line| {
+            let mut n = frozen::numbers(line);
+            n.sort_unstable();
+            n
+        })
         .collect()
 }
 
@@ -208,9 +226,36 @@ fn gate(rel: &str, marker: &str, rendered: String) {
 fn website_dashboard_blocks_match() {
     let d = doc();
     let (en, zh) = (render_dashboard(&d, false), render_dashboard(&d, true));
-    assert_eq!(digits(&en), digits(&zh), "dashboard numeric facts drifted");
+    assert_eq!(
+        numeric_facts(&en),
+        numeric_facts(&zh),
+        "dashboard numeric facts drifted"
+    );
     gate("site/bench/index.html", "bench", en);
     gate("site/zh/bench/index.html", "bench", zh);
+}
+
+/// Every frozen point the contract carries has a Chinese sentence
+/// whose numbers ARE the ledger's. `frozen::zh_value` answers None
+/// both ways it can fail — no template for that metric, or a template
+/// the ledger has since been reworded past — and either way the
+/// English value would go out under a Chinese heading, which is the
+/// defect the table exists to close. A new frozen point is refused
+/// here rather than shipping half-translated.
+#[test]
+fn every_frozen_point_has_a_chinese_sentence() {
+    let d = doc();
+    let missing: Vec<&str> = d["frozen"]
+        .as_array()
+        .expect("frozen")
+        .iter()
+        .filter(|point| frozen::zh_value(point).is_none())
+        .map(|point| s(point, "metric"))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "frozen points with no Chinese sentence (bench_support::frozen): {missing:?}"
+    );
 }
 
 #[test]

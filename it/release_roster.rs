@@ -6,12 +6,14 @@
 //! The BUNDLE table (asset suffix and manifest tail per os) is spelled
 //! three more times — roster.js, release.yml's `bundle()` and
 //! build-target.yml's staging case — and is held the same way.
-//! The tag gate's list of checks that may skip is held to ci.yml's
-//! `if:` lines the same way: a schedule-only job is a SKIPPED check on
-//! the tag commit, and an unexcused one refuses the publish.
+//! The tag gate's two claims about ci.yml are held the same way, both
+//! read off one parse of that file (release_roster_parts): the checks
+//! that MAY skip are its schedule-only jobs, and the checks that MUST
+//! be present and green are its unconditional ones.
 
 use crate::common::repo_root;
 use crate::facts::read;
+use crate::release_roster_parts::{quoted_list, schedule_only_jobs, unconditional_checks};
 use codeeraser::update::version::{Platform, TARGETS};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -140,37 +142,6 @@ fn every_host_spells_the_same_bundle_per_os() {
     }
 }
 
-/// `  name:` — a job key two spaces under `jobs:`.
-fn job_header(line: &str) -> Option<String> {
-    let rest = line.strip_prefix("  ")?;
-    if rest.starts_with(' ') || rest.starts_with('#') {
-        return None;
-    }
-    rest.strip_suffix(':').map(str::to_string)
-}
-
-/// ci.yml jobs whose job-level `if:` names schedule or dispatch and
-/// never push — the ones that surface SKIPPED on a tag commit.
-fn schedule_only_jobs(ci: &str) -> BTreeSet<String> {
-    let mut jobs = BTreeSet::new();
-    let mut name = None;
-    for line in ci.lines().skip_while(|l| *l != "jobs:") {
-        if let Some(n) = job_header(line) {
-            name = Some(n);
-            continue;
-        }
-        let Some(cond) = line.strip_prefix("    if: ") else {
-            continue;
-        };
-        let never_on_push = !cond.contains("'push'")
-            && (cond.contains("'schedule'") || cond.contains("'workflow_dispatch'"));
-        if let (Some(n), true) = (&name, never_on_push) {
-            jobs.insert(n.clone());
-        }
-    }
-    jobs
-}
-
 #[test]
 fn the_tag_gate_excuses_every_schedule_only_job_by_name() {
     let mut want = schedule_only_jobs(&read(&repo_root(), ".github/workflows/ci.yml"));
@@ -182,14 +153,28 @@ fn the_tag_gate_excuses_every_schedule_only_job_by_name() {
     want.insert("build".into());
     want.insert("draft".into());
     let release = read(&repo_root(), ".github/workflows/release.yml");
-    let line = release
-        .lines()
-        .find_map(|l| l.trim().strip_prefix("SKIPPED_OK=\""))
-        .expect("release.yml spells SKIPPED_OK");
-    let excused: BTreeSet<String> = line
-        .trim_end_matches('"')
-        .split(' ')
-        .map(str::to_string)
-        .collect();
-    assert_eq!(excused, want);
+    assert_eq!(quoted_list(&release, "SKIPPED_OK", ' '), want);
+}
+
+/// The other half of the same contract (plan v2.29 step 12, item 12b).
+/// Excusing the skipped legs by name only says what MAY be absent; it
+/// never said what must be PRESENT, and a commit whose checks have not
+/// been created yet answers with an empty list — nothing pending,
+/// nothing failed, "all checks green" on no evidence at all. The tag
+/// gate now requires ci.yml's unconditional jobs by their surfaced
+/// names, and this holds that list to ci.yml's own job keys and
+/// matrix, so a renamed runner cannot leave the gate waiting on a
+/// ghost. Verified against run 34040780731 / commit 02372fa, whose
+/// seven check runs are `build (ubuntu-latest)`,
+/// `build (windows-latest)`, `build-macos` and the four schedule-only
+/// legs, all skipped.
+#[test]
+fn the_tag_gate_requires_every_unconditional_ci_check_by_name() {
+    let want = unconditional_checks(&read(&repo_root(), ".github/workflows/ci.yml"));
+    assert!(
+        want.contains("build-macos") && want.iter().any(|n| n.starts_with("build (")),
+        "the scan found {want:?}"
+    );
+    let release = read(&repo_root(), ".github/workflows/release.yml");
+    assert_eq!(quoted_list(&release, "REQUIRED", '|'), want);
 }

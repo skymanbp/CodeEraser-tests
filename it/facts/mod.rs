@@ -159,6 +159,23 @@ pub fn render_in(doc: &str, id: &str, zh: bool) -> String {
     render(id, zh)
 }
 
+/// A sentence with `{id}` placeholders, each rendered through the
+/// registry in the language `zh` says. What a site that cannot carry
+/// a chip spells verbatim: a source comment, an SVG text node, a
+/// hand-written diagram IR (facts_registry.rs, docs_diagrams.rs).
+pub fn template(text: &str, zh: bool) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(i) = rest.find('{') {
+        out.push_str(&rest[..i]);
+        let j = rest[i..].find('}').expect("closing brace") + i;
+        out.push_str(&render(&rest[i + 1..j], zh));
+        rest = &rest[j + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
 /// The closure every derived table is held to, both ways: what
 /// ships is claimed, and what is claimed ships. Returns the two
 /// differences as one note, or `None` when the sets agree.
