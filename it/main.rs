@@ -140,6 +140,7 @@ mod sonar_whitepaper;
 mod source_citations;
 mod source_citations_parts;
 mod structure_knobs;
+mod structure_modularity;
 mod symbol_visibility;
 mod tombstone_audit;
 mod tombstone_commitmsg;
