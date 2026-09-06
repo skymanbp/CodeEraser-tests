@@ -39,10 +39,13 @@ const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > 2026-08-26; replaying that same tag four days later — its own tree, its own\n\
          > binaries — moved every one of its seven metrics, from 11 % faster to 12 %\n\
          > slower, which is wider than most deltas a reader would try to read out of\n\
-         > this table. So the series is replayed WHOLE, in one sitting, whenever a\n\
-         > release joins it, and a tag whose minutes were disturbed is measured again\n\
-         > alone on that same day: every row shares one measured date (a test below\n\
-         > holds that line), and rows carrying different dates are not comparable.\n\
+         > this table. So every row names the day it was measured (the last column; a\n\
+         > test below holds that every row carries one), and a delta read between two\n\
+         > dates carries that machine-day drift on top of any version difference: rows\n\
+         > of one date are a series, rows of different dates only a bound. Until\n\
+         > 2026-09-06 the series was replayed whole, in one sitting, whenever a release\n\
+         > joined it; since then a release is measured on its own day and the earlier\n\
+         > rows stand.\n\
          >\n\
          > A release joins only when there is something new to measure. What is measured\n\
          > is `cli/src` and `core/app` together with the manifests, lockfiles and\n\
@@ -253,20 +256,41 @@ fn the_generated_bench_surfaces_name_the_shipped_release() {
     names_the_release("site/zh/index.html", &render_site(&d, true));
 }
 
-/// HEADER promises one measured date for every row. A sitting that
-/// crosses UTC midnight breaks that silently — 28 rows once shipped so.
+/// HEADER promises that every row names the day it was measured. Rows
+/// of different days are allowed (ruling 2026-09-06: a release joining
+/// the series is measured on its own day — before it the series was
+/// replayed whole and a predecessor of this test held every row to ONE
+/// date); a row with no date, or one not in ISO form, would break the
+/// promise silently, so the shape is what this holds.
 #[test]
-fn every_row_shares_one_measured_date() {
+fn every_row_names_its_measured_date() {
     let d = doc();
-    let dates: std::collections::BTreeSet<&str> = d["rows"]
+    let iso = |t: &str| {
+        t.len() == 10
+            && t.bytes().enumerate().all(|(i, b)| {
+                if i == 4 || i == 7 {
+                    b == b'-'
+                } else {
+                    b.is_ascii_digit()
+                }
+            })
+    };
+    let bad: Vec<String> = d["rows"]
         .as_array()
         .expect("rows")
         .iter()
-        .map(|r| s(r, "measured_at"))
+        .filter(|r| !iso(s(r, "measured_at")))
+        .map(|r| {
+            format!(
+                "{} {} {:?}",
+                s(r, "version"),
+                s(r, "metric"),
+                s(r, "measured_at")
+            )
+        })
         .collect();
-    assert_eq!(
-        dates.len(),
-        1,
-        "bench.json rows carry {dates:?}: measure the odd tags again"
+    assert!(
+        bad.is_empty(),
+        "bench.json rows without an ISO measured_at: {bad:?}"
     );
 }

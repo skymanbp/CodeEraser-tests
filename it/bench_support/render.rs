@@ -47,8 +47,9 @@ pub enum NoRow {
     /// code as the newest row, and a second measurement of the same
     /// program is machine drift wearing a version number.
     NothingNew,
-    /// It earns a row and does not have one yet — the whole series is
-    /// replayed in one sitting, and that happens after the tag.
+    /// It earns a row and does not have one yet — a release is measured
+    /// after its tag, on its own day (ruling 2026-09-06; until then the
+    /// whole series was replayed in one sitting).
     ReplayOwed,
 }
 
@@ -121,11 +122,11 @@ pub fn no_row_sentence(why: &NoRow, v: &str, zh: bool) -> String {
              the newest row and gets none of its own."
         ),
         (NoRow::ReplayOwed, true) => {
-            format!("当前发布 v{v} 该有自己的行，而全序列重跑在打 tag 之后，尚未落表。")
+            format!("当前发布 v{v} 该有自己的行，而它在打 tag 之后才被测量，尚未落表。")
         }
         (NoRow::ReplayOwed, false) => format!(
             "The current release, v{v}, earns a row and does not have one \
-             yet: the whole series is replayed in one sitting after the tag."
+             yet: it is measured after the tag."
         ),
     }
 }
