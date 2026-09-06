@@ -157,6 +157,7 @@ mod tombstone_commitmsg;
 mod tombstone_guard;
 mod tombstone_guard_session;
 mod tombstone_replay;
+mod trend_parser;
 mod trend_rebuild;
 mod trend_submodule;
 mod ui_lang;

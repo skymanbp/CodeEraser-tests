@@ -2,11 +2,14 @@
 //! archify IR under docs/diagrams/, rendered by scripts/diagram.mjs
 //! from one pinned archify commit into docs/assets + site/assets. Four
 //! things are held here (plan v2.21, architecture-diagram clause): the
-//! cache is present AND at the pin — a gate that cannot render refuses
-//! by name instead of passing; the committed SVGs are byte-for-byte
-//! what this pin renders (CE_BLESS=1 rewrites them locally); the two
-//! languages of one diagram share every byte of geometry and differ
-//! only in text; every `sources` path an IR cites exists in the tree.
+//! cache is present AND at the pin, read by the renderer alone (its
+//! `requireCache` exits 2 by name; a second `git rev-parse` here once
+//! answered for the CodeEraser checkout under a hollow cache), so a
+//! gate that cannot render refuses instead of passing; the committed
+//! SVGs are byte-for-byte what this pin renders (CE_BLESS=1 rewrites
+//! them locally); the two languages of one diagram share every byte of
+//! geometry and differ only in text; every `sources` path an IR cites
+//! exists in the tree.
 //! And the zh twin speaks one language: archify writes some chrome of
 //! its own that no IR key reaches, so the renderer carries a map for it
 //! (`CHROME` in scripts/diagram_svg.mjs) and the fifth leg reads that
@@ -17,9 +20,7 @@ use crate::common::{expect_ok, node, repo_root};
 use crate::facts::{blessing, read};
 use serde_json::Value;
 use std::path::Path;
-use std::process::Command;
 
-const PIN: &str = "e1ac748f19cf805e44bf74fb93c796662152e273"; // tt-a1i/archify v2.15.0
 const DIAGRAMS: &[&str] = &["architecture", "judgment"];
 /// The keys a translation may change; everything else is geometry.
 const TEXT: &[&str] = &[
@@ -32,17 +33,6 @@ const TEXT: &[&str] = &[
     "note",
     "items",
 ];
-
-fn cache_head(root: &Path) -> Option<String> {
-    let out = Command::new("git")
-        .args(["-C", "cli/target/archify", "rev-parse", "HEAD"])
-        .current_dir(root)
-        .output()
-        .ok()?;
-    out.status
-        .success()
-        .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
-}
 
 fn geometry(value: &Value) -> Value {
     match value {
@@ -81,14 +71,6 @@ fn ir(root: &Path, name: &str, lang: &str) -> Value {
 
 #[test]
 fn the_committed_diagrams_are_what_the_pinned_archify_renders() {
-    let root = repo_root();
-    let head = cache_head(&root);
-    assert_eq!(
-        head.as_deref(),
-        Some(PIN),
-        "archify cache absent or off-pin ({}): run `node scripts/diagram.mjs --fetch`",
-        head.as_deref().unwrap_or("absent")
-    );
     let mode = if blessing() { "--write" } else { "--check" };
     expect_ok(
         &node(&["scripts/diagram.mjs", mode], &[]),

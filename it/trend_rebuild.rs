@@ -9,7 +9,7 @@ use crate::common;
 use crate::common::{rust_fn, tmp};
 use std::path::Path;
 
-fn seed_two_commits(dir: &Path) {
+pub(crate) fn seed_two_commits(dir: &Path) {
     std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("a.rs");
     common::init_and_commit(dir, "one");
     std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("b.rs");
@@ -19,7 +19,7 @@ fn seed_two_commits(dir: &Path) {
     common::commit_all(dir, "two");
 }
 
-fn run_all(dir: &Path, core: &str) -> codeeraser::trend::Report {
+pub(crate) fn run_all(dir: &Path, core: &str) -> codeeraser::trend::Report {
     codeeraser::trend::run(dir, None, core, 10, None).expect("trend run")
 }
 

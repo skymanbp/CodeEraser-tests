@@ -22,7 +22,7 @@ fn haskell_grammar_speaks_the_pinned_core_abi() {
     let mut stack = vec![root];
     while let Some(n) = stack.pop() {
         kinds.push(n.kind());
-        for i in (0..n.child_count() as u32).rev() {
+        for i in (0..n.child_count()).rev() {
             stack.push(n.child(i).unwrap());
         }
     }
