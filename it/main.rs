@@ -123,6 +123,7 @@ mod rescache_face;
 mod root_anchor;
 mod sarif_face;
 mod scan_classes;
+mod setup_e2e;
 mod similar_face;
 mod similar_replay;
 mod similar_replay_parts;

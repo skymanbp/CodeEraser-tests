@@ -105,9 +105,12 @@ fn refused(r: &Release, target: &Path) -> String {
     String::from_utf8_lossy(&out.stderr).into_owned()
 }
 
-/// The JSON face and its exit code under `env`.
-fn check(env: &[(&str, &str)]) -> (Value, Option<i32>) {
-    let out = run_ce_env(&tmp("update-cwd"), &["update", "--format", "json"], env);
+/// The JSON face and its exit code under `env`, run in `dir` — each
+/// leg's OWN scratch. One shared `tmp("update-cwd")` raced: `tmp`
+/// recreates the directory, so a sibling leg's spawn found its cwd
+/// gone and died with NotFound (CI 34006228086, ubuntu).
+fn check(dir: &Path, env: &[(&str, &str)]) -> (Value, Option<i32>) {
+    let out = run_ce_env(dir, &["update", "--format", "json"], env);
     let doc = serde_json::from_slice(&out.stdout).expect("update document");
     (doc, out.status.code())
 }
@@ -129,7 +132,7 @@ fn files_in(dir: &Path) -> usize {
 fn the_check_reads_the_tags_pins_and_exits_with_the_verdict() {
     let r = release("update-newer", "v9.9.9", false);
     let env = [("CE_UPDATE_BASE", r.base.as_str())];
-    let (d, code) = check(&env);
+    let (d, code) = check(&r.dir, &env);
     assert_eq!(code, Some(1), "{d}");
     assert_eq!(d["schema"], codeeraser::update::SCHEMA_ID);
     assert_eq!(d["verdict"], 1);
@@ -155,7 +158,7 @@ fn the_check_reads_the_tags_pins_and_exits_with_the_verdict() {
 fn the_same_version_is_up_to_date_and_yes_is_a_named_refusal() {
     let tag = format!("v{}", env!("CARGO_PKG_VERSION"));
     let r = release("update-same", &tag, false);
-    let (d, code) = check(&[("CE_UPDATE_BASE", &r.base)]);
+    let (d, code) = check(&r.dir, &[("CE_UPDATE_BASE", &r.base)]);
     assert_eq!(
         (code, &d["verdict"], &d["action"]),
         (Some(0), &Value::from(0), &Value::from(0))
@@ -200,7 +203,7 @@ fn a_pin_mismatch_places_nothing() {
     let r = release("update-tamper", "v9.9.9", true);
     // the check still reports the release: the pin is the manifest's
     // word, and the refusal belongs to the apply leg
-    let (d, _) = check(&[("CE_UPDATE_BASE", &r.base)]);
+    let (d, _) = check(&r.dir, &[("CE_UPDATE_BASE", &r.base)]);
     assert_eq!(d["verdict"], 1);
     let target = tmp("update-tamper-target");
     let err = refused(&r, &target);
@@ -220,7 +223,7 @@ fn a_copy_another_package_manager_owns_is_named_never_overwritten() {
         ("CE_UPDATE_BASE", r.base.as_str()),
         ("CLAUDE_PLUGIN_DATA", exe_dir.as_str()),
     ];
-    let (d, code) = check(&env);
+    let (d, code) = check(&r.dir, &env);
     assert_eq!(
         (code, &d["current"]["install"], &d["action"]),
         (Some(1), &Value::from(3), &Value::from(2))
@@ -235,7 +238,7 @@ fn a_copy_another_package_manager_owns_is_named_never_overwritten() {
 fn no_release_index_is_unknown_never_current() {
     let missing = tmp("update-missing");
     let base = format!("file://{}", slashes(&missing));
-    let (d, code) = check(&[("CE_UPDATE_BASE", &base)]);
+    let (d, code) = check(&missing, &[("CE_UPDATE_BASE", &base)]);
     assert_eq!(code, Some(2), "{d}");
     assert_eq!(d["verdict"], 2);
     assert_eq!(d["action"], 0);

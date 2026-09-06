@@ -49,6 +49,7 @@ session health line | 会话健康行 | health --hook | | hook:SessionStart | ho
 project daemon | 项目 daemon | daemon, ping | | | started lazily by every face | 每一面惰性启动
 read-only report server | 只读报告服务器 | mcp | | mcpjson | the plugin registers it | 插件自行注册
 uninstall | 卸载 | eject | | | CLI only | 只在 CLI
+Claude Code wiring | Claude Code 接线 | setup, setup --unwire | | | CLI only: the installers call it, AppImage / dmg users run it once | 只在 CLI：安装包调用它，AppImage / dmg 用户装后跑一次
 bench dashboard | 实测仪表盘 | | tab:bench, bench_doc | | compiled-in series; README and site carry the same block | 编译内置序列；README 与官网带同一块
 root anchoring | 根锚定 | | default_root, resolve_root | | every command and hook anchors through `root` | 每条命令与钩子都经 `root` 锚定
 ";
