@@ -59,6 +59,7 @@ tombstone.tier\tThe tombstone class's own hook tier: observe / warn / ask / deny
 tombstone.budget\tSites one changeset may carry before the class's condition holds (`sites > budget`, judged by the core over tombstone/1); absent = no condition is evaluated (`over` never holds) while the core still seats the sites; the judgment reaches the observe feed either way
 tombstone.ledger\tFiles declared to hold the changelog role, in the exclude list's dialect (`dir/` the directory's files): exempt whole and counted `declared` in the feed — the backstop for a ledger neither the path, the shape nor the segment witness reads
 tombstone.terms\tThe repository's own vocabulary: words that never spell a name, whole or as a word of a compound (`pork` declared keeps `braise_pork` out and leaves `braise` in); matched case-insensitively
+ui.lang\tThe project's console language, `en` or `zh` (any other value is refused at load by name): the third selector — `--lang` wins, then `CE_LANG`, then this key — read where the console face loads its config, so `ce` commands, the hooks' refusal sentences and the git hooks answer in it; never `--help`, which renders before a project is known, and never the GUI, which keeps its own language button. Outside the knob fingerprint: a language moves no line
 ";
 
 const GEN_BANNER: &str = "<!-- GENERATED — do not edit. \
@@ -108,8 +109,9 @@ fn cli_page() -> String {
     let root = help_of(None);
     let mut s = format!(
         "{GEN_BANNER}\n\n# `ce` command reference\n\nEvery block below is \
-         the binary's own `--help` output (English face; `--lang zh` or \
-         `CE_LANG=zh` switches the console at runtime).\n\n## ce\n\n```text\n{root}```\n"
+         the binary's own `--help` output (English face; `--lang zh`, \
+         `CE_LANG=zh` or the project's `[ui] lang = \"zh\"` in ce.toml switches \
+         the console at runtime, in that order of precedence).\n\n## ce\n\n```text\n{root}```\n"
     );
     for sub in subcommands(&root) {
         let h = help_of(Some(&sub));

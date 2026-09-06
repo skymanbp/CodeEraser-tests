@@ -5,6 +5,38 @@
 //! (tip/base pinning, Corpus struct, SELF_UNIVERSE_TIP) retired with
 //! the one-shot generators that read it (git history, 0c7c936 wave).
 
+/// The pinned tips of the four external corpora under
+/// `.ce-eval/corpora/<name>` (docs/EVAL-SET-M5-3.md, 语料树钉定): a
+/// measurement on any other tree would be a different corpus, so every
+/// ignored leg that walks them checks the tip first (eval_mention,
+/// eval_dedup_distinct).
+pub const PINNED_CORPORA: [(&str, &str); 4] = [
+    ("cobra", "adbc8813901bba65827259daa8e22ff94ec1f30e"),
+    ("requests", "8068356288978c4f54661ae6f95afe0e0831885e"),
+    ("ripgrep", "3fce3b5bb0236da2df6d99672afb8a719642eca7"),
+    ("zod", "912f0f51b0ced654d0069741e7160834dca742ee"),
+];
+
+/// One pinned corpus's checkout, its tip verified — the prologue of
+/// every external-corpus leg.
+pub fn pinned_root(name: &str, tip: &str) -> std::path::PathBuf {
+    let root = crate::common::repo_root()
+        .join(".ce-eval/corpora")
+        .join(name);
+    assert!(
+        root.is_dir(),
+        "{}: clone the corpus at {tip}",
+        root.display()
+    );
+    let (ok, head) = crate::common::git_out(&root, &["rev-parse", "HEAD"]);
+    assert!(
+        ok && head.trim() == tip,
+        "{name}: not the pinned tip {tip} ({})",
+        head.trim()
+    );
+    root
+}
+
 /// Every committed slice doc paired with its `family` sibling. The
 /// sibling MUST exist — a slice without its labels/baseline is an
 /// unfinished freeze, and a gate that skips it would go silently

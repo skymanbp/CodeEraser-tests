@@ -11,7 +11,7 @@ use crate::facts::{self, Tier};
 /// Scraped rows today. Lower it when a fact is promoted to a typed
 /// path; raising it is the plan v2.21 ⑤ exception and goes in the
 /// CHANGELOG by name.
-const SCRAPED: usize = 22;
+const SCRAPED: usize = 21;
 
 #[test]
 fn every_fact_resolves_and_the_scraped_tier_only_shrinks() {

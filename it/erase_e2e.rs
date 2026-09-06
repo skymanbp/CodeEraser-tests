@@ -199,6 +199,27 @@ fn apply_refuses_by_name_then_converges() {
     let log = std::fs::read_to_string(dir.join(".ce/erase-log.ndjson")).expect("log");
     assert_eq!(log.lines().count(), 3, "one record per applied row");
     assert!(log.lines().all(|l| l.contains("ce.erase-log/0.1.0")));
+    // the trail's reader (O50) hands back exactly what apply wrote —
+    // every applied row by class and target, nothing unreadable — and
+    // the face's document carries the same counts
+    let trail = erase::log::read(&dir).expect("read the trail");
+    assert!(trail.present && trail.unreadable.is_empty(), "{trail:?}");
+    let mut written: Vec<(String, String)> = trail
+        .rows
+        .iter()
+        .map(|r| (r.class.clone(), r.path.clone()))
+        .collect();
+    let mut applied: Vec<(String, String)> = plan
+        .eraseable()
+        .map(|r| (r.class.to_string(), r.path.clone()))
+        .collect();
+    written.sort();
+    applied.sort();
+    assert_eq!(written, applied, "the log names the applied rows");
+    let doc = codeeraser::faces::erase_log(&dir).expect("erase_log face");
+    assert_eq!(doc["schema"], erase::log::REPORT_SCHEMA);
+    assert_eq!(doc["counts"]["rows"], 3);
+    assert_eq!(doc["counts"]["unreadable"], 0);
     let after = erase::plan(&dir, None, &core).expect("post-plan");
     assert_eq!(after.counts.eraseable, 0, "converged");
 }

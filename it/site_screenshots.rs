@@ -20,15 +20,21 @@
 //! site_shoot_motion.rs hold what that script cannot.
 //!
 //! The freshness leg is deliberately blunt — ANY commit to `gui/ui`
-//! after a picture's commit fails it. Re-shooting is one command, and
+//! after the last shoot fails it. Re-shooting is one command, and
 //! the alternative (judging which UI edits are "visible") is the
-//! judgement call that let four of them through. It is also not
-//! sufficient alone, which is why the receipt leg exists: the join
-//! schema moved twice under a picture while `gui/ui` stood still —
-//! and it reads COMMITS, so an edit to `gui/ui` not yet committed is
-//! invisible to it (a local run stayed green while CI went red on the
-//! commit, v2.29 steps 6 and 8). The receipt's `ui` tree digest is
-//! the leg that sees the working tree itself.
+//! judgement call that let four of them through. The shoot's witness
+//! is the receipt beside the pictures, not the picture files alone: a
+//! re-shoot over an edit the three screens do not show writes the
+//! same pixels byte for byte (v2.29 step 9 — a header breakpoint
+//! below the figure width), so the pictures' own commit cannot move,
+//! while the receipt's `ui` tree digest moves with every edit and the
+//! receipt leg ties the pictures to it. It is also not sufficient
+//! alone, which is why the receipt leg exists: the join schema moved
+//! twice under a picture while `gui/ui` stood still — and it reads
+//! COMMITS, so an edit to `gui/ui` not yet committed is invisible to
+//! it (a local run stayed green while CI went red on the commit,
+//! v2.29 steps 6 and 8). The receipt's `ui` tree digest is the leg
+//! that sees the working tree itself.
 //!
 //! Deliberately NOT held: that the numbers inside the pictures are
 //! current. A screenshot samples one run and the page claims no more;
@@ -115,12 +121,15 @@ fn shot_figures(page: &str) -> Vec<(String, String)> {
 }
 
 /// Leg 1: no picture is older than the screens it shows. If `gui/ui`
-/// moved after a picture was taken, the homepage is showing a window
-/// the product no longer has.
+/// moved after the last shoot, the homepage is showing a window the
+/// product no longer has.
 ///
-/// Per picture, not per set: `git log -1` over all three answers the
-/// NEWEST, so a partial re-shoot would have refreshed the other two by
-/// association.
+/// A picture was taken when the newer of its own file and the receipt
+/// last moved: the shoot rewrites the receipt (its `ui` digest) on
+/// every run and the receipt leg pins the picture's bytes to it, so a
+/// byte-identical re-shoot still dates. Per picture, not per set:
+/// `git log -1` over all three answers the NEWEST, so a partial
+/// re-shoot would have refreshed the other two by association.
 #[test]
 fn the_pictures_are_no_older_than_the_screens_they_show() {
     let root = repo_root();
@@ -132,7 +141,7 @@ fn the_pictures_are_no_older_than_the_screens_they_show() {
     let ui = last_commit(&root, &[UI]);
     for name in SHOTS {
         let path = format!("site/assets/{name}");
-        let taken = last_commit(&root, &[&path]);
+        let taken = last_commit(&root, &[&path, RECEIPT]);
         let (fresh, _) = git_out(&root, &["merge-base", "--is-ancestor", &ui, &taken]);
         assert!(
             fresh,

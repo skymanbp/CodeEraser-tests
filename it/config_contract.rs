@@ -195,6 +195,14 @@ fn the_digest_of_a_fixed_declaration_is_frozen() {
             "[dedup]\nbudget = 182\n[thresholds]\nfile_lines_warn = 251\n",
             "moved",
         ),
+        // the console language is presentation (canonical rule 6):
+        // declared alone it is silence, declared beside knobs it
+        // leaves their digest where it was
+        ("[ui]\nlang = \"zh\"\n", "silent"),
+        (
+            "[dedup]\nbudget = 182\n[thresholds]\nfile_lines_warn = 250\n[ui]\nlang = \"zh\"\n",
+            "frozen",
+        ),
     ];
     for (i, (toml, want)) in rows.iter().enumerate() {
         let got = digest(toml);

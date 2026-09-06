@@ -44,6 +44,7 @@ fn mcp_initialize_and_list() {
             "structure",
             "check",
             "erase",
+            "erase_log",
             "doctor",
             "trend",
             "similar_units",

@@ -12,17 +12,7 @@ fn health_reports_mode_index_and_warm_daemon() {
     let dir = tmp("health-e2e");
     std::fs::write(dir.join("a.rs"), "fn seed(a: i64) -> i64 { a * 2 + 1 }\n").expect("a.rs");
     common::build_index(&dir);
-    let envelope = serde_json::json!({
-        "session_id": "t", "transcript_path": "t",
-        "cwd": dir.display().to_string().replace('\\', "/"),
-        "hook_event_name": "SessionStart"
-    })
-    .to_string();
-    let out = common::run_hook(&dir, &["health", "--hook"], &envelope);
-    let v: serde_json::Value = serde_json::from_str(out.trim()).expect("json");
-    let ctx = v["hookSpecificOutput"]["additionalContext"]
-        .as_str()
-        .expect("additionalContext");
+    let (v, ctx) = common::session_start_line(&dir);
     assert_eq!(v["hookSpecificOutput"]["hookEventName"], "SessionStart");
     // no ce.toml mode here: the line reports the §4.2 step-3 route
     // default for the promoted PreToolUse classes (1.0, M7-P2)

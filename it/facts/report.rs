@@ -16,7 +16,13 @@ const LINKED: &[(&str, &str)] = &[
     ("dedup", codeeraser::dedup::SCHEMA_ID),
     ("docdup", codeeraser::docdup::judge::SCHEMA_ID),
     ("doctor", codeeraser::health::doctor::SCHEMA_ID),
+    // the record schema was scraped behind erase::apply until plan
+    // v2.29 step 9 (O50) moved it to the model leaf beside SCHEMA_ID
+    ("erase-log", codeeraser::erase::LOG_SCHEMA),
     ("erase-plan", codeeraser::erase::SCHEMA_ID),
+    // the trail READER's document (O50) — named for the trail because
+    // this table keys by family name and `erase-log` is the record's
+    ("erase-trail", codeeraser::erase::log::REPORT_SCHEMA),
     ("graph-canvas", codeeraser::graph::canvas::SCHEMA_ID),
     ("join", codeeraser::join::SCHEMA_ID),
     ("mentions", codeeraser::mention::face::SCHEMA_ID),
@@ -38,10 +44,6 @@ const PRIVATE: &[(&str, &str)] = &[
     (
         "deadcode",
         "report::DEADCODE_SCHEMA is private; promote = pub const",
-    ),
-    (
-        "erase-log",
-        "erase::apply::LOG_SCHEMA is private; promote = re-export beside SCHEMA_ID",
     ),
     (
         "trend",

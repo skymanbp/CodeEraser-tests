@@ -32,3 +32,39 @@ fn only_language_unresolved_carries_its_site_count() {
         assert_eq!(reason_detail(&row(other, 312)), "", "{other}");
     }
 }
+
+/// O24: the aggregate tail names the family command from the one
+/// table (`family_command`), and the plan document carries the same
+/// map under `families` (0.3.0); a kind the table does not know keeps
+/// the old sentence and stays out of the map rather than getting a
+/// made-up command.
+#[test]
+fn out_of_class_names_the_family_command_on_every_face() {
+    use crate::erase::model::{Counts, Plan, T1T2_NO_WHOLE_UNIT};
+    assert_eq!(
+        out_of_class_line(T1T2_NO_WHOLE_UNIT, 40),
+        "advisory t1t2_block_no_whole_unit: 40 finding(s) — no deterministic-safe erase; see `ce dedup`"
+    );
+    assert_eq!(
+        out_of_class_line("someday_kind", 1),
+        "advisory someday_kind: 1 finding(s) — no deterministic-safe erase; see the family command"
+    );
+    let mut out_of_class = std::collections::BTreeMap::new();
+    out_of_class.insert(T1T2_NO_WHOLE_UNIT, 40usize);
+    out_of_class.insert("someday_kind", 1);
+    let plan = Plan {
+        rows: vec![],
+        counts: Counts {
+            candidates: 0,
+            eraseable: 0,
+            advisory: 0,
+            out_of_class,
+        },
+    };
+    let doc = report_json(&plan);
+    assert_eq!(doc["schema"], "ce.erase-plan/0.3.0");
+    assert_eq!(
+        doc["families"],
+        serde_json::json!({ T1T2_NO_WHOLE_UNIT: "ce dedup" })
+    );
+}

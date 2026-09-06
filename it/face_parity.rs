@@ -39,6 +39,7 @@ same-role advisor (similar units, associative view) | 同角色顾问（相似�
 baseline writes | 基线写入 | baseline | | | CLI only: a machine surface never writes a baseline | 只在 CLI：机器面永不写基线
 erase plan | 擦除计划 | erase | tab:erase, erase_preview | mcp:erase, skill:erase | |
 erase apply | 擦除执行 | erase --apply | tab:erase, erase_apply | | no MCP face: applying is a human act | 无 MCP 面：执行是人类动作
+erase audit log | 擦除审计日志 | erase --log | tab:erase, erase_log_report | mcp:erase_log | |
 machine state | 本机状态 | doctor | tab:doctor, doctor_report | mcp:doctor | |
 update check | 更新检查 | update | tab:update, update_check | mcp:update_check, cmd:update, hook:SessionStart | |
 update apply | 更新执行 | update --yes | tab:update, update_apply | | the plugin's copy is re-pinned by `/plugin update codeeraser` | 插件副本由 `/plugin update codeeraser` 重钉

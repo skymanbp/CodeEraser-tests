@@ -25,20 +25,12 @@
 mod parts;
 
 use crate::common;
+use crate::eval_support::corpus::{PINNED_CORPORA as CORPORA, pinned_root};
 use crate::eval_support::mention::{Ledger, ledger};
 use crate::mention_universe::{Formula, formula};
 use codeeraser::mention::rates::{census, declarations};
 use serde_json::{Value, json};
 use std::path::Path;
-
-/// The pinned tips (docs/EVAL-SET-M5-3.md, 语料树钉定): a ledger row
-/// on any other tree would be a different corpus.
-const CORPORA: [(&str, &str); 4] = [
-    ("cobra", "adbc8813901bba65827259daa8e22ff94ec1f30e"),
-    ("requests", "8068356288978c4f54661ae6f95afe0e0831885e"),
-    ("ripgrep", "3fce3b5bb0236da2df6d99672afb8a719642eca7"),
-    ("zod", "912f0f51b0ced654d0069741e7160834dca742ee"),
-];
 
 const RIPGREP_TEST_DIRS: [&str; 4] = [
     "crates/globset/benches",
@@ -114,25 +106,8 @@ fn the_self_corpus_holds_the_preregistered_zeros() {
 #[test]
 #[ignore = "needs the pinned corpora under .ce-eval/corpora"]
 fn the_external_corpora_hold_the_preregistered_zeros() {
-    let base = common::repo_root().join(".ce-eval/corpora");
     for (name, tip) in CORPORA {
-        let root = base.join(name);
-        assert!(
-            root.is_dir(),
-            "{}: clone the corpus at {tip}",
-            root.display()
-        );
-        let head = std::process::Command::new("git")
-            .arg("-C")
-            .arg(&root)
-            .args(["rev-parse", "HEAD"])
-            .output()
-            .expect("git rev-parse");
-        assert_eq!(
-            String::from_utf8_lossy(&head.stdout).trim(),
-            tip,
-            "{name}: not the pinned tip"
-        );
+        let root = pinned_root(name, tip);
         let (_f, l, _rates) = measure(name, &root);
         assert_eq!(
             l.test_singular_files, 0,

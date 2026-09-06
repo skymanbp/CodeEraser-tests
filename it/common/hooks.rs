@@ -89,6 +89,27 @@ pub fn seed_project(dir: &Path, mode: &str) {
     super::build_index(dir);
 }
 
+/// The SessionStart health line: the envelope as Claude Code sends
+/// it, `ce health --hook` run on it, the hook's whole answer and its
+/// `additionalContext` handed back — the one home for every leg that
+/// reads that line (health_plugin's mode / index / daemon words,
+/// ui_lang's project-language pin).
+pub fn session_start_line(dir: &Path) -> (serde_json::Value, String) {
+    let envelope = serde_json::json!({
+        "session_id": "t", "transcript_path": "t",
+        "cwd": dir.display().to_string().replace('\\', "/"),
+        "hook_event_name": "SessionStart"
+    })
+    .to_string();
+    let out = run_hook(dir, &["health", "--hook"], &envelope);
+    let v: serde_json::Value = serde_json::from_str(out.trim()).expect("json");
+    let ctx = v["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .expect("additionalContext")
+        .to_string();
+    (v, ctx)
+}
+
 /// Stop envelope; `stop_hook_active` = the loop-prevention flag.
 pub fn stop_envelope(dir: &Path, stop_hook_active: bool) -> String {
     serde_json::json!({

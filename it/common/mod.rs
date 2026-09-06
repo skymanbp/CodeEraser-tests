@@ -187,15 +187,19 @@ pub fn run_ce(dir: &Path, args: &[&str]) -> std::process::Output {
 
 /// `run_ce` under named environment — the acts `ce baseline` reads
 /// and the console language; the one process-construction throat.
-/// The two acts are cleared first: a developer shell that exported
-/// one would otherwise turn every refusal case green by inheritance.
-/// The SessionStart update notice is off unless a leg arms it: no
-/// battery reaches the release index by accident (update/notice.rs).
+/// The two acts and CE_LANG are cleared first: a developer shell that
+/// exported one would otherwise turn every refusal case green, or
+/// every English assertion red, by inheritance (the hooks helper and
+/// cli_bare scrub the same variable; a row testing Chinese passes it
+/// in `env`, which lands after). The SessionStart update notice is
+/// off unless a leg arms it: no battery reaches the release index by
+/// accident (update/notice.rs).
 pub fn run_ce_env(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_ce"))
         .args(args)
         .env_remove("CE_ACCEPT_BASELINE")
         .env_remove("CE_ACCEPT_FENCE")
+        .env_remove("CE_LANG")
         .env("CE_UPDATE_CHECK", "0")
         .envs(env.iter().copied())
         .current_dir(dir)
