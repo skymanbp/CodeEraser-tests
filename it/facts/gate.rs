@@ -1,4 +1,5 @@
-//! Gate facts: the two CI floors and the two dedup budgets.
+//! Gate facts: the two CI floors, the two dedup budgets and the
+//! factory hard budget the write-time guard and `ce scan` both read.
 
 use super::{Fact, linked, scraped};
 use crate::common::repo_root;
@@ -11,6 +12,11 @@ pub fn facts() -> Vec<Fact> {
     let root = repo_root();
     let ci = std::fs::read_to_string(root.join(".github/workflows/ci.yml")).expect("ci.yml");
     vec![
+        linked(
+            "gate:size.file_lines_fail#digits",
+            codeeraser::config::Thresholds::default().file_lines_fail,
+            "cli/src/config/thresholds.rs::Thresholds::default (file_lines_fail)",
+        ),
         scraped(
             "gate:floor.main#digits",
             floor(&ci, "check .. "),

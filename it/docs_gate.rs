@@ -32,8 +32,8 @@ thresholds.cyclomatic_warn\tWarn past this cyclomatic complexity
 thresholds.cognitive_warn\tWarn past this cognitive complexity
 thresholds.cognitive_fail\tFail past this cognitive complexity. `0` — the default — is the published \"no hard line\", so the complexity axis ships with no absolute limit at all: the plan's own §4.1 evidence row records that cognitive complexity has no support on the correctness axis, and a metric this project declines to over-claim gets no wall by default. Declaring one arms `ce scan`'s fail tier (and `[[rules.class]]`) and nothing else — the score's complexity axis still charges against `cognitive_warn` alone, so turning this on never moves a score, and the PreToolUse hook never reads it (§4.2 keeps write-time checks AST-free)
 thresholds.nesting_warn\tWarn past this block-nesting depth
-guard.mode\tExplicit hook tier for every rule class: observe / warn / ask / deny; unset = per-class route defaults (deny for the two FPR-promoted classes, observe otherwise). Any other value is a typo, not a tier: it resolves to observe and the SessionStart line, `ce doctor` and the observe feed all name it, so a mistyped mode can never look armed
-guard.zone_tiers\tArm the graded-zone tier map (plan v2.7): a write landing <25% into (softLine, hard budget] stays observe, 25-75% warns, >75% asks. Default OFF - the zone is feed-only until a repo opts in, and the observe feed records the mapped tier when armed
+guard.mode\tExplicit hook tier for the classes `[guard]` owns — the T1/T2 duplicate write and the hard-budget breach: observe / warn / ask / deny; unset = per-class route defaults (deny for those two FPR-promoted classes, observe otherwise). The tombstone class is NOT one of them: a class with a key of its own decides at that key (`[tombstone] tier`). Any other value is a typo, not a tier: it resolves to observe and the SessionStart line, `ce doctor` and the observe feed all name it, so a mistyped mode can never look armed
+guard.zone_tiers\tArm the graded-zone tier map (plan v2.7): a write landing <25% into (softLine, hard budget] stays observe, 25–75% warns, >75% asks. Default OFF — the measured record is the `zone_tiers` section of docs/FPR-REPLAY.md (one corpus over the 1% line, so the default stays off) and the factory value is held against that ledger by cli/tests/it/fpr_zone_gate.rs; until a repo opts in the zone is feed-only, and the observe feed records the mapped tier when armed
 dedup.budget\tOnly-shrink clone-block budget; `ce dedup --check` fails when the repo exceeds it
 graph.entry_globs\tExtra liveness roots for the deadcode judgment, beyond the mechanical entry conventions; the exclude list's dialect (`dir/` selects the directory's files; `src/**/*.ts` and every other pattern read as written)
 graph.crate_roots\tRust crate roots of a tree whose manifest lives elsewhere (the test-suite submodule is a slice of the `cli` package): root-relative exact paths. A declared root mounts its `mod` children and anchors `crate::` paths like a manifest target, and is one for the deadcode entry role; a declared path that is not a walked Rust file is refused by name
@@ -63,7 +63,8 @@ ui.lang\tThe project's console language, `en` or `zh` (any other value is refuse
 ";
 
 const GEN_BANNER: &str = "<!-- GENERATED — do not edit. \
-Regenerate: CE_BLESS=1 cargo test --test it docs_gate::. \
+Regenerate: CE_BLESS=1 cargo test --manifest-path cli/Cargo.toml \
+--test it docs_gate::. \
 CI reddens when this file drifts from its regeneration. \
 Length rides the CLI surface (a machine-generated projection, the \
 hs_boot stance), so the scan's file-lines warn on the CLI page is an \

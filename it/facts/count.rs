@@ -141,18 +141,21 @@ fn tree(root: &Path) -> Vec<Fact> {
 }
 
 /// The release roster (`update::version::TARGETS`): one ce, one
-/// ce-core and one GUI bundle per target. tests/it/release_roster.rs
-/// holds the manifest's key set, release.yml and scripts/roster.js to
-/// the same list, so these counts describe every reader at once.
+/// ce-core and one GUI bundle per target, plus the one `SHA256SUMS`
+/// that makes the asset count. tests/it/release_roster.rs holds the
+/// manifest's key set, release.yml and scripts/roster.js to the same
+/// list, so these counts describe every reader at once.
 fn roster() -> Vec<Fact> {
     use codeeraser::update::version::{Platform, TARGETS};
     let bundles = TARGETS
         .iter()
         .filter(|k| Platform::of_key(k).bundle().is_some())
         .count();
+    let binaries = TARGETS.len() * 2 + bundles;
     let src = "cli/src/update/version.rs::TARGETS";
     vec![
-        linked("count:binaries#word", TARGETS.len() * 2 + bundles, src),
+        linked("count:binaries#word", binaries, src),
+        linked("count:assets#word", binaries + 1, src),
         linked("count:platforms#word", TARGETS.len(), src),
         linked("count:installers#word", bundles, src),
     ]
