@@ -39,7 +39,7 @@ fn fake(dir: &Path, listed: &[&str], add_rc: i32, install_rc: i32) -> Fake {
         .iter()
         .map(|n| json!({"name": n, "source": "github"}))
         .collect();
-    std::fs::write(&listing, Value::Array(rows).to_string()).expect("listing");
+    std::fs::write(&listing, format!("{}\n", Value::Array(rows))).expect("listing");
     let (log, list) = (calls.display(), listing.display());
     if cfg!(windows) {
         let body = format!(
@@ -47,8 +47,13 @@ fn fake(dir: &Path, listed: &[&str], add_rc: i32, install_rc: i32) -> Fake {
         );
         std::fs::write(bin.join("claude.cmd"), body).expect("shim");
     } else {
+        // builtins only (`read` / `printf`, like cmd's `type` above):
+        // setup runs with PATH scrubbed to the fake's directory, so an
+        // external `cat` is "not found" and the listing arrives EMPTY
+        // — read as fresh, the kept row wired instead (CI 34009701438,
+        // ubuntu + macOS)
         let body = format!(
-            "#!/bin/sh\necho \"$*\" >> \"{log}\"\ncase \"$1 $2 $3\" in\n  'plugin marketplace list') cat \"{list}\"; exit 0 ;;\n  'plugin marketplace add') exit {add_rc} ;;\nesac\ncase \"$1 $2\" in\n  'plugin install') exit {install_rc} ;;\nesac\nexit 0\n"
+            "#!/bin/sh\necho \"$*\" >> \"{log}\"\ncase \"$1 $2 $3\" in\n  'plugin marketplace list') while IFS= read -r l; do printf '%s\\n' \"$l\"; done < \"{list}\"; exit 0 ;;\n  'plugin marketplace add') exit {add_rc} ;;\nesac\ncase \"$1 $2\" in\n  'plugin install') exit {install_rc} ;;\nesac\nexit 0\n"
         );
         let script = bin.join("claude");
         std::fs::write(&script, body).expect("script");
