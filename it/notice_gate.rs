@@ -107,7 +107,13 @@ const HS_PLATFORM_ONLY: &[&str] = &["Win32"];
 /// manifest's own claim (a crate without one is named, not guessed).
 fn cargo_rows(manifest: &Path, rows: &mut BTreeSet<(String, String, String)>) {
     let out = std::process::Command::new("cargo")
-        .args(["metadata", "--format-version", "1", "--manifest-path"])
+        .args([
+            "metadata",
+            "--locked",
+            "--format-version",
+            "1",
+            "--manifest-path",
+        ])
         .arg(manifest)
         .output()
         .expect("cargo metadata");

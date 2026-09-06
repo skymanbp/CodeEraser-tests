@@ -24,12 +24,13 @@
 
 use crate::common::{repo_root, tmp, write_all};
 use crate::site_screenshots::{RECEIPT, REGEN, SHOTS, UI, WINDOW};
+use codeeraser::update::apply::hex;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::path::Path;
 
 fn digest(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
+    hex(&Sha256::digest(bytes))
 }
 
 /// Every file under `dir`, recursively, as `/`-joined paths relative to
@@ -78,7 +79,7 @@ fn ui_digest(dir: &Path) -> String {
         ));
         hash.update(b"\0");
     }
-    format!("{:x}", hash.finalize())
+    hex(&hash.finalize())
 }
 
 #[test]
