@@ -7,13 +7,12 @@
 //! list private or in another language.
 
 use super::{Fact, linked, read, scraped};
-use std::collections::BTreeSet;
 use std::path::Path;
 
 pub fn facts(root: &Path) -> Vec<Fact> {
     let mut out = typed();
     out.extend(tree(root));
-    out.extend(manifest(root));
+    out.extend(roster());
     out.extend(scrapes(root));
     out
 }
@@ -110,26 +109,21 @@ fn tree(root: &Path) -> Vec<Fact> {
     ]
 }
 
-/// The release pins: `CE_SHA256_<PLATFORM>_<ASSET>` keys.
-fn manifest(root: &Path) -> Vec<Fact> {
-    let map = codeeraser::update::manifest::parse(&read(root, "plugin/bin/manifest.env"));
-    let pins: Vec<&str> = map
-        .keys()
-        .filter_map(|k| k.strip_prefix("CE_SHA256_"))
-        .collect();
-    let platforms: BTreeSet<&str> = pins
+/// The release roster (`update::version::TARGETS`): one ce, one
+/// ce-core and one GUI bundle per target. tests/it/release_roster.rs
+/// holds the manifest's key set, release.yml and scripts/roster.js to
+/// the same list, so these counts describe every reader at once.
+fn roster() -> Vec<Fact> {
+    use codeeraser::update::version::{Platform, TARGETS};
+    let bundles = TARGETS
         .iter()
-        .map(|k| k.rsplit_once('_').expect("platform_asset").0)
-        .collect();
-    let installers = pins
-        .iter()
-        .filter(|k| k.ends_with("_SETUP") || k.ends_with("_APPIMAGE") || k.ends_with("_DMG"))
+        .filter(|k| Platform::of_key(k).bundle().is_some())
         .count();
-    let src = "plugin/bin/manifest.env::CE_SHA256_* (update::manifest::parse)";
+    let src = "cli/src/update/version.rs::TARGETS";
     vec![
-        linked("count:binaries#word", pins.len(), src),
-        linked("count:platforms#word", platforms.len(), src),
-        linked("count:installers#word", installers, src),
+        linked("count:binaries#word", TARGETS.len() * 2 + bundles, src),
+        linked("count:platforms#word", TARGETS.len(), src),
+        linked("count:installers#word", bundles, src),
     ]
 }
 

@@ -12,6 +12,7 @@
 //! for byte; `CE_BLESS=1` is the only writer.
 
 use crate::common::repo_root;
+use crate::facts::read;
 use std::collections::BTreeSet;
 
 /// The capability table, one row per line and seven `|` cells:
@@ -90,14 +91,10 @@ fn rows() -> Vec<Row> {
         .collect()
 }
 
-fn read(rel: &str) -> String {
-    std::fs::read_to_string(repo_root().join(rel)).unwrap_or_else(|e| panic!("{rel}: {e}"))
-}
-
 /// clap's subcommand roster: every `Name {` / `Name(Args),` variant
 /// (cli_table.rs closes the README carrier table against it).
 pub(crate) fn cli_subcommands() -> BTreeSet<String> {
-    let src = read("cli/src/main_cli.rs");
+    let src = read(&repo_root(), "cli/src/main_cli.rs");
     let body = src.split("pub(crate) enum Cmd {").nth(1).expect("Cmd enum");
     body.lines()
         .filter_map(|l| l.strip_prefix("    "))
@@ -112,7 +109,7 @@ pub(crate) fn cli_subcommands() -> BTreeSet<String> {
 }
 
 fn gui_commands() -> BTreeSet<String> {
-    read("gui/src-tauri/src/main.rs")
+    read(&repo_root(), "gui/src-tauri/src/main.rs")
         .lines()
         .filter_map(|l| l.trim().strip_prefix("commands::"))
         .map(|l| l.trim_end_matches(',').to_string())
@@ -120,7 +117,7 @@ fn gui_commands() -> BTreeSet<String> {
 }
 
 fn gui_tabs() -> BTreeSet<String> {
-    read("gui/ui/index.html")
+    read(&repo_root(), "gui/ui/index.html")
         .split("data-tab=\"")
         .skip(1)
         .map(|s| format!("tab:{}", s.split('"').next().expect("tab")))
@@ -128,7 +125,7 @@ fn gui_tabs() -> BTreeSet<String> {
 }
 
 fn mcp_tools() -> BTreeSet<String> {
-    let src = read("cli/src/mcp/tools.rs");
+    let src = read(&repo_root(), "cli/src/mcp/tools.rs");
     let table = src.split("pub const TOOLS").nth(1).expect("TOOLS");
     table
         .split("tool!(")
@@ -147,7 +144,7 @@ fn mcp_tools() -> BTreeSet<String> {
 
 fn plugin_surface() -> BTreeSet<String> {
     let hooks: serde_json::Value =
-        serde_json::from_str(&read("plugin/hooks/hooks.json")).expect("hooks.json");
+        serde_json::from_str(&read(&repo_root(), "plugin/hooks/hooks.json")).expect("hooks.json");
     let mut out: BTreeSet<String> = hooks["hooks"]
         .as_object()
         .expect("events")

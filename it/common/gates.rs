@@ -5,6 +5,7 @@
 //! pattern).
 
 use std::path::Path;
+use std::process::{Command, Output};
 
 /// The core binary every judgment e2e drives — ONE env read (the
 /// self-ratchet caught the third pasted expect when the scan gate
@@ -62,4 +63,25 @@ pub fn gate_red_green(
     repair();
     let green = run(dir);
     assert!(green.status.success(), "green half passes: {green:?}");
+}
+
+/// Run a repository script under node from the repo root (node is on
+/// PATH; the drivers need no packages), with extra environment.
+pub fn node(args: &[&str], env: &[(&str, &str)]) -> Output {
+    Command::new("node")
+        .args(args)
+        .envs(env.iter().copied())
+        .current_dir(super::repo_root())
+        .output()
+        .expect("node is on PATH")
+}
+
+/// Both streams in the panic when a driver run failed.
+pub fn expect_ok(out: &Output, what: &str) {
+    assert!(
+        out.status.success(),
+        "{what}:\n{}\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
 }

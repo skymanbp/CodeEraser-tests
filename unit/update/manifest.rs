@@ -22,22 +22,39 @@ fn the_shipped_manifest_parses_as_sh_reads_it() {
     assert!(m.values().all(|v| !v.starts_with('"') && !v.ends_with('"')));
 }
 
+/// Every roster target's three keys are in the shipped manifest; the
+/// targets this manifest's version built carry real pins, the rest
+/// (a manifest before FULL_ROSTER_SINCE) are empty and refused by name.
 #[test]
-fn every_release_platform_has_its_three_pins() {
-    for (os, arch) in [
-        ("windows", "x86_64"),
-        ("linux", "x86_64"),
-        ("macos", "aarch64"),
-    ] {
-        let plat = Platform::of(os, arch);
-        let p = pins(&shipped(), &plat).expect("pins");
+fn every_built_target_has_its_three_pins_and_the_rest_are_empty() {
+    use crate::update::version::{TARGETS, built};
+    let text = shipped();
+    let m = parse(&text);
+    let ver = m["CE_MANIFEST_VERSION"].clone();
+    for key in TARGETS {
+        let plat = Platform::of_key(key);
+        let mk = plat.manifest_key();
+        let tail = plat.bundle().expect("bundle").manifest_tail();
+        for k in [
+            format!("CE_SHA256_{mk}_CE"),
+            format!("CE_SHA256_{mk}_CECORE"),
+            format!("CE_SHA256_{mk}_{tail}"),
+        ] {
+            assert!(m.contains_key(&k), "{key}: the manifest lacks {k}");
+        }
+        if !built(&ver).contains(&key) {
+            let err = pins(&text, &plat).unwrap_err().to_string();
+            assert!(err.contains(&format!("CE_SHA256_{mk}_CE")), "{key}: {err}");
+            continue;
+        }
+        let p = pins(&text, &plat).expect("pins");
         for pin in [
             &p.ce,
             &p.ce_core,
             p.installer.as_ref().expect("installer pin"),
         ] {
-            assert_eq!(pin.len(), 64, "{os}: {pin}");
-            assert!(pin.bytes().all(|b| b.is_ascii_hexdigit()), "{os}: {pin}");
+            assert_eq!(pin.len(), 64, "{key}: {pin}");
+            assert!(pin.bytes().all(|b| b.is_ascii_hexdigit()), "{key}: {pin}");
         }
         assert_eq!(
             p.asset_url("ce-core", &plat),

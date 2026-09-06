@@ -13,7 +13,7 @@
 //! map back out to prove every term in it actually left the file —
 //! anywhere in it: two of the terms are aria-labels, not text nodes.
 
-use crate::common::repo_root;
+use crate::common::{expect_ok, node, repo_root};
 use crate::facts::{blessing, read};
 use serde_json::Value;
 use std::path::Path;
@@ -90,16 +90,9 @@ fn the_committed_diagrams_are_what_the_pinned_archify_renders() {
         head.as_deref().unwrap_or("absent")
     );
     let mode = if blessing() { "--write" } else { "--check" };
-    let out = Command::new("node")
-        .args(["scripts/diagram.mjs", mode])
-        .current_dir(&root)
-        .output()
-        .expect("node is on PATH (the diagram driver needs no packages)");
-    assert!(
-        out.status.success(),
-        "diagrams drifted or failed to render:\n{}\n{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
+    expect_ok(
+        &node(&["scripts/diagram.mjs", mode], &[]),
+        "diagrams drifted or failed to render",
     );
 }
 

@@ -8,23 +8,15 @@
 //! The block set is a table in run.js (`EMBEDS`, marker column), so a
 //! new family of blocks is gated here without a line changing.
 
-use crate::common::{core_bin, repo_root};
+use crate::common::{core_bin, expect_ok, node};
 
 #[test]
 fn the_committed_demo_outputs_are_what_this_build_produces() {
-    let out = std::process::Command::new("node")
-        .arg("demo/run.js")
-        .arg("--check")
-        .env("CE_BIN", env!("CARGO_BIN_EXE_ce"))
-        .env("CE_CORE_BIN", core_bin())
-        .env("CE_UPDATE_CHECK", "0")
-        .current_dir(repo_root())
-        .output()
-        .expect("node is on PATH (the demo driver needs no packages)");
-    assert!(
-        out.status.success(),
-        "demo drifted:\n{}\n{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
+    let core = core_bin();
+    let env = [
+        ("CE_BIN", env!("CARGO_BIN_EXE_ce")),
+        ("CE_CORE_BIN", core.as_str()),
+        ("CE_UPDATE_CHECK", "0"),
+    ];
+    expect_ok(&node(&["demo/run.js", "--check"], &env), "demo drifted");
 }
