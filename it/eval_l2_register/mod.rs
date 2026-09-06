@@ -30,7 +30,7 @@ fn row_keys(r: &Value) -> Vec<String> {
 /// One relocation edge's unit bases, both ends (an adapted-in-flight
 /// move renames: rebuild_proxies/3 -> resolve_proxies/3 — either end
 /// may carry the registered name).
-fn rel_bases(rel: &Value) -> Vec<String> {
+pub(crate) fn rel_bases(rel: &Value) -> Vec<String> {
     ["from_unit", "to_unit"]
         .iter()
         .filter_map(|k| rel[k].as_str())
@@ -40,7 +40,7 @@ fn rel_bases(rel: &Value) -> Vec<String> {
 
 /// Whether a review row's units array names `unit` (modulo the ~
 /// adaptation marker) — the lookup both registers share.
-fn names_unit(e: &Value, unit: &str) -> bool {
+pub(crate) fn names_unit(e: &Value, unit: &str) -> bool {
     e["units"]
         .as_array()
         .expect("units")

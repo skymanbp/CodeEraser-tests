@@ -22,6 +22,7 @@ fn one_leftover() -> (
         },
         moved: Vec::new(),
         relocated_units: Vec::new(),
+        decls: (Vec::new(), Vec::new()),
         changed: ChangedLines {
             removed: vec![1],
             added: Vec::new(),

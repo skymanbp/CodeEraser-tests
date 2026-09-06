@@ -74,3 +74,17 @@ pub fn units_in(corpus: Option<&str>, sha: &str) -> Vec<Value> {
 pub fn edges_in(corpus: Option<&str>, sha: &str) -> Vec<Value> {
     project(tables_for(corpus), "relocation_edges", sha, &["from", "to"])
 }
+
+/// Every sha the named corpus's edge register carries, sorted and
+/// deduplicated — the commits the edge instrument replays.
+pub fn edge_shas(corpus: Option<&str>) -> Vec<String> {
+    let mut out: Vec<String> = tables_for(corpus)["relocation_edges"]
+        .as_array()
+        .expect("edge rows")
+        .iter()
+        .map(|r| r["sha"].as_str().expect("sha").to_string())
+        .collect();
+    out.sort();
+    out.dedup();
+    out
+}

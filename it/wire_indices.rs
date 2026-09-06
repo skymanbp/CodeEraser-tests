@@ -15,6 +15,7 @@ fn empty_pair() -> Classification {
         counts: FourClass::default(),
         moved: Vec::new(),
         relocated_units: Vec::new(),
+        decls: (Vec::new(), Vec::new()),
         changed: ChangedLines {
             removed: Vec::new(),
             added: Vec::new(),
