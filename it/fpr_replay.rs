@@ -25,13 +25,12 @@
 //!
 //!   cargo test --release --test it -- --ignored fpr_replay --nocapture
 //!
-//! CE_FPR_REPO = the checkout to walk (default: this repo);
-//! CE_FPR_TIP = the commit whose first-parent chain is walked (default
-//! HEAD; the ledger's requests window ends at 1f6589ec);
-//! CE_FPR_LIMIT = only the newest N commits, seeded from the tree
-//! before them (a smoke run; the ledger's numbers are full runs).
+//! CE_FPR_REPO = the checkout to walk (default: this repo); the chain
+//! and the two knobs that bound it live in common::history, shared
+//! with the graded-zone ledger so the two instruments walk exactly
+//! the same commits.
 
-use crate::common::{git_out, repo_root, tmp};
+use crate::common::{blob, chain, changed, git_lines, repo_root, tmp};
 use crate::fpr_replay_parts::{Class, Intercept, pair, report};
 use codeeraser::dedup::pairs::{DEFAULT_MIN_DISTINCT, Filter};
 use codeeraser::dedup::probe::{self, Match, Target};
@@ -40,25 +39,6 @@ use codeeraser::scan::lang::Lang;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-fn lines(repo: &Path, args: &[&str]) -> Vec<String> {
-    let (ok, out) = git_out(repo, args);
-    assert!(ok, "git {args:?} in {}", repo.display());
-    out.lines().map(str::to_string).collect()
-}
-
-/// A blob's bytes — not lossy text: the file is re-tokenized as the
-/// bytes it was.
-fn blob(repo: &Path, rev: &str, rel: &str) -> Vec<u8> {
-    let out = std::process::Command::new("git")
-        .arg("-C")
-        .arg(repo)
-        .args(["show", &format!("{rev}:{rel}")])
-        .output()
-        .expect("git show");
-    assert!(out.status.success(), "git show {rev}:{rel}");
-    out.stdout
-}
-
 /// The files the T1/T2 probe can read, as the daemon's probe reply
 /// decides it (daemon/server/replies.rs: a grammar-less language
 /// answers no matches): judged languages, never the scan-only arm,
@@ -66,23 +46,6 @@ fn blob(repo: &Path, rev: &str, rel: &str) -> Vec<u8> {
 /// duplication is docdup's, not this class's.
 fn judged(rel: &str) -> Option<Lang> {
     Lang::judged_path(Path::new(rel)).filter(|l| l.grammar().is_some())
-}
-
-/// `(status, path)` for the judged files `commit` changed against
-/// `parent` — renames as delete + add, the way a Write sees them.
-fn changed(repo: &Path, parent: &str, commit: &str) -> Vec<(char, String)> {
-    lines(
-        repo,
-        &["diff", "--name-status", "--no-renames", parent, commit],
-    )
-    .into_iter()
-    .filter_map(|l| {
-        let (status, path) = l.split_once('\t')?;
-        let status = status.chars().next()?;
-        (judged(path).is_some() && matches!(status, 'A' | 'M' | 'D'))
-            .then(|| (status, path.to_string()))
-    })
-    .collect()
 }
 
 /// One file into the shadow tree and the index — the tree the next
@@ -98,7 +61,7 @@ fn apply(shadow: &Path, idx: &mut Index, rel: &str, bytes: &[u8], lang: Lang, p:
 /// The seed: every judged file of the first commit's tree.
 fn seed(repo: &Path, shadow: &Path, idx: &mut Index, first: &str, p: Params) -> BTreeSet<String> {
     let mut live = BTreeSet::new();
-    for rel in lines(repo, &["ls-tree", "-r", "--name-only", first]) {
+    for rel in git_lines(repo, &["ls-tree", "-r", "--name-only", first]) {
         if let Some(lang) = judged(&rel) {
             apply(shadow, idx, &rel, &blob(repo, first, &rel), lang, p);
             live.insert(rel);
@@ -129,22 +92,6 @@ fn shared(ms: &[Match]) -> BTreeMap<String, usize> {
         *out.entry(m.file.clone()).or_default() += m.tokens;
     }
     out
-}
-
-/// The commits to replay, oldest first: the whole first-parent chain
-/// under the tip, or under CE_FPR_LIMIT the newest N with the commit
-/// before them as the seed.
-fn chain(repo: &Path) -> Vec<String> {
-    let tip = std::env::var("CE_FPR_TIP").unwrap_or_else(|_| "HEAD".into());
-    let all = lines(repo, &["rev-list", "--reverse", "--first-parent", &tip]);
-    assert!(all.len() >= 2, "need history to replay");
-    match std::env::var("CE_FPR_LIMIT")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-    {
-        Some(n) if n + 1 < all.len() => all[all.len() - n - 1..].to_vec(),
-        _ => all,
-    }
 }
 
 /// The replay's fixed context: the repository, the shadow tree and
@@ -234,7 +181,10 @@ fn replay_commit(
     fired: &mut BTreeSet<(String, String)>,
     rows: &mut Vec<Intercept>,
 ) -> usize {
-    let ch = changed(w.repo, parent, commit);
+    let ch: Vec<(char, String)> = changed(w.repo, parent, commit)
+        .into_iter()
+        .filter(|(_, rel)| judged(rel).is_some())
+        .collect();
     let c = Commit {
         parent,
         commit,

@@ -48,14 +48,7 @@ fn replay(root: &Path, sha: &str, link: &mut Link) -> Value {
         unread, 0,
         "{sha}: {unread} pairs unread — the changeset is not whole"
     );
-    let inputs: Vec<PairInput> = loaded
-        .iter()
-        .map(|l| PairInput {
-            before: &l.before,
-            after: &l.after,
-            lang: l.lang,
-        })
-        .collect();
+    let inputs = pair_inputs(&loaded);
     let seen: Vec<(Option<String>, Option<String>)> = loaded
         .iter()
         .map(|l| (Some(l.rel.clone()), Some(l.rel.clone())))
@@ -68,6 +61,18 @@ fn replay(root: &Path, sha: &str, link: &mut Link) -> Value {
     );
     let report = session::report_json(&batch, &seen);
     json!({"sha": sha, "relocations": report["relocations"].clone()})
+}
+
+/// Borrow the loaded pair texts for both changeset instruments.
+pub fn pair_inputs(loaded: &[texts::Loaded]) -> Vec<PairInput<'_>> {
+    loaded
+        .iter()
+        .map(|l| PairInput {
+            before: &l.before,
+            after: &l.after,
+            lang: l.lang,
+        })
+        .collect()
 }
 
 /// Full shas for the register's 9-character prefixes.

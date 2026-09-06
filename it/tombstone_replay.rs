@@ -24,9 +24,7 @@ fn repo() -> PathBuf {
 }
 
 fn commits(root: &Path, limit: Option<usize>) -> Vec<String> {
-    let (ok, out) = crate::common::git_out(root, &["rev-list", "--first-parent", "HEAD"]);
-    assert!(ok, "rev-list at {}", root.display());
-    let all: Vec<String> = out.lines().map(str::to_string).collect();
+    let all = crate::common::first_parent(root, "HEAD");
     match limit {
         Some(n) => all.into_iter().take(n).collect(),
         None => all,
@@ -37,9 +35,7 @@ fn commits(root: &Path, limit: Option<usize>) -> Vec<String> {
 /// commit erases nothing: there is no before) or git could not pair it.
 fn measure_commit(root: &Path, sha: &str) -> Option<tombstone::Findings> {
     let parent = format!("{sha}^");
-    crate::common::git_out(root, &["rev-parse", "--verify", "-q", &parent])
-        .0
-        .then_some(())?;
+    crate::common::revision_exists(root, &parent).then_some(())?;
     let pairs = session::scoped_pairs(root, &[&parent, sha])?;
     let (loaded, _) = texts::load(root, &pairs, Side::Rev(&parent), Side::Rev(sha))?;
     let pairs: Vec<PairText> = loaded
