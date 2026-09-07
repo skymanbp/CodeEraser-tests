@@ -73,7 +73,7 @@ const LITERALS: &[(&str, &str, bool)] = &[
     ),
     (
         "site/how/index.html",
-        "<title>How CodeEraser works — deterministic judgment, {count:booklets#word} families</title>",
+        "<title>How CodeEraser works: deterministic judgment, {count:booklets#word} families</title>",
         false,
     ),
     (
@@ -83,7 +83,7 @@ const LITERALS: &[(&str, &str, bool)] = &[
     ),
     (
         "site/zh/how/index.html",
-        "<title>CodeEraser 工作原理——确定性判决，{count:booklets#word}个家族</title>",
+        "<title>CodeEraser 工作原理：确定性判决，{count:booklets#word}个家族</title>",
         true,
     ),
     (
