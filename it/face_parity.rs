@@ -212,6 +212,35 @@ fn every_face_is_claimed_by_a_row_and_every_claim_ships() {
     }
 }
 
+/// The webview's grants are the documented set and no more: core, the
+/// event channel the `ce-task` feed rides, and the dialog plugin's
+/// `open` alone (the folder picker behind the root field, 2026-09-10).
+/// gui.md calls it "the one dialog the shell opens"; a sentence like
+/// that needs a reader, or the next plugin's default set (message,
+/// save, ask, confirm) ships under it unread.
+#[test]
+fn the_webview_grants_exactly_the_documented_permissions() {
+    let root = repo_root();
+    let cap: serde_json::Value =
+        serde_json::from_str(&read(&root, "gui/src-tauri/capabilities/default.json"))
+            .expect("capability json");
+    let granted: Vec<&str> = cap["permissions"]
+        .as_array()
+        .expect("permissions")
+        .iter()
+        .map(|p| p.as_str().expect("a permission id"))
+        .collect();
+    assert_eq!(
+        granted,
+        ["core:default", "core:event:default", "dialog:allow-open"]
+    );
+    assert!(
+        read(&root, "docs/reference/gui.md")
+            .contains("granted `dialog:allow-open` and nothing else"),
+        "gui.md no longer states the grant this leg holds"
+    );
+}
+
 fn plugin_word(item: &str) -> String {
     if let Some(cmd) = item.strip_prefix("cmd:") {
         return format!("`/codeeraser:{cmd}`");
