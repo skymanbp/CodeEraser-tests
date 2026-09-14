@@ -15,10 +15,14 @@ fn esc(text: &str) -> String {
         .replace('"', "&quot;")
 }
 
+/// The three counted columns carry `class="num"`: the stylesheet
+/// right-aligns and tabulates them by that name, not by position, so
+/// the frozen-points table beside this one (whose third column is a
+/// path) is untouched.
 fn dashboard_rows(d: &Value, zh: bool) -> String {
     rows_with(d, "rows", |row| {
         format!(
-            "<tr><td><code>{}</code></td><td><code>{}</code></td><td>{}</td><td>{}</td><td>{}</td><td><code>{}</code></td><td>{}</td></tr>\n",
+            "<tr><td><code>{}</code></td><td><code>{}</code></td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td><code>{}</code></td><td>{}</td></tr>\n",
             esc(s(row, "version")),
             esc(s(row, "metric")),
             row["p50"],
@@ -84,7 +88,7 @@ fn render_dashboard(d: &Value, zh: bool) -> String {
         format!("<p class=\"cap\">{}</p>\n", unmeasured.trim())
     };
     format!(
-        "<h2>{latency} · v{measured_version}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{version}</th><th>{metric}</th><th>p50 ms</th><th>p95 ms</th><th>n</th><th>{host}</th><th>{measured}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n{caption}<h2>{frozen}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{metric}</th><th>{value}</th><th>{source}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n<p class=\"cap\">{note}</p>\n",
+        "<h2>{latency} · v{measured_version}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{version}</th><th>{metric}</th><th class=\"num\">p50 ms</th><th class=\"num\">p95 ms</th><th class=\"num\">n</th><th>{host}</th><th>{measured}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n{caption}<h2>{frozen}</h2>\n<div class=\"term data-table\"><div class=\"tablewrap\"><table><thead><tr><th>{metric}</th><th>{value}</th><th>{source}</th></tr></thead><tbody>\n{}</tbody></table></div></div>\n<p class=\"cap\">{note}</p>\n",
         dashboard_rows(d, zh),
         frozen_rows(d, zh),
         measured_version = latest(d),

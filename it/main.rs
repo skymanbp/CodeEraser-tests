@@ -149,6 +149,7 @@ mod site_roast;
 mod site_screenshots;
 mod site_shoot_motion;
 mod site_shots_receipt;
+mod site_viewer;
 mod sonar_whitepaper;
 mod source_citations;
 mod source_citations_parts;
