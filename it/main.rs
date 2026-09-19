@@ -22,6 +22,7 @@ mod bench_render_dashboard;
 mod bench_seat;
 mod bench_support;
 mod bless_guard;
+mod check_sim_table;
 mod churn;
 mod cli_bare;
 mod cli_table;
