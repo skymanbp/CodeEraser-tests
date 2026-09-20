@@ -18,7 +18,18 @@ use std::path::Path;
 use std::process::Command;
 use std::time::Instant;
 
+/// The shape of contracts/bench/bench.json. It moved to 0.2.0 when the
+/// document gained the `inherits` table.
 pub const BENCH_SCHEMA: &str = "ce.bench/0.2.0";
+
+/// What MEASURED a row — a different question from the document's shape,
+/// and stamped into every row's `harness` field. These two were one
+/// constant until the document grew a table the measuring code knows
+/// nothing about; sharing it would have stamped the new document id on
+/// the next measured row while all the older ones kept the old one, and
+/// a reader compares rows BY this field. A documentation edit must not
+/// be able to say the numbers stopped being comparable.
+pub const BENCH_HARNESS: &str = "ce.bench/0.1.0";
 
 /// A debug measurement is refused, never annotated
 /// (PERF-BUDGET.md:82-84 `NOT admissible`). Both drivers ask here, so
@@ -130,7 +141,7 @@ pub fn row(
         "count": count,
         "host": host(),
         "measured_at": date,
-        "harness": BENCH_SCHEMA,
+        "harness": BENCH_HARNESS,
     })
 }
 

@@ -238,6 +238,16 @@ fn bench_doc_is_wellformed() {
     let doc: Value = serde_json::from_str(&text).expect("bench.json parses");
     assert_eq!(doc["schema"], bs::BENCH_SCHEMA, "schema pinned");
     for r in doc["rows"].as_array().expect("rows") {
+        // the document's shape and the harness that measured a row are two
+        // ids; re-point one at the other and this is the first thing to fail
+        assert_eq!(
+            r["harness"],
+            bs::BENCH_HARNESS,
+            "this row was measured by another harness than BENCH_HARNESS. If the \
+             measuring code really changed, that is a deliberate break in \
+             comparability and this pin is where you say so -- it is NOT a place \
+             to paste the document's schema id: {r}"
+        );
         for key in [
             "version", "commit", "metric", "p50", "p95", "host", "harness",
         ] {
