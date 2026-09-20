@@ -6,8 +6,9 @@
 //! pages own only the block between their bench markers.
 
 use crate::bench_support::render::{
-    NoRow, VERSION_BEARING_SURFACES, doc, latest, measured, names_the_release, no_row_sentence,
-    rows_with, s, series_note, unmeasured_note,
+    NoRow, VERSION_BEARING_SURFACES, doc, inheritances, inherits_from, latest, measured,
+    names_the_release, no_row_sentence, release_without_a_row, rows_with, s, series_note,
+    unmeasured_note,
 };
 use crate::common;
 use serde_json::Value;
@@ -60,7 +61,14 @@ const HEADER: &str = "# Benchmarks — replayed, never hand-filled\n\n\
          > rule: the backfill names every tag it turns away, and a checkout that\n\
          > brings nothing new is refused rather than measured a second time. So the\n\
          > table cannot gain a row the rule forbids, and a release that earns one\n\
-         > says which of the two reasons it has none yet.\n";
+         > says which of the three reasons it has none yet. The third is a\n\
+         > judgment rather than a reading: the rule compares paths and cannot see\n\
+         > that a change sits outside what these seven metrics time, so a release\n\
+         > may DECLARE in bench.json that it carries a named release's numbers.\n\
+         > The gates refuse that declaration where the rule already turned the\n\
+         > release away, where the declaring release holds rows of its own, or\n\
+         > where the release it names holds none — so the claim is checkable, and\n\
+         > the diff it rests on is public.\n";
 
 /// The series table's own heading, split from the prose above it so the
 /// derived sentence about an unmeasured release can sit between them.
@@ -220,7 +228,11 @@ fn every_version_bearing_surface_names_the_release() {
 fn no_generated_sentence_carries_a_lost_continuation() {
     let d = doc();
     let mut said = vec![series_note(&d)];
-    for why in [NoRow::NothingNew, NoRow::ReplayOwed] {
+    for why in [
+        NoRow::NothingNew,
+        NoRow::ReplayOwed,
+        NoRow::Inherited("9.9.8".to_string()),
+    ] {
         for zh in [false, true] {
             said.push(no_row_sentence(&why, "9.9.9", zh));
         }
@@ -232,6 +244,56 @@ fn no_generated_sentence_carries_a_lost_continuation() {
             !line.contains("  ") && !line.contains(" </code>"),
             "a run of spaces, or a space before a closing tag, in text this build publishes: {line:?}"
         );
+    }
+}
+
+/// A declared inheritance is a judgment, so its SHAPE is machine-checked
+/// even though its reason is not. Three ways to be dishonest, each refused
+/// by name: DANGLING (the release it names holds no row, so it inherits
+/// nothing), SELF-SERVING (the declaring release holds rows of its own, so
+/// it was measured and claims otherwise) and IDLE (the rule already turns
+/// that release away, so NothingNew covers it and the declaration only
+/// muddies which case applies). The idle check asks the same reading every
+/// surface asks, so it cannot drift from what the pages print. A reason is
+/// required and must be prose: the claim is checkable only if it says what
+/// changed, and a reader checks it against the public diff.
+#[test]
+fn every_declared_inheritance_names_a_measured_release_and_says_why() {
+    let d = doc();
+    let measured_versions: std::collections::BTreeSet<String> = d["rows"]
+        .as_array()
+        .expect("rows")
+        .iter()
+        .filter_map(|r| r["version"].as_str().map(str::to_string))
+        .collect();
+    for it in inheritances(&d) {
+        let (v, from) = (it.version, it.from);
+        assert!(
+            measured_versions.contains(from),
+            "v{v} inherits v{from}, which holds no row — a dangling declaration"
+        );
+        assert!(
+            !measured_versions.contains(v),
+            "v{v} holds rows of its own and still declares an inheritance"
+        );
+        assert!(
+            it.why.split_whitespace().count() >= 8,
+            "v{v}'s declaration says too little to be checked: {:?}",
+            it.why
+        );
+    }
+    // the one that applies to THIS build must not be idle, asked through the
+    // reading the pages use rather than a second copy of the rule
+    if let Some(from) = inherits_from(&d, env!("CARGO_PKG_VERSION")) {
+        let picked = match release_without_a_row(&d) {
+            Some((_, NoRow::Inherited(picked))) => picked,
+            _ => panic!(
+                "this build declares it inherits v{from}, but the reading every \
+                 surface uses does not land on Inherited: either the rule already \
+                 turns this release away (idle) or the release holds a row"
+            ),
+        };
+        assert_eq!(picked, from, "the reading named a different source");
     }
 }
 

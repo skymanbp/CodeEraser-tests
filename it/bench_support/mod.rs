@@ -18,7 +18,7 @@ use std::path::Path;
 use std::process::Command;
 use std::time::Instant;
 
-pub const BENCH_SCHEMA: &str = "ce.bench/0.1.0";
+pub const BENCH_SCHEMA: &str = "ce.bench/0.2.0";
 
 /// A debug measurement is refused, never annotated
 /// (PERF-BUDGET.md:82-84 `NOT admissible`). Both drivers ask here, so
@@ -143,7 +143,7 @@ pub fn merge_rows(new_rows: Vec<Value>) -> anyhow::Result<()> {
     let path = bench_path();
     let mut doc: Value = match std::fs::read_to_string(&path) {
         Ok(s) => serde_json::from_str(&s)?,
-        Err(_) => json!({"schema": BENCH_SCHEMA, "rows": [], "frozen": []}),
+        Err(_) => json!({"schema": BENCH_SCHEMA, "rows": [], "frozen": [], "inherits": []}),
     };
     let mut rows: Vec<Value> = serde_json::from_value(doc["rows"].take())?;
     let sv = |r: &Value, k: &str| r[k].as_str().unwrap_or("").to_string();

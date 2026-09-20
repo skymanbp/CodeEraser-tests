@@ -41,7 +41,7 @@ pub fn newest_row_commit(d: &Value) -> &str {
 }
 
 /// WHY the series holds no row for the release this build IS. There are
-/// two reasons and a reader must be able to tell them apart.
+/// three reasons and a reader must be able to tell them apart.
 pub enum NoRow {
     /// The rule turned this release away: it ships the same measured
     /// code as the newest row, and a second measurement of the same
@@ -51,6 +51,58 @@ pub enum NoRow {
     /// after its tag, on its own day (ruling 2026-09-06; until then the
     /// whole series was replayed in one sitting).
     ReplayOwed,
+    /// The rule says it earns a row, and the maintainer DECLARED that it
+    /// inherits the named release's numbers instead (bench.json
+    /// `inherits`). A judgment, not a reading: the rule compares paths
+    /// and cannot see that a change sits outside what the seven metrics
+    /// time, so the claim is recorded where a reader can check it against
+    /// the public diff. Narrowing the rule itself was the alternative and
+    /// is worse — every criterion tight enough to exempt such a change
+    /// also exempts one that really does slow `ce check` down.
+    Inherited(String),
+}
+
+/// One declared inheritance: the release that carries another's numbers,
+/// the release it carries them from, and the reason a reader checks against
+/// the diff. Borrowed from the document — the table is read, never built.
+pub struct Inheritance<'a> {
+    pub version: &'a str,
+    pub from: &'a str,
+    pub why: &'a str,
+}
+
+/// One string field of a declaration, refused BY NAME when it is missing or
+/// is not a string. A declaration half-read is worse than none: the gate
+/// below would pass on whatever survived.
+fn field<'a>(entry: &'a Value, key: &str) -> &'a str {
+    entry[key]
+        .as_str()
+        .unwrap_or_else(|| panic!("an `inherits` entry carries no string {key}: {entry}"))
+}
+
+/// Every declaration in the table. An absent key and an empty table read
+/// the same — no declarations — so a document written before the third case
+/// existed is not a panic.
+pub fn inheritances(d: &Value) -> Vec<Inheritance<'_>> {
+    let Some(table) = d.get("inherits").and_then(Value::as_array) else {
+        return Vec::new();
+    };
+    table
+        .iter()
+        .map(|entry| Inheritance {
+            version: field(entry, "version"),
+            from: field(entry, "from"),
+            why: field(entry, "why"),
+        })
+        .collect()
+}
+
+/// The release this build declares it inherits from, when it declares one.
+pub fn inherits_from(d: &Value, release: &str) -> Option<String> {
+    inheritances(d)
+        .into_iter()
+        .find(|i| i.version == release)
+        .map(|i| i.from.to_string())
 }
 
 /// The release this build IS, when the series holds no row for it.
@@ -77,10 +129,13 @@ pub fn release_without_a_row(d: &Value) -> Option<(&'static str, NoRow)> {
         return None;
     }
     let newest = newest_row_commit(d).to_string();
-    let case = if newest.is_empty() || super::joins::brings_something_new(&newest, "HEAD") {
-        NoRow::ReplayOwed
-    } else {
-        NoRow::NothingNew
+    let owed = newest.is_empty() || super::joins::brings_something_new(&newest, "HEAD");
+    // a declaration only means anything where the rule owes a row; where it
+    // does not, NothingNew already says the newest row stands for this release
+    let case = match (owed, inherits_from(d, release)) {
+        (true, Some(from)) => NoRow::Inherited(from),
+        (true, None) => NoRow::ReplayOwed,
+        (false, _) => NoRow::NothingNew,
     };
     Some((release, case))
 }
@@ -105,7 +160,7 @@ pub fn unmeasured_note(d: &Value, zh: bool) -> String {
     format!("{}{}", join(zh), no_row_sentence(&why, v, zh))
 }
 
-/// The four sentences — two reasons × two languages — apart from the
+/// The six sentences — three reasons × two languages — apart from the
 /// reading that picks one, so a gate can ask all four at once. They
 /// are line-continued literals, and a lost `\` leaves the source
 /// indentation inside the string; it then reads as a broken build on
@@ -127,6 +182,15 @@ pub fn no_row_sentence(why: &NoRow, v: &str, zh: bool) -> String {
         (NoRow::ReplayOwed, false) => format!(
             "The current release, v{v}, earns a row and does not have one \
              yet: it is measured after the tag."
+        ),
+        (NoRow::Inherited(from), true) => format!(
+            "当前发布 v{v} 沿用 v{from} 的数值：按规则它算新程序，但本版的改动\
+             落在这七项指标所计时的范围之外，故未重新测量。"
+        ),
+        (NoRow::Inherited(from), false) => format!(
+            "The current release, v{v}, carries v{from}'s numbers: the rule \
+             counts it as a new program, but what it changed sits outside \
+             what these seven metrics time, so it was not measured again."
         ),
     }
 }
