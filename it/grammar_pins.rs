@@ -6,7 +6,7 @@
 //! accepts (13..=15 for 0.27), parse its sample without an error node
 //! and yield the root kind its tables anchor on — so a dependency bump
 //! that breaks a grammar fails HERE by name instead of degrading scan
-//! output. The seven plan v2.30 grammars are pinned from step 1 on,
+//! output. The six plan v2.30 grammars are pinned from step 1 on,
 //! before their `Lang::grammar` arms exist (each language's own step
 //! wires one): the crates are already what NOTICE inventories and
 //! what the release binary links.
@@ -49,12 +49,6 @@ const PINS: &[(&str, LanguageFn, &str, &str)] = &[
         "tree-sitter-java",
         tree_sitter_java::LANGUAGE,
         "class K {\n  int f(int x) {\n    if (x > 0) {\n      return x;\n    }\n    return -x;\n  }\n}\n",
-        "program",
-    ),
-    (
-        "tree-sitter-ruby",
-        tree_sitter_ruby::LANGUAGE,
-        "def f(x)\n  if x > 0\n    x\n  else\n    -x\n  end\nend\n",
         "program",
     ),
     (
