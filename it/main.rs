@@ -15,6 +15,7 @@ mod audit_stop;
 mod baseline_bridge;
 mod baseline_ledgers;
 mod baseline_policy;
+mod baseline_reanchored;
 mod bench;
 mod bench_backfill;
 mod bench_frozen_sources;

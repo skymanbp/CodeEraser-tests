@@ -8,7 +8,8 @@
 //! Plus the ADR-006 independence pair: the --fail-under floor and
 //! the ratchet each fail ALONE.
 
-use crate::baseline_ledgers::{RETIRED, reanchored, reanchored_rows, rekeyed_pairs, suite_pairs};
+use crate::baseline_ledgers::{RETIRED, rekeyed_pairs, suite_pairs};
+use crate::baseline_reanchored::{reanchored, reanchored_rows};
 use crate::common;
 use crate::common::core_bin;
 use codeeraser::score::{self, Opts};
