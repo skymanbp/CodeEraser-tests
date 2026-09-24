@@ -9,7 +9,7 @@
 //! the ratchet each fail ALONE.
 
 use crate::baseline_ledgers::{RETIRED, rekeyed_pairs, suite_pairs};
-use crate::baseline_reanchored::{reanchored, reanchored_rows};
+use crate::baseline_reanchored::{present, reanchored, reanchored_rows, relocated_rows};
 use crate::common;
 use crate::common::core_bin;
 use codeeraser::score::{self, Opts};
@@ -76,9 +76,10 @@ fn discrete_members(path: &str) -> std::collections::HashSet<u64> {
 /// when the P3 repayment removed real pre-freeze duplication and
 /// this gate's original unconditional subset form went red — the
 /// gate could not tell a cleanup from a rewrite until the ledger
-/// gave cleanups a spoken exit); a path move exits through REKEYED,
-/// which demands the successor key be present, so subset strength
-/// is conserved modulo the named rename.
+/// gave cleanups a spoken exit); a path move exits through REKEYED
+/// (RELOCATED once 7.0.0 anchored the keys), which demands the
+/// successor key be present, so subset strength is conserved modulo
+/// the named rename.
 #[test]
 fn pre_haskell_members_survive_every_generation() {
     let frozen: serde_json::Value = serde_json::from_str(
@@ -99,10 +100,13 @@ fn pre_haskell_members_survive_every_generation() {
     assert_eq!(old.len(), 40, "the frozen set is the 3j-close 40");
     let suite_ledger = suite_pairs();
     // 7.0.0: every surviving key is looked up under its container-anchor
-    // successor (REANCHORED); a key the migration ledger never saw is a
-    // named failure, not a silent miss
+    // successor (REANCHORED) as any later move re-keyed it (RELOCATED);
+    // a key the migration ledger never saw is a named failure, not a
+    // silent miss
     let anchored = |id: &u64| -> u64 {
-        reanchored(*id).unwrap_or_else(|| panic!("member {id} has no REANCHORED successor"))
+        present(
+            reanchored(*id).unwrap_or_else(|| panic!("member {id} has no REANCHORED successor")),
+        )
     };
     for m in &old {
         if let Some((_, why)) = RETIRED.iter().find(|(id, _)| id == m) {
@@ -143,14 +147,16 @@ fn pre_haskell_members_survive_every_generation() {
     }
 }
 
-/// The REANCHORED documents can only describe the present: no 6.x key
-/// survives in either baseline, and every successor is seated in its
-/// own baseline unless a later cleanup retired it BY NAME.
+/// The anchored-space documents can only describe the present: no key
+/// they replace (a 6.x key, a pre-move key) survives in either
+/// baseline, and every successor is seated in its own baseline under
+/// the key any later move gave it, unless a cleanup retired it BY NAME.
 #[test]
 fn reanchored_ledgers_describe_the_present() {
     let now = discrete_members("../ce-baseline.json");
     let suite = discrete_members("../cli/tests/ce-baseline.json");
-    for (old, new, in_suite) in reanchored_rows() {
+    for (old, new, in_suite) in reanchored_rows().into_iter().chain(relocated_rows()) {
+        let new = present(new);
         let (home, name) = if in_suite {
             (&suite, "suite")
         } else {
@@ -158,11 +164,11 @@ fn reanchored_ledgers_describe_the_present() {
         };
         assert!(
             !now.contains(&old) && !suite.contains(&old),
-            "6.x key {old} is back in a baseline — stale REANCHORED entry"
+            "replaced key {old} is back in a baseline — stale REANCHORED / RELOCATED entry"
         );
         assert!(
             home.contains(&new) || RETIRED.iter().any(|(id, _)| *id == new),
-            "REANCHORED successor {new} is missing from the {name} baseline and no RETIRED entry names it"
+            "successor {new} is missing from the {name} baseline and no RETIRED entry names it"
         );
     }
 }

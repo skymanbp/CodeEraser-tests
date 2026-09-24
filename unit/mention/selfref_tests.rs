@@ -7,7 +7,10 @@
 //! code inside a TS `${…}`, a `... ` line whose indent never opened a
 //! doctest, a `>>>` without its trailing space, a doc run's prose
 //! outside any fence, a `////` non-doc comment, a doc run broken by a
-//! blank line.
+//! blank line, a Doxygen command or a `{@code}` in a plain comment, a
+//! `<pref>` tag that is not `<pre>`, an indented line that wraps a
+//! paragraph, a run whose every line shares one indent, an indented
+//! haddock line.
 
 use super::SelfText;
 use crate::testutil::scratch;
@@ -51,6 +54,13 @@ a.rs prose ⇒ - | /// prose() mentioned in words\npub fn prose() {}\n
 a.rs quad ⇒ - | //// ```\n//// quad();\n//// ```\n
 a.rs plain ⇒ - | // ```\n// plain();\n// ```\n
 a.rs split ⇒ - | /// ```\n\n/// split();\n/// ```\n
+# Rust: an indented block is a doctest too (rustdoc compiles it) —
+# after a blank line or a heading; a wrapped paragraph line and a run
+# whose one indent rustdoc strips are prose
+a.rs indented ⇒ + | /// Example:\n///\n///     indented();\npub fn indented() {}\n
+a.rs head ⇒ + | /// # Examples\n///     head();\npub fn head() {}\n
+a.rs wrapped ⇒ - | /// Wraps a line\n///     wrapped() onto the next\npub fn wrapped() {}\n
+a.rs flat ⇒ - | ///     flat();\npub fn flat() {}\n
 # Haskell: haddock runs with fences, `@` blocks and bird tracks; an
 # ordinary comment does not count
 a.hs fenced ⇒ + | -- | Example:\n--\n-- ```\n-- fenced 1\n-- ```\nfenced :: Int -> Int\nfenced = id\n
@@ -58,12 +68,36 @@ a.hs atb ⇒ + | -- | Use it:\n--\n-- @\n-- atb 1\n-- @\natb = id\n
 a.hs bird ⇒ + | -- |\n-- > bird 1\nbird = id\n
 a.hs plain ⇒ - | -- plain 1\nplain = id\n
 a.hs prose ⇒ - | -- | prose 1 in words\nprose = id\n
+a.hs indent ⇒ - | -- | Example:\n--\n--     indent 1\nindent = id\n
 # C / C++: every string literal, a concatenated string's pieces and a
 # raw string included; a comment does not count
 a.c helper ⇒ + | void f(void) { dl("helper"); }\n
 a.c cat ⇒ + | const char *s = "a" "cat";\n
 a.cpp raw ⇒ + | auto s = R"(raw)";\n
 a.c plain ⇒ - | /* plain */\nvoid plain(void) {}\n
+# C / C++ Doxygen: `@code` and `\code` blocks in a doc run; the same
+# command in a plain comment and a doc run's prose do not
+a.cpp dox ⇒ + | /// @code\n/// dox();\n/// @endcode\nvoid dox();\n
+a.c bs ⇒ + | /**\n * \code\n * bs();\n * \endcode\n */\nvoid bs(void);\n
+a.c nod ⇒ - | /* @code\n nod();\n @endcode */\nvoid nod(void);\n
+a.cpp prose ⇒ - | /// prose() in words\nvoid prose();\n
+a.cpp bg ⇒ + | /**\n * Example:\n *\n *     bg(1);\n */\nvoid bg(int);\n
+a.c wrap ⇒ - | /**\n * @param x the x, which\n *     wrap() mentions\n */\nvoid wrap(int x);\n
+# Java: every string literal, a text block included; Javadoc `<pre>`
+# (either case), `{@code}` and `{@snippet}` spans, a Markdown doc
+# comment's fences; prose, a plain comment and `<pref>` do not
+a.java run ⇒ + | class A { void f() throws Exception { A.class.getMethod("run"); } }\n
+a.java blk ⇒ + | class A { String s = """\n    blk\n    """; }\n
+a.java pre ⇒ + | /**\n * <pre>\n * pre();\n * </pre>\n */\nclass A {}\n
+a.java up ⇒ + | /** <PRE class="x">up();</PRE> */\nclass A {}\n
+a.java code ⇒ + | /** Use {@code code(new int[] {1})} here. */\nclass A {}\n
+a.java snip ⇒ + | /**\n * {@snippet :\n * snip();\n * }\n */\nclass A {}\n
+a.java md ⇒ + | /// ```\n/// md();\n/// ```\nclass A {}\n
+a.java mdind ⇒ + | /// Example:\n///\n///     mdind();\nclass A {}\n
+a.java ind ⇒ + | /**\n * Example:\n *\n *     ind();\n */\nclass A {}\n
+a.java prose ⇒ - | /** prose() in words */\nclass A {}\n
+a.java plain ⇒ - | /* {@code plain()} */\nclass A {}\n
+a.java pref ⇒ - | /** <pref>pref()</pref> */\nclass A {}\n
 "#;
 
 /// A stray byte decodes lossily, as the index side decoded the file

@@ -9,17 +9,7 @@
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-use super::universe::{assert_doc_envelope, doc_stem};
-
-/// One universe family: its doc-family name plus the two per-family
-/// functions the gate opening needs (the doc identity fields left
-/// with the generators — the frozen docs carry their own). Const-
-/// constructible so each instrument declares exactly one.
-pub struct UniverseFamily {
-    pub family: &'static str,
-    pub constants: fn() -> Value,
-    pub summarize: fn(&[Value]) -> Value,
-}
+use super::universe::{UniverseFamily, assert_doc_envelope, doc_stem};
 
 impl UniverseFamily {
     /// The shared gate opening: iterate the family's frozen docs,
@@ -27,7 +17,7 @@ impl UniverseFamily {
     /// anchor, then hand each doc to the family's own checks.
     pub fn each_consistent(&self, mut per: impl FnMut(&str, &Value)) {
         super::each_frozen_doc(self.family, |path, doc| {
-            let name = assert_doc_envelope(path, doc, self.family, self.summarize, self.constants);
+            let name = assert_doc_envelope(path, doc, self);
             assert_sibling_anchor(path, doc, &name);
             per(path, doc);
         });

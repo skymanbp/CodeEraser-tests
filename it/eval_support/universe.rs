@@ -28,21 +28,23 @@ pub fn each_frozen_doc(family: &str, mut check: impl FnMut(&str, &Value)) {
     }
 }
 
+/// One universe family: its doc-family name plus the two per-family
+/// functions the envelope below re-derives against (the doc identity
+/// fields left with the generators — the frozen docs carry their
+/// own). Const-constructible so each instrument declares exactly one;
+/// the gate opening over it is family.rs's.
+pub struct UniverseFamily {
+    pub family: &'static str,
+    pub constants: fn() -> Value,
+    pub summarize: fn(&[Value]) -> Value,
+}
+
 /// The frozen-doc envelope every per-corpus universe doc carries:
-/// summary re-derived by the family's own scorer (G1), frozen
-/// constants, frozen scope, well-formed exclusion ledger, pinned
-/// full-OID tip, embedded corpus name matching the file name, rows
-/// sorted and duplicate-free. Returns the corpus name.
-pub fn assert_doc_envelope(
-    path: &str,
-    doc: &Value,
-    family: &str,
-    scorer: fn(&[Value]) -> Value,
-    constants: fn() -> Value,
-) -> Option<String> {
-    let files = doc["files"].as_array().expect("files");
-    assert_eq!(doc["summary"], scorer(files), "{path}: summary drifted");
-    assert_eq!(doc["constants"], constants(), "{path}: constants drifted");
+/// the scope-free core below plus the M5-2 launch scope (canonical
+/// extensions of the five launch languages, machine-local memory/
+/// out). Returns the corpus name.
+pub fn assert_doc_envelope(path: &str, doc: &Value, family: &UniverseFamily) -> Option<String> {
+    let name = assert_envelope_core(path, doc, family);
     assert_eq!(
         doc["scope"]["extensions"],
         json!(super::SCOPE_EXTS),
@@ -52,6 +54,26 @@ pub fn assert_doc_envelope(
         doc["scope"]["excludes"],
         json!(super::SCOPE_EXCLUDES),
         "{path}"
+    );
+    name
+}
+
+/// The envelope minus the scope, which each family freezes its own
+/// way (the v2.30 language exams: one language's extensions): summary
+/// re-derived by the family's own scorer (G1), frozen constants,
+/// well-formed exclusion ledger, pinned full-OID tip, embedded corpus
+/// name matching the file name, rows sorted and duplicate-free.
+pub fn assert_envelope_core(path: &str, doc: &Value, family: &UniverseFamily) -> Option<String> {
+    let files = doc["files"].as_array().expect("files");
+    assert_eq!(
+        doc["summary"],
+        (family.summarize)(files),
+        "{path}: summary drifted"
+    );
+    assert_eq!(
+        doc["constants"],
+        (family.constants)(),
+        "{path}: constants drifted"
     );
     for (category, n) in doc["excluded"].as_object().expect("excluded") {
         assert!(
@@ -69,7 +91,7 @@ pub fn assert_doc_envelope(
     let name = doc["corpus"]["name"].as_str().map(str::to_string);
     assert_eq!(
         name,
-        super::doc_suffix(path, family),
+        super::doc_suffix(path, family.family),
         "{path}: embedded corpus name does not match the file name"
     );
     for pair in files.windows(2) {

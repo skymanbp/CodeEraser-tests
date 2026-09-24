@@ -27,7 +27,7 @@ type Case = (Lang, &'static str, &'static str);
 
 /// The per-language table, split from its assertion loop at the
 /// E01 fn-length line.
-fn cases() -> [Case; 6] {
+fn cases() -> [Case; 7] {
     [
         // the C family's one site (plan v2.30 step 2): the quoted form
         // loses its quotes, the system form keeps its angle brackets
@@ -36,6 +36,16 @@ fn cases() -> [Case; 6] {
             Lang::C,
             "#include <stdio.h>\n#include \"util.h\"\n#include \"sub/x.h\"\n#define X 1\n",
             "include=<stdio.h>|include=util.h|include=sub/x.h",
+        ),
+        // Java (plan v2.30 step 3): a static import's spec keeps its
+        // `static` token, a star import is a kind of its own, and each
+        // type the file names without declaring it is a `type_ref`, in
+        // document order after the imports — K, its type parameter and
+        // `var` are none
+        (
+            Lang::Java,
+            "package a.b;\nimport static a.b.C.m;\nimport java.util.*;\nimport x.y.Z;\n@Ann class K<T> extends Base implements java.util.List<T> {\n  Z z = Util.f(a.b.D.g(), Mode.FAST);\n  Outer<String>.Inner o;\n  void m() { var v = new Helper(); }\n}\n",
+            "import=static a.b.C.m|import_star=java.util|import=x.y.Z|type_ref=Ann|type_ref=Base|type_ref=java.util.List|type_ref=Z|type_ref=Util|type_ref=a.b.D|type_ref=Mode|type_ref=Outer|type_ref=String|type_ref=Helper",
         ),
         // `from __future__` is an `import_from` site on the literal
         // module name (step 8, O27)

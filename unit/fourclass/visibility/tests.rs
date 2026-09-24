@@ -24,6 +24,20 @@ pub(super) fn check(lang: Lang, case: &str) {
     crate::testutil::check_word_case(lang, case, fns, bit_of);
 }
 
+/// Every case line of a text table through one measurer: the line's
+/// first word is the file extension naming its language, and a `#`
+/// line (no language spells that extension) is commentary. Every
+/// text-table language shares it (run_tables below) — a runner apiece
+/// was the loop the clone gate pairs across files.
+fn run_table(table: &str, measure: impl Fn(Lang, &str)) {
+    for (tag, case) in table.lines().filter_map(|l| l.split_once(' ')) {
+        let Some(lang) = Lang::from_path(std::path::Path::new(&format!("x.{tag}"))) else {
+            continue;
+        };
+        measure(lang, &case.replace("\\n", "\n"));
+    }
+}
+
 /// The same line shape over EVERY unit the register extracts (the
 /// named type forms beside the functions), keyed as stored — `fns`
 /// sees the functions alone.
@@ -35,6 +49,16 @@ pub(super) fn check_units(lang: Lang, case: &str) {
         units.into_iter().map(|u| (u.key, u.vis)).collect()
     };
     crate::testutil::check_word_case(lang, case, all, bit_of);
+}
+
+/// A text-table language's two tables — its functions, then every
+/// unit the register keys — through the one runner. Each language file
+/// (tests_c.rs, tests_java.rs) holds its tables and one test calling
+/// this: a test pair apiece was the file skeleton the clone gate paired
+/// across the language files.
+pub(super) fn run_tables(fns: &str, all: &str) {
+    run_table(fns, check);
+    run_table(all, check_units);
 }
 
 /// L round step 8 (O55): Go's named type forms are units, read by the

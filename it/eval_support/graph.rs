@@ -5,8 +5,60 @@
 //! drift apart. The scope classifier and corpus selection retired
 //! with the one-shot generators (git history).
 
-use serde_json::Value;
+use codeeraser::graph::sites::RawSite;
+use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
+
+/// One site-universe row: content identity plus the per-kind site
+/// counts the detector reads off the text — the row throat the self
+/// drift walk re-derives and CE_BLESS=1 re-signs with (moved from
+/// eval_graph.rs when the v2.30 language exams became its second
+/// consumer).
+pub fn site_row(path: &str, lang: &str, text: &str) -> Value {
+    let sites = codeeraser::graph::sites::detect(text, super::lang_of(lang));
+    json!({"lang": lang, "path": path, "sha256": super::content_sha(text),
+           "sites": super::kind_counts(&sites)})
+}
+
+/// Every site the detector reads off `text`, each asserted within its
+/// statement window. The site line is the STATEMENT HEAD: a multi-line
+/// TS import carries its full specifier on a later line of the same
+/// statement (2c/2d review F1 — 14 frozen zod sites), so the
+/// anti-invention property is "spec within the statement window", not
+/// "spec on the head line". ONE reading for the self drift walk
+/// (eval_graph.rs) and the exam fixtures (eval_lang.rs), which carried
+/// the loop twice until the clone gate paired them.
+pub fn sites_within_windows(path: &str, lang: &str, text: &str) -> Vec<RawSite> {
+    let sites = codeeraser::graph::sites::detect(text, super::lang_of(lang));
+    let lines: Vec<&str> = text.lines().collect();
+    for s in &sites {
+        let end = (s.line + 15).min(lines.len());
+        assert!(
+            lines[s.line - 1..end].iter().any(|l| l.contains(&s.spec)),
+            "{path}:{}: spec {:?} not within its statement window",
+            s.line,
+            s.spec
+        );
+    }
+    sites
+}
+
+/// A site universe's summary, re-derivable from its rows alone — the
+/// generator and every gate run this exact function (the G1
+/// discipline: generator and gate share one scorer).
+pub fn site_summary(files: &[Value]) -> Value {
+    let mut by: BTreeMap<String, u64> = BTreeMap::new();
+    let mut total = 0;
+    for f in files {
+        for (kind, n) in f["sites"].as_object().expect("sites") {
+            let n = n.as_u64().expect("count");
+            let key = format!("{}/{kind}", f["lang"].as_str().expect("lang"));
+            *by.entry(key).or_insert(0) += n;
+            total += n;
+        }
+    }
+    json!({"files": files.len(), "total_sites": total, "sites_by": by})
+}
 
 /// Two string fields of every row under `key`, as a map — the shape
 /// every graph doc keys its rows by (rank→truth, path→sha256).
@@ -24,14 +76,20 @@ pub fn str_pairs<'a>(doc: &'a Value, key: &str, k1: &str, k2: &str) -> BTreeMap<
 /// CI instead of blinding it. Shared by the slice and precision
 /// gates.
 pub fn assert_frozen_corpus_set(family: &str) -> Vec<String> {
-    let docs = super::frozen_docs(family);
-    let mut names: Vec<Option<String>> =
-        docs.iter().map(|p| super::doc_suffix(p, family)).collect();
-    names.sort();
     let expected: Vec<Option<String>> = FROZEN_CORPORA
         .iter()
         .map(|n| n.map(str::to_string))
         .collect();
+    assert_corpus_set(family, &expected)
+}
+
+/// The same anchor over an explicit sorted corpus list (None = the
+/// self doc) — the v2.30 language exams name their own corpora.
+pub fn assert_corpus_set(family: &str, expected: &[Option<String>]) -> Vec<String> {
+    let docs = super::frozen_docs(family);
+    let mut names: Vec<Option<String>> =
+        docs.iter().map(|p| super::doc_suffix(p, family)).collect();
+    names.sort();
     assert_eq!(names, expected, "frozen {family} corpus set drifted (G10)");
     docs
 }

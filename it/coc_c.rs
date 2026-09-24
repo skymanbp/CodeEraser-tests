@@ -4,20 +4,21 @@
 //! (contracts/fixtures/crosscheck/DIVERGENCES.md, C / C++ section) —
 //! each why cites the whitepaper page or the register entry. One
 //! block per row, blocks separated by a `====` line: a header
-//! `ext @@ cc coc nesting lines @@ why` over the source itself. One
-//! literal rather than a slice of typed rows — a second MetricCase
-//! table is the clone shape the write gate refuses, and rows of any
-//! one tuple shape repeat every dozen tokens, so the clone gate read
-//! this table as clones of itself in the array form. Naming and arity
-//! come off the declarator chain (scan/declarator.rs), so the second
-//! test pins the spelling and the parameter count the chain produces
-//! for every declarator shape the probe transcripts hold.
+//! `ext @@ cc=… coc=… nesting=… lines=… @@ why` over the source itself
+//! (common::assert_metric_table). One literal rather than a slice of
+//! typed rows — a second MetricCase table is the clone shape the write
+//! gate refuses, and rows of any one tuple shape repeat every dozen
+//! tokens, so the clone gate read this table as clones of itself in
+//! the array form. Naming and arity come off the declarator chain
+//! (scan/declarator.rs), so the table's last block, a `units=` row,
+//! pins the spelling and the parameter count the chain produces for
+//! every declarator shape the probe transcripts hold.
 
 use crate::common;
 use codeeraser::scan::lang::Lang;
 
 const ROWS: &str = r#"
-c @@ 5 7 3 10 @@ metrics.rs's Python row in C: cc 1 + if + && + for + if; coc if +1, && +1, for +2, if +3; nesting if > for > if
+c @@ cc=5 coc=7 nesting=3 lines=10 @@ metrics.rs's Python row in C: cc 1 + if + && + for + if; coc if +1, && +1, for +2, if +3; nesting if > for > if
 int f(int a, int b) {
     if (a && b) {
         for (int i = 0; i < 10; i++) {
@@ -29,7 +30,7 @@ int f(int a, int b) {
     return 0;
 }
 ====
-c @@ 5 5 1 9 @@ metrics.rs's TypeScript row in C: `else if` is a flat hybrid (p.7) and the trailing else pays +1 without nesting
+c @@ cc=5 coc=5 nesting=1 lines=9 @@ metrics.rs's TypeScript row in C: `else if` is a flat hybrid (p.7) and the trailing else pays +1 without nesting
 int g(int a, int b) {
     if (a > 0 && b > 0) {
         return a + b;
@@ -40,7 +41,7 @@ int g(int a, int b) {
     }
 }
 ====
-c @@ 5 1 1 8 @@ p.5 + p.10 getWords: switch +1 and the cases are free; every case incl. `default:` is a cyclomatic path (register D2 — lizard counts the `case` keyword only)
+c @@ cc=5 coc=1 nesting=1 lines=8 @@ p.5 + p.10 getWords: switch +1 and the cases are free; every case incl. `default:` is a cyclomatic path (register D2 — lizard counts the `case` keyword only)
 const char *words(int n) {
     switch (n) {
         case 1: return "one";
@@ -50,10 +51,10 @@ const char *words(int n) {
     }
 }
 ====
-c @@ 3 3 2 1 @@ the ternary nests like TypeScript's: outer +1, inner +2 (register D4)
+c @@ cc=3 coc=3 nesting=2 lines=1 @@ the ternary nests like TypeScript's: outer +1, inner +2 (register D4)
 int t(int a, int b) { return a ? (b ? 1 : 2) : 3; }
 ====
-c @@ 2 2 1 6 @@ a labeled jump is a fundamental +1 (p.8; register D5) and no branch
+c @@ cc=2 coc=2 nesting=1 lines=6 @@ a labeled jump is a fundamental +1 (p.8; register D5) and no branch
 int j(int n) {
     if (n < 0) goto fail;
     return n;
@@ -61,7 +62,7 @@ fail:
     return -1;
 }
 ====
-c @@ 1 0 0 7 @@ the preprocessor is invisible to both metrics (register D1 — lizard counts #ifdef / #elif as branches)
+c @@ cc=1 coc=0 nesting=0 lines=7 @@ the preprocessor is invisible to both metrics (register D1 — lizard counts #ifdef / #elif as branches)
 int p(int n) {
 #ifdef FAST
     return n;
@@ -70,10 +71,10 @@ int p(int n) {
 #endif
 }
 ====
-c @@ 4 3 0 1 @@ p.8 operator runs: &&, ||, && are three runs and three branches
+c @@ cc=4 coc=3 nesting=0 lines=1 @@ p.8 operator runs: &&, ||, && are three runs and three branches
 int r(int a, int b, int c, int d) { return a && b || c && d; }
 ====
-c @@ 1 0 0 9 @@ the operators inside a `#if` / `#elif` condition are compile-time text, not branches (register D1 — fmt's is_big_endian read 2 for the `&&` in its `#elif` before the opaque field existed)
+c @@ cc=1 coc=0 nesting=0 lines=9 @@ the operators inside a `#if` / `#elif` condition are compile-time text, not branches (register D1 — fmt's is_big_endian read 2 for the `&&` in its `#elif` before the opaque field existed)
 int q(int a) {
 #if defined(X) && defined(Y)
     return a;
@@ -84,7 +85,7 @@ int q(int a) {
 #endif
 }
 ====
-cpp @@ 4 3 1 7 @@ range-for, while and do-while are structures like any loop, none nesting another
+cpp @@ cc=4 coc=3 nesting=1 lines=7 @@ range-for, while and do-while are structures like any loop, none nesting another
 int w(int n) {
     int s = 0;
     for (int x : {1, 2, 3}) { s += x; }
@@ -93,13 +94,13 @@ int w(int n) {
     return s;
 }
 ====
-cpp @@ 2 2 2 4 @@ p.9 myMethod2: a lambda absorbs into its host (one unit, its if counted there), increments nothing and raises nesting — the lambda body is level 1, so the if inside it sits at level 2 (register D3)
+cpp @@ cc=2 coc=2 nesting=2 lines=4 @@ p.9 myMethod2: a lambda absorbs into its host (one unit, its if counted there), increments nothing and raises nesting — the lambda body is level 1, so the if inside it sits at level 2 (register D3)
 int l(int v) {
     auto f = [&](int x) { if (x > 0) return x; return 0; };
     return f(v);
 }
 ====
-cpp @@ 5 4 1 8 @@ catch is a structure; `and` / `or` are the alternative tokens for && / || (register D19) and form two runs; try nests nothing
+cpp @@ cc=5 coc=4 nesting=1 lines=8 @@ catch is a structure; `and` / `or` are the alternative tokens for && / || (register D19) and form two runs; try nests nothing
 int c(int a, bool b) {
     try {
         if (a > 0 and b or a < -5) return 1;
@@ -108,53 +109,8 @@ int c(int a, bool b) {
     }
     return 0;
 }
-"#;
-
-/// The table's blocks as (language, "cc coc nesting lines", why,
-/// source).
-fn rows() -> Vec<(Lang, &'static str, &'static str, &'static str)> {
-    ROWS.trim()
-        .split("\n====\n")
-        .map(|block| {
-            let (head, src) = block.split_once('\n').expect("a header over a source");
-            let [ext, want, why]: [&str; 3] = head
-                .split(" @@ ")
-                .collect::<Vec<_>>()
-                .try_into()
-                .expect("ext @@ counts @@ why");
-            let lang = if ext == "cpp" { Lang::Cpp } else { Lang::C };
-            (lang, want, why, src)
-        })
-        .collect()
-}
-
-#[test]
-fn c_family_metrics_follow_the_table() {
-    for (lang, want, why, src) in rows() {
-        let m = common::measure_units(lang, src);
-        assert_eq!(m.len(), 1, "one unit for:\n{src}");
-        let got = format!("{} {} {} {}", m[0].cc, m[0].coc, m[0].nesting, m[0].lines);
-        assert_eq!(
-            got, want,
-            "cc coc nesting lines: {why}\n--- source ---\n{src}"
-        );
-    }
-}
-
-/// Every declarator shape the probe transcripts hold, with the name
-/// the chain spells for it and the arity it reads: in-body members
-/// carry their class chain, out-of-class definitions carry the
-/// qualifier they spell (the two meet in owner_of), a namespace is not
-/// part of the chain, a local struct's method is a unit of its own,
-/// the innermost function_declarator owns the parameter list, `(void)`
-/// is an empty list (register D12) where `void *p` is one, a
-/// conversion operator names its type, and template arguments are not
-/// part of a name — `spec<int>` and `Box<T>::b` spell `spec` and
-/// `Box::b` (the crosscheck read a partial specialization's three-line
-/// argument list into a member's name before the rule existed).
-#[test]
-fn c_family_names_and_arity_come_off_the_declarator_chain() {
-    let src = "\
+====
+cpp @@ units=K::~K/0, K::operator==/1, K::operator bool/0, K::b/0, In::m/0, ns::In::out/0, K::K/0, maker/1, hidden/0, refret/1, trailing/1, spec/1, Box::b/0, local/0, L::m/0, one/1 @@ every declarator shape the probe transcripts hold, with the name the chain spells for it and the arity it reads: in-body members carry their class chain, out-of-class definitions carry the qualifier they spell (the two meet in owner_of), a namespace is not part of the chain, a local struct's method is a unit of its own, the innermost function_declarator owns the parameter list, `(void)` is an empty list (register D12) where `void *p` is one, a conversion operator names its type, and template arguments are not part of a name — `spec<int>` and `Box<T>::b` spell `spec` and `Box::b` (the crosscheck read a partial specialization's three-line argument list into a member's name before the rule existed)
 struct K { K(); ~K() {} bool operator==(const K&) const { return true; } operator bool() const { return true; } };
 void K::b() {}
 namespace ns { struct In { void m() {} }; }
@@ -168,30 +124,11 @@ template <> void spec<int>(int) {}
 template <typename T> void Box<T>::b() {}
 void local() { struct L { void m() {} }; }
 int one(void *p) { return p != 0; }
-";
-    let units = common::measure_units(Lang::Cpp, src);
-    let seen: Vec<(&str, usize)> = units.iter().map(|u| (u.name.as_str(), u.params)).collect();
-    assert_eq!(
-        seen,
-        [
-            ("K::~K", 0),
-            ("K::operator==", 1),
-            ("K::operator bool", 0),
-            ("K::b", 0),
-            ("In::m", 0),
-            ("ns::In::out", 0),
-            ("K::K", 0),
-            ("maker", 1),
-            ("hidden", 0),
-            ("refret", 1),
-            ("trailing", 1),
-            ("spec", 1),
-            ("Box::b", 0),
-            ("local", 0),
-            ("L::m", 0),
-            ("one", 1),
-        ]
-    );
+"#;
+
+#[test]
+fn c_family_metrics_follow_the_table() {
+    common::assert_metric_table(ROWS);
 }
 
 /// What the definition kind admits that is no definition (the

@@ -3,13 +3,13 @@
 //! the C++ side, both through the extractor's own root. Every shape
 //! here was probed on tree-sitter-c 0.24.2 / tree-sitter-cpp 0.23.4
 //! before the reading was written (the scripts/tsprobe transcripts).
-//! Two text tables and one runner: a run of same-shaped `check(Lang, …)`
-//! legs is the token shape the clone gate pairs with tests.rs, and the
-//! line-filter loop of the other text tables is the shape it pairs
-//! with selfref_tests.rs.
+//! Two text tables through the shared runner (tests.rs run_tables): a
+//! run of same-shaped `check(Lang, …)` legs is the token shape the
+//! clone gate pairs with tests.rs, the line-filter loop of the other
+//! text tables is the shape it pairs with selfref_tests.rs, and a test
+//! pair apiece was the skeleton it paired across the language files.
 
-use super::super::tests::{check, check_units};
-use crate::scan::lang::Lang;
+use super::super::tests::run_tables;
 
 /// `<c|cpp> <source> ⇒ <name:letters …>` per line, newlines spelled
 /// `\n`, `#` lines commentary — measured over the functions the
@@ -55,25 +55,7 @@ c struct T { int x; };\nstatic struct T *f(struct T *t) { return t; }\ntypedef s
 cpp class Fwd;\nstruct Top { int x; };\ntypedef struct { int y; } Anon;\ntypedef int (*fp)(int);\nusing Alias = int;\nenum class E { A };\nnamespace ns { class C { public: void m() {} }; }\nnamespace { struct Hidden { int q; }; }\nclass B {\n#define FN(x) ((x) + 1)\n}; ⇒ Top:ES Anon:ES fp:ES Alias:ES E:ES C:ES C::m/0:ES ns:ES Hidden:- B:ES FN:ES
 "#;
 
-/// Every `c` / `cpp` line of a table through one measurer; a `#` line
-/// splits to a tag no language spells and is skipped by the match.
-fn run(table: &str, measure: impl Fn(Lang, &str)) {
-    for (tag, case) in table.lines().filter_map(|l| l.split_once(' ')) {
-        let lang = match tag {
-            "c" => Lang::C,
-            "cpp" => Lang::Cpp,
-            _ => continue,
-        };
-        measure(lang, &case.replace("\\n", "\n"));
-    }
-}
-
 #[test]
-fn c_family_function_words_follow_the_table() {
-    run(FNS, check);
-}
-
-#[test]
-fn c_family_register_words_follow_the_table() {
-    run(ALL, check_units);
+fn c_family_words_follow_the_tables() {
+    run_tables(FNS, ALL);
 }

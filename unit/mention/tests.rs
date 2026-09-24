@@ -93,6 +93,7 @@ fn extension_arm_and_suffix_witness_tables() {
         ("a.jsx", true),
         ("a.vue", true),
         ("a.svelte", true),
+        ("Outer.java", true),
         ("Makefile", false),
         (".gitignore", false),
         ("a.md", false),
@@ -151,7 +152,7 @@ fn caps_and_face_identity_are_stated() {
     let doc = super::face::report_json(&super::Stats::default(), &Default::default());
     for needle in [
         "\"schema\":\"ce.mentions-report/0.2.0\"",
-        "\"mention_rev\":2",
+        "\"mention_rev\":3",
         "\"rates\":{}",
     ] {
         assert!(doc.contains(needle), "{needle} in {doc}");

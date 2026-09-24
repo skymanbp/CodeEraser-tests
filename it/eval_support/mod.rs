@@ -44,6 +44,7 @@ pub fn lang_of(code: &str) -> Lang {
         "rs" => Lang::Rust,
         "go" => Lang::Go,
         "md" => Lang::Markdown,
+        "java" => Lang::Java,
         other => panic!("unexpected lang {other}"),
     }
 }

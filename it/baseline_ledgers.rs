@@ -1,9 +1,10 @@
-//! The four named exits of the RM14 corpus-generation gate
+//! The five named exits of the RM14 corpus-generation gate
 //! (baseline_bridge.rs): RETIRED (duplication genuinely removed),
 //! REKEYED (a path move re-hashed the §7.2 id), REKEYED_SUITE (the
-//! same move's second generation, into the test suite's own baseline)
-//! and REANCHORED (7.0.0: every member re-hashed on container anchors;
-//! its two documents live in baseline_reanchored.rs). Split from the
+//! same move's second generation, into the test suite's own baseline),
+//! REANCHORED (7.0.0: every member re-hashed on container anchors) and
+//! RELOCATED (a path move after 7.0.0, in the anchored key space) —
+//! those two live in baseline_reanchored.rs. Split from the
 //! gate at the E01 300-line wall when the third ledger landed, and
 //! again at the same wall when the fifteenth RETIRED row did — the
 //! ledgers are documents, the gate is the reader.
@@ -15,7 +16,11 @@
 /// cleanups are this tool's whole point and retire BY NAME, never
 /// silently. A listed id back in the baseline = a stale entry,
 /// refused — the ledger can only ever describe the present.
-pub const RETIRED: [(u64, &str); 15] = [
+pub const RETIRED: [(u64, &str); 16] = [
+    (
+        10398559894504384704,
+        "v2.30 step 3: the LangSpec schema change (fn_required_fields, if_kinds, call_fields, owner_kinds on every table) broke the GO / HASKELL table rhyme; the shape re-paired as FAMILY / TYPESCRIPT, the new member 12441163793521289489",
+    ),
     (
         2746967240018182176,
         "v2.30 step 1: scan rowShape via CE.Wire.rowCheck; trend/2 pair gone",

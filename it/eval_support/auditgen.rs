@@ -7,6 +7,7 @@
 //! audit instruments (git history, 0c7c936 wave).
 
 use serde_json::Value;
+use std::collections::BTreeMap;
 
 /// Every frozen review table of every audit family, mounted by name
 /// (include_str! makes a missing corpus a compile error — a whole
@@ -87,6 +88,33 @@ pub fn review_of(family: &str, corpus: &str) -> Value {
         .map(|(_, _, t)| *t)
         .unwrap_or_else(|| panic!("no {family} review table for {corpus}"));
     serde_json::from_str(text).unwrap_or_else(|e| panic!("{family}/{corpus}: {e}"))
+}
+
+/// Largest-remainder apportionment of `seats` over `weights`: each key
+/// takes floor(seats·w/Σw), the seats left go to the largest
+/// remainders, ties to the lower key — pure integer arithmetic, the
+/// ONE apportion every stratified sample re-runs (t3, the language
+/// exams). With seats ≤ Σw no key takes more than its weight; a zero
+/// total leaves every key at 0.
+pub fn largest_remainder(weights: &BTreeMap<String, u64>, seats: u64) -> BTreeMap<String, u64> {
+    let total: u64 = weights.values().sum();
+    let mut out: BTreeMap<String, u64> = weights.keys().map(|k| (k.clone(), 0)).collect();
+    if total == 0 {
+        return out;
+    }
+    let mut rems: Vec<(u64, &str)> = Vec::new();
+    let mut used = 0;
+    for (key, w) in weights {
+        let share = seats * w;
+        out.insert(key.clone(), share / total);
+        used += share / total;
+        rems.push((share % total, key.as_str()));
+    }
+    rems.sort_by(|x, y| (y.0, x.1).cmp(&(x.0, y.1)));
+    for (_, key) in rems.iter().take((seats - used) as usize) {
+        *out.get_mut(*key).expect("key") += 1;
+    }
+    out
 }
 
 /// Domain-separated identity hash: sha256("domain|f1|f2|…") over the

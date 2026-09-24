@@ -104,6 +104,41 @@ pub fn assert_audit_scoring_legs(
     );
 }
 
+/// The resolver tripwire, two layers (graph_provenance.rs review F7;
+/// the v2.30 language exams run it per language): layer 1, the first
+/// commit that touched the `ladder` pathspec strictly descends from
+/// every audit table; layer 2, every cli/src/graph file either
+/// predates the sample freeze (detector era, in place at the draw) or
+/// descends from every audit — nothing graph-shaped may land inside
+/// the blind window between sampling and audit, wherever it landed.
+pub fn assert_resolver_after_audits(sample: &str, audits: &[String], ladder: &str, tag: &str) {
+    let first = git_in(
+        Some(".."),
+        &["log", "--reverse", "--format=%H", "--", ladder],
+    );
+    if let Some(first) = first.lines().next() {
+        for audit in audits {
+            assert!(
+                is_strict_ancestor(audit, first),
+                "{tag}: a ladder file landed before the audit froze (G13)"
+            );
+        }
+    }
+    let tree = git_in(Some(".."), &["ls-files", "--", "cli/src/graph"]);
+    for path in tree.lines().filter(|p| !p.is_empty()) {
+        let intro = intro_commit(path);
+        if is_ancestor(&intro, sample) {
+            continue; // detector-era file, in place before the draw
+        }
+        for audit in audits {
+            assert!(
+                is_ancestor(audit, &intro),
+                "{path}: graph code landed inside the {tag} sample→audit blind window (G13)"
+            );
+        }
+    }
+}
+
 /// Every file currently under `subtree` must have been introduced
 /// STRICTLY after `anchor` — the full-scan blind-window leg: nothing
 /// judge-shaped may predate the frozen draw, wherever it landed.
@@ -118,6 +153,20 @@ pub fn assert_subtree_postdates(anchor: &str, subtree: &str) {
         );
     }
     assert!(any, "{subtree}: empty subtree makes the gate vacuous");
+}
+
+/// The provenance stamp a generated doc carries — the ce version, the
+/// commit it was generated at, whether the tree was dirty: the commit
+/// the ordering legs above read back (ONE writer; the L2 FPR ledger
+/// and the language exams share it).
+pub fn generated_from() -> serde_json::Value {
+    let head = git_in(Some(".."), &["rev-parse", "HEAD"]);
+    let status = git_in(Some(".."), &["status", "--porcelain"]);
+    serde_json::json!({
+        "ce": env!("CARGO_PKG_VERSION"),
+        "commit": head.trim(),
+        "dirty": !status.trim().is_empty(),
+    })
 }
 
 /// Run git in `repo` (None = the enclosing repository), success AND

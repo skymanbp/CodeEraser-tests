@@ -28,6 +28,30 @@ pub fn write_tree(root: &Path, files: &[(&str, &str)]) {
     }
 }
 
+/// A case table written as ONE literal, as (language, the N header
+/// columns after the extension, the body): blocks separated by a `====`
+/// line, each a header `ext @@ column @@ …` over its body. One literal
+/// rather than a slice of typed rows: rows of any one tuple or struct
+/// shape repeat every dozen tokens, and the clone gate reads such a
+/// table as clones of itself. The column count is the table's shape,
+/// so it is checked here once — each caller destructures its columns
+/// in the loop pattern, where every caller used to convert them.
+pub fn blocks<const N: usize>(
+    table: &str,
+) -> impl Iterator<Item = (crate::scan::lang::Lang, [&str; N], &str)> {
+    table.trim().split("\n====\n").map(|block| {
+        let (head, body) = block.split_once('\n').expect("a header line over a body");
+        let mut cols = head.split(" @@ ");
+        let ext = cols.next().expect("an extension column");
+        let lang = crate::scan::lang::Lang::from_path(Path::new(&format!("x.{ext}")))
+            .expect("a known extension");
+        let cols: Vec<&str> = cols.collect();
+        let cols = <[&str; N]>::try_from(cols)
+            .unwrap_or_else(|c| panic!("{N} columns after the extension, not {}: {head}", c.len()));
+        (lang, cols, body)
+    })
+}
+
 /// A node literal for wire-side tests.
 pub fn node(path: &str, unit: &str, kind: i64) -> crate::graph::nodes::Node {
     crate::graph::nodes::Node {

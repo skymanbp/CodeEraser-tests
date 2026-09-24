@@ -34,12 +34,15 @@ fn allow_claim_requires_the_why_tail() {
     std::fs::remove_dir_all(&root).ok();
 }
 
-/// Plan v2.30 step 2 (register D18): a compilation unit carries the
-/// unit role by its extension alone, a header carries none, `main.c`
-/// is a named entry beside it, and the C-family `_test` suffix is the
-/// test convention.
+/// Plan v2.30 steps 2 and 3 (register D18): a compilation unit carries
+/// the unit role by its extension alone, a header and a Java class
+/// carry none (a class is reached by its name), `main.c` and
+/// `Main.java` are named entries, and the test-runner basenames — the
+/// C-family `_test` suffix, Maven Surefire's classes — are the test
+/// convention, read off the table the convention word reads too (so a
+/// file named exactly `_test.c` is nobody's test there either).
 #[test]
-fn c_family_roles_read_the_extension() {
+fn compiled_language_roles_read_the_file_name() {
     const MASK: i64 = ROLE_UNIT | ROLE_ENTRY_NAMED | ROLE_TEST;
     let rows = [
         ("src/a.c", ROLE_UNIT),
@@ -47,6 +50,10 @@ fn c_family_roles_read_the_extension() {
         ("src/main.cpp", ROLE_UNIT | ROLE_ENTRY_NAMED),
         ("src/a_test.cc", ROLE_UNIT | ROLE_TEST),
         ("src/b.cxx", ROLE_UNIT),
+        ("src/_test.c", ROLE_UNIT),
+        ("src/Main.java", ROLE_ENTRY_NAMED),
+        ("src/FooTest.java", ROLE_TEST),
+        ("src/Foo.java", 0),
     ];
     let root = crate::testutil::scratch("dc-c-roles");
     for (path, want) in rows {

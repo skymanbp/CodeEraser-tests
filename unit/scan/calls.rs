@@ -2,6 +2,7 @@ use super::*;
 use crate::scan::functions;
 use crate::scan::lang::Lang;
 use crate::scan::spec;
+use crate::testutil::blocks;
 
 /// Unit names and the edges the module minted for them. Names are
 /// returned instead of the units so the tree can die here.
@@ -17,11 +18,21 @@ fn measure(lang: Lang, src: &str) -> (Vec<String>, Vec<(usize, usize)>) {
 }
 
 /// Edges as (caller, callee) NAMES — a failure then reads like the
-/// snippet instead of like a pair of indices.
-fn arcs(lang: Lang, src: &str) -> Vec<(String, String)> {
+/// snippet instead of like a pair of indices. A name two units spell
+/// (overloads, same-named members of two classes) carries its
+/// occurrence, `f#0` / `f#1` — the unit key's own nth — so an arc
+/// still says which of them it reached.
+pub(super) fn arcs(lang: Lang, src: &str) -> Vec<(String, String)> {
     let (names, arcs) = measure(lang, src);
+    let label = |i: usize| {
+        let spelled = |n: &&String| **n == names[i];
+        if names.iter().filter(spelled).count() < 2 {
+            return names[i].clone();
+        }
+        format!("{}#{}", names[i], names[..i].iter().filter(spelled).count())
+    };
     arcs.into_iter()
-        .map(|(a, b)| (names[a].clone(), names[b].clone()))
+        .map(|(a, b)| (label(a), label(b)))
         .collect()
 }
 
@@ -103,74 +114,63 @@ void K::b() { a(); }
 cpp @@ F::twin -> F::make @@ `F::make()` inside a member of F is the class's own static; the `F()` in make is a constructor no unit declares and mints nothing
 struct F { static F make(); F twin() { return F::make(); } };
 F F::make() { return F(); }
-"#;
-
-/// One rule, two halves per block: the shape it must REFUSE, then a
-/// `----` line, then the neighbouring shape it must still resolve
-/// (its arcs in the header, as above). The pairing is the claim — a
-/// negative leg on its own cannot show that a rule is not simply
-/// wider than the code it was written against.
-const SCOPE_CASES: &str = r#"
-rs @@ a -> b, b -> a @@ a bare name never reaches a method: inside `fn drop` the bare `drop` is the prelude's free function, and this repository was measured charging itself a recursion point for it — while a module body holds no members, so bare names still resolve there
-struct L; impl Drop for L { fn drop(&mut self) { drop(self.x.take()); } }
-----
-mod m { fn a() { b() } fn b() { a() } }
 ====
-rs @@ walk -> walk @@ an import written inside a body is the innermost binding of that name, so the bare call is the imported function — the crosscheck corpus held this exact shape and it was the only unit in four corpora the increment moved — while an import of some OTHER name shadows nothing and the recursion still counts
-fn symlink(s: u8) { use std::os::unix::fs::symlink; symlink(s); }
-----
-fn walk(n: u8) { use std::fs::read; walk(n) }
+cpp @@ f#0 -> f#1, f#1 -> f#1 @@ a call reaches the one overload its argument count admits: the delegating f(int) is no recursion — the step-2 reading, one callable per name, charged it a point
+int f(int a) { return f(a, 0); }
+int f(int a, int b) { return b ? f(a, b - 1) : a; }
 ====
-py @@ helper -> top @@ a sibling CLASS is not the caller's container — a file-wide lookup minted a FALSE 2-cycle out of those two spellings — while a bare name still reaches what the call site CAN see: A.helper sees module-level top, and top's helper() is the import, never the class method
-class A:
-    def run(self):
-        self.step()
-class B:
-    def step(self):
-        self.run()
-----
-from utils import helper
-class A:
-    def helper(self):
-        top()
-def top():
-    helper()
+cpp @@ none @@ two overloads admitting the same count: undercount beats a guess (callees::Named::pick: two seats admitting the count reach neither)
+int g(int a) { return g(1.5); }
+int g(double d) { return 0; }
 ====
-cpp @@ A::run -> helper, helper -> top, top -> helper @@ a bare name inside a member reaches its OWN class's members and then what the call site can see — never another class's member (the Python sibling-class pair, in C++) — while a free function at file scope is visible from inside a class body
-struct A { void run() { step(); } };
-struct B { void step() { run(); } };
-----
-struct A { void run() { helper(); } };
-void helper() { top(); }
-void top() { helper(); }
+cpp @@ h#0 -> h#0, v -> v @@ a default argument widens the counts an overload admits, and a C variadic lifts its upper bound
+int h(int a, int b = 0) { return a ? h(a - 1) : b; }
+int h(int a, int b, int c) { return 0; }
+void v(int n, ...) { v(1, 2, 3); }
 ====
-cpp @@ K::m -> K::m @@ a qualifier naming ANOTHER class proves nothing (undercount, never a wrong arc), while the class's own name inside its member reaches the member
-struct K { void m() {} };
-struct L { void x() { K::m(); } };
-----
-struct K { void m() { K::m(); } };
+cpp @@ none @@ a pack expansion passes a count no reader knows: it admits both overloads, so it reaches neither
+void w(int a) {}
+void w(int a, int b) {}
+template <class... T> void z(T... t) { w(t...); }
 ====
-cpp @@ walk -> walk @@ a using-declaration inside a body binds the name it spells, so the bare call is the imported one — the Rust `use` rule
-void f(int s) { using ns::f; f(s); }
-----
-void walk(int n) { using ns::read; walk(n); }
-"#;
-
-/// A table's blocks as (language, the header columns after the
-/// extension, the body).
-fn blocks(table: &str) -> impl Iterator<Item = (Lang, Vec<&str>, &str)> {
-    table.trim().split("\n====\n").map(|block| {
-        let (head, body) = block.split_once('\n').expect("a header line over a body");
-        let mut cols = head.split(" @@ ");
-        let ext = cols.next().expect("an extension column");
-        let lang =
-            Lang::from_path(std::path::Path::new(&format!("x.{ext}"))).expect("a known extension");
-        (lang, cols.collect(), body)
-    })
+java @@ f -> f @@ a Java self-call is a cycle of length one
+class A { int f(int n) { return n == 0 ? 0 : f(n - 1); } }
+====
+java @@ g -> h @@ this.h() and A.h() reach the same sibling: one arc, not two
+class A { void g() { this.h(); A.h(); } static void h() {} }
+====
+java @@ f#0 -> f#1, f#1 -> f#1 @@ Java overloads read as C++ ones do
+class A {
+    int f(int a) { return f(a, 0); }
+    int f(int a, int b) { return b == 0 ? a : f(a, b - 1); }
 }
+====
+java @@ v -> v, r -> r @@ a varargs parameter lifts the upper bound, and a receiver parameter takes no argument
+class A {
+    void v(int... xs) { v(1, 2, 3); }
+    void r(A this, int x) { r(x); }
+}
+====
+java @@ next -> hasNext, next -> next @@ an anonymous class is one class body: a bare call and `this.` inside it reach its own members, though no qualifier can name it
+class A {
+    Object it() {
+        return new java.util.Iterator<Object>() {
+            public boolean hasNext() { return false; }
+            public Object next() { return hasNext() ? this.next() : null; }
+        };
+    }
+}
+====
+java @@ m#0 -> m#0 @@ each enum constant's body is a class of its own: a self-call reaches its own m, never the other constant's
+enum E {
+    A { int m(int n) { return n > 0 ? m(n - 1) : 0; } },
+    B { int m(int n) { return 0; } };
+    abstract int m(int n);
+}
+"#;
 
 /// `caller -> callee, caller -> callee` as name pairs; `none` = none.
-fn named(spec: &str) -> Vec<(String, String)> {
+pub(super) fn named(spec: &str) -> Vec<(String, String)> {
     spec.split(", ")
         .filter(|arc| *arc != "none")
         .map(|arc| {
@@ -182,26 +182,8 @@ fn named(spec: &str) -> Vec<(String, String)> {
 
 #[test]
 fn every_case_mints_exactly_the_arcs_it_proves() {
-    for (lang, cols, src) in blocks(CASES) {
-        let [want, why]: [&str; 2] = cols.try_into().expect("arcs and why");
+    for (lang, [want, why], src) in blocks(CASES) {
         assert_eq!(arcs(lang, src), named(want), "{why}\n--- source ---\n{src}");
-    }
-}
-
-#[test]
-fn a_callee_is_reached_only_where_the_call_site_can_see_it() {
-    for (lang, cols, body) in blocks(SCOPE_CASES) {
-        let [want, why]: [&str; 2] = cols.try_into().expect("arcs and why");
-        let (refused, resolved) = body.split_once("\n----\n").expect("refused ---- resolved");
-        assert!(
-            arcs(lang, refused).is_empty(),
-            "{why}\n--- source ---\n{refused}"
-        );
-        assert_eq!(
-            arcs(lang, resolved),
-            named(want),
-            "the rule is wider than it should be: {why}\n--- source ---\n{resolved}"
-        );
     }
 }
 

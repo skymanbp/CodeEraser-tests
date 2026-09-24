@@ -175,21 +175,11 @@ fn row_hash(domain: &str, row: &Value) -> String {
 /// by language order) — the ONE apportion the gate re-runs.
 fn quotas(pool_by: &BTreeMap<String, u64>) -> BTreeMap<String, u64> {
     let seats = MAIN - FLOOR * LANGS.len() as u64;
-    let total: u64 = pool_by.values().sum();
-    let mut q: BTreeMap<String, u64> = BTreeMap::new();
-    let mut rems: Vec<(u64, &str)> = Vec::new();
-    let mut used = 0;
-    for lang in LANGS {
-        let share = seats * pool_by[lang];
-        q.insert(lang.into(), FLOOR + share / total);
-        used += share / total;
-        rems.push((share % total, lang));
-    }
-    rems.sort_by(|x, y| (y.0, x.1).cmp(&(x.0, y.1)));
-    for (_, lang) in rems.iter().take((seats - used) as usize) {
-        *q.get_mut(*lang).expect("lang") += 1;
-    }
-    q
+    assert!(pool_by.keys().eq(LANGS), "pool languages drifted");
+    eval_support::largest_remainder(pool_by, seats)
+        .into_iter()
+        .map(|(lang, extra)| (lang, FLOOR + extra))
+        .collect()
 }
 
 /// Rank re-derivation + uniqueness of one frozen row — main and

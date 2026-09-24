@@ -109,6 +109,11 @@ const CASES: &[&str] = &[
      __attribute__((visibility(\"hidden\"))) int c(void) { return 0; }\n__attribute__((constructor)) void d(void) {}\nint e(void) { return 0; } ⇒ a:- b:F c:- d:F e:-",
     "a.cpp extern \"C\" void one() {}\nextern \"C\" { void two() {} }\n__declspec(dllexport) void three() {}\n\
      [[nodiscard]] int four() { return 1; }\nstruct K { void m() {} }; ⇒ one:F two:F three:F four:- K:- m:-",
+    // Java — `Registration` from any annotation among the modifiers: a
+    // marker, one with arguments and `@Override` alike, on a type or a
+    // method; an unannotated declaration claims nothing.
+    "a.java @Entity public class X {\n  @Override public String toString() { return \"\"; }\n\
+     @SuppressWarnings(\"x\") void f() {}\n  void g() {}\n} ⇒ X:G toString:G f:G g:-",
 ];
 
 #[test]

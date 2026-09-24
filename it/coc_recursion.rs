@@ -40,9 +40,11 @@ fn settled(tag: &str, doc: &str) -> BTreeMap<String, u32> {
     out
 }
 
-fn expect(got: &BTreeMap<String, u32>, want: &[(&str, u32)], why: &str) {
-    let want: BTreeMap<String, u32> = want.iter().map(|(n, v)| (n.to_string(), *v)).collect();
-    assert_eq!(*got, want, "{why}");
+/// `want` spells every unit as `name=value`, space-separated in name
+/// order — the map's own order, so the two readings compare as text.
+fn expect(got: &BTreeMap<String, u32>, want: &str, why: &str) {
+    let got: Vec<String> = got.iter().map(|(n, v)| format!("{n}={v}")).collect();
+    assert_eq!(got.join(" "), want, "{why}");
 }
 
 /// The p.10 sumOfPrimes body, verbatim but for one line: a call to
@@ -78,39 +80,39 @@ fn the_anchor_reads_seven_before_the_cycle_and_eight_after() {
     let got = settled("coc-recursion-anchor", &format!("--- sum.go\n{ANCHOR}"));
     expect(
         &got,
-        &[("sumOfPrimes", 8)],
+        "sumOfPrimes=8",
         "p.8 / Appendix B1: a function in a recursion cycle pays one point",
     );
 }
 
-/// (fixture tag, the tree as a document, every unit with the value the
-/// rule predicts for it, why the row is here). A table rather than a
-/// test apiece: the rows differ only in their data, and four copies of
-/// one settle-and-compare scaffold is duplication this repo prices —
-/// the whitepaper battery next door carries its citations the same way.
-type Case = (
-    &'static str,
-    &'static str,
-    &'static [(&'static str, u32)],
-    &'static str,
-);
+/// [fixture tag, the tree as a document, every unit with the value the
+/// rule predicts for it as `name=value` in name order, why the row is
+/// here]. A table
+/// rather than a test apiece: the rows differ only in their data, and
+/// a copy of one settle-and-compare scaffold per row is duplication
+/// this repo prices — the whitepaper battery next door carries its
+/// citations the same way. Four strings rather than a tuple around a
+/// slice of pairs: rows of one tuple shape repeat every dozen tokens,
+/// and the clone gate read the table as clones of itself once the
+/// fifth row joined.
+type Case = [&'static str; 4];
 
 const CASES: &[Case] = &[
-    (
+    [
         "coc-recursion-indirect",
         "--- lib.rs\n\
          fn alone() { alone() }\n\
          fn there() { back() }\n\
          fn back() { there() }\n",
-        &[("alone", 1), ("there", 1), ("back", 1)],
+        "alone=1 back=1 there=1",
         "indirect recursion costs exactly what direct recursion costs — \
          the half SonarSource's own java, python and javascript analysers \
          do not implement (their three repositories were read on \
          2026-08-31 and none mints a recursion increment at all). The \
          specification draws no line between the two shapes, so neither \
          do we",
-    ),
-    (
+    ],
+    [
         "coc-recursion-membership",
         "--- lib.rs\n\
          fn red() { green() }\n\
@@ -120,27 +122,19 @@ const CASES: &[Case] = &[
          fn head() { middle() }\n\
          fn middle() { tail() }\n\
          fn tail() {}\n",
-        &[
-            ("red", 1),
-            ("green", 1),
-            ("blue", 1),
-            ("enters", 0),
-            ("head", 0),
-            ("middle", 0),
-            ("tail", 0),
-        ],
+        "blue=1 enters=0 green=1 head=0 middle=0 red=1 tail=0",
         "membership, not reachability: `enters` calls straight into the \
          triangle and pays nothing, and a chain that never returns pays \
          nothing either. Without this row a \"+1 if you can reach a \
          cycle\" implementation would pass every other row here",
-    ),
-    (
+    ],
+    [
         "coc-recursion-cross-file",
         "--- one.rs\n\
          fn first() { second() }\n\
          --- two.rs\n\
          fn second() { first() }\n",
-        &[("first", 0), ("second", 0)],
+        "first=0 second=0",
         "a cycle spanning two files is not seen, and that is the stance: \
          ADR-008's fourth instalment says arcs are facts of ONE parse \
          unit. Cross-file arcs would have to be minted from names \
@@ -148,8 +142,8 @@ const CASES: &[Case] = &[
          +1 flows into the score and the size gate while a missing one \
          only leaves a point unpaid. Asserted so it cannot become true \
          by accident",
-    ),
-    (
+    ],
+    [
         "coc-recursion-gocognit",
         "--- probe.go\n\
          package p\n\n\
@@ -163,19 +157,37 @@ const CASES: &[Case] = &[
          \tif n > 0 {\n\t\treturn n\n\t}\n\
          \treturn 0\n\
          }\n",
-        &[("fact", 2), ("plain", 1), ("a", 1), ("b", 1)],
+        "a=1 b=1 fact=2 plain=1",
         "gocognit does exactly the direct half, and agrees value for \
          value. Measured 2026-08-31 on this same source: `gocognit -top \
          20 .` printed `2 p fact` and `1 p plain` and nothing else — it \
          omits CoC 0 functions, the already-registered divergence, so \
          the mutual `a`/`b` pair is its silence against our 1 apiece. \
          That pair is where the two implementations part",
-    ),
+    ],
+    [
+        "coc-recursion-java",
+        "--- Walk.java\n\
+         class Walk {\n\
+         \x20   int depth(Node n) { return n == null ? 0 : 1 + depth(n.next); }\n\
+         \x20   void visit(Node n) { if (n != null) this.visit(n.next); }\n\
+         \x20   public String toString() { return super.toString(); }\n\
+         \x20   Runnable r = new Runnable() { public void run() { run(); } };\n\
+         }\n",
+        "depth=2 run=1 toString=0 visit=2",
+        "Java, end to end through the core (plan v2.30 step 3): a bare \
+         self-call, one through `this.` and a bare one inside an \
+         anonymous class — whose body is its own class, though no name \
+         can reach it — each close a cycle of length one, on top of the \
+         ternary's and the if's +1. `super.toString()` is the \
+         superclass's method, Java's commonest delegation, and pays \
+         nothing",
+    ],
 ];
 
 #[test]
 fn every_case_settles_to_the_value_the_rule_predicts() {
-    for (tag, doc, want, why) in CASES {
+    for [tag, doc, want, why] in CASES {
         expect(&settled(tag, doc), want, why);
     }
 }

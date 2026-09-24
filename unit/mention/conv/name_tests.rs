@@ -122,6 +122,18 @@ x/foo_test.cc f/0 ⇒ T
 x/foo_test.cpp f/0 ⇒ T
 x/_test.c f/0 ⇒ -
 a.cpp K::m/0 ⇒ -
+# Java: `main` is Main; the names the platform calls are Protocol;
+# Maven Surefire's test classes by basename, the star non-empty
+a.java main/1 ⇒ m
+a.java toString/0 ⇒ P
+a.java doGet/2 ⇒ P
+a.java helper/0 ⇒ -
+x/FooTest.java f/0 ⇒ T
+x/TestFoo.java f/0 ⇒ T
+x/FooTests.java f/0 ⇒ T
+x/FooTestCase.java f/0 ⇒ T
+x/Test.java f/0 ⇒ -
+x/Contest.java f/0 ⇒ -
 ";
 
 #[test]

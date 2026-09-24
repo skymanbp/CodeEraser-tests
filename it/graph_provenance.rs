@@ -5,9 +5,7 @@
 //! passing vacuously.
 
 use crate::eval_support;
-use crate::eval_support::{
-    git_in, intro_commit, is_ancestor, is_strict_ancestor, require_full_history,
-};
+use crate::eval_support::{intro_commit, require_full_history};
 
 const CORPORA: [&str; 5] = ["cobra", "requests", "ripgrep", "self", "zod"];
 
@@ -42,36 +40,10 @@ fn sample_audit_scoring_ordered() {
 fn audit_precedes_any_resolver() {
     require_full_history();
     let sample = intro_commit("contracts/eval/graph-sample-v1.json");
-    let audits = audit_intros();
-    let ladder = git_in(
-        Some(".."),
-        &[
-            "log",
-            "--reverse",
-            "--format=%H",
-            "--",
-            "cli/src/graph/ladder",
-        ],
+    eval_support::assert_resolver_after_audits(
+        &sample,
+        &audit_intros(),
+        "cli/src/graph/ladder",
+        "graph",
     );
-    if let Some(first_ladder) = ladder.lines().next() {
-        for audit in &audits {
-            assert!(
-                is_strict_ancestor(audit, first_ladder),
-                "a ladder file landed before the audit froze (G13)"
-            );
-        }
-    }
-    let tree = git_in(Some(".."), &["ls-files", "--", "cli/src/graph"]);
-    for path in tree.lines().filter(|p| !p.is_empty()) {
-        let intro = intro_commit(path);
-        if is_ancestor(&intro, &sample) {
-            continue; // detector-era file, in place before the draw
-        }
-        for audit in &audits {
-            assert!(
-                is_ancestor(audit, &intro),
-                "{path}: graph code landed inside the sample→audit blind window (G13)"
-            );
-        }
-    }
 }

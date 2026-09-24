@@ -1,10 +1,12 @@
-//! The fourth exit of the RM14 corpus-generation gate
-//! (baseline_bridge.rs), wholesale: REANCHORED (proto 7.0.0, plan v2.29
-//! step 8) re-hashed every §7.2 member of both baselines on container
-//! anchors. Split from baseline_ledgers.rs at the E01 300-line wall
-//! when the fifteenth RETIRED row landed (plan v2.30 step 1): the two
-//! re-hash documents and their readers are one exit, the elder file
-//! keeps the other three, and the parser stays the elder's.
+//! The fourth and fifth exits of the RM14 corpus-generation gate
+//! (baseline_bridge.rs), both in the anchored key space: REANCHORED
+//! (proto 7.0.0, plan v2.29 step 8) re-hashed every §7.2 member of both
+//! baselines on container anchors, wholesale, and RELOCATED records a
+//! path move made after it. Split from baseline_ledgers.rs at the E01
+//! 300-line wall when that file's fifteenth RETIRED row landed (plan
+//! v2.30 step 1): the re-hash documents and their readers are one
+//! exit, the elder file keeps the other three, and the parser stays
+//! the elder's.
 
 use crate::baseline_ledgers::pairs_of;
 
@@ -130,4 +132,36 @@ pub fn reanchored_rows() -> Vec<(u64, u64, bool)> {
         .into_iter()
         .map(|(o, n)| (o, n, true));
     main.chain(suite).collect()
+}
+
+/// The fifth exit (plan v2.30 step 3): an anchored key a path move
+/// re-hashed AFTER 7.0.0 — the id hashes its sides' paths, so a move
+/// re-keys it again. Each line is `old new` for the superproject's
+/// baseline: the four launch LangSpec tables left scan/spec.rs for
+/// scan/spec_launch.rs and the TYPESCRIPT / RUST member re-hashed.
+/// Derived by re-hashing every current block's member with the moved
+/// side spelled back at its old path (one-shot instrument, the same
+/// `member_id("clone", ..)` throat, which reproduced the pre-move
+/// commit's 44 members exactly when run on that tree). The one other
+/// member with a side in scan/spec.rs, GO / HASKELL, dissolved in the
+/// same change and retired by name.
+const RELOCATED: &str = "\
+2906470714490555695 16409031450442344353
+";
+
+/// Where an anchored key sits today: followed through RELOCATED's
+/// lines in order, so a later move carries an earlier one's result.
+pub fn present(key: u64) -> u64 {
+    pairs_of(RELOCATED)
+        .into_iter()
+        .fold(key, |k, (old, new)| if k == old { new } else { k })
+}
+
+/// The RELOCATED document parsed, as the gate reads the REANCHORED
+/// rows: (pre-move, post-move, in_suite) — the superproject's only.
+pub fn relocated_rows() -> Vec<(u64, u64, bool)> {
+    pairs_of(RELOCATED)
+        .into_iter()
+        .map(|(o, n)| (o, n, false))
+        .collect()
 }

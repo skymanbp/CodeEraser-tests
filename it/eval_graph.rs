@@ -16,7 +16,6 @@
 
 use crate::eval_support;
 use crate::eval_support::*;
-use codeeraser::graph::sites::detect;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
@@ -27,35 +26,13 @@ fn constants() -> Value {
     json!({"min_per_lang": 15, "r0_share_trigger": 0.80})
 }
 
+// the row throat and the scorer are eval_support::site_row /
+// site_summary, shared with the v2.30 language exams (eval_lang.rs)
 const FAMILY: UniverseFamily = UniverseFamily {
     family: "graph-slice",
     constants,
-    summarize,
+    summarize: site_summary,
 };
-
-/// One graph-slice row: content identity plus the per-kind site
-/// counts the detector reads off the text — the row throat the self
-/// drift walk re-derives and CE_BLESS=1 re-signs with.
-fn graph_row(path: &str, lang: &str, text: &str) -> Value {
-    let sites = detect(text, lang_of(lang));
-    json!({"lang": lang, "path": path, "sha256": content_sha(text), "sites": kind_counts(&sites)})
-}
-
-/// Re-derivable from the rows alone — the CI gate re-runs this exact
-/// function (the G1 discipline: generator and gate share one scorer).
-fn summarize(files: &[Value]) -> Value {
-    let mut by: BTreeMap<String, u64> = BTreeMap::new();
-    let mut total = 0;
-    for f in files {
-        for (kind, n) in f["sites"].as_object().expect("sites") {
-            let n = n.as_u64().expect("count");
-            let key = format!("{}/{kind}", f["lang"].as_str().expect("lang"));
-            *by.entry(key).or_insert(0) += n;
-            total += n;
-        }
-    }
-    json!({"files": files.len(), "total_sites": total, "sites_by": by})
-}
 
 /// CI gate, no git, every frozen slice: the shared envelope (summary
 /// re-derived by the generator's own scorer, frozen constants and
@@ -65,8 +42,8 @@ fn summarize(files: &[Value]) -> Value {
 #[test]
 fn graph_slice_consistent() {
     let mut lang_sites: BTreeMap<String, u64> = BTreeMap::new();
-    each_frozen_doc("graph-slice", |path, doc| {
-        assert_doc_envelope(path, doc, "graph-slice", summarize, constants);
+    each_frozen_doc(FAMILY.family, |path, doc| {
+        assert_doc_envelope(path, doc, &FAMILY);
         for (langkind, n) in doc["summary"]["sites_by"].as_object().expect("sites_by") {
             let lang = langkind.split('/').next().expect("lang/kind");
             *lang_sites.entry(lang.to_string()).or_insert(0) += n.as_u64().expect("n");
@@ -91,25 +68,10 @@ fn self_universe_tracks_detector() {
     // whole-row equality through the family throat, the floor and the
     // CE_BLESS=1 re-sign are the skeleton every self view shares;
     // this family adds the per-site statement-window check
-    assert_self_tracks(&FAMILY, graph_row, 25);
+    assert_self_tracks(&FAMILY, site_row, 25);
     let doc = load(&eval_doc("graph-slice"));
     each_frozen_match(&doc, |row, path, lang, text| {
-        let sites = detect(text, lang_of(lang));
-        let lines: Vec<&str> = text.lines().collect();
-        for s in &sites {
-            // the site line is the STATEMENT HEAD: a multi-line TS
-            // import carries its full specifier on a later line of
-            // the same statement (2c/2d review F1 — 14 frozen zod
-            // sites), so the anti-invention property is "spec within
-            // the statement window", not "spec on the head line"
-            let end = (s.line + 15).min(lines.len());
-            assert!(
-                lines[s.line - 1..end].iter().any(|l| l.contains(&s.spec)),
-                "{path}:{}: spec {:?} not within its statement window",
-                s.line,
-                s.spec
-            );
-        }
+        let sites = sites_within_windows(path, lang, text);
         assert_eq!(
             row["sites"],
             json!(kind_counts(&sites)),

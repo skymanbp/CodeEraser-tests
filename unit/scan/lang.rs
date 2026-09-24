@@ -4,10 +4,10 @@ use super::*;
 /// are frozen (RM15), and the boundary splits where the plan says:
 /// the seven launch codes 0..6 (Markdown grammar-less but judged),
 /// the sentinel 7, the v2.5 size-only arm 8..14, and the plan v2.30
-/// codes 15..20 — C and C++ judged since step 2, the other four still
-/// reserved: rows without an extension, never produced by from_path,
-/// outside the judged mask and grammar-less until their own step
-/// wires them (language-expansion.md §13).
+/// codes 15..20 — C and C++ judged since step 2, Java since step 3, the
+/// other three still reserved: rows without an extension, never
+/// produced by from_path, outside the judged mask and grammar-less
+/// until their own step wires them (language-expansion.md §13).
 #[test]
 fn langs_table_is_total_and_the_boundary_holds() {
     assert_eq!(LANGS.len(), 21, "one row per variant");
@@ -18,7 +18,7 @@ fn langs_table_is_total_and_the_boundary_holds() {
     for &(l, exts, ..) in LANGS {
         assert!(!l.name().is_empty()); // row() is total
         let code = l as i64;
-        let reserved = matches!(l, Lang::Lua | Lang::Java | Lang::Ruby | Lang::R);
+        let reserved = matches!(l, Lang::Lua | Lang::Ruby | Lang::R);
         assert_eq!(
             l.scan_only(),
             (8..=14).contains(&code) || reserved,
@@ -39,14 +39,19 @@ fn langs_table_is_total_and_the_boundary_holds() {
             "{l:?}"
         );
     }
-    // the nine judged languages: bits 0..6 plus C (15) and C++ (16) —
-    // the echo-pinned mask is a pure summary of the scan_only column
-    assert_eq!(Lang::judged_mask(), 0b111_1111 | (1 << 15) | (1 << 16));
+    // the ten judged languages: bits 0..6 plus C (15), C++ (16) and
+    // Java (18) — the echo-pinned mask is a pure summary of the
+    // scan_only column
+    assert_eq!(
+        Lang::judged_mask(),
+        0b111_1111 | (1 << 15) | (1 << 16) | (1 << 18)
+    );
     let js = Path::new("a.js");
     assert_eq!(Lang::from_path(js), Some(Lang::JavaScript));
     assert_eq!(Lang::judged_path(js), None, "sized, never judged");
     assert_eq!(Lang::judged_path(Path::new("a.md")), Some(Lang::Markdown));
     assert_eq!(Lang::judged_path(Path::new("a.c")), Some(Lang::C));
+    assert_eq!(Lang::judged_path(Path::new("A.java")), Some(Lang::Java));
     assert_eq!(
         Lang::judged_path(Path::new("a.h")),
         Some(Lang::Cpp),

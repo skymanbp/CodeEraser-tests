@@ -59,18 +59,11 @@ pub fn report(tallies: &[Tally], rows: &[Row]) {
 /// NOT touch: false = no tier reads this class, so the gate enforces
 /// the line as an implication rather than unconditionally.
 pub fn document(tallies: &[Tally], rows: &[Row]) -> Value {
-    let root = crate::common::repo_root();
-    let (_, head) = crate::common::git_out(&root, &["rev-parse", "HEAD"]);
-    let (_, status) = crate::common::git_out(&root, &["status", "--porcelain"]);
     json!({
         "schema": SCHEMA,
         "gate_max_percent": GATE_MAX_PERCENT,
         "promoted": false,
-        "generated_from": {
-            "ce": env!("CARGO_PKG_VERSION"),
-            "commit": head.trim(),
-            "dirty": !status.trim().is_empty(),
-        },
+        "generated_from": crate::eval_support::generated_from(),
         "method": "every first-parent commit of the three frozen commit slices replayed as the multi-file changeset the Stop audit sees: fourclass::session::commit_pairs over <sha>^..<sha> (renames as one pair, a copy record as an added file), both blob sides through tombstone::texts::load, judged by daemon::judge::Judge::judge_changeset — the seam Judge::classify itself calls, so the same classify_batch and the same fourclass/2 core link. A changeset that is not whole is not an event and is counted under a named skip.",
         "predicate": "intercept = the counterfactual deny: config::tier_of(.., \"observe\") == \"deny\" AND the core's suspicions non-empty (CE.FourClass.Verdict: novel lines inside a newly duplicated top-level unit span >= 20 AND deleted * 10 < novel). Cross-file relocations are evidence on the row, never the predicate: a clean refactor produces them by the hundred.",
         "ground_truth": "by sha off the frozen contracts: copy = a commit-slice row with a pair carrying copied:true (the only duplication-shaped positive the three corpora hold); normal = a reviewed commit-labels row and no copied pair; unreviewed = admitted by the slice, never individually reviewed. Strict rate = false / normal (calibration, below the 500 floor); wide rate = false_wide / (normal + unreviewed), the reading the plan's per-500 line takes. Recall is defined here — the ground truth has a positive, unlike the 600-sample gate.",
