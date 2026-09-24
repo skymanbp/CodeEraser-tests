@@ -11,7 +11,8 @@
 //! (no string leaf anywhere in the body), on both roads, with the
 //! advisory road's two tables required non-empty so the assertion
 //! cannot pass vacuously over an absent key. K16 is the legacy
-//! contract: the `Advisory::No` body is the five-key request byte for
+//! contract: the `Advisory::No` body is the six-key request (the five
+//! legacy tables and, since 7.2.0, the judged-language mask) byte for
 //! byte, and the advisory road only ADDS keys — including the empty
 //! half, where a tree whose every declaration is mentioned sends
 //! `unmentioned: []` beside a `mounts` table covering every node. The
@@ -165,20 +166,30 @@ fn no_name_of_any_kind_reaches_the_graph_request() {
     }
 }
 
-/// K16: the legacy body is the five keys and nothing else; the
-/// advisory road adds exactly two and leaves those five byte for byte
-/// (serde_json's Map is ordered, so removing the two keys from the
-/// advisory body must give the legacy body back).
+/// K16: the legacy body is the six keys and nothing else — the five
+/// legacy tables plus the judged-language mask every request carries
+/// since 7.2.0; the advisory road adds exactly two and leaves those
+/// six byte for byte (serde_json's Map is ordered, so removing the two
+/// keys from the advisory body must give the legacy body back).
 #[test]
 fn the_legacy_request_is_untouched_by_the_advisory_road() {
     let dir = indexed("export-surface-k16", FIXTURE);
     let legacy = request_body(&wire(&dir, Advisory::No), &[]);
-    assert_eq!(keys(&legacy), ["edges", "nodes", "pos", "symbols", "unres"]);
+    assert_eq!(
+        keys(&legacy),
+        ["edges", "judgedMask", "nodes", "pos", "symbols", "unres"]
+    );
+    assert_eq!(
+        legacy["judgedMask"],
+        serde_json::json!(codeeraser::scan::lang::Lang::judged_mask()),
+        "the mask is the LANGS table's own summary"
+    );
     let mut advised = request_body(&wire(&dir, Advisory::Yes), &[]);
     assert_eq!(
         keys(&advised),
         [
             "edges",
+            "judgedMask",
             "mounts",
             "nodes",
             "pos",
@@ -193,7 +204,7 @@ fn the_legacy_request_is_untouched_by_the_advisory_road() {
     assert_eq!(
         advised.to_string(),
         legacy.to_string(),
-        "five keys, same bytes"
+        "six keys, same bytes"
     );
 }
 

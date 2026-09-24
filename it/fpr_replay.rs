@@ -40,12 +40,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 /// The files the T1/T2 probe can read, as the daemon's probe reply
-/// decides it (daemon/server/replies.rs: a grammar-less language
-/// answers no matches): judged languages, never the scan-only arm,
-/// with a token stream — Markdown is judged but grammar-less, and its
-/// duplication is docdup's, not this class's.
+/// decides it (daemon/server/replies.rs: a language that never
+/// fingerprints answers no matches): judged languages, never the
+/// scan-only arm, with a token stream — Markdown is judged but
+/// grammar-less, and its duplication is docdup's, not this class's.
 fn judged(rel: &str) -> Option<Lang> {
-    Lang::judged_path(Path::new(rel)).filter(|l| l.grammar().is_some())
+    Lang::judged_path(Path::new(rel)).filter(|l| l.fingerprints())
 }
 
 /// One file into the shadow tree and the index — the tree the next

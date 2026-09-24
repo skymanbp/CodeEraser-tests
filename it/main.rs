@@ -1,6 +1,7 @@
 //! ONE integration-test crate (2026-08-26, user-ratified): 76 crate
-//! roots each relinked the full lib (bundled sqlite + six grammars),
-//! and the link bill dominated the CI test step. Every former root
+//! roots each relinked the full lib (bundled sqlite + every pinned
+//! grammar — thirteen since plan v2.30 step 1), and the link bill
+//! dominated the CI test step. Every former root
 //! file is a module here; shared dirs (common/, eval_support/,
 //! bench_support/, *_parts/) are crate-level mods their consumers
 //! reach via `use crate::…`. Two files stay separate root binaries,
@@ -100,6 +101,7 @@ mod fpr_zone_replay;
 mod fpr_zone_replay_parts;
 mod frozen_set;
 mod gate_e2e;
+mod grammar_pins;
 mod graph_containment;
 mod graph_export_surface;
 mod graph_ladder;
@@ -114,7 +116,6 @@ mod guard_novelty;
 mod guard_say;
 mod health_plugin;
 mod history_recipes;
-mod hs_grammar_pin;
 mod index_epoch;
 mod join_e2e;
 mod l2_fpr_gate;

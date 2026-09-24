@@ -67,3 +67,30 @@ fn class_grade_rows_carry_effective_pairs_for_declared_codes() {
     );
     assert!(class_grade_rows(&RulesCfg::default(), &global).is_empty());
 }
+
+/// The judged-language echo (7.2.0) is pinned like the grade table:
+/// the sent mask is accepted, a foreign value is drift refused by
+/// name, and no echo at all is a pre-7.2.0 core refused by name.
+#[test]
+fn the_judged_mask_echo_is_required_and_pinned() {
+    let grades = grade_rows(&Thresholds::default()).expect("coherent defaults");
+    let r = ScanRequest {
+        rows: &[],
+        grades: &grades,
+        naming: &[],
+        row_classes: None,
+        overrides: &[],
+        fence: Value::Null,
+        blocks: &[],
+        calls: &[],
+    };
+    let mask = crate::scan::lang::Lang::judged_mask();
+    let mut reply = json!({ "grades": grades, "judgedMask": mask });
+    assert_echo(&reply, &r).expect("the sent mask echoes");
+    reply["judgedMask"] = json!(mask | 1 << 40);
+    let drift = assert_echo(&reply, &r).expect_err("a foreign mask is drift");
+    assert!(drift.to_string().contains("judgedMask"), "{drift}");
+    reply.as_object_mut().expect("object").remove("judgedMask");
+    let silent = assert_echo(&reply, &r).expect_err("no echo = a pre-7.2.0 core");
+    assert!(silent.to_string().contains("7.2.0"), "{silent}");
+}

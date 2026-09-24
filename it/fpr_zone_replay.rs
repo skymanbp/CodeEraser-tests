@@ -118,7 +118,7 @@ fn measure(w: &Walk, commit: &str, rel: &str, p: &Policy, t: &mut Tally) {
         .count();
     t.events += 1;
     *t.softs.entry(soft).or_default() += 1;
-    if Lang::judged_path(Path::new(rel)).is_some_and(|l| l.grammar().is_some()) {
+    if Lang::judged_path(Path::new(rel)).is_some_and(|l| l.fingerprints()) {
         t.shared += 1;
     }
     let Some(l) = zone::landing(lines, soft, hard, p.tiers) else {
