@@ -27,8 +27,16 @@ type Case = (Lang, &'static str, &'static str);
 
 /// The per-language table, split from its assertion loop at the
 /// E01 fn-length line.
-fn cases() -> [Case; 5] {
+fn cases() -> [Case; 6] {
     [
+        // the C family's one site (plan v2.30 step 2): the quoted form
+        // loses its quotes, the system form keeps its angle brackets
+        // (the delimiter is the search order), a macro is no site
+        (
+            Lang::C,
+            "#include <stdio.h>\n#include \"util.h\"\n#include \"sub/x.h\"\n#define X 1\n",
+            "include=<stdio.h>|include=util.h|include=sub/x.h",
+        ),
         // `from __future__` is an `import_from` site on the literal
         // module name (step 8, O27)
         (

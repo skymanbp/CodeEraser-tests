@@ -108,6 +108,20 @@ a.go (Cache.) M/0 ⇒ -
 a.go (anonymous)/0 ⇒ -
 a.go free/1 ⇒ -
 a.rs impl Foo for fn(u8) -> u8 ⇒ -
+# C / C++: the program entry is Main; the loader-spelled entries and
+# the native-module prefixes (non-empty tail) are Protocol; the test
+# suffixes need a non-empty stem; a member is judged by its base name
+a.c main/2 ⇒ m
+a.cpp main/0 ⇒ m
+a.c DllMain/3 ⇒ P
+a.cpp JNI_OnLoad/2 ⇒ P
+a.c PyInit_spam/0 ⇒ P
+a.c luaopen_/1 ⇒ -
+x/foo_test.c f/0 ⇒ T
+x/foo_test.cc f/0 ⇒ T
+x/foo_test.cpp f/0 ⇒ T
+x/_test.c f/0 ⇒ -
+a.cpp K::m/0 ⇒ -
 ";
 
 #[test]

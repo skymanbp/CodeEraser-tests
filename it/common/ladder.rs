@@ -4,7 +4,7 @@
 
 use codeeraser::graph::ladder::{self, Outcome, Reason, Scope};
 use codeeraser::scan::lang::Lang;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 /// Materialize a ladder fixture tree and collect what the real walk
@@ -43,6 +43,9 @@ pub struct Fixture {
     /// Declared crate roots (ce.toml `[graph] crate_roots`); empty
     /// unless a leg sets it.
     pub crate_roots: BTreeSet<String>,
+    /// Declared search roots (ce.toml `[graph.search_roots]`, language
+    /// → directories); empty unless a leg sets it.
+    pub search_roots: BTreeMap<String, BTreeSet<String>>,
 }
 
 pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
@@ -54,6 +57,7 @@ pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
         configs,
         memo: Default::default(),
         crate_roots: BTreeSet::new(),
+        search_roots: BTreeMap::new(),
     }
 }
 
@@ -65,6 +69,7 @@ impl Fixture {
             root: &self.dir,
             memo: &self.memo,
             crate_roots: &self.crate_roots,
+            search_roots: &self.search_roots,
         }
     }
 }

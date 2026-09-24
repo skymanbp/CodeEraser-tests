@@ -58,6 +58,12 @@ a.hs atb ⇒ + | -- | Use it:\n--\n-- @\n-- atb 1\n-- @\natb = id\n
 a.hs bird ⇒ + | -- |\n-- > bird 1\nbird = id\n
 a.hs plain ⇒ - | -- plain 1\nplain = id\n
 a.hs prose ⇒ - | -- | prose 1 in words\nprose = id\n
+# C / C++: every string literal, a concatenated string's pieces and a
+# raw string included; a comment does not count
+a.c helper ⇒ + | void f(void) { dl("helper"); }\n
+a.c cat ⇒ + | const char *s = "a" "cat";\n
+a.cpp raw ⇒ + | auto s = R"(raw)";\n
+a.c plain ⇒ - | /* plain */\nvoid plain(void) {}\n
 "#;
 
 /// A stray byte decodes lossily, as the index side decoded the file

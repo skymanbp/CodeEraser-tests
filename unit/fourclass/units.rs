@@ -84,6 +84,20 @@ fn go_method_keys_carry_the_receiver_type_and_real_arity() {
     }
 }
 
+/// Plan v2.30 step 2: the C family keys a typedef by the leaf of its
+/// declarator chain, a type specifier only when it carries a body (a
+/// `struct T *` parameter type and a forward `class Fwd;` are
+/// references), a namespace and an alias by name, and a macro as a
+/// declaration of its own.
+#[test]
+fn c_family_named_units_need_a_body_or_a_declarator_leaf() {
+    let src = "struct T { int x; };\nstruct T *f(struct T *t) { return t; }\ntypedef int (*fp)(int);\n\
+               class Fwd;\n#define M 1\nnamespace ns { using A = int; }\n";
+    let (_, mut keys) = keyed(src, Lang::Cpp);
+    keys.sort_unstable();
+    assert_eq!(keys, ["A", "M", "T", "f/1", "fp", "ns"]);
+}
+
 #[test]
 fn named_non_function_units_are_registered() {
     // the register's CLASSES case: a relocated pub const must be

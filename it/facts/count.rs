@@ -171,12 +171,14 @@ fn structure_axis_arms(axes_hs: &str) -> usize {
         .count()
 }
 
-/// The `Some(...)` arms of `Lang::grammar` — one per tree-sitter
-/// grammar (TypeScript and TSX are two grammars from one crate, so
-/// the Cargo dependency lines undercount).
+/// The rows of `GRAMMARS`, the table `Lang::grammar` reads — one per
+/// tree-sitter grammar (TypeScript and TSX are two grammars from one
+/// crate, so the Cargo dependency lines undercount). Each row spells
+/// its variant once and the type column spells none, so the variant
+/// prefix counts rows whether rustfmt keeps a row on one line or not.
 fn grammar_arms(lang_rs: &str) -> usize {
-    between(lang_rs, "pub fn grammar(self)", "_ => None")
-        .matches("=> Some(")
+    between(lang_rs, "const GRAMMARS", "];")
+        .matches("Lang::")
         .count()
 }
 
@@ -207,7 +209,7 @@ fn scrapes(root: &Path) -> Vec<Fact> {
         scraped(
             "count:grammars#word",
             grammar_arms(&read(root, "cli/src/scan/lang.rs")),
-            "cli/src/scan/lang.rs::Lang::grammar (Some arms)",
+            "cli/src/scan/lang.rs::GRAMMARS (rows)",
             "Lang has no variant iterator; promote = Lang::judged() + grammar().is_some()",
         ),
         scraped(

@@ -101,6 +101,14 @@ const CASES: &[&str] = &[
     // the domain by its receiver-stripped name.
     "a.go package main\n\n//export Add\nfunc Add() {}\n\n//go:wasmexport add\nfunc add() {}\n\n// plain\nfunc plain() {}\n\n//export Other\nfunc Mismatch() {} ⇒ Add:F add:F plain:- Mismatch:-",
     "a.go package p\n\n//export  Two\nfunc Two() {}\n\ntype T struct{}\n\nfunc (T) n() {} ⇒ Two:F T:- n:-",
+    // C / C++ — `Ffi` from the linkage wrapper in both spellings and
+    // from the linker-facing attributes; a plain `extern`, a hidden
+    // visibility, a `[[nodiscard]]` and a bare definition claim
+    // nothing; a member is in the domain by its unqualified name.
+    "a.c extern int a(void) { return 0; }\n__attribute__((visibility(\"default\"))) int b(void) { return 0; }\n\
+     __attribute__((visibility(\"hidden\"))) int c(void) { return 0; }\n__attribute__((constructor)) void d(void) {}\nint e(void) { return 0; } ⇒ a:- b:F c:- d:F e:-",
+    "a.cpp extern \"C\" void one() {}\nextern \"C\" { void two() {} }\n__declspec(dllexport) void three() {}\n\
+     [[nodiscard]] int four() { return 1; }\nstruct K { void m() {} }; ⇒ one:F two:F three:F four:- K:- m:-",
 ];
 
 #[test]
