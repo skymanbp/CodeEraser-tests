@@ -98,6 +98,12 @@ pub fn verify_review(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) {
         assert!(row["batch"].as_u64() >= Some(1), "{corpus}/{rank}: batch");
     }
     assert_eq!(doc["summary"], json!(summary), "{corpus}: summary drifted");
+    check_gaps(corpus, doc, &files);
+}
+
+/// Every site gap sits on a frozen file at a real line and carries its
+/// note.
+fn check_gaps(corpus: &str, doc: &Value, files: &BTreeSet<String>) {
     for gap in doc["site_gaps"].as_array().expect("site_gaps") {
         let path = gap["path"].as_str().expect("path");
         assert!(

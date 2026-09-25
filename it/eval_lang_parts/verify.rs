@@ -95,6 +95,27 @@ fn per_kind(rows: &[Value]) -> BTreeMap<String, u64> {
 /// primary of its kind — the primaries were the top of the rank.
 pub fn verify_sample(exam: &Exam, doc: &Value) {
     let lang = exam.lang;
+    let slices = slices(exam);
+    let (pool, allocation) = verify_envelope(exam, doc, &slices);
+    let files = frozen_files(&slices);
+    let rows = doc["rows"].as_array().expect("rows");
+    let backups = doc["backups"].as_array().expect("backups");
+    let (mut seen, mut bound) = (BTreeSet::new(), BTreeMap::new());
+    for row in rows.iter().chain(backups) {
+        check_row(exam, &files, row, &mut seen, &mut bound);
+    }
+    assert_eq!(per_kind(rows), allocation, "{lang}: per-kind counts");
+    verify_order(lang, rows, backups, &pool, &allocation);
+}
+
+/// The envelope, the sources, and the allocation re-run from the
+/// slices' per-kind pools; returns the pools and the allocation.
+fn verify_envelope(
+    exam: &Exam,
+    doc: &Value,
+    slices: &[(&'static str, Value)],
+) -> (BTreeMap<String, u64>, BTreeMap<String, u64>) {
+    let lang = exam.lang;
     assert_eq!(doc["schema"], json!(parts::SAMPLE_SCHEMA), "{lang}: schema");
     assert_eq!(doc["lang"], json!(lang), "{lang}: language");
     assert_eq!(
@@ -102,7 +123,6 @@ pub fn verify_sample(exam: &Exam, doc: &Value) {
         parts::sample_constants(),
         "{lang}: constants"
     );
-    let slices = slices(exam);
     let sources: Vec<Value> = slices
         .iter()
         .map(|(n, s)| parts::source_row(n, s))
@@ -115,20 +135,31 @@ pub fn verify_sample(exam: &Exam, doc: &Value) {
         json!(allocation),
         "{lang}: allocation drifted"
     );
+    (pool, allocation)
+}
+
+/// Every frozen file of the slices, keyed (corpus, path).
+fn frozen_files(slices: &[(&'static str, Value)]) -> BTreeMap<(String, String), Value> {
     let mut files = BTreeMap::new();
-    for (name, slice) in &slices {
+    for (name, slice) in slices {
         for f in slice["files"].as_array().expect("files") {
             let path = f["path"].as_str().expect("path").to_string();
             files.insert((name.to_string(), path), f.clone());
         }
     }
-    let rows = doc["rows"].as_array().expect("rows");
-    let backups = doc["backups"].as_array().expect("backups");
-    let (mut seen, mut bound) = (BTreeSet::new(), BTreeMap::new());
-    for row in rows.iter().chain(backups) {
-        check_row(exam, &files, row, &mut seen, &mut bound);
-    }
-    assert_eq!(per_kind(rows), allocation, "{lang}: per-kind counts");
+    files
+}
+
+/// Primaries in audit order; each kind's backups sized
+/// min(BACKUP_PER_KIND, pool − quota) in (kind, audit) order, every one
+/// ranked below every primary of its kind.
+fn verify_order(
+    lang: &str,
+    rows: &[Value],
+    backups: &[Value],
+    pool: &BTreeMap<String, u64>,
+    allocation: &BTreeMap<String, u64>,
+) {
     let audit = |r: &Value| r["audit"].as_str().expect("audit").to_string();
     let rank = |r: &Value| r["rank"].as_str().expect("rank").to_string();
     assert!(
@@ -141,7 +172,7 @@ pub fn verify_sample(exam: &Exam, doc: &Value) {
         "{lang}: backups out of order"
     );
     let bk = per_kind(backups);
-    for (kind, n) in &pool {
+    for (kind, n) in pool {
         let want = (n - allocation[kind]).min(parts::BACKUP_PER_KIND);
         assert_eq!(
             bk.get(kind).copied().unwrap_or(0),
