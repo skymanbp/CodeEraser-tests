@@ -62,13 +62,13 @@ pub fn assert_all_postdate(anchor: &str, intros: &[String], what: &str) {
 
 /// The scoring leg: every listed doc's generated_from.commit
 /// strictly descends from every audit intro — GT froze before any
-/// score existed.
-pub fn assert_docs_postdate_audits(audits: &[String], stems: &[String], what: &str) {
-    for stem in stems {
-        let doc = super::load(&super::eval_doc(stem));
+/// score existed. `docs` are the docs' files (eval_doc_v).
+pub fn assert_docs_postdate_audits(audits: &[String], docs: &[String], what: &str) {
+    for file in docs {
+        let doc = super::load(file);
         let commit = doc["generated_from"]["commit"].as_str().expect("commit");
         for audit in audits {
-            assert!(is_strict_ancestor(audit, commit), "{stem}: {what}");
+            assert!(is_strict_ancestor(audit, commit), "{file}: {what}");
         }
     }
 }
@@ -93,13 +93,14 @@ pub fn assert_audit_scoring_legs(
         &audits,
         &format!("audit table does not strictly descend from the sample freeze ({tag})"),
     );
-    let stems: Vec<String> = super::FROZEN_CORPORA
+    let docs: Vec<String> = super::FROZEN_CORPORA
         .iter()
         .map(|n| super::doc_stem(precision_family, &n.map(str::to_string)))
+        .map(|stem| super::eval_doc(&stem))
         .collect();
     assert_docs_postdate_audits(
         &audits,
-        &stems,
+        &docs,
         &format!("scored before the audit froze ({tag})"),
     );
 }

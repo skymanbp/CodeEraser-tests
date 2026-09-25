@@ -1,12 +1,12 @@
 //! The frozen audit-table verifier of the v2.30 language exams: one
-//! corpus's blind ground truth (`lang-review-<corpus>-v1.json`,
+//! corpus's blind ground truth (`lang-review-<corpus>-v<g>.json`,
 //! assembled verbatim from independent auditors who read the pinned
 //! clone and their batch, never a parse) against the frozen sample it
 //! answers and the frozen universe its truths must name. Split from
 //! the gates like verify.rs: the tamper gate runs it on forged copies.
 
-use crate::eval_lang_parts::{AUDIT_TABLES, Exam};
-use crate::eval_support::{MIN_WHY, TRUTH_KEYWORDS, eval_doc, load};
+use crate::eval_lang_parts::{AUDIT_TABLES, Exam, SLICES};
+use crate::eval_support::{MIN_WHY, TRUTH_KEYWORDS};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -80,7 +80,7 @@ pub fn verify_review(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) {
         .tip(corpus)
         .unwrap_or_else(|| panic!("{corpus}: no corpus of the exam"));
     assert_eq!(doc["tip"], json!(tip), "{corpus}: not the pinned tip");
-    let slice = load(&eval_doc(&format!("lang-slice-{corpus}")));
+    let slice = SLICES.load(exam, corpus);
     let files: BTreeSet<String> = slice["files"]
         .as_array()
         .expect("files")

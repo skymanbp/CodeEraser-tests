@@ -109,9 +109,16 @@ pub fn eval_doc(name: &str) -> String {
 
 /// A later generation of the same document (a holdout sample drawn
 /// after the first was arbitrated keeps the first's name and counts
-/// up), so both live under one naming rule.
+/// up, and so does a language exam's re-frozen doc), so both live
+/// under one naming rule.
 pub fn eval_doc_v(name: &str, generation: u32) -> String {
-    format!("../contracts/eval/{name}-v{generation}.json")
+    format!("../{}", eval_doc_path(name, generation))
+}
+
+/// The same document repo-relative — the spelling git reads, where the
+/// ordering gates find a doc's first commit.
+pub fn eval_doc_path(name: &str, generation: u32) -> String {
+    format!("contracts/eval/{name}-v{generation}.json")
 }
 
 /// A JSON array of integers as `Vec<u64>`.

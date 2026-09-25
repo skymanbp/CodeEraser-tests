@@ -64,16 +64,24 @@ pub fn corpus_doc_pairs_frozen(family: &str) -> Vec<(String, String)> {
 }
 
 /// The corpus-name suffix of a frozen doc path for an arbitrary
-/// document stem: "…/{stem}-ripgrep-v1.json" → Some("ripgrep"), the
-/// self doc "…/{stem}-v1.json" → None. Shared by the commit families
-/// (below) and the graph family (eval_graph.rs).
+/// document stem, at any generation: "…/{stem}-ripgrep-v1.json" →
+/// Some("ripgrep"), the self doc "…/{stem}-v1.json" → None. Shared by
+/// the commit families (below), the graph family (eval_graph.rs) and
+/// the language exams.
 pub fn doc_suffix(path: &str, stem: &str) -> Option<String> {
     let file = path.rsplit('/').next().expect("file name");
-    let mid = file
-        .strip_prefix(stem)
-        .and_then(|s| s.strip_suffix("-v1.json"))
+    let mid = ungenerated(file)
+        .and_then(|name| name.strip_prefix(stem))
         .unwrap_or_else(|| panic!("{path}: not a {stem} doc"));
     (!mid.is_empty()).then(|| mid.trim_start_matches('-').to_string())
+}
+
+/// A doc's file name without its `-v<generation>.json` tail, or None
+/// when the name carries no generation.
+fn ungenerated(file: &str) -> Option<&str> {
+    let (name, generation) = file.strip_suffix(".json")?.rsplit_once("-v")?;
+    let digits = !generation.is_empty() && generation.bytes().all(|b| b.is_ascii_digit());
+    digits.then_some(name)
 }
 
 /// doc_suffix for the commit families — how a gate iterating EVERY
@@ -100,15 +108,17 @@ pub fn gate_docs(
 }
 
 /// Frozen docs under contracts/eval whose file name starts with
-/// `prefix` (and ends -v1.json), sorted — the ONE enumeration every
-/// doc-family gate consumes (the dedup ratchet caught this loop's
-/// third verbatim copy; the throat is the fix, not the third copy).
+/// `prefix` and ends `-v<generation>.json`, every generation, sorted —
+/// the ONE enumeration every doc-family gate consumes (the dedup
+/// ratchet caught this loop's third verbatim copy; the throat is the
+/// fix, not the third copy). A family holds one generation per corpus:
+/// a retired one left beside its successor reads as that corpus twice.
 pub fn frozen_docs(prefix: &str) -> Vec<String> {
     let mut out = Vec::new();
     for entry in std::fs::read_dir("../contracts/eval").expect("eval dir") {
         let file = entry.expect("entry").file_name();
         let file = file.to_string_lossy();
-        if file.starts_with(prefix) && file.ends_with("-v1.json") {
+        if file.starts_with(prefix) && ungenerated(&file).is_some() {
             out.push(format!("../contracts/eval/{file}"));
         }
     }

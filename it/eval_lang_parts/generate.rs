@@ -1,8 +1,9 @@
 //! The language exams' generators — `#[ignore]`, because they read the
 //! pinned corpus clone under `.ce-eval/corpora/<name>` (EXAMS pins the
 //! tip; corpus::pinned_root refuses any other tree). Each writes one
-//! frozen doc and refuses to overwrite it: a re-freeze is a new tip and
-//! a named entry in docs/EVAL-SET-LANGS.md, never a silent re-run.
+//! frozen doc and refuses to overwrite it: a re-freeze is a new
+//! generation (Exam::generation) and a named entry in
+//! docs/EVAL-SET-LANGS.md, never a silent re-run.
 //!   CE_LANG_CORPUS=gson cargo test --test it -- --ignored eval_lang_parts::generate::lang_slice --nocapture
 //!   CE_LANG=java cargo test --test it -- --ignored eval_lang_parts::generate::lang_sample --nocapture
 //!   CE_LANG_CORPUS=gson cargo test --test it -- --ignored eval_lang_parts::generate::lang_precision --nocapture
@@ -11,9 +12,11 @@
 //! regenerate, and name the change in the registry.
 
 use super::review::verify_review;
-use super::{AUDIT_TABLES, Exam, PRECISION_DOCS, SAMPLE_SCHEMA, SLICE_SCHEMA, score};
+use super::{
+    AUDIT_TABLES, Exam, PRECISION_DOCS, SAMPLE_SCHEMA, SAMPLES, SLICE_SCHEMA, SLICES, score,
+};
 use crate::eval_support::{
-    eval_doc, generated_from, git_in, lang_of, load, of_corpus, pinned_root, site_row, site_summary,
+    generated_from, git_in, lang_of, of_corpus, pinned_root, site_row, site_summary,
 };
 use codeeraser::graph::sites::detect;
 use codeeraser::graph::store::is_resolver_config;
@@ -58,16 +61,15 @@ pub(super) fn blob(repo: &str, tip: &str, path: &str) -> String {
     git_in(Some(repo), &["show", &format!("{tip}:{path}")])
 }
 
-/// Write a frozen doc once.
-pub(super) fn freeze(stem: &str, doc: &Value) {
-    let path = eval_doc(stem);
+/// Write a frozen doc once, at its file (Docs::file).
+pub(super) fn freeze(file: &str, doc: &Value) {
     assert!(
-        !std::path::Path::new(&path).exists(),
-        "{path} is frozen: a re-freeze is a new tip and a named ledger entry"
+        !std::path::Path::new(file).exists(),
+        "{file} is frozen: a re-freeze is a new generation and a named ledger entry"
     );
     let text = serde_json::to_string_pretty(doc).expect("json") + "\n";
-    std::fs::write(&path, text).expect(&path);
-    println!("{path} written");
+    std::fs::write(file, text).expect(file);
+    println!("{file} written");
 }
 
 /// The pinned tree's paths. -z: unquoted non-ASCII paths;
@@ -108,7 +110,7 @@ fn lang_slice() {
     let (exam, tip) = super::exam_of_corpus(&name);
     let (files, excluded) = walk(exam, &corpus_repo(&name, tip), tip);
     freeze(
-        &format!("lang-slice-{name}"),
+        &SLICES.file(exam, &name),
         &json!({
             "schema": SLICE_SCHEMA,
             "corpus": {"name": name, "tip": tip, "lang": exam.lang},
@@ -169,13 +171,13 @@ fn lang_sample() {
     let exam = super::exam(&env("CE_LANG"));
     let (mut pool, mut sources) = (Vec::new(), Vec::new());
     for (name, tip) in exam.corpora {
-        let slice = load(&eval_doc(&format!("lang-slice-{name}")));
+        let slice = SLICES.load(exam, name);
         pool.extend(corpus_pool(exam, name, tip, &slice));
         sources.push(super::source_row(name, &slice));
     }
-    let draw = super::draw(&pool);
+    let draw = super::draw::draw(&pool);
     freeze(
-        &format!("lang-sample-{}", exam.lang),
+        &SAMPLES.file(exam, exam.lang),
         &json!({
             "schema": SAMPLE_SCHEMA,
             "lang": exam.lang,
@@ -200,9 +202,9 @@ fn lang_sample() {
 fn lang_precision() {
     let name = env("CE_LANG_CORPUS");
     let (exam, tip) = super::exam_of_corpus(&name);
-    let slice = load(&eval_doc(&format!("lang-slice-{name}")));
-    let sample = load(&eval_doc(&format!("lang-sample-{}", exam.lang)));
-    let review = AUDIT_TABLES.load(&name);
+    let slice = SLICES.load(exam, &name);
+    let sample = exam.sample();
+    let review = AUDIT_TABLES.load(exam, &name);
     verify_review(exam, &name, &review, &sample);
     let repo = corpus_repo(&name, tip);
     let texts = frozen_texts(exam, &name, tip, &slice);
@@ -233,5 +235,5 @@ fn lang_precision() {
         doc["r0_disposition"] = json!(why);
     }
     super::precision::verify_precision(exam, &name, &doc, &sample);
-    freeze(&PRECISION_DOCS.stem(&name), &doc);
+    freeze(&PRECISION_DOCS.file(exam, &name), &doc);
 }

@@ -1,5 +1,5 @@
 //! The frozen precision-doc verifier of the v2.30 language exams: one
-//! corpus's scored sample (`lang-precision-<corpus>-v1.json`) against
+//! corpus's scored sample (`lang-precision-<corpus>-v<g>.json`) against
 //! the frozen sample it answers, the frozen audit whose truths it
 //! echoes and the frozen universe its ledger must equal — every number
 //! re-derived through the scorer's own functions (score.rs, G1). Split
@@ -9,8 +9,8 @@
 use super::score::{PRECISION_SCHEMA, ledger, shape_of, summary};
 use crate::eval_graph_precision_parts::verdict_of;
 use crate::eval_lang_parts::review::ECHO;
-use crate::eval_lang_parts::{AUDIT_TABLES, Exam, slice_constants};
-use crate::eval_support::{MIN_WHY, eval_doc, load, of_corpus, sum_obj_into, tally_add};
+use crate::eval_lang_parts::{AUDIT_TABLES, Exam, SLICES, slice_constants};
+use crate::eval_support::{MIN_WHY, of_corpus, sum_obj_into, tally_add};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
@@ -33,7 +33,7 @@ pub fn verify_precision(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) 
         doc["generated_from"]["commit"].is_string(),
         "{corpus}: generated_from"
     );
-    let review = AUDIT_TABLES.load(corpus);
+    let review = AUDIT_TABLES.load(exam, corpus);
     let rows = doc["rows"].as_array().expect("rows");
     let sampled = of_corpus(sample["rows"].as_array().expect("rows"), corpus);
     assert_eq!(rows.len(), sampled.len(), "{corpus}: judged row count (G3)");
@@ -64,13 +64,13 @@ pub fn verify_precision(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) 
         summary(rows),
         "{corpus}: summary drifted from rows (G1)"
     );
-    verify_universe(corpus, doc);
+    verify_universe(exam, corpus, doc);
     verify_gaps(corpus, doc, &review);
 }
 
 /// The ledger's rates re-derived from its tallies, the tallies equal to
 /// the frozen slice kind by kind, and the RG1 trigger honoured.
-fn verify_universe(corpus: &str, doc: &Value) {
+fn verify_universe(exam: &Exam, corpus: &str, doc: &Value) {
     let u = &doc["universe"];
     let (mut by, mut refused) = (BTreeMap::new(), BTreeMap::new());
     sum_obj_into(&u["resolution_by"], &mut by);
@@ -80,7 +80,7 @@ fn verify_universe(corpus: &str, doc: &Value) {
         let (cell, _) = key.rsplit_once('/').expect("lang/kind/outcome");
         tally_add(&mut per_kind, cell, *n);
     }
-    let slice = load(&eval_doc(&format!("lang-slice-{corpus}")));
+    let slice = SLICES.load(exam, corpus);
     assert_eq!(
         json!(per_kind),
         slice["summary"]["sites_by"],

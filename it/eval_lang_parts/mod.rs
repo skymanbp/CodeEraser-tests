@@ -1,6 +1,7 @@
 //! The v2.30 language exams (booklet language-expansion.md §11, §14
-//! item 14; registry docs/EVAL-SET-LANGS.md): the exam table and the
-//! per-language hash-ranked draw — ONE binding for the `#[ignore]`
+//! item 14; registry docs/EVAL-SET-LANGS.md): the exam table, its doc
+//! families and the pre-registered constants, with the per-language
+//! hash-ranked draw in draw.rs — ONE binding for the `#[ignore]`
 //! generators (generate.rs) and the CI gates (eval_lang.rs, through
 //! the verifier in verify.rs), the G1
 //! discipline of the M5-2 sample this re-instantiates per language.
@@ -8,6 +9,7 @@
 //! (eval_support::identity_hash, the M5-2 payload order), seats are
 //! integer largest remainder (eval_support::largest_remainder).
 
+pub mod draw;
 pub mod generate;
 pub mod precision;
 pub mod review;
@@ -15,11 +17,8 @@ pub mod score;
 pub mod tamper;
 pub mod verify;
 
-use crate::eval_support::{
-    UniverseFamily, eval_doc, identity_hash, largest_remainder, load, site_summary,
-};
+use crate::eval_support::{UniverseFamily, eval_doc_path, eval_doc_v, load, site_summary};
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
 
 /// One language's exam: its corpora at their pinned tips, the file
 /// extensions its universe walks, the pathspec of the rungs that
@@ -27,7 +26,11 @@ use std::collections::BTreeMap;
 /// audit is frozen — flipped by the commit that files the tables —
 /// and whether its ladder is scored — flipped by the commit that
 /// files the precision docs — so a doc that vanishes is named, not
-/// read as pending.
+/// read as pending; and the generation every doc of the exam carries.
+/// A re-freeze (the detector reading more of the language, a new tip)
+/// counts it up and retires the old generation by name in
+/// docs/EVAL-SET-LANGS.md: the ordering gate reads a doc's first
+/// commit (intro_commit), which a doc rewritten in place would keep.
 pub struct Exam {
     pub lang: &'static str,
     pub corpora: &'static [(&'static str, &'static str)],
@@ -35,6 +38,7 @@ pub struct Exam {
     pub ladder: &'static str,
     pub audited: bool,
     pub scored: bool,
+    pub generation: u32,
 }
 
 impl Exam {
@@ -55,7 +59,7 @@ impl Exam {
     /// one reading).
     pub fn filed(&self, docs: &Docs, flag: bool) -> bool {
         for (corpus, _) in self.corpora {
-            let path = docs.path(corpus);
+            let path = docs.path(self, corpus);
             let present = crate::common::repo_root().join(&path).exists();
             assert_eq!(
                 present, flag,
@@ -64,29 +68,43 @@ impl Exam {
         }
         flag
     }
+
+    /// The exam's frozen sample, its one per-language doc.
+    pub fn sample(&self) -> Value {
+        SAMPLES.load(self, self.lang)
+    }
 }
 
-/// A per-corpus doc family of the exams, `<family>-<corpus>-v1.json`:
-/// its stem (what eval_doc and the ordering legs take), its
-/// repo-relative path (what the ordering gate's git facts read) and
-/// its load — one spelling for all three.
+/// A doc family of the exams, `<family>-<key>-v<generation>.json`: the
+/// key a corpus (the universes, the audit tables, the precision docs)
+/// or the language (the sample), the generation the exam's. Its
+/// repo-relative path is what the ordering gate's git facts read, its
+/// file what a gate opens and a generator freezes — one spelling
+/// (eval_doc_v) for both.
 pub struct Docs(pub &'static str);
 
 impl Docs {
-    pub fn stem(&self, corpus: &str) -> String {
-        format!("{}-{corpus}", self.0)
+    pub fn path(&self, exam: &Exam, key: &str) -> String {
+        eval_doc_path(&self.stem(key), exam.generation)
     }
 
-    pub fn path(&self, corpus: &str) -> String {
-        format!("contracts/eval/{}-v1.json", self.stem(corpus))
+    pub fn file(&self, exam: &Exam, key: &str) -> String {
+        eval_doc_v(&self.stem(key), exam.generation)
     }
 
-    pub fn load(&self, corpus: &str) -> Value {
-        load(&eval_doc(&self.stem(corpus)))
+    pub fn load(&self, exam: &Exam, key: &str) -> Value {
+        load(&self.file(exam, key))
+    }
+
+    fn stem(&self, key: &str) -> String {
+        format!("{}-{key}", self.0)
     }
 }
 
-/// The blind audit tables (review.rs) and the precision docs (score.rs).
+/// The frozen universes, the samples, the blind audit tables
+/// (review.rs) and the precision docs (score.rs).
+pub const SLICES: Docs = Docs(SLICE.family);
+pub const SAMPLES: Docs = Docs("lang-sample");
 pub const AUDIT_TABLES: Docs = Docs("lang-review");
 pub const PRECISION_DOCS: Docs = Docs("lang-precision");
 
@@ -98,6 +116,9 @@ pub const PRECISION_DOCS: Docs = Docs("lang-precision");
 /// application apiece: a package reaches its own files by module name,
 /// an application by path (`dofile`, `source`). The R ladder is a
 /// directory of its own — a `r*` pathspec would hold the Rust rungs.
+/// Lua's exam is at its second generation: the first was frozen before
+/// the detector read a load under protection (`pcall(require, "x")`,
+/// graph/spec.rs LUA_PROTECTED).
 pub const EXAMS: [Exam; 3] = [
     Exam {
         lang: "java",
@@ -109,6 +130,7 @@ pub const EXAMS: [Exam; 3] = [
         ladder: "cli/src/graph/ladder/java*",
         audited: true,
         scored: true,
+        generation: 1,
     },
     Exam {
         lang: "lua",
@@ -118,8 +140,9 @@ pub const EXAMS: [Exam; 3] = [
         ],
         exts: &["lua"],
         ladder: "cli/src/graph/ladder/lua*",
-        audited: true,
+        audited: false,
         scored: false,
+        generation: 2,
     },
     Exam {
         lang: "r",
@@ -131,6 +154,7 @@ pub const EXAMS: [Exam; 3] = [
         ladder: "cli/src/graph/ladder/r/",
         audited: true,
         scored: false,
+        generation: 1,
     },
 ];
 
@@ -208,79 +232,4 @@ pub fn source_row(name: &str, slice: &Value) -> Value {
         "tip": slice["corpus"]["tip"],
         "total_sites": slice["summary"]["total_sites"],
     })
-}
-
-/// Kind quotas from the pool's per-kind counts: each kind first takes
-/// min(MIN_PER_KIND, pool), the seats left go by largest remainder
-/// over what each kind has left, so no quota exceeds its pool.
-pub fn quotas(pool: &BTreeMap<String, u64>) -> BTreeMap<String, u64> {
-    let floor: BTreeMap<String, u64> = pool
-        .iter()
-        .map(|(k, n)| (k.clone(), (*n).min(MIN_PER_KIND)))
-        .collect();
-    let rest: BTreeMap<String, u64> = pool
-        .iter()
-        .map(|(k, n)| (k.clone(), n - floor[k]))
-        .collect();
-    let seats = TOTAL
-        .saturating_sub(floor.values().sum())
-        .min(rest.values().sum());
-    let extra = largest_remainder(&rest, seats);
-    floor
-        .into_iter()
-        .map(|(k, f)| {
-            let e = extra[&k];
-            (k, f + e)
-        })
-        .collect()
-}
-
-/// One sample row: the pool row plus both domain hashes.
-pub fn ranked(site: &Value) -> Value {
-    let mut row = site.clone();
-    row["rank"] = json!(identity_hash(SITE_DOMAIN, site, &FIELDS));
-    row["audit"] = json!(identity_hash(AUDIT_DOMAIN, site, &FIELDS));
-    row
-}
-
-/// The frozen draw.
-pub struct Draw {
-    pub allocation: BTreeMap<String, u64>,
-    pub primary: Vec<Value>,
-    pub backups: Vec<Value>,
-}
-
-fn by_hash<'a>(row: &'a Value, domain: &str) -> &'a str {
-    row[domain].as_str().expect("hash")
-}
-
-/// Within each kind the site-domain rank picks the quota; the primaries
-/// are then stored in audit-domain order (the auditor never sees rank
-/// order), and each kind's backups are the audit-domain rank over its
-/// unpicked rest, stored kind by kind.
-pub fn draw(pool: &[Value]) -> Draw {
-    let mut by_kind: BTreeMap<String, Vec<Value>> = BTreeMap::new();
-    for site in pool {
-        let kind = site["kind"].as_str().expect("kind").to_string();
-        by_kind.entry(kind).or_default().push(ranked(site));
-    }
-    let counts = by_kind
-        .iter()
-        .map(|(k, v)| (k.clone(), v.len() as u64))
-        .collect();
-    let allocation = quotas(&counts);
-    let (mut primary, mut backups) = (Vec::new(), Vec::new());
-    for (kind, mut rows) in by_kind {
-        rows.sort_by(|a, b| by_hash(a, "rank").cmp(by_hash(b, "rank")));
-        let mut rest = rows.split_off(allocation[&kind] as usize);
-        rest.sort_by(|a, b| by_hash(a, "audit").cmp(by_hash(b, "audit")));
-        primary.extend(rows);
-        backups.extend(rest.into_iter().take(BACKUP_PER_KIND as usize));
-    }
-    primary.sort_by(|a, b| by_hash(a, "audit").cmp(by_hash(b, "audit")));
-    Draw {
-        allocation,
-        primary,
-        backups,
-    }
 }

@@ -82,6 +82,7 @@ mod eval_labels;
 mod eval_lang;
 mod eval_lang_parts;
 mod eval_lang_precision;
+mod eval_lang_review;
 mod eval_mention;
 mod eval_similar_precision;
 mod eval_similar_precision_parts;

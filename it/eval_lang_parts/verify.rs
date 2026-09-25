@@ -4,7 +4,7 @@
 //! verdicts): a sample re-derived from its frozen slices, row by row.
 
 use crate::eval_lang_parts::{self as parts, Exam};
-use crate::eval_support::{eval_doc, identity_hash, load};
+use crate::eval_support::identity_hash;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 fn slices(exam: &Exam) -> Vec<(&'static str, Value)> {
     exam.corpora
         .iter()
-        .map(|(name, _)| (*name, load(&eval_doc(&format!("lang-slice-{name}")))))
+        .map(|(name, _)| (*name, parts::SLICES.load(exam, name)))
         .collect()
 }
 
@@ -129,7 +129,7 @@ fn verify_envelope(
         .collect();
     assert_eq!(doc["sources"], json!(sources), "{lang}: sources drifted");
     let pool = pool_counts(exam);
-    let allocation = parts::quotas(&pool);
+    let allocation = parts::draw::quotas(&pool);
     assert_eq!(
         doc["allocation"],
         json!(allocation),

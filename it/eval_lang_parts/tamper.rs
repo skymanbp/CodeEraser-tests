@@ -6,7 +6,7 @@
 //! before the clone gate paired them.
 
 use super::{Docs, EXAMS, Exam};
-use crate::eval_support::{assert_tampering_refused, doc_refused, eval_doc, load};
+use crate::eval_support::{assert_tampering_refused, doc_refused};
 use serde_json::Value;
 
 /// The pristine doc passes; a forged path or spec on row 0, each of the
@@ -39,8 +39,8 @@ pub fn tamper_battery(
 ) -> (Value, impl Fn(&Value) -> bool) {
     let exam = &EXAMS[0];
     let (corpus, _) = exam.corpora[1];
-    let sample = load(&eval_doc(&format!("lang-sample-{}", exam.lang)));
-    let pristine = docs.load(corpus);
+    let sample = exam.sample();
+    let pristine = docs.load(exam, corpus);
     let check = move |doc: &Value| verify(exam, corpus, doc, &sample);
     assert_exam_tampering(&pristine, extra, &check);
     (pristine, move |doc: &Value| doc_refused(doc, &check))

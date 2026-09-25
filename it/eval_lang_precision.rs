@@ -1,6 +1,6 @@
 //! The v2.30 language exams' scoring gates (booklet
 //! language-expansion.md §11; registry docs/EVAL-SET-LANGS.md): per
-//! scored corpus a precision doc (`lang-precision-<corpus>-v1.json`) —
+//! scored corpus a precision doc (`lang-precision-<corpus>-v<g>.json`) —
 //! the frozen sample resolved by the shipped ladder and judged against
 //! the frozen blind audit, generated after both (lang_provenance.rs).
 //! No git, no corpus clone: every number re-derives from the frozen
@@ -9,15 +9,9 @@
 use crate::eval_lang_parts::precision::verify_precision;
 use crate::eval_lang_parts::score::{GATE, scored};
 use crate::eval_lang_parts::tamper::tamper_battery;
-use crate::eval_lang_parts::{EXAMS, PRECISION_DOCS};
-use crate::eval_support::{
-    assert_corpus_precision, assert_corpus_set, correct_wrong, eval_doc, load,
-};
+use crate::eval_lang_parts::{EXAMS, PRECISION_DOCS, SLICES, exam_of_corpus};
+use crate::eval_support::{assert_corpus_precision, assert_corpus_set, correct_wrong};
 use serde_json::{Map, Value, json};
-
-fn sample_of(lang: &str) -> Value {
-    load(&eval_doc(&format!("lang-sample-{lang}")))
-}
 
 /// Every scored exam: the frozen set is exactly the scored exams'
 /// corpora (G10) — and a language is scored only once audited — each
@@ -34,10 +28,10 @@ fn lang_precision_contract() {
     corpora.sort();
     assert_corpus_set(PRECISION_DOCS.0, &corpora);
     for exam in EXAMS.iter().filter(|e| e.scored) {
-        let sample = sample_of(exam.lang);
+        let sample = exam.sample();
         let (mut c, mut w) = (0, 0);
         for (corpus, _) in exam.corpora {
-            let doc = PRECISION_DOCS.load(corpus);
+            let doc = PRECISION_DOCS.load(exam, corpus);
             verify_precision(exam, corpus, &doc, &sample);
             let (dc, dw) = correct_wrong(&doc);
             let truths = doc["summary"]["in_corpus_truths"]
@@ -135,7 +129,7 @@ fn first(tally: &Value) -> (String, u64) {
 /// answered at R1 — the RG1 "cowardly precision" shape, consistent in
 /// every other respect, so only the trigger can refuse it.
 fn all_first_rung(corpus: &str) -> Value {
-    let slice = load(&eval_doc(&format!("lang-slice-{corpus}")));
+    let slice = SLICES.load(exam_of_corpus(corpus).0, corpus);
     let sites = slice["summary"]["sites_by"].as_object().expect("sites_by");
     let by: Map<String, Value> = sites
         .iter()

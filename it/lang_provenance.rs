@@ -7,14 +7,15 @@
 //! fetch-depth: 0 and a shallow clone refuses loudly.
 
 use crate::eval_lang_parts::review::audited;
-use crate::eval_lang_parts::{AUDIT_TABLES, EXAMS, Exam, PRECISION_DOCS};
+use crate::eval_lang_parts::{AUDIT_TABLES, EXAMS, Exam, PRECISION_DOCS, SAMPLES};
 use crate::eval_support::{
     assert_all_postdate, assert_docs_postdate_audits, assert_resolver_after_audits, git_in,
     intro_commit, require_full_history,
 };
 
-fn sample_path(exam: &Exam) -> String {
-    format!("contracts/eval/lang-sample-{}-v1.json", exam.lang)
+/// The first commit of an exam's frozen sample, at its generation.
+fn sampled(exam: &Exam) -> String {
+    intro_commit(&SAMPLES.path(exam, exam.lang))
 }
 
 fn exists(path: &str) -> bool {
@@ -31,7 +32,7 @@ fn audits(exam: &Exam) -> Option<Vec<String>> {
     Some(
         exam.corpora
             .iter()
-            .map(|(c, _)| intro_commit(&AUDIT_TABLES.path(c)))
+            .map(|(c, _)| intro_commit(&AUDIT_TABLES.path(exam, c)))
             .collect(),
     )
 }
@@ -42,11 +43,11 @@ fn audits(exam: &Exam) -> Option<Vec<String>> {
 fn lang_sample_audit_scoring_ordered() {
     require_full_history();
     for exam in &EXAMS {
-        let sample = intro_commit(&sample_path(exam));
+        let sample = sampled(exam);
         let Some(audits) = audits(exam) else {
             for (corpus, _) in exam.corpora {
                 assert!(
-                    !exists(&PRECISION_DOCS.path(corpus)),
+                    !exists(&PRECISION_DOCS.path(exam, corpus)),
                     "{corpus}: scored while its audit is pending (G13)"
                 );
             }
@@ -57,13 +58,13 @@ fn lang_sample_audit_scoring_ordered() {
             &audits,
             &format!("{}: an audit table predates the sample (G13)", exam.lang),
         );
-        let stems: Vec<String> = exam
+        let docs: Vec<String> = exam
             .corpora
             .iter()
-            .filter(|(c, _)| exists(&PRECISION_DOCS.path(c)))
-            .map(|(c, _)| PRECISION_DOCS.stem(c))
+            .filter(|(c, _)| exists(&PRECISION_DOCS.path(exam, c)))
+            .map(|(c, _)| PRECISION_DOCS.file(exam, c))
             .collect();
-        assert_docs_postdate_audits(&audits, &stems, "scored before the audit froze (G13)");
+        assert_docs_postdate_audits(&audits, &docs, "scored before the audit froze (G13)");
     }
 }
 
@@ -74,7 +75,7 @@ fn lang_sample_audit_scoring_ordered() {
 fn lang_audit_precedes_the_ladder() {
     require_full_history();
     for exam in &EXAMS {
-        let sample = intro_commit(&sample_path(exam));
+        let sample = sampled(exam);
         match audits(exam) {
             Some(audits) => assert_resolver_after_audits(&sample, &audits, exam.ladder, exam.lang),
             None => {
