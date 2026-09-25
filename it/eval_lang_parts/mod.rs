@@ -141,7 +141,7 @@ pub const EXAMS: [Exam; 3] = [
         exts: &["lua"],
         ladder: "cli/src/graph/ladder/lua*",
         audited: true,
-        scored: false,
+        scored: true,
         generation: 2,
     },
     Exam {
@@ -153,7 +153,7 @@ pub const EXAMS: [Exam; 3] = [
         exts: &["R", "r"],
         ladder: "cli/src/graph/ladder/r/",
         audited: true,
-        scored: false,
+        scored: true,
         generation: 1,
     },
 ];
