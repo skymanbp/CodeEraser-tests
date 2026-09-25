@@ -140,7 +140,7 @@ pub const EXAMS: [Exam; 3] = [
         ],
         exts: &["lua"],
         ladder: "cli/src/graph/ladder/lua*",
-        audited: false,
+        audited: true,
         scored: false,
         generation: 2,
     },
