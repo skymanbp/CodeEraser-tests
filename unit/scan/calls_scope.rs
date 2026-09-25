@@ -98,6 +98,31 @@ class A {
         class L { void m() {} }
     }
 }
+====
+lua @@ g -> g @@ a Lua local is in scope only past its declaration statement (manual §3.5): inside `local g = function() … end` the `g` is whatever `g` was before — while a local declared first and assigned after is the one its body calls
+local g = function() return g() end
+----
+local g
+g = function() return g() end
+====
+lua @@ a -> helper @@ a local declared further down is not yet in scope for the function above it, while one declared before it is
+local function a() return helper() end
+local function helper() end
+----
+local function helper() end
+local function a() return helper() end
+====
+lua @@ M.a -> b @@ a table is no class: inside `M.a` a bare `b()` never reaches the member `M.b`, while a local `b` the block declares is the one it calls
+function M.a() return b() end
+function M.b() end
+----
+local function b() end
+function M.a() return b() end
+====
+r @@ obj$step -> obj$step @@ an R member reaches only the object the caller's own name spells: `other$step()` inside `obj$step` is some other object's, `obj$step()` is its own
+obj$step <- function(n) other$step(n)
+----
+obj$step <- function(n) obj$step(n)
 "#;
 
 #[test]

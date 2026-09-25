@@ -134,6 +134,29 @@ x/FooTests.java f/0 ⇒ T
 x/FooTestCase.java f/0 ⇒ T
 x/Test.java f/0 ⇒ -
 x/Contest.java f/0 ⇒ -
+# Lua: no program entry by name; the metamethods and the plugin
+# entries are Protocol, a member judged by its last segment; LÖVE's
+# callbacks only in main.lua or conf.lua; busted's `_spec` and the
+# `_test` suffix are tests, the star non-empty
+a.lua main/0 ⇒ -
+a.lua __index/2 ⇒ P
+a.lua M.__call/1 ⇒ P
+a.lua M.setup/1 ⇒ P
+a.lua M:on_attach/2 ⇒ P
+main.lua love.draw/0 ⇒ P
+game/conf.lua love.conf/1 ⇒ P
+a.lua love.draw/0 ⇒ -
+x/foo_spec.lua f/0 ⇒ T
+x/foo_test.lua f/0 ⇒ T
+x/_spec.lua f/0 ⇒ -
+# R: the app entries a host calls are Protocol; testthat's `test-` and
+# `test_` files under either extension case are tests
+app.R server/3 ⇒ P
+a.R run_app/0 ⇒ P
+a.R helper/0 ⇒ -
+x/test-foo.R f/0 ⇒ T
+x/test_foo.r f/0 ⇒ T
+x/test-.R f/0 ⇒ -
 ";
 
 #[test]

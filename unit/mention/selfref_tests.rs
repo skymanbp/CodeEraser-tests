@@ -10,7 +10,8 @@
 //! blank line, a Doxygen command or a `{@code}` in a plain comment, a
 //! `<pref>` tag that is not `<pre>`, an indented line that wraps a
 //! paragraph, a run whose every line shares one indent, an indented
-//! haddock line.
+//! haddock line, the text a Lua or R doc run holds outside its
+//! `@usage` / `@examples` section, a plain R comment.
 
 use super::SelfText;
 use crate::testutil::scratch;
@@ -98,6 +99,26 @@ a.java ind ⇒ + | /**\n * Example:\n *\n *     ind();\n */\nclass A {}\n
 a.java prose ⇒ - | /** prose() in words */\nclass A {}\n
 a.java plain ⇒ - | /* {@code plain()} */\nclass A {}\n
 a.java pref ⇒ - | /** <pref>pref()</pref> */\nclass A {}\n
+# Lua / R: every string (a Lua long string and an R raw one
+# included); LDoc's `@usage` section — on its tag line or below it,
+# in a `---` run or a long comment, to the next tag — and roxygen's
+# `@examples` and `@examplesIf`; prose, the text past the section's
+# next tag and a plain R comment do not
+a.lua dyn ⇒ + | local f = _G["dyn"]\n
+a.lua long ⇒ + | local s = [==[long()]==]\n
+a.lua plain ⇒ - | -- plain()\nlocal function plain() end\n
+a.lua use ⇒ + | --- Summary.\n-- @usage use(1)\nfunction M.use() end\n
+a.lua below ⇒ + | --- Summary.\n-- @usage\n--   below(1)\n-- @param x\nfunction M.below(x) end\n
+a.lua after ⇒ - | --- Summary.\n-- @usage x()\n-- @param after the thing\nfunction M.after() end\n
+a.lua blk ⇒ + | --[[-- Summary.\n@usage blk()\n]]\nfunction M.blk() end\n
+a.lua prose ⇒ - | --- prose() in words\nfunction M.prose() end\n
+a.R get ⇒ + | x <- get("get")\n
+a.R raw ⇒ + | x <- r"(raw)"\n
+a.R ex ⇒ + | #' Title\n#' @examples\n#' ex(1)\n#' @export\nex <- function(x) x\n
+a.R cond ⇒ + | #' @examplesIf interactive()\n#' cond(1)\ncond <- function(x) x\n
+a.R tagged ⇒ - | #' @examples\n#' y()\n#' @param tagged the x\nf <- function(x) x\n
+a.R plain ⇒ - | # @examples\n# plain()\nplain <- function() 1\n
+a.R prose ⇒ - | #' prose() in words\nprose <- function() 1\n
 "#;
 
 /// A stray byte decodes lossily, as the index side decoded the file

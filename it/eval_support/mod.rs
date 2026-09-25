@@ -36,17 +36,12 @@ use codeeraser::scan::lang::Lang;
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// Manifest lang codes and file extensions share one vocabulary.
+/// Manifest lang codes and file extensions share one vocabulary, so a
+/// code is read through the product's own path table — and refused
+/// unless it names a judged language.
 pub fn lang_of(code: &str) -> Lang {
-    match code {
-        "py" => Lang::Python,
-        "ts" => Lang::TypeScript,
-        "rs" => Lang::Rust,
-        "go" => Lang::Go,
-        "md" => Lang::Markdown,
-        "java" => Lang::Java,
-        other => panic!("unexpected lang {other}"),
-    }
+    Lang::judged_path(std::path::Path::new(&format!("x.{code}")))
+        .unwrap_or_else(|| panic!("unexpected lang {code}"))
 }
 
 /// The four ground-truth line classes, in canonical order.

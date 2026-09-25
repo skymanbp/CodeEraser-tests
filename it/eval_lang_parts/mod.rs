@@ -93,18 +93,46 @@ pub const PRECISION_DOCS: Docs = Docs("lang-precision");
 /// Every language whose exam is frozen, in landing order; a language
 /// joins with its step (booklet §13) and never leaves. A second corpus
 /// joins when the first holds none of a site kind: gson has no wildcard
-/// import (its style guide forbids them), jsoup brings them.
-pub const EXAMS: [Exam; 1] = [Exam {
-    lang: "java",
-    corpora: &[
-        ("gson", "854c8255b625cf1e13c701a83ea9ccb4caaa576a"),
-        ("jsoup", "093e2f58492c531667e551e8793513a41b22443e"),
-    ],
-    exts: &["java"],
-    ladder: "cli/src/graph/ladder/java*",
-    audited: true,
-    scored: true,
-}];
+/// import (its style guide forbids them), jsoup brings them. Lua and R
+/// take two from the start (booklet §14 item 17), a package and an
+/// application apiece: a package reaches its own files by module name,
+/// an application by path (`dofile`, `source`). The R ladder is a
+/// directory of its own — a `r*` pathspec would hold the Rust rungs.
+pub const EXAMS: [Exam; 3] = [
+    Exam {
+        lang: "java",
+        corpora: &[
+            ("gson", "854c8255b625cf1e13c701a83ea9ccb4caaa576a"),
+            ("jsoup", "093e2f58492c531667e551e8793513a41b22443e"),
+        ],
+        exts: &["java"],
+        ladder: "cli/src/graph/ladder/java*",
+        audited: true,
+        scored: true,
+    },
+    Exam {
+        lang: "lua",
+        corpora: &[
+            ("luarocks", "2d2cc8eff2f03c23d142f8059146fb241dcf56b5"),
+            ("koreader", "d9cd2788e4ec023b8fbf60b0982e831c82d15a44"),
+        ],
+        exts: &["lua"],
+        ladder: "cli/src/graph/ladder/lua*",
+        audited: false,
+        scored: false,
+    },
+    Exam {
+        lang: "r",
+        corpora: &[
+            ("stringr", "ae054b1d28f630fee22ddb3cb7525396e62af4fe"),
+            ("covid19model", "fcc30e2b8d046ddf3ef10dfc222e42b5cd732622"),
+        ],
+        exts: &["R", "r"],
+        ladder: "cli/src/graph/ladder/r/",
+        audited: false,
+        scored: false,
+    },
+];
 
 pub const SLICE_SCHEMA: &str = "ce.eval-lang-slice/1.0.0";
 pub const SAMPLE_SCHEMA: &str = "ce.eval-lang-sample/1.0.0";

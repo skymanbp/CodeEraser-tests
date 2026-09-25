@@ -32,6 +32,8 @@ mod coc_c;
 mod coc_haskell;
 mod coc_headers;
 mod coc_java;
+mod coc_lua;
+mod coc_r;
 mod coc_recursion;
 mod coldstart_state;
 mod common;

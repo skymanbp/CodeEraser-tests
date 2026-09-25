@@ -167,6 +167,18 @@ enum E {
     B { int m(int n) { return 0; } };
     abstract int m(int n);
 }
+====
+lua @@ f -> f, M.p -> M.p, M:q -> M:q, spin -> spin @@ a Lua `local function` sees itself (its name is bound before its body, manual §3.4.11); `M.p()` and `self:q()` reach the members of the table the caller's own name spells, and `self:` inside a table constructor's field reaches that table's fields
+local function f(n) return f(n - 1) end
+function M.p(n) return M.p(n) end
+function M:q() return self:q() end
+local t = { spin = function(self) return self:spin() end }
+====
+r @@ fact -> fact, obj$step -> obj$step, ping -> pong, pong -> ping @@ R: a bare call reaches the function its assignment names, and `obj$step()` inside `obj$step` the member the caller's own name spells
+fact <- function(n) if (n <= 1) 1 else n * fact(n - 1)
+obj$step <- function(n) obj$step(n)
+ping <- function(n) pong(n)
+pong <- function(n) ping(n)
 "#;
 
 /// `caller -> callee, caller -> callee` as name pairs; `none` = none.

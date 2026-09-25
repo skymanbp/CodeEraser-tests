@@ -183,6 +183,41 @@ const CASES: &[Case] = &[
          superclass's method, Java's commonest delegation, and pays \
          nothing",
     ],
+    [
+        "coc-recursion-lua",
+        "--- walk.lua\n\
+         local M = {}\n\
+         local function fact(n) if n <= 1 then return 1 end return n * fact(n - 1) end\n\
+         local shadow = function(n) return shadow(n) end\n\
+         function M.up(n) return M.up(n) end\n\
+         function M:down(n) return self:down(n) end\n\
+         function M.a() return b() end\n\
+         function M.b() return M.a() end\n\
+         return M\n",
+        "M.a=0 M.b=0 M.up=1 M:down=1 fact=2 shadow=0",
+        "Lua, end to end through the core (plan v2.30 step 4): a \
+         `local function` sees itself, while `local shadow = function` \
+         does not — its body's `shadow` is the one bound before the \
+         statement (manual §3.5) — and a member reaches its own table's \
+         member through `M.` and `self:`. A table is no class, so the \
+         bare `b()` inside `M.a` is no call to `M.b`, and that pair \
+         closes no cycle",
+    ],
+    [
+        "coc-recursion-r",
+        "--- walk.R\n\
+         fact <- function(n) if (n <= 1) 1 else n * fact(n - 1)\n\
+         obj$step <- function(n) obj$step(n)\n\
+         ping <- function(n) pong(n)\n\
+         pong <- function(n) ping(n)\n\
+         lone <- function(n) lone\n",
+        "fact=3 lone=0 obj$step=1 ping=1 pong=1",
+        "R, end to end through the core: the if and its expression \
+         else pay their +1 apiece and the self-call one more; a member \
+         assigned onto `obj` reaches itself through `obj$`; a mutual \
+         pair pays one apiece; a function that names itself without \
+         calling closes nothing",
+    ],
 ];
 
 #[test]

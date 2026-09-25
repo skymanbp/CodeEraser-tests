@@ -4,10 +4,11 @@ use super::*;
 /// are frozen (RM15), and the boundary splits where the plan says:
 /// the seven launch codes 0..6 (Markdown grammar-less but judged),
 /// the sentinel 7, the v2.5 size-only arm 8..14, and the plan v2.30
-/// codes 15..20 — C and C++ judged since step 2, Java since step 3, the
-/// other three still reserved: rows without an extension, never
-/// produced by from_path, outside the judged mask and grammar-less
-/// until their own step wires them (language-expansion.md §13).
+/// codes 15..20 — C and C++ judged since step 2, Java since step 3, Lua
+/// and R since step 4, and Ruby still reserved (out of v2.30, booklet
+/// §14 item 13): a row without an extension, never produced by
+/// from_path, outside the judged mask and grammar-less
+/// (language-expansion.md §13).
 #[test]
 fn langs_table_is_total_and_the_boundary_holds() {
     assert_eq!(LANGS.len(), 21, "one row per variant");
@@ -18,7 +19,7 @@ fn langs_table_is_total_and_the_boundary_holds() {
     for &(l, exts, ..) in LANGS {
         assert!(!l.name().is_empty()); // row() is total
         let code = l as i64;
-        let reserved = matches!(l, Lang::Lua | Lang::Ruby | Lang::R);
+        let reserved = l == Lang::Ruby;
         assert_eq!(
             l.scan_only(),
             (8..=14).contains(&code) || reserved,
@@ -39,19 +40,31 @@ fn langs_table_is_total_and_the_boundary_holds() {
             "{l:?}"
         );
     }
-    // the ten judged languages: bits 0..6 plus C (15), C++ (16) and
-    // Java (18) — the echo-pinned mask is a pure summary of the
-    // scan_only column
+    // the twelve judged languages: bits 0..6 plus C (15), C++ (16), Lua
+    // (17), Java (18) and R (20) — the echo-pinned mask is a pure
+    // summary of the scan_only column
     assert_eq!(
         Lang::judged_mask(),
-        0b111_1111 | (1 << 15) | (1 << 16) | (1 << 18)
+        0b111_1111 | (1 << 15) | (1 << 16) | (1 << 17) | (1 << 18) | (1 << 20)
     );
+}
+
+/// The boundary as a path meets it: a size-only extension is sized and
+/// never judged, every judged extension reaches its language (R under
+/// either case), a header reads as C++, and a reserved language has no
+/// extension yet.
+#[test]
+fn paths_reach_their_languages() {
     let js = Path::new("a.js");
     assert_eq!(Lang::from_path(js), Some(Lang::JavaScript));
     assert_eq!(Lang::judged_path(js), None, "sized, never judged");
     assert_eq!(Lang::judged_path(Path::new("a.md")), Some(Lang::Markdown));
     assert_eq!(Lang::judged_path(Path::new("a.c")), Some(Lang::C));
     assert_eq!(Lang::judged_path(Path::new("A.java")), Some(Lang::Java));
+    assert_eq!(Lang::judged_path(Path::new("a.lua")), Some(Lang::Lua));
+    for r in ["a.R", "a.r"] {
+        assert_eq!(Lang::judged_path(Path::new(r)), Some(Lang::R), "{r}");
+    }
     assert_eq!(
         Lang::judged_path(Path::new("a.h")),
         Some(Lang::Cpp),
