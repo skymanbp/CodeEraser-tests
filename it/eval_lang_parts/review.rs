@@ -22,10 +22,16 @@ pub fn audited(exam: &Exam) -> bool {
     exam.filed(&AUDIT_TABLES, exam.audited)
 }
 
+/// The site kinds a package directory answers, each with where the
+/// package keeps its frozen code under that directory: Java's
+/// on-demand import names the directory holding the package's files,
+/// R's package load the package root, whose code sits in `R/`.
+pub const PACKAGE_KINDS: [(&str, &str); 2] = [("import_star", ""), ("library", "R/")];
+
 /// What a truth names (the M5-2 vocabulary): a keyword; a frozen file
-/// of the corpus, `#Name` naming a member declared in it; or — for an
-/// on-demand import of a package only — the directory directly
-/// holding frozen files of that package.
+/// of the corpus, `#Name` naming a member declared in it; or — for a
+/// package-level site only — the package's directory (`.` is the
+/// corpus root), its code frozen where PACKAGE_KINDS says.
 fn class_of(truth: &str, kind: &str, files: &BTreeSet<String>) -> &'static str {
     if let Some(k) = TRUTH_KEYWORDS.iter().find(|k| **k == truth) {
         return k;
@@ -41,13 +47,21 @@ fn class_of(truth: &str, kind: &str, files: &BTreeSet<String>) -> &'static str {
             Some(_) => panic!("{truth}: no member name after `#`"),
         };
     }
-    let dir = format!("{truth}/");
-    let holds = files
+    let holds = PACKAGE_KINDS
         .iter()
-        .any(|f| f.strip_prefix(&dir).is_some_and(|rest| !rest.contains('/')));
+        .find(|(k, _)| *k == kind)
+        .is_some_and(|(_, code)| {
+            let dir = match truth {
+                "." => code.to_string(),
+                _ => format!("{truth}/{code}"),
+            };
+            files
+                .iter()
+                .any(|f| f.strip_prefix(&dir).is_some_and(|rest| !rest.contains('/')))
+        });
     assert!(
-        kind == "import_star" && holds,
-        "{truth}: no keyword, no frozen file, and a package directory answers an on-demand import only (this row: {kind})"
+        holds,
+        "{truth}: no keyword, no frozen file, and no package directory holding frozen code for this row's kind ({kind})"
     );
     "package"
 }
@@ -101,18 +115,29 @@ pub fn verify_review(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) {
     check_gaps(corpus, doc, &files);
 }
 
-/// Every site gap sits on a frozen file at a real line and carries its
-/// note.
+/// Every gap sits at a real line and carries its note, on the side of
+/// the frozen universe its list names: a site gap on a frozen file, a
+/// scope gap on a file the universe does not walk (luarocks' launcher
+/// `src/bin/luarocks` is Lua without the extension). Java's tables
+/// were filed before scope gaps existed and hold none.
 fn check_gaps(corpus: &str, doc: &Value, files: &BTreeSet<String>) {
-    for gap in doc["site_gaps"].as_array().expect("site_gaps") {
-        let path = gap["path"].as_str().expect("path");
-        assert!(
-            files.contains(path) && gap["line"].as_u64() >= Some(1),
-            "{corpus}: a site gap off the frozen universe ({path})"
-        );
-        assert!(
-            gap["note"].as_str().is_some_and(|n| !n.is_empty()),
-            "{corpus}: a site gap without its note"
-        );
+    let none = Vec::new();
+    for (field, frozen) in [("site_gaps", true), ("scope_gaps", false)] {
+        let gaps = match doc.get(field) {
+            Some(g) => g.as_array().unwrap_or_else(|| panic!("{corpus}: {field}")),
+            None if !frozen => &none,
+            None => panic!("{corpus}: no {field}"),
+        };
+        for gap in gaps {
+            let path = gap["path"].as_str().expect("path");
+            assert!(
+                files.contains(path) == frozen && gap["line"].as_u64() >= Some(1),
+                "{corpus}: a {field} entry on the wrong side of the frozen universe ({path})"
+            );
+            assert!(
+                gap["note"].as_str().is_some_and(|n| !n.is_empty()),
+                "{corpus}: a {field} entry without its note"
+            );
+        }
     }
 }

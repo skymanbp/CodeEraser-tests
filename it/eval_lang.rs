@@ -8,13 +8,13 @@
 //! one row to eval_lang_parts::EXAMS. No git, no corpus clone.
 
 use crate::eval_lang_parts::review;
-use crate::eval_lang_parts::review::verify_review;
+use crate::eval_lang_parts::review::{PACKAGE_KINDS, verify_review};
 use crate::eval_lang_parts::tamper::{assert_exam_tampering, tamper_battery};
 use crate::eval_lang_parts::verify::verify_sample;
 use crate::eval_lang_parts::{self as parts, AUDIT_TABLES, EXAMS, Exam};
 use crate::eval_support::{
-    assert_corpus_set, assert_envelope_core, doc_refused, eval_doc, lang_of, load, site_row,
-    sites_within_windows,
+    TRUTH_KEYWORDS, assert_corpus_set, assert_envelope_core, doc_refused, eval_doc, lang_of, load,
+    site_row, sites_within_windows,
 };
 use codeeraser::scan::lang::Lang;
 use serde_json::{Value, json};
@@ -124,10 +124,8 @@ fn lang_reviews_verify() {
 
 /// G9 for the audit tables: a truth off the frozen universe or out
 /// of the vocabulary, a drifted echo, a why under the floor, a
-/// dropped row, a swapped pair (the shared frame, tamper.rs), a
-/// package truth on a row that is no on-demand import, and a cooked
-/// summary — each refuses. jsoup's table is the one that holds a
-/// package truth to aim with.
+/// dropped row, a swapped pair (the shared frame, tamper.rs) and a
+/// cooked summary — each refuses.
 #[test]
 fn a_tampered_review_is_refused() {
     let (pristine, refused) = tamper_battery(
@@ -139,33 +137,106 @@ fn a_tampered_review_is_refused() {
             ("why", "a label, not a reason", "a why under the floor"),
         ],
     );
-    let package = pristine["rows"]
-        .as_array()
-        .expect("rows")
-        .iter()
-        // the one truth class spelled with a `/` and no `.java`
-        .find(|r| {
-            r["truth"]
-                .as_str()
-                .is_some_and(|t| t.contains('/') && !t.contains(".java"))
-        })
-        .expect("a package truth")["truth"]
-        .clone();
-    let mut misplaced = pristine.clone();
-    let row = misplaced["rows"]
+    let mut cooked = pristine.clone();
+    cooked["summary"]["external"] = json!(0);
+    assert!(refused(&cooked), "a cooked summary must refuse");
+}
+
+/// A package truth answers a package-level site only, its code where
+/// the language keeps it (review.rs PACKAGE_KINDS): moved onto a row
+/// of another kind it refuses, and so does the directory that holds
+/// a package's code standing in for the package (R's `R/`). Every
+/// audited table that holds a package truth aims one.
+#[test]
+fn a_misplaced_package_truth_is_refused() {
+    let mut aimed = Vec::new();
+    for exam in EXAMS.iter().filter(|e| review::audited(e)) {
+        let sample = sample_of(exam);
+        for (corpus, _) in exam.corpora {
+            let pristine = AUDIT_TABLES.load(corpus);
+            let rows = pristine["rows"].as_array().expect("rows");
+            let Some(at) = rows.iter().position(|r| package_truth(r, exam)) else {
+                continue;
+            };
+            let check = |doc: &Value| verify_review(exam, corpus, doc, &sample);
+            assert!(
+                !doc_refused(&pristine, &check),
+                "{corpus}: pristine table must pass"
+            );
+            for forged in misplaced(&pristine, at) {
+                assert!(
+                    doc_refused(&forged, &check),
+                    "{corpus}: a misplaced package truth must refuse"
+                );
+            }
+            aimed.push(*corpus);
+        }
+    }
+    assert_eq!(
+        aimed,
+        ["jsoup", "covid19model"],
+        "the tables holding a package truth"
+    );
+}
+
+/// Whether a row's truth is a package directory: no keyword, and no
+/// file of the exam's extensions (`#Member` aside) — every frozen file
+/// carries one.
+fn package_truth(row: &Value, exam: &Exam) -> bool {
+    let truth = row["truth"].as_str().expect("truth");
+    let path = truth.split('#').next().unwrap_or(truth);
+    !TRUTH_KEYWORDS.contains(&truth) && !exam.exts.iter().any(|e| path.ends_with(&format!(".{e}")))
+}
+
+/// The forgeries of row `at`'s package truth: the truth on the first
+/// row of another kind, and — where the kind keeps its code in a
+/// subdirectory — that code directory standing in for the package.
+fn misplaced(pristine: &Value, at: usize) -> Vec<Value> {
+    let row = &pristine["rows"][at];
+    let (truth, kind) = (row["truth"].as_str().expect("truth"), &row["kind"]);
+    let mut moved = pristine.clone();
+    let other = moved["rows"]
         .as_array_mut()
         .expect("rows")
         .iter_mut()
-        .find(|r| r["kind"] != json!("import_star"))
-        .expect("a row that is no on-demand import");
-    row["truth"] = package;
-    let mut cooked = pristine.clone();
-    cooked["summary"]["external"] = json!(0);
-    for (label, doc) in [
-        ("a misplaced package truth", &misplaced),
-        ("a cooked summary", &cooked),
-    ] {
-        assert!(refused(doc), "{label} must refuse");
+        .find(|r| &r["kind"] != kind)
+        .expect("a row of another kind");
+    other["truth"] = json!(truth);
+    let mut forged = vec![moved];
+    let code = PACKAGE_KINDS
+        .iter()
+        .find(|(k, _)| json!(k) == *kind)
+        .map_or("", |(_, c)| c.trim_end_matches('/'));
+    if !code.is_empty() {
+        let mut deeper = pristine.clone();
+        deeper["rows"][at]["truth"] = json!(format!("{truth}/{code}"));
+        forged.push(deeper);
+    }
+    forged
+}
+
+/// Gaps sit on the side of the frozen universe their list names
+/// (review.rs check_gaps): a scope gap filed as a site gap refuses,
+/// and so does a site gap filed as a scope gap. luarocks' table holds
+/// both lists.
+#[test]
+fn a_gap_on_the_wrong_side_is_refused() {
+    let exam = parts::exam("lua");
+    let sample = sample_of(exam);
+    let pristine = AUDIT_TABLES.load("luarocks");
+    let check = |doc: &Value| verify_review(exam, "luarocks", doc, &sample);
+    assert!(
+        !doc_refused(&pristine, &check),
+        "the pristine table verifies"
+    );
+    for (from, to) in [("scope_gaps", "site_gaps"), ("site_gaps", "scope_gaps")] {
+        let mut moved = pristine.clone();
+        let gap = moved[from].as_array_mut().expect(from).remove(0);
+        moved[to].as_array_mut().expect(to).push(gap);
+        assert!(
+            doc_refused(&moved, &check),
+            "a {from} entry filed under {to} must refuse"
+        );
     }
 }
 
