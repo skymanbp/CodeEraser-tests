@@ -30,6 +30,7 @@ mod cli_bare;
 mod cli_table;
 mod coc_c;
 mod coc_haskell;
+mod coc_headers;
 mod coc_java;
 mod coc_recursion;
 mod coldstart_state;
