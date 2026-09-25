@@ -85,7 +85,9 @@ pub fn rescore(rows: &[Value]) -> Value {
     })
 }
 
-fn ratio(c: u64, w: u64) -> Value {
+/// c / (c + w), or null on an empty denominator — the one ratio the
+/// precision families publish (the v2.30 exams' ledger reads it too).
+pub fn ratio(c: u64, w: u64) -> Value {
     if c + w == 0 {
         Value::Null
     } else {

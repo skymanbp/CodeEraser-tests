@@ -5,41 +5,21 @@
 //! answers and the frozen universe its truths must name. Split from
 //! the gates like verify.rs: the tamper gate runs it on forged copies.
 
-use crate::eval_lang_parts::Exam;
+use crate::eval_lang_parts::{AUDIT_TABLES, Exam};
 use crate::eval_support::{MIN_WHY, TRUTH_KEYWORDS, eval_doc, load};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const REVIEW_SCHEMA: &str = "ce.eval-lang-review/1.0.0";
 
-/// The sampled identity a judged row echoes, field for field.
-const ECHO: [&str; 6] = ["rank", "path", "line", "nth", "kind", "spec"];
-
-/// One corpus's audit table, repo-relative — the ordering gate's git
-/// facts and the verifier's load read the same file.
-pub fn review_path(corpus: &str) -> String {
-    format!("contracts/eval/lang-review-{corpus}-v1.json")
-}
-
-pub fn load_review(corpus: &str) -> Value {
-    load(&eval_doc(&format!("lang-review-{corpus}")))
-}
+/// The sampled identity a judged row echoes, field for field — the
+/// audit tables' rows and the precision docs' alike.
+pub const ECHO: [&str; 6] = ["rank", "path", "line", "nth", "kind", "spec"];
 
 /// Whether an exam's audit is frozen: its EXAMS row says so, and the
-/// tables on disk must agree corpus by corpus — a table that vanished
-/// or one filed ahead of its flag is named, never read as "pending".
+/// tables on disk agree (Exam::filed).
 pub fn audited(exam: &Exam) -> bool {
-    for (corpus, _) in exam.corpora {
-        let present = crate::common::repo_root()
-            .join(review_path(corpus))
-            .exists();
-        assert_eq!(
-            present, exam.audited,
-            "{corpus}: audit table present = {present}, but the exam's audited flag is {}",
-            exam.audited
-        );
-    }
-    exam.audited
+    exam.filed(&AUDIT_TABLES, exam.audited)
 }
 
 /// What a truth names (the M5-2 vocabulary): a keyword; a frozen file

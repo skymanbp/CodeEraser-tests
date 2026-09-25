@@ -9,24 +9,32 @@
 //! integer largest remainder (eval_support::largest_remainder).
 
 pub mod generate;
+pub mod precision;
 pub mod review;
+pub mod score;
+pub mod tamper;
 pub mod verify;
 
-use crate::eval_support::{UniverseFamily, identity_hash, largest_remainder, site_summary};
+use crate::eval_support::{
+    UniverseFamily, eval_doc, identity_hash, largest_remainder, load, site_summary,
+};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 /// One language's exam: its corpora at their pinned tips, the file
 /// extensions its universe walks, the pathspec of the rungs that
-/// may land only after its audit (lang_provenance.rs), and whether
-/// that audit is frozen — flipped by the commit that files the
-/// tables, so a table that vanishes is named, not read as pending.
+/// may land only after its audit (lang_provenance.rs), whether that
+/// audit is frozen — flipped by the commit that files the tables —
+/// and whether its ladder is scored — flipped by the commit that
+/// files the precision docs — so a doc that vanishes is named, not
+/// read as pending.
 pub struct Exam {
     pub lang: &'static str,
     pub corpora: &'static [(&'static str, &'static str)],
     pub exts: &'static [&'static str],
     pub ladder: &'static str,
     pub audited: bool,
+    pub scored: bool,
 }
 
 impl Exam {
@@ -39,7 +47,48 @@ impl Exam {
             .find(|(c, _)| *c == corpus)
             .map(|(_, t)| *t)
     }
+
+    /// Whether one per-corpus doc family is filed, by the exam's flag
+    /// for it — and the disk must agree corpus by corpus: a doc that
+    /// vanished, or one filed ahead of its flag, is named here, never
+    /// read as "pending" (the audit tables' and the precision docs'
+    /// one reading).
+    pub fn filed(&self, docs: &Docs, flag: bool) -> bool {
+        for (corpus, _) in self.corpora {
+            let path = docs.path(corpus);
+            let present = crate::common::repo_root().join(&path).exists();
+            assert_eq!(
+                present, flag,
+                "{path}: present = {present}, but the exam's flag is {flag}"
+            );
+        }
+        flag
+    }
 }
+
+/// A per-corpus doc family of the exams, `<family>-<corpus>-v1.json`:
+/// its stem (what eval_doc and the ordering legs take), its
+/// repo-relative path (what the ordering gate's git facts read) and
+/// its load — one spelling for all three.
+pub struct Docs(pub &'static str);
+
+impl Docs {
+    pub fn stem(&self, corpus: &str) -> String {
+        format!("{}-{corpus}", self.0)
+    }
+
+    pub fn path(&self, corpus: &str) -> String {
+        format!("contracts/eval/{}-v1.json", self.stem(corpus))
+    }
+
+    pub fn load(&self, corpus: &str) -> Value {
+        load(&eval_doc(&self.stem(corpus)))
+    }
+}
+
+/// The blind audit tables (review.rs) and the precision docs (score.rs).
+pub const AUDIT_TABLES: Docs = Docs("lang-review");
+pub const PRECISION_DOCS: Docs = Docs("lang-precision");
 
 /// Every language whose exam is frozen, in landing order; a language
 /// joins with its step (booklet §13) and never leaves. A second corpus
@@ -54,6 +103,7 @@ pub const EXAMS: [Exam; 1] = [Exam {
     exts: &["java"],
     ladder: "cli/src/graph/ladder/java*",
     audited: true,
+    scored: true,
 }];
 
 pub const SLICE_SCHEMA: &str = "ce.eval-lang-slice/1.0.0";

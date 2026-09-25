@@ -8,12 +8,13 @@
 //! one row to eval_lang_parts::EXAMS. No git, no corpus clone.
 
 use crate::eval_lang_parts::review;
-use crate::eval_lang_parts::review::{load_review, verify_review};
+use crate::eval_lang_parts::review::verify_review;
+use crate::eval_lang_parts::tamper::{assert_exam_tampering, tamper_battery};
 use crate::eval_lang_parts::verify::verify_sample;
-use crate::eval_lang_parts::{self as parts, EXAMS, Exam};
+use crate::eval_lang_parts::{self as parts, AUDIT_TABLES, EXAMS, Exam};
 use crate::eval_support::{
-    assert_corpus_set, assert_envelope_core, assert_tampering_refused, doc_refused, eval_doc,
-    lang_of, load, site_row, sites_within_windows,
+    assert_corpus_set, assert_envelope_core, doc_refused, eval_doc, lang_of, load, site_row,
+    sites_within_windows,
 };
 use codeeraser::scan::lang::Lang;
 use serde_json::{Value, json};
@@ -83,28 +84,21 @@ fn lang_samples_verify() {
 }
 
 /// G9: the verifier refuses a forged row, a dropped row, a reordered
-/// pair and a backup smuggled in as a primary.
+/// pair (the shared frame, tamper.rs) and a backup smuggled in as a
+/// primary.
 #[test]
 fn a_tampered_sample_is_refused() {
     let exam = &EXAMS[0];
     let pristine = sample_of(exam);
     let check = |doc: &Value| verify_sample(exam, doc);
-    assert_tampering_refused(
+    assert_exam_tampering(
         &pristine,
         &[
-            ("path", "forged/Path.java", "a forged path"),
-            ("spec", "forged.Spec", "a forged spec"),
             ("kind", "forged_kind", "a forged kind"),
             ("rank", "0000", "a forged rank"),
             ("audit", "0000", "a forged audit hash"),
         ],
         &check,
-    );
-    let mut swapped = pristine.clone();
-    swapped["rows"].as_array_mut().expect("rows").swap(0, 1);
-    assert!(
-        doc_refused(&swapped, &check),
-        "a reordered pair must refuse"
     );
     let mut smuggled = pristine.clone();
     let backup = smuggled["backups"][0].clone();
@@ -123,32 +117,27 @@ fn lang_reviews_verify() {
     for exam in EXAMS.iter().filter(|e| review::audited(e)) {
         let sample = sample_of(exam);
         for (corpus, _) in exam.corpora {
-            verify_review(exam, corpus, &load_review(corpus), &sample);
+            verify_review(exam, corpus, &AUDIT_TABLES.load(corpus), &sample);
         }
     }
 }
 
 /// G9 for the audit tables: a truth off the frozen universe or out
 /// of the vocabulary, a drifted echo, a why under the floor, a
-/// dropped row, a swapped pair, a package truth on a row that is no
-/// on-demand import, and a cooked summary — each refuses. jsoup's
-/// table is the one that holds a package truth to aim with.
+/// dropped row, a swapped pair (the shared frame, tamper.rs), a
+/// package truth on a row that is no on-demand import, and a cooked
+/// summary — each refuses. jsoup's table is the one that holds a
+/// package truth to aim with.
 #[test]
 fn a_tampered_review_is_refused() {
-    let exam = &EXAMS[0];
-    let (corpus, _) = exam.corpora[1];
-    let (sample, pristine) = (sample_of(exam), load_review(corpus));
-    let check = |doc: &Value| verify_review(exam, corpus, doc, &sample);
-    assert_tampering_refused(
-        &pristine,
+    let (pristine, refused) = tamper_battery(
+        &AUDIT_TABLES,
+        verify_review,
         &[
             ("truth", "forged/Path.java", "a truth off the universe"),
             ("truth", "elsewhere", "a truth out of the vocabulary"),
-            ("path", "forged/Path.java", "a drifted path"),
-            ("spec", "forged.Spec", "a drifted spec"),
             ("why", "a label, not a reason", "a why under the floor"),
         ],
-        &check,
     );
     let package = pristine["rows"]
         .as_array()
@@ -170,16 +159,13 @@ fn a_tampered_review_is_refused() {
         .find(|r| r["kind"] != json!("import_star"))
         .expect("a row that is no on-demand import");
     row["truth"] = package;
-    let mut swapped = pristine.clone();
-    swapped["rows"].as_array_mut().expect("rows").swap(0, 1);
     let mut cooked = pristine.clone();
     cooked["summary"]["external"] = json!(0);
     for (label, doc) in [
         ("a misplaced package truth", &misplaced),
-        ("a swapped pair", &swapped),
         ("a cooked summary", &cooked),
     ] {
-        assert!(doc_refused(doc, &check), "{label} must refuse");
+        assert!(refused(doc), "{label} must refuse");
     }
 }
 

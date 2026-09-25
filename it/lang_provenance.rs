@@ -6,8 +6,8 @@
 //! ladder and no precision doc may exist. Runs git; CI checks out with
 //! fetch-depth: 0 and a shallow clone refuses loudly.
 
-use crate::eval_lang_parts::review::{audited, review_path};
-use crate::eval_lang_parts::{EXAMS, Exam};
+use crate::eval_lang_parts::review::audited;
+use crate::eval_lang_parts::{AUDIT_TABLES, EXAMS, Exam, PRECISION_DOCS};
 use crate::eval_support::{
     assert_all_postdate, assert_docs_postdate_audits, assert_resolver_after_audits, git_in,
     intro_commit, require_full_history,
@@ -15,10 +15,6 @@ use crate::eval_support::{
 
 fn sample_path(exam: &Exam) -> String {
     format!("contracts/eval/lang-sample-{}-v1.json", exam.lang)
-}
-
-fn precision_path(corpus: &str) -> String {
-    format!("contracts/eval/lang-precision-{corpus}-v1.json")
 }
 
 fn exists(path: &str) -> bool {
@@ -35,7 +31,7 @@ fn audits(exam: &Exam) -> Option<Vec<String>> {
     Some(
         exam.corpora
             .iter()
-            .map(|(c, _)| intro_commit(&review_path(c)))
+            .map(|(c, _)| intro_commit(&AUDIT_TABLES.path(c)))
             .collect(),
     )
 }
@@ -50,7 +46,7 @@ fn lang_sample_audit_scoring_ordered() {
         let Some(audits) = audits(exam) else {
             for (corpus, _) in exam.corpora {
                 assert!(
-                    !exists(&precision_path(corpus)),
+                    !exists(&PRECISION_DOCS.path(corpus)),
                     "{corpus}: scored while its audit is pending (G13)"
                 );
             }
@@ -64,8 +60,8 @@ fn lang_sample_audit_scoring_ordered() {
         let stems: Vec<String> = exam
             .corpora
             .iter()
-            .filter(|(c, _)| exists(&precision_path(c)))
-            .map(|(c, _)| format!("lang-precision-{c}"))
+            .filter(|(c, _)| exists(&PRECISION_DOCS.path(c)))
+            .map(|(c, _)| PRECISION_DOCS.stem(c))
             .collect();
         assert_docs_postdate_audits(&audits, &stems, "scored before the audit froze (G13)");
     }

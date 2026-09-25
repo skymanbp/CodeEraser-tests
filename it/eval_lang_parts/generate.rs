@@ -5,12 +5,18 @@
 //! a named entry in docs/EVAL-SET-LANGS.md, never a silent re-run.
 //!   CE_LANG_CORPUS=gson cargo test --test it -- --ignored eval_lang_parts::generate::lang_slice --nocapture
 //!   CE_LANG=java cargo test --test it -- --ignored eval_lang_parts::generate::lang_sample --nocapture
+//!   CE_LANG_CORPUS=gson cargo test --test it -- --ignored eval_lang_parts::generate::lang_precision --nocapture
+//! The precision doc is the one frozen doc that depends on product
+//! code: a ladder change that moves an answer re-scores it — delete,
+//! regenerate, and name the change in the registry.
 
-use super::{Exam, SAMPLE_SCHEMA, SLICE_SCHEMA};
+use super::review::verify_review;
+use super::{AUDIT_TABLES, Exam, PRECISION_DOCS, SAMPLE_SCHEMA, SLICE_SCHEMA, score};
 use crate::eval_support::{
-    eval_doc, generated_from, git_in, lang_of, load, pinned_root, site_row, site_summary,
+    eval_doc, generated_from, git_in, lang_of, load, of_corpus, pinned_root, site_row, site_summary,
 };
 use codeeraser::graph::sites::detect;
+use codeeraser::graph::store::is_resolver_config;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
@@ -28,20 +34,32 @@ const SAMPLE_METHOD: &str = "hash-ranked stratified draw over the language's fro
     order. Backups: per kind, the audit-domain rank over the unpicked rest — the audit walks \
     them only for an unanswerable primary of the same kind.";
 
-fn env(key: &str) -> String {
+const PRECISION_METHOD: &str = "the frozen sample rows of one corpus, resolved by the shipped \
+    ladder against its frozen universe (every file re-read at the pinned tip and reproduced \
+    against its frozen row first; a drifted tree never scores), with the tree's resolver \
+    configs and no declared root, judged against the frozen blind audit. An in-corpus answer \
+    matches its truth exactly, or at file level when the ladder made no unit claim; a package \
+    answer matches a package truth; External is an answer, so external on an in-corpus truth \
+    is wrong, never missed. The universe ledger runs the ladder over every site of the frozen \
+    universe: its resolution rate is a recall ceiling. Each audit site gap is answered with \
+    every site the detector reads off its line. Pre-registered: the per-rung cut table and one \
+    line per site kind are published; precision >= 0.90 overall and per corpus where the \
+    in-corpus truths reach 5 (the M5-2 G2 contract).";
+
+pub(super) fn env(key: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| panic!("{key} names what to freeze"))
 }
 
-fn corpus_repo(name: &str, tip: &str) -> String {
+pub(super) fn corpus_repo(name: &str, tip: &str) -> String {
     pinned_root(name, tip).to_string_lossy().into_owned()
 }
 
-fn blob(repo: &str, tip: &str, path: &str) -> String {
+pub(super) fn blob(repo: &str, tip: &str, path: &str) -> String {
     git_in(Some(repo), &["show", &format!("{tip}:{path}")])
 }
 
 /// Write a frozen doc once.
-fn freeze(stem: &str, doc: &Value) {
+pub(super) fn freeze(stem: &str, doc: &Value) {
     let path = eval_doc(stem);
     assert!(
         !std::path::Path::new(&path).exists(),
@@ -52,20 +70,29 @@ fn freeze(stem: &str, doc: &Value) {
     println!("{path} written");
 }
 
-/// The pinned tree's in-scope files as universe rows, plus the tally
-/// of what the scope left out.
-fn walk(exam: &Exam, repo: &str, tip: &str) -> (Vec<Value>, BTreeMap<&'static str, u64>) {
-    // -z: unquoted non-ASCII paths; --full-tree: root-relative paths
-    // whatever the cwd (the M5-2 walker's two lessons)
+/// The pinned tree's paths. -z: unquoted non-ASCII paths;
+/// --full-tree: root-relative paths whatever the cwd (the M5-2
+/// walker's two lessons).
+fn tree_paths(repo: &str, tip: &str) -> Vec<String> {
     let listing = git_in(
         Some(repo),
         &["ls-tree", "-r", "--full-tree", "--name-only", "-z", tip],
     );
+    listing
+        .split('\0')
+        .filter(|p| !p.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+/// The pinned tree's in-scope files as universe rows, plus the tally
+/// of what the scope left out.
+fn walk(exam: &Exam, repo: &str, tip: &str) -> (Vec<Value>, BTreeMap<&'static str, u64>) {
     let (mut files, mut excluded) = (Vec::new(), BTreeMap::new());
-    for path in listing.split('\0').filter(|p| !p.is_empty()) {
+    for path in tree_paths(repo, tip) {
         let ext = path.rsplit_once('.').map_or("", |(_, e)| e);
         if exam.exts.contains(&ext) {
-            files.push(site_row(path, exam.lang, &blob(repo, tip, path)));
+            files.push(site_row(&path, exam.lang, &blob(repo, tip, &path)));
         } else {
             *excluded.entry("other_extension").or_insert(0) += 1;
         }
@@ -96,20 +123,36 @@ fn lang_slice() {
     );
 }
 
-/// Every site of one frozen universe, re-detected at the pinned tip;
-/// each file must reproduce its frozen row first — the pool equals the
-/// frozen universe by checked reconstruction, not by trust.
-fn corpus_pool(exam: &Exam, name: &str, tip: &str, slice: &Value) -> Vec<Value> {
+/// Every file of one frozen universe with its text at the pinned tip,
+/// each reproducing its frozen row first — the tree equals the frozen
+/// universe by checked reconstruction, not by trust (the sample's pool
+/// and the scorer's ladder both read it).
+pub(super) fn frozen_texts(
+    exam: &Exam,
+    name: &str,
+    tip: &str,
+    slice: &Value,
+) -> Vec<(String, String)> {
     let repo = corpus_repo(name, tip);
+    let rows = slice["files"].as_array().expect("files");
+    rows.iter()
+        .map(|row| {
+            let path = row["path"].as_str().expect("path");
+            let text = blob(&repo, tip, path);
+            assert_eq!(
+                &site_row(path, exam.lang, &text),
+                row,
+                "{name}/{path}: not the frozen row"
+            );
+            (path.to_string(), text)
+        })
+        .collect()
+}
+
+/// Every site of one frozen universe, re-detected at the pinned tip.
+fn corpus_pool(exam: &Exam, name: &str, tip: &str, slice: &Value) -> Vec<Value> {
     let mut pool = Vec::new();
-    for row in slice["files"].as_array().expect("files") {
-        let path = row["path"].as_str().expect("path");
-        let text = blob(&repo, tip, path);
-        assert_eq!(
-            &site_row(path, exam.lang, &text),
-            row,
-            "{name}/{path}: not the frozen row"
-        );
+    for (path, text) in frozen_texts(exam, name, tip, slice) {
         for s in detect(&text, lang_of(exam.lang)) {
             pool.push(json!({
                 "corpus": name, "commit": tip, "path": path, "line": s.line,
@@ -145,4 +188,50 @@ fn lang_sample() {
             "backups": draw.backups,
         }),
     );
+}
+
+/// One corpus scored: the audit verified against its sample first,
+/// then each sampled row judged (score.rs), the universe ledger and
+/// the site gaps answered, and the doc run through the gate's own
+/// verifier before it is frozen. CE_R0_DISPOSITION carries the written
+/// disposition the RG1 trigger asks for, when it fires.
+#[test]
+#[ignore = "reads the pinned corpus clone"]
+fn lang_precision() {
+    let name = env("CE_LANG_CORPUS");
+    let (exam, tip) = super::exam_of_corpus(&name);
+    let slice = load(&eval_doc(&format!("lang-slice-{name}")));
+    let sample = load(&eval_doc(&format!("lang-sample-{}", exam.lang)));
+    let review = AUDIT_TABLES.load(&name);
+    verify_review(exam, &name, &review, &sample);
+    let repo = corpus_repo(&name, tip);
+    let texts = frozen_texts(exam, &name, tip, &slice);
+    let configs = tree_paths(&repo, tip)
+        .into_iter()
+        .filter(|p| is_resolver_config(std::path::Path::new(p)))
+        .collect();
+    let tree = score::tree(std::path::Path::new(&repo), &texts, configs);
+    let scope = tree.scope();
+    let sampled = of_corpus(sample["rows"].as_array().expect("rows"), &name);
+    let truths = review["rows"].as_array().expect("rows");
+    let rows: Vec<Value> = sampled
+        .iter()
+        .zip(truths)
+        .map(|(s, a)| score::judge(s, a["truth"].as_str().expect("truth"), &scope))
+        .collect();
+    let mut doc = json!({
+        "schema": score::PRECISION_SCHEMA,
+        "corpus": {"name": name, "tip": tip, "lang": exam.lang},
+        "generated_from": generated_from(),
+        "method": PRECISION_METHOD,
+        "summary": score::summary(&rows),
+        "universe": score::universe(&texts, exam.lang, &scope),
+        "site_gaps": score::gaps(&review, &texts, exam.lang, &scope),
+        "rows": rows,
+    });
+    if let Ok(why) = std::env::var("CE_R0_DISPOSITION") {
+        doc["r0_disposition"] = json!(why);
+    }
+    super::precision::verify_precision(exam, &name, &doc, &sample);
+    freeze(&PRECISION_DOCS.stem(&name), &doc);
 }

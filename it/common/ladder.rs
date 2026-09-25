@@ -2,7 +2,7 @@
 //! common/ is one module per concern, each binary uses a subset —
 //! the allows in mod.rs are module-level and cover this file too).
 
-use codeeraser::graph::ladder::{self, Outcome, Reason, Scope};
+use codeeraser::graph::ladder::{self, Outcome, Reason, Scope, java_header};
 use codeeraser::scan::lang::Lang;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -46,11 +46,19 @@ pub struct Fixture {
     /// Declared search roots (ce.toml `[graph.search_roots]`, language
     /// → directories); empty unless a leg sets it.
     pub search_roots: BTreeMap<String, BTreeSet<String>>,
+    /// Every in-scope Java file's header, read as the walk reads it
+    /// (java_header::read) — the Java ladder's candidate index.
+    pub java: BTreeMap<String, java_header::Header>,
 }
 
 pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
     let dir = super::tmp(tag);
     let (files, configs) = materialize(&dir, tree);
+    let java = tree
+        .iter()
+        .filter(|(rel, _)| rel.ends_with(".java") && files.contains(*rel))
+        .map(|(rel, text)| (rel.to_string(), java_header::read(text)))
+        .collect();
     Fixture {
         dir,
         files,
@@ -58,6 +66,7 @@ pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
         memo: Default::default(),
         crate_roots: BTreeSet::new(),
         search_roots: BTreeMap::new(),
+        java,
     }
 }
 
@@ -70,6 +79,7 @@ impl Fixture {
             memo: &self.memo,
             crate_roots: &self.crate_roots,
             search_roots: &self.search_roots,
+            java: &self.java,
         }
     }
 }
