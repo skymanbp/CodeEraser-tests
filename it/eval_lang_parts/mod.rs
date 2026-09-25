@@ -9,6 +9,7 @@
 //! integer largest remainder (eval_support::largest_remainder).
 
 pub mod generate;
+pub mod review;
 pub mod verify;
 
 use crate::eval_support::{UniverseFamily, identity_hash, largest_remainder, site_summary};
@@ -16,13 +17,28 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 /// One language's exam: its corpora at their pinned tips, the file
-/// extensions its universe walks, and the pathspec of the rungs that
-/// may land only after its audit (lang_provenance.rs).
+/// extensions its universe walks, the pathspec of the rungs that
+/// may land only after its audit (lang_provenance.rs), and whether
+/// that audit is frozen — flipped by the commit that files the
+/// tables, so a table that vanishes is named, not read as pending.
 pub struct Exam {
     pub lang: &'static str,
     pub corpora: &'static [(&'static str, &'static str)],
     pub exts: &'static [&'static str],
     pub ladder: &'static str,
+    pub audited: bool,
+}
+
+impl Exam {
+    /// A corpus's pinned tip, or None when the exam holds no such
+    /// corpus — the one lookup the table, the sample and the audit
+    /// verifiers read.
+    pub fn tip(&self, corpus: &str) -> Option<&'static str> {
+        self.corpora
+            .iter()
+            .find(|(c, _)| *c == corpus)
+            .map(|(_, t)| *t)
+    }
 }
 
 /// Every language whose exam is frozen, in landing order; a language
@@ -37,6 +53,7 @@ pub const EXAMS: [Exam; 1] = [Exam {
     ],
     exts: &["java"],
     ladder: "cli/src/graph/ladder/java*",
+    audited: true,
 }];
 
 pub const SLICE_SCHEMA: &str = "ce.eval-lang-slice/1.0.0";
@@ -92,12 +109,7 @@ pub fn exam(lang: &str) -> &'static Exam {
 pub fn exam_of_corpus(name: &str) -> (&'static Exam, &'static str) {
     EXAMS
         .iter()
-        .find_map(|e| {
-            e.corpora
-                .iter()
-                .find(|(c, _)| *c == name)
-                .map(|(_, t)| (e, *t))
-        })
+        .find_map(|e| e.tip(name).map(|t| (e, t)))
         .unwrap_or_else(|| panic!("{name}: no exam holds this corpus"))
 }
 

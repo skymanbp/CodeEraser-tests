@@ -7,6 +7,8 @@
 //! its scope frozen to the launch extensions); each v2.30 language adds
 //! one row to eval_lang_parts::EXAMS. No git, no corpus clone.
 
+use crate::eval_lang_parts::review;
+use crate::eval_lang_parts::review::{load_review, verify_review};
 use crate::eval_lang_parts::verify::verify_sample;
 use crate::eval_lang_parts::{self as parts, EXAMS, Exam};
 use crate::eval_support::{
@@ -111,6 +113,74 @@ fn a_tampered_sample_is_refused() {
         doc_refused(&smuggled, &check),
         "a smuggled backup must refuse"
     );
+}
+
+/// Every frozen audit verifies against its exam's sample: one judged
+/// row per primary, truths bound to the frozen universe (review.rs).
+/// An exam whose audit is pending has no tables, by its flag.
+#[test]
+fn lang_reviews_verify() {
+    for exam in EXAMS.iter().filter(|e| review::audited(e)) {
+        let sample = sample_of(exam);
+        for (corpus, _) in exam.corpora {
+            verify_review(exam, corpus, &load_review(corpus), &sample);
+        }
+    }
+}
+
+/// G9 for the audit tables: a truth off the frozen universe or out
+/// of the vocabulary, a drifted echo, a why under the floor, a
+/// dropped row, a swapped pair, a package truth on a row that is no
+/// on-demand import, and a cooked summary — each refuses. jsoup's
+/// table is the one that holds a package truth to aim with.
+#[test]
+fn a_tampered_review_is_refused() {
+    let exam = &EXAMS[0];
+    let (corpus, _) = exam.corpora[1];
+    let (sample, pristine) = (sample_of(exam), load_review(corpus));
+    let check = |doc: &Value| verify_review(exam, corpus, doc, &sample);
+    assert_tampering_refused(
+        &pristine,
+        &[
+            ("truth", "forged/Path.java", "a truth off the universe"),
+            ("truth", "elsewhere", "a truth out of the vocabulary"),
+            ("path", "forged/Path.java", "a drifted path"),
+            ("spec", "forged.Spec", "a drifted spec"),
+            ("why", "a label, not a reason", "a why under the floor"),
+        ],
+        &check,
+    );
+    let package = pristine["rows"]
+        .as_array()
+        .expect("rows")
+        .iter()
+        // the one truth class spelled with a `/` and no `.java`
+        .find(|r| {
+            r["truth"]
+                .as_str()
+                .is_some_and(|t| t.contains('/') && !t.contains(".java"))
+        })
+        .expect("a package truth")["truth"]
+        .clone();
+    let mut misplaced = pristine.clone();
+    let row = misplaced["rows"]
+        .as_array_mut()
+        .expect("rows")
+        .iter_mut()
+        .find(|r| r["kind"] != json!("import_star"))
+        .expect("a row that is no on-demand import");
+    row["truth"] = package;
+    let mut swapped = pristine.clone();
+    swapped["rows"].as_array_mut().expect("rows").swap(0, 1);
+    let mut cooked = pristine.clone();
+    cooked["summary"]["external"] = json!(0);
+    for (label, doc) in [
+        ("a misplaced package truth", &misplaced),
+        ("a swapped pair", &swapped),
+        ("a cooked summary", &cooked),
+    ] {
+        assert!(doc_refused(doc, &check), "{label} must refuse");
+    }
 }
 
 /// The detector and the frozen universes must not drift apart

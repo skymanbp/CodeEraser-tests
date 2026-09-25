@@ -6,6 +6,7 @@
 //! ladder and no precision doc may exist. Runs git; CI checks out with
 //! fetch-depth: 0 and a shallow clone refuses loudly.
 
+use crate::eval_lang_parts::review::{audited, review_path};
 use crate::eval_lang_parts::{EXAMS, Exam};
 use crate::eval_support::{
     assert_all_postdate, assert_docs_postdate_audits, assert_resolver_after_audits, git_in,
@@ -14,10 +15,6 @@ use crate::eval_support::{
 
 fn sample_path(exam: &Exam) -> String {
     format!("contracts/eval/lang-sample-{}-v1.json", exam.lang)
-}
-
-fn review_path(corpus: &str) -> String {
-    format!("contracts/eval/lang-review-{corpus}-v1.json")
 }
 
 fn precision_path(corpus: &str) -> String {
@@ -29,21 +26,12 @@ fn exists(path: &str) -> bool {
 }
 
 /// The intro commits of one exam's audit tables, or None while its
-/// audit is pending — an exam audits all its corpora in one freeze.
+/// audit is pending — an exam audits all its corpora in one freeze,
+/// and its flag must agree with the files (review::audited).
 fn audits(exam: &Exam) -> Option<Vec<String>> {
-    let present: Vec<bool> = exam
-        .corpora
-        .iter()
-        .map(|(c, _)| exists(&review_path(c)))
-        .collect();
-    if present.iter().all(|p| !p) {
+    if !audited(exam) {
         return None;
     }
-    assert!(
-        present.iter().all(|p| *p),
-        "{}: an exam's audit tables freeze together",
-        exam.lang
-    );
     Some(
         exam.corpora
             .iter()

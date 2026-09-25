@@ -61,10 +61,7 @@ fn check_row(
     assert_eq!(row["lang"], json!(exam.lang), "{rank}: language");
     let corpus = row["corpus"].as_str().expect("corpus");
     let tip = exam
-        .corpora
-        .iter()
-        .find(|(c, _)| *c == corpus)
-        .map(|(_, t)| *t)
+        .tip(corpus)
         .unwrap_or_else(|| panic!("{rank}: {corpus} is no corpus of the exam"));
     assert_eq!(row["commit"], json!(tip), "{rank}: not the pinned commit");
     let path = row["path"].as_str().expect("path").to_string();

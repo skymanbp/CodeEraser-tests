@@ -8,6 +8,11 @@
 use serde_json::Value;
 use std::collections::BTreeMap;
 
+/// A why shorter than this is a label, not a reason: the floor every
+/// independent arbiter's why is held to (the same-role oracles, the
+/// language exams' audit tables; the merge scripts refused it too).
+pub const MIN_WHY: usize = 40;
+
 /// Cross-corpus aggregation of one precision family.
 #[derive(Default)]
 pub struct PrecisionAgg {

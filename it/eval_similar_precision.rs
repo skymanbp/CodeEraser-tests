@@ -13,16 +13,13 @@
 //! corpus df with it, so those rows are counted, never re-scored.
 
 use crate::eval_similar_precision_parts::metrics;
-use crate::eval_support::{content_sha, eval_doc_v, load};
+use crate::eval_support::{MIN_WHY, content_sha, eval_doc_v, load};
 use crate::similar_replay::{CORPORA, measure};
 use crate::similar_replay_parts as parts;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
 const TRUTHS: [&str; 3] = ["same_role", "related", "unrelated"];
-/// A why shorter than this is a label, not a reason (the merge script
-/// refused the same floor at assembly).
-const MIN_WHY: usize = 40;
 
 /// The frozen generations with the regression floor each ledger
 /// section publishes (docs/EVAL-SET-SIMILAR.md 「裁定」3 for the first,
