@@ -8,15 +8,17 @@
 //! refuse unless the declared `[graph.search_roots] java` holds exactly
 //! one candidate: a row that picks one of two is the red condition.
 
-use codeeraser::graph::ladder::{Outcome, Reason};
 use codeeraser::scan::lang::Lang;
 
-use crate::common::{Case, ext, fixture, no, ok, pkg, run_cases};
+use crate::common::text_ladder;
 
-/// The habitat, `==== path` over each file. Package a.b lives in three
-/// directories (src, gen, test); package p twice under two roots; s1
-/// and s2 each hold an S; Default.java sits in the unnamed package.
-const TREE: &str = "
+/// The habitat, `==== path` over each file, then the rows
+/// (common::text_ladder). Package a.b lives in three directories (src,
+/// gen, test); package p twice under two roots; s1 and s2 each hold an
+/// S; Default.java sits in the unnamed package. Under
+/// `[graph.search_roots] java = ["src"]` (the `@rooted` rows) each tie
+/// the declaration holds exactly one side of resolves to it.
+const LADDER: &str = "
 ==== src/a/b/Main.java
 package a.b;
 import x.y.Z;
@@ -48,11 +50,7 @@ package s1; class S {}
 package s2; class S {}
 ==== Default.java
 class Default {}
-";
-
-/// `kind @@ from @@ spec @@ outcome` per line, outcome `ok <path>
-/// <rung>`, `pkg <dir> <rung>`, `ext <rung>` or `no <reason>`.
-const CASES: &str = "
+==== @cases
 import @@ src/a/b/Main.java @@ x.y.Z @@ ok src/x/y/Z.java 1
 import @@ src/a/b/Main.java @@ x.y.Z.Inner @@ ok src/x/y/Z.java 2
 import @@ src/a/b/Main.java @@ static x.y.Z.m @@ ok src/x/y/Z.java 2
@@ -83,66 +81,14 @@ type_ref @@ src/a/b/Main.java @@ List @@ ext 4
 type_ref @@ src/a/b/Main.java @@ java.util.Map.Entry @@ ext 4
 type_ref @@ src/p/Q.java @@ Test @@ no out_of_scope
 type_ref @@ src/gone/G.java @@ Z @@ no out_of_scope
-";
-
-/// The same habitat under `[graph.search_roots] java = ["src"]`: each
-/// tie the declaration holds exactly one side of resolves to it.
-const ROOTED: &str = "
+==== @rooted src
 import @@ src/a/b/Main.java @@ p.Q @@ ok src/p/Q.java 1
 import_star @@ src/a/b/Main.java @@ p @@ pkg src/p 2
 type_ref @@ test/a/b/MainTest.java @@ Helper @@ ok src/a/b/Helper.java 3
 type_ref @@ src/a/b/Main.java @@ S @@ no ambiguous_paths
 ";
 
-fn tree() -> Vec<(&'static str, &'static str)> {
-    TREE.trim()
-        .split("==== ")
-        .filter(|block| !block.is_empty())
-        .map(|block| block.split_once('\n').expect("a path over its text"))
-        .collect()
-}
-
-fn rows(table: &'static str) -> Vec<Case> {
-    table
-        .trim()
-        .lines()
-        .map(|line| {
-            let [kind, from, spec, want]: [&'static str; 4] = line
-                .split(" @@ ")
-                .collect::<Vec<_>>()
-                .try_into()
-                .expect("kind @@ from @@ spec @@ outcome");
-            (Lang::Java, kind, from, spec, outcome(want))
-        })
-        .collect()
-}
-
-fn outcome(spelled: &str) -> Outcome {
-    let words: Vec<&str> = spelled.split(' ').collect();
-    let rung = |w: &str| w.parse().expect("a rung");
-    match words.as_slice() {
-        ["ok", path, r] => ok(path, rung(r)),
-        ["pkg", dir, r] => pkg(dir, rung(r)),
-        ["ext", r] => ext(rung(r)),
-        ["no", why] => no(match *why {
-            "ambiguous_root" => Reason::AmbiguousRoot,
-            "ambiguous_paths" => Reason::AmbiguousPaths,
-            "out_of_scope" => Reason::OutOfScope,
-            _ => panic!("reason {why:?}"),
-        }),
-        _ => panic!("outcome {spelled:?}"),
-    }
-}
-
 #[test]
 fn java_rungs_resolve_and_refuse() {
-    run_cases(&fixture("ladder-java", &tree()), rows(CASES));
-}
-
-#[test]
-fn declared_search_roots_break_a_tie_they_hold_one_side_of() {
-    let mut fx = fixture("ladder-java-rooted", &tree());
-    fx.search_roots
-        .insert("java".to_string(), ["src".to_string()].into());
-    run_cases(&fx, rows(ROOTED));
+    text_ladder(Lang::Java, LADDER);
 }

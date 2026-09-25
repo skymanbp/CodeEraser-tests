@@ -8,12 +8,12 @@
 //! generator (generate.rs, `#[ignore]`) and the verifier the CI gate
 //! runs (precision.rs) derive through these functions (G1).
 
-use crate::common::Fixture;
+use crate::common::{Fixture, reason_name};
 use crate::eval_graph_precision_parts::{ratio, rescore, verdict_of};
 use crate::eval_lang_parts::review::ECHO;
 use crate::eval_lang_parts::{Exam, PRECISION_DOCS};
 use crate::eval_support::{lang_of, tally_add};
-use codeeraser::graph::ladder::{self, Outcome, Reason, Scope, Site, java_header};
+use codeeraser::graph::ladder::{self, Outcome, Scope, Site, java_header, lua_path};
 use codeeraser::graph::sites::{RawSite, detect};
 use codeeraser::scan::lang::Lang;
 use serde_json::{Map, Value, json};
@@ -33,16 +33,20 @@ pub fn scored(exam: &Exam) -> bool {
 }
 
 /// The frozen tree as the walk hands it to the ladder: the frozen
-/// files, each Java file's header read the walk's way (dedup/walkidx.rs,
-/// by the product's own path table), the tree's resolver configs, and
-/// no declared root — the product's defaults, for no corpus carries a
-/// ce.toml.
+/// files, each Java file's header and each Lua file's `package.path`
+/// templates read the walk's way (dedup/walkidx.rs, by the product's
+/// own path table), the tree's resolver configs, and no declared root
+/// — the product's defaults, for no corpus carries a ce.toml.
 pub fn tree(root: &Path, texts: &[(String, String)], configs: Vec<String>) -> Fixture {
-    let java = texts
-        .iter()
-        .filter(|(p, _)| Lang::from_path(Path::new(p)) == Some(Lang::Java))
+    let of = |lang: Lang| {
+        texts
+            .iter()
+            .filter(move |(p, _)| Lang::from_path(Path::new(p)) == Some(lang))
+    };
+    let java = of(Lang::Java)
         .map(|(p, t)| (p.clone(), java_header::read(t)))
         .collect();
+    let lua = of(Lang::Lua).flat_map(|(_, t)| lua_path::read(t)).collect();
     Fixture {
         dir: root.to_path_buf(),
         files: texts.iter().map(|(p, _)| p.clone()).collect(),
@@ -51,6 +55,7 @@ pub fn tree(root: &Path, texts: &[(String, String)], configs: Vec<String>) -> Fi
         crate_roots: Default::default(),
         search_roots: Default::default(),
         java,
+        lua,
     }
 }
 
@@ -74,22 +79,9 @@ fn answer(out: &Outcome) -> Value {
             (Some(at), false, Some(*rung), None)
         }
         Outcome::External { rung } => (None, true, Some(*rung), None),
-        Outcome::Unresolved(r) => (None, false, None, Some(reason_str(*r))),
+        Outcome::Unresolved(r) => (None, false, None, Some(reason_name(*r))),
     };
     json!({"answered": answered, "external": external, "rung": rung, "reason": reason})
-}
-
-/// A refusal reason as the design §4 vocabulary spells it: the variant
-/// name in snake case, so a new variant needs no table to extend.
-fn reason_str(reason: Reason) -> String {
-    let mut out = String::new();
-    for c in format!("{reason:?}").chars() {
-        if c.is_ascii_uppercase() && !out.is_empty() {
-            out.push('_');
-        }
-        out.push(c.to_ascii_lowercase());
-    }
-    out
 }
 
 /// Which of the three answer shapes a row or gap site holds: an

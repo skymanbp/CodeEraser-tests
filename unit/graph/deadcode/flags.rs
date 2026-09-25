@@ -1,12 +1,14 @@
 use super::*;
 use std::collections::BTreeSet;
 
-/// The roles of one path under no entry globs and no declared
-/// targets — the arrange stanza both batteries share.
+/// The roles of one path under no entry globs, its declared targets
+/// gathered from the manifests of its own scratch root — the arrange
+/// stanza both batteries share.
 fn roles_at(root: &Path, name: &str) -> i64 {
     let entries = globs::compile_inclusions(root, &[], "[graph] entry_globs").expect("empty set");
-    let none = Declared::gather(Path::new("."), &BTreeSet::new(), &BTreeSet::new());
-    roles_of(root, name, &entries, &none)
+    let files = BTreeSet::from([name.to_string()]);
+    let declared = Declared::gather(root, &files, &BTreeSet::new());
+    roles_of(root, name, &entries, &declared)
 }
 
 /// The allow-claim role (batch-7 slice 3), table-driven — the
@@ -36,7 +38,8 @@ fn allow_claim_requires_the_why_tail() {
 
 /// `path ⇒ letters` per line over the roles a file's name and place
 /// decide: `u` compilation unit, `n` named entry, `t` test, `d` entry
-/// directory, `-` none. Plan v2.30 steps 2 and 3 (register D18): a
+/// directory, `p` declared by its package, `-` none. Plan v2.30 steps 2
+/// and 3 (register D18): a
 /// compilation unit carries the unit role by its extension alone, a
 /// header and a Java class carry none (a class is reached by its name),
 /// and the test-runner basenames are the test convention, read off
@@ -45,9 +48,12 @@ fn allow_claim_requires_the_why_tail() {
 /// Shiny's files by name, Neovim's `init.lua` at the root alone, the
 /// runtime directories Neovim sources a Lua file from by path (never
 /// `autoload/`, which is Vim script's, nor a file of another
-/// language there), an R package's script directories, busted's and
-/// testthat's tests. One literal rather than rows of typed tuples:
-/// rows of one shape repeat every dozen tokens under the clone gate.
+/// language there), an R package's script directories under its
+/// DESCRIPTION's directory (the scratch root holds `pkg/DESCRIPTION`,
+/// so the same directories outside it are nobody's) and the code
+/// directly in its `R/`, busted's and testthat's tests. One literal
+/// rather than rows of typed tuples: rows of one shape repeat every
+/// dozen tokens under the clone gate.
 const ROLES: &str = "\
 src/a.c ⇒ u
 src/a.h ⇒ -
@@ -69,9 +75,13 @@ autoload/foo.lua ⇒ -
 plugin/notes.md ⇒ -
 spec/foo_spec.lua ⇒ t
 app.R ⇒ n
-inst/app/server.R ⇒ nd
-data-raw/build.R ⇒ d
-inst/x.lua ⇒ -
+pkg/inst/app/server.R ⇒ nd
+inst/app/server.R ⇒ n
+pkg/data-raw/build.R ⇒ d
+data-raw/build.R ⇒ -
+pkg/inst/x.lua ⇒ -
+pkg/R/utils.R ⇒ p
+pkg/R/sub/deep.R ⇒ -
 R/utils.R ⇒ -
 tests/testthat/test-utils.R ⇒ t
 x/test_utils.r ⇒ t";
@@ -83,10 +93,12 @@ fn roles_read_the_file_name_and_place() {
         'n' => ROLE_ENTRY_NAMED,
         't' => ROLE_TEST,
         'd' => ROLE_ENTRY_DIR,
+        'p' => ROLE_DECLARED,
         _ => 0,
     };
-    let mask = ROLE_UNIT | ROLE_ENTRY_NAMED | ROLE_TEST | ROLE_ENTRY_DIR;
+    let mask = ROLE_UNIT | ROLE_ENTRY_NAMED | ROLE_TEST | ROLE_ENTRY_DIR | ROLE_DECLARED;
     let root = crate::testutil::scratch("dc-name-roles");
+    crate::testutil::write_tree(&root, &[("pkg/DESCRIPTION", "Package: pkg\n")]);
     for row in ROLES.lines() {
         let (path, letters) = row.split_once(" ⇒ ").expect("path ⇒ letters");
         let want: i64 = letters.chars().map(letter).sum();
