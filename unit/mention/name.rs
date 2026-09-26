@@ -9,7 +9,8 @@ fn check(case: &str) {
 }
 
 /// K24's extraction half (the frozen out-of-domain spellings of
-/// §3.1/§2) beside the shapes that stay in. The keys are the
+/// §3.1/§2) beside the shapes that stay in — an HTML element's `#id`
+/// is an anchor like a Markdown heading (RG9). The keys are the
 /// producer's own spellings (`(anonymous)/0` is what a TS anonymous
 /// default export is keyed); the producer-measured witnesses of the
 /// same exits are in mention::conv::tests.
@@ -41,6 +42,8 @@ fn the_domain_is_exactly_the_single_token_names() {
         "a.hs (<+>)/2 ⇒ -",
         "a.hs fmtRow/1 ⇒ fmtRow",
         "a.md Heading ⇒ -",
+        "a.html #main ⇒ -",
+        "a.htm #x ⇒ -",
         "a.js x/0 ⇒ -",
         "a.txt x/0 ⇒ -",
     ] {

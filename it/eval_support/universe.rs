@@ -77,8 +77,15 @@ pub fn assert_envelope_core(path: &str, doc: &Value, family: &UniverseFamily) ->
     );
     for (category, n) in doc["excluded"].as_object().expect("excluded") {
         assert!(
-            ["excluded_prefix", "variant_extension", "other_extension"]
-                .contains(&category.as_str())
+            // walk_refused: a v2.30 exam's tracked file the product's
+            // walk refuses (eval_lang_parts/generate.rs walk)
+            [
+                "excluded_prefix",
+                "variant_extension",
+                "other_extension",
+                "walk_refused"
+            ]
+            .contains(&category.as_str())
                 && n.as_u64().is_some_and(|v| v > 0),
             "{path}: malformed excluded row {category}"
         );

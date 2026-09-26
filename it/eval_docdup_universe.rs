@@ -13,6 +13,7 @@
 //!   rm -rf cli/tests/eval_docdup_universe.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 use crate::eval_support::*;
+use codeeraser::docdup::spec::{KIND_HTML_TEXT, KIND_NAMES};
 use std::collections::BTreeMap;
 
 const FAMILY: UniverseFamily = UniverseFamily {
@@ -24,9 +25,10 @@ const FAMILY: UniverseFamily = UniverseFamily {
 /// CI gate, no git: the family skeleton asserts the envelope (summary
 /// re-derived with row-level conservation, frozen constants and
 /// scope, pinned tip, sorted rows) and the graph-slice sibling
-/// anchor; this family then requires every segment kind alive
-/// somewhere across the five corpora and every exemption route
-/// either counted or explained in route_notes.
+/// anchor; this family then requires every frozen-era segment kind
+/// alive somewhere across the five corpora (html_text's leg is below)
+/// and every exemption route either counted or explained in
+/// route_notes.
 #[test]
 fn docdup_segments_consistent() {
     // kinds, exemption classes and ledger keys share one namespace-
@@ -37,7 +39,12 @@ fn docdup_segments_consistent() {
             sum_obj_into(&doc["summary"][key], &mut totals);
         }
     });
-    assert_covered(&totals, codeeraser::docdup::spec::KIND_NAMES, "segments");
+    // html_text (plan v2.30 step 5) joined after the five universes
+    // were frozen over the launch extensions, so no frozen row can
+    // hold one; its liveness leg is html_text_is_alive_on_the_pages
+    let html = KIND_NAMES[KIND_HTML_TEXT as usize];
+    let frozen_kinds = KIND_NAMES.iter().copied().filter(|k| *k != html);
+    assert_covered(&totals, frozen_kinds, "segments");
     let notes = docdup_constants()["route_notes"].clone();
     for route in ["license_header", "inline_allow", "skeleton_line"] {
         assert!(
@@ -53,4 +60,32 @@ fn docdup_segments_consistent() {
 #[test]
 fn self_docdup_tracks_segments() {
     assert_self_tracks(&FAMILY, docdup_row, 25);
+}
+
+/// The fourth kind's liveness (plan v2.30 step 5): the frozen universes
+/// hold no HTML file, so html_text is proven on the repository's own
+/// pages through the same row throat the frozen rows use — every page
+/// named here must yield html_text segments, stored or ledgered under
+/// the admission floor (the GUI page's labels are all short), the
+/// site's prose pages must store live ones, and the ledger must show
+/// the code and script elements the extractor shed on the way.
+#[test]
+fn html_text_is_alive_on_the_pages() {
+    let root = crate::common::repo_root();
+    let mut shed = 0;
+    for (page, prose) in [
+        ("site/index.html", true),
+        ("site/how/index.html", true),
+        ("gui/ui/index.html", false),
+    ] {
+        let text = std::fs::read_to_string(root.join(page)).expect(page);
+        let row = docdup_row(page, "html", &text);
+        let stored = row["segs_by"]["html_text"].as_u64().unwrap_or(0);
+        let short = row["ledger"]["below_floor"].as_u64().unwrap_or(0);
+        assert!(stored + short > 0, "{page}: no html_text segment: {row}");
+        assert!(!prose || stored > 0, "{page}: no live html_text: {row}");
+        shed += row["ledger"]["code_element"].as_u64().unwrap_or(0)
+            + row["ledger"]["script_element"].as_u64().unwrap_or(0);
+    }
+    assert!(shed > 0, "no code or script element shed across the pages");
 }

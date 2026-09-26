@@ -57,7 +57,7 @@ fn audited_tables() -> Vec<(&'static Exam, &'static str, Value, Value)> {
 #[test]
 fn a_tampered_review_is_refused() {
     let (pristine, refused) = tamper_battery(
-        &AUDIT_TABLES,
+        |exam, corpus| AUDIT_TABLES.load(exam, corpus),
         verify_review,
         &[
             ("truth", "forged/Path.java", "a truth off the universe"),

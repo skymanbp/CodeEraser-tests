@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::docdup::shingle;
+use crate::docdup::spec::KIND_HTML_TEXT;
 
 fn md_segs(text: &str) -> Vec<RawSeg> {
     extract(text, Lang::Markdown).0
@@ -119,4 +120,68 @@ fn html_markup_lines_shed_but_long_md_prose_survives() {
     let (segs, shed) = extract(&prose, Lang::Markdown);
     assert_eq!(segs.len(), 1, "unwrapped md prose is content");
     assert_eq!(shed.html, 0);
+}
+
+/// Plan v2.30 step 5 (register D20): an HTML block element is one
+/// html_text segment over its SOURCE rows — a paragraph wrapping onto
+/// a second line spans both — masked to its own text leaves: markup,
+/// attributes, entities and comments yield no words, an inline element
+/// hands its text up, a nested block is a segment of its own whose
+/// text is not the parent's, `pre` / `code` and script content are
+/// shed and counted, and two cells on one line are two segments over
+/// the same row.
+#[test]
+fn html_blocks_segment_over_their_rows_under_a_text_mask() {
+    let html = "<body>\n<p class=\"lead\">alpha &amp; <b>beta</b>\n gamma</p>\n<ul><li>one <p>inner secret</p></li></ul>\n<pre>fence secret</pre>\n<script>script secret</script>\n<table><tr><td>cell one</td><td>cell two</td></tr></table>\n<p>delta <code>code secret</code> <!-- comment secret --></p>\n</body>\n";
+    let (segs, shed) = extract(html, Lang::Html);
+    assert!(segs.iter().all(|s| s.kind == KIND_HTML_TEXT));
+    assert_eq!(
+        spans(html, Lang::Html),
+        [(2, 3), (4, 4), (4, 4), (7, 7), (7, 7), (8, 8)]
+    );
+    let words = |text: &str| {
+        let mut out = Vec::new();
+        shingle::line_words(text, None, &mut out);
+        out
+    };
+    let got: Vec<Vec<u64>> = segs.iter().map(seg_words).collect();
+    let want = [
+        "alpha beta gamma",
+        "one",
+        "inner secret",
+        "cell one",
+        "cell two",
+        "delta",
+    ];
+    assert_eq!(got, want.map(words));
+    assert_eq!(
+        (shed.code, shed.script),
+        (2, 1),
+        "pre + code shed, script shed"
+    );
+}
+
+/// Booklet §9: a `ce:allow(docdup) -- why` marker written in an HTML
+/// comment inside the element rides the segment's raw row — the one
+/// claim grammar (crate::allow) reads it unchanged, exactly as it reads
+/// the marker at the end of a README line — while the comment's words
+/// stay masked out of the prose. A marker on a row the element does not
+/// span exempts nothing.
+#[test]
+fn an_html_comment_carries_the_allow_marker() {
+    use crate::docdup::exempt::{EXEMPT_ALLOW, EXEMPT_LIVE, Ledger, classify};
+    let html = "<!-- ce:allow(docdup) -- a marker above the element -->
+<p>one set of links <!-- ce:allow(docdup) -- listed in both languages --></p>
+<p>two sets</p>
+";
+    let (segs, _) = extract(html, Lang::Html);
+    let mut ledger = Ledger::default();
+    let verdicts: Vec<i64> = segs
+        .iter()
+        .map(|s| classify(s, false, &mut ledger))
+        .collect();
+    assert_eq!(verdicts, [EXEMPT_ALLOW, EXEMPT_LIVE]);
+    let mut prose = Vec::new();
+    shingle::line_words("one set of links", None, &mut prose);
+    assert_eq!(seg_words(&segs[0]), prose, "the comment is no prose");
 }

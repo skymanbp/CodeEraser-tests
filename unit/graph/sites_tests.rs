@@ -25,71 +25,83 @@ use crate::scan::lang::Lang;
 /// stream under the dedup gate's ID/LIT normalisation).
 type Case = (Lang, &'static str, &'static str);
 
-/// The per-language table, split from its assertion loop at the
-/// E01 fn-length line.
-fn cases() -> [Case; 7] {
-    [
-        // the C family's one site (plan v2.30 step 2): the quoted form
-        // loses its quotes, the system form keeps its angle brackets
-        // (the delimiter is the search order), a macro is no site
-        (
-            Lang::C,
-            "#include <stdio.h>\n#include \"util.h\"\n#include \"sub/x.h\"\n#define X 1\n",
-            "include=<stdio.h>|include=util.h|include=sub/x.h",
-        ),
-        // Java (plan v2.30 step 3): a static import's spec keeps its
-        // `static` token, a star import is a kind of its own, and each
-        // type the file names without declaring it is a `type_ref`, in
-        // document order after the imports — K, its type parameter and
-        // `var` are none
-        (
-            Lang::Java,
-            "package a.b;\nimport static a.b.C.m;\nimport java.util.*;\nimport x.y.Z;\n@Ann class K<T> extends Base implements java.util.List<T> {\n  Z z = Util.f(a.b.D.g(), Mode.FAST);\n  Outer<String>.Inner o;\n  void m() { var v = new Helper(); }\n}\n",
-            "import=static a.b.C.m|import_star=java.util|import=x.y.Z|type_ref=Ann|type_ref=Base|type_ref=java.util.List|type_ref=Z|type_ref=Util|type_ref=a.b.D|type_ref=Mode|type_ref=Outer|type_ref=String|type_ref=Helper",
-        ),
-        // `from __future__` is an `import_from` site on the literal
-        // module name (step 8, O27)
-        (
-            Lang::Python,
-            "from __future__ import annotations\nimport a.b, c as d\nfrom .pkg import thing\n",
-            "import_from=__future__|import=a.b|import=c|import_from=.pkg",
-        ),
-        // `import fs = require("./b")` is an `import` site off the
-        // require clause; `import X = A.B.C` names a namespace and
-        // opens none (step 8, O26)
-        (
-            Lang::TypeScript,
-            // a degenerate `import ""` is a site with an EMPTY spec —
-            // kept for the unresolved ledger, not dropped (O60)
-            "import { x } from \"./util\";\nimport {\n  a,\n  b,\n} from \"./multi\";\nexport { y } from './other';\nexport const z = 1;\nexport * from './all';\nexport * as ns from './space';\nimport fs = require(\"./req\");\nimport X = A.B.C;\nexport import Y = A.B;\nimport \"\";\n",
-            "import=./util|import=./multi|export_from=./other|export_star=./all|export_star=./space|import=./req|import=",
-        ),
-        (
-            Lang::Rust,
-            // the #[path] attribute emits NO site of its own — the
-            // remap is ladder-side (rs.rs path_attr), which is what
-            // keeps the frozen site universe standing across REV 5
-            "mod alpha;\n#[path = \"x.rs\"]\nmod beta { fn x() {} }\nuse crate::a::{b, c};\nuse crate::{\n    d,\n    e,\n};\n",
-            "mod_decl=alpha|use=crate::a::{b, c}|use=crate::{",
-        ),
-        (
-            Lang::Go,
-            "package main\n\nimport (\n\t\"fmt\"\n\t\"github.com/x/y\"\n\t\"\"\n)\n",
-            "import=fmt|import=github.com/x/y|import=",
-        ),
-        // a `{-# SOURCE #-}` import keeps the bare module name — the
-        // ladder answers M.hs for it (step 8, O28)
-        (
-            Lang::Haskell,
-            "module Main where\n\nimport CE.Alpha\nimport qualified Data.Map as M\nimport Data.List (sort)\nimport {-# SOURCE #-} CE.Boot (x)\n\nforeign import ccall \"math.h sin\" c_sin :: Double -> Double\n",
-            "import=CE.Alpha|import=Data.Map|import=Data.List|import=CE.Boot",
-        ),
-    ]
-}
+/// The per-language table: data, so a const beside its assertion
+/// loop rather than a function body the E01 length line measures.
+const CASES: [Case; 8] = [
+    // the C family's one site (plan v2.30 step 2): the quoted form
+    // loses its quotes, the system form keeps its angle brackets
+    // (the delimiter is the search order), a macro is no site
+    (
+        Lang::C,
+        "#include <stdio.h>\n#include \"util.h\"\n#include \"sub/x.h\"\n#define X 1\n",
+        "include=<stdio.h>|include=util.h|include=sub/x.h",
+    ),
+    // Java (plan v2.30 step 3): a static import's spec keeps its
+    // `static` token, a star import is a kind of its own, and each
+    // type the file names without declaring it is a `type_ref`, in
+    // document order after the imports — K, its type parameter and
+    // `var` are none
+    (
+        Lang::Java,
+        "package a.b;\nimport static a.b.C.m;\nimport java.util.*;\nimport x.y.Z;\n@Ann class K<T> extends Base implements java.util.List<T> {\n  Z z = Util.f(a.b.D.g(), Mode.FAST);\n  Outer<String>.Inner o;\n  void m() { var v = new Helper(); }\n}\n",
+        "import=static a.b.C.m|import_star=java.util|import=x.y.Z|type_ref=Ann|type_ref=Base|type_ref=java.util.List|type_ref=Z|type_ref=Util|type_ref=a.b.D|type_ref=Mode|type_ref=Outer|type_ref=String|type_ref=Helper",
+    ),
+    // `from __future__` is an `import_from` site on the literal
+    // module name (step 8, O27)
+    (
+        Lang::Python,
+        "from __future__ import annotations\nimport a.b, c as d\nfrom .pkg import thing\n",
+        "import_from=__future__|import=a.b|import=c|import_from=.pkg",
+    ),
+    // `import fs = require("./b")` is an `import` site off the
+    // require clause; `import X = A.B.C` names a namespace and
+    // opens none (step 8, O26)
+    (
+        Lang::TypeScript,
+        // a degenerate `import ""` is a site with an EMPTY spec —
+        // kept for the unresolved ledger, not dropped (O60)
+        "import { x } from \"./util\";\nimport {\n  a,\n  b,\n} from \"./multi\";\nexport { y } from './other';\nexport const z = 1;\nexport * from './all';\nexport * as ns from './space';\nimport fs = require(\"./req\");\nimport X = A.B.C;\nexport import Y = A.B;\nimport \"\";\n",
+        "import=./util|import=./multi|export_from=./other|export_star=./all|export_star=./space|import=./req|import=",
+    ),
+    (
+        Lang::Rust,
+        // the #[path] attribute emits NO site of its own — the
+        // remap is ladder-side (rs.rs path_attr), which is what
+        // keeps the frozen site universe standing across REV 5
+        "mod alpha;\n#[path = \"x.rs\"]\nmod beta { fn x() {} }\nuse crate::a::{b, c};\nuse crate::{\n    d,\n    e,\n};\n",
+        "mod_decl=alpha|use=crate::a::{b, c}|use=crate::{",
+    ),
+    (
+        Lang::Go,
+        "package main\n\nimport (\n\t\"fmt\"\n\t\"github.com/x/y\"\n\t\"\"\n)\n",
+        "import=fmt|import=github.com/x/y|import=",
+    ),
+    // a `{-# SOURCE #-}` import keeps the bare module name — the
+    // ladder answers M.hs for it (step 8, O28)
+    (
+        Lang::Haskell,
+        "module Main where\n\nimport CE.Alpha\nimport qualified Data.Map as M\nimport Data.List (sort)\nimport {-# SOURCE #-} CE.Boot (x)\n\nforeign import ccall \"math.h sin\" c_sin :: Double -> Double\n",
+        "import=CE.Alpha|import=Data.Map|import=Data.List|import=CE.Boot",
+    ),
+    // HTML (plan v2.30 step 5): a site per URL-valued attribute of
+    // the elements the pass's table names — a `<link>` names an
+    // asset under a stylesheet / icon / preload relationship and a
+    // page under any other, `poster` and `data` are assets, a
+    // `srcset` opens one site per candidate on the line the
+    // candidate is written on, an empty value is a site with an
+    // empty spec, names read case-insensitively and a bare value
+    // needs no quotes; `srcdoc` holds markup, not a URL, and
+    // opens none
+    (
+        Lang::Html,
+        "<!doctype html>\n<html>\n<head>\n<link rel=\"stylesheet\" href=\"s.css?v=1\">\n<link rel=\"canonical\" href=\"https://x.example/\">\n<link rel=\"icon\" href=\"i.png\">\n<script src=\"a.js\"></script>\n</head>\n<body>\n<a href=\"x.html#f\">x</a> <a href=\"\">e</a>\n<img src=\"i.png\" srcset=\"a.png 1x,\n  b.png 2x\">\n<form action=\"/s\"></form>\n<video poster=\"p.jpg\"><source src=\"v.mp4\"></video>\n<svg><use href=\"#icon\"/></svg>\n<object data=\"d.svg\"></object>\n<A HREF=bare.html>up</A>\n<iframe srcdoc=\"<p>x</p>\"></iframe>\n</body>\n</html>\n",
+        "link_asset=s.css?v=1|href=https://x.example/|link_asset=i.png|src=a.js|href=x.html#f|href=|src=i.png|srcset=a.png|srcset=b.png|action=/s|src=p.jpg|src=v.mp4|href=#icon|src=d.svg|href=bare.html",
+    ),
+];
 
 #[test]
 fn per_language_kinds_specs_and_line_substrings() {
-    for (lang, text, want) in cases() {
+    for (lang, text, want) in CASES {
         let found = detect(text, lang);
         let got: Vec<(&str, &str)> = found.iter().map(|s| (s.kind, s.spec.as_str())).collect();
         let want: Vec<(&str, &str)> = want

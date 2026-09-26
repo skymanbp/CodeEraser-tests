@@ -80,6 +80,8 @@ fn ledger_obj(lg: &exempt::Ledger) -> Value {
         ("below_floor", lg.below_floor),
         ("indented_code_lines", lg.md.indented),
         ("html_line", lg.md.html),
+        ("code_element", lg.md.code),
+        ("script_element", lg.md.script),
         ("fenced_code_line", lg.fenced_code_line),
         ("overlong_line", lg.overlong_line),
     ];

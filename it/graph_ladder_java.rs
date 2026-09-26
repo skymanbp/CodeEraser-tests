@@ -17,7 +17,14 @@ use crate::common::text_ladder;
 /// gen, test); package p twice under two roots; s1 and s2 each hold an
 /// S; Default.java sits in the unnamed package. Under
 /// `[graph.search_roots] java = ["src"]` (the `@rooted` rows) each tie
-/// the declaration holds exactly one side of resolves to it.
+/// the declaration holds exactly one side of resolves to it. The
+/// standard layout (java_sets.rs, the second `@cases` run): package
+/// o.nodes is split between the main and the test source set. A main
+/// file sees main code only, so its star import has one directory to
+/// answer and a test-only class is out of its reach; a test file sees
+/// both and answers its own part. A name the file declares itself —
+/// its own nested type, itself — is own_unit, never an edge back to
+/// the file.
 const LADDER: &str = "
 ==== src/a/b/Main.java
 package a.b;
@@ -86,6 +93,31 @@ import @@ src/a/b/Main.java @@ p.Q @@ ok src/p/Q.java 1
 import_star @@ src/a/b/Main.java @@ p @@ pkg src/p 2
 type_ref @@ test/a/b/MainTest.java @@ Helper @@ ok src/a/b/Helper.java 3
 type_ref @@ src/a/b/Main.java @@ S @@ no ambiguous_paths
+==== src/main/java/o/nodes/Node.java
+package o.nodes; public class Node {}
+==== src/test/java/o/nodes/NodeTest.java
+package o.nodes; class NodeTest {}
+==== src/main/java/o/parser/Parser.java
+package o.parser;
+import o.nodes.*;
+public class Parser { static class Inner { static int X; } }
+==== src/test/java/o/parser/ParserTest.java
+package o.parser;
+import o.nodes.*;
+class ParserTest {}
+==== src/test/java/o/parser/Fixture.java
+package o.parser; class Fixture {}
+==== @cases
+import_star @@ src/main/java/o/parser/Parser.java @@ o.nodes @@ pkg src/main/java/o/nodes 2
+import_star @@ src/test/java/o/parser/ParserTest.java @@ o.nodes @@ pkg src/test/java/o/nodes 2
+import @@ src/main/java/o/parser/Parser.java @@ o.nodes.NodeTest @@ no out_of_scope
+import @@ src/test/java/o/parser/ParserTest.java @@ o.nodes.NodeTest @@ ok src/test/java/o/nodes/NodeTest.java 1
+type_ref @@ src/main/java/o/parser/Parser.java @@ Fixture @@ no out_of_scope
+type_ref @@ src/test/java/o/parser/ParserTest.java @@ Fixture @@ ok src/test/java/o/parser/Fixture.java 3
+type_ref @@ src/test/java/o/parser/ParserTest.java @@ Parser @@ ok src/main/java/o/parser/Parser.java 3
+import_star @@ src/main/java/o/parser/Parser.java @@ static o.parser.Parser.Inner @@ no own_unit
+import @@ src/main/java/o/parser/Parser.java @@ o.parser.Parser @@ no own_unit
+type_ref @@ src/main/java/o/parser/Parser.java @@ o.parser.Parser @@ no own_unit
 ";
 
 #[test]

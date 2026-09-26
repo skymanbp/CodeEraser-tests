@@ -12,10 +12,12 @@
 pub mod draw;
 pub mod generate;
 pub mod precision;
+pub mod replay;
 pub mod review;
 pub mod score;
 pub mod tamper;
 pub mod verify;
+pub mod walk;
 
 use crate::eval_support::{UniverseFamily, eval_doc_path, eval_doc_v, load, site_summary};
 use serde_json::{Value, json};
@@ -119,7 +121,20 @@ pub const PRECISION_DOCS: Docs = Docs("lang-precision");
 /// Lua's exam is at its second generation: the first was frozen before
 /// the detector read a load under protection (`pcall(require, "x")`,
 /// graph/spec.rs LUA_PROTECTED).
-pub const EXAMS: [Exam; 3] = [
+/// HTML (step 5, the document language the user upgraded to a judged
+/// one) takes this repository's own pages — `site/`, the GUI page and
+/// the demo scoreboards at the tip that closed step 4 (booklet §11:
+/// self-feeding) — h5bp/html5-boilerplate, and mdn/learning-area (the
+/// user's ruling for a third: 269 teaching pages holding the forms and
+/// `srcset` lists the first two hold none of): a page
+/// reaches another by `href` and its assets by `src`. Its universes
+/// are the files the product's own walk reads (generate.rs walk).
+/// Java, Lua and R are unscored from step 5's first commit to its
+/// last: that step moved the code their answers come from (the walk's
+/// build-output rule, Java's source sets and own units, Lua's own
+/// directory — lang_provenance.rs holds a doc to it), so their docs
+/// are generated again once, beside HTML's, after the HTML ladder.
+pub const EXAMS: [Exam; 4] = [
     Exam {
         lang: "java",
         corpora: &[
@@ -129,7 +144,7 @@ pub const EXAMS: [Exam; 3] = [
         exts: &["java"],
         ladder: "cli/src/graph/ladder/java*",
         audited: true,
-        scored: true,
+        scored: false,
         generation: 1,
     },
     Exam {
@@ -141,7 +156,7 @@ pub const EXAMS: [Exam; 3] = [
         exts: &["lua"],
         ladder: "cli/src/graph/ladder/lua*",
         audited: true,
-        scored: true,
+        scored: false,
         generation: 2,
     },
     Exam {
@@ -153,7 +168,23 @@ pub const EXAMS: [Exam; 3] = [
         exts: &["R", "r"],
         ladder: "cli/src/graph/ladder/r/",
         audited: true,
-        scored: true,
+        scored: false,
+        generation: 1,
+    },
+    Exam {
+        lang: "html",
+        corpora: &[
+            ("codeeraser", "d4b7f1f37aa50b61ecd21816204bb7f5b06d673c"),
+            (
+                "html5-boilerplate",
+                "b6597338e695dc4a8165c5abcb2bfffa586c3ee5",
+            ),
+            ("learning-area", "dbed6bcb8284634c7549c4da596ec30b0cfc6e7e"),
+        ],
+        exts: &["html", "htm"],
+        ladder: "cli/src/graph/ladder/html*",
+        audited: false,
+        scored: false,
         generation: 1,
     },
 ];

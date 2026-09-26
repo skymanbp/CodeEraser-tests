@@ -1,13 +1,14 @@
 //! The v2.30 language exams' scoring (booklet language-expansion.md
 //! §11; registry docs/EVAL-SET-LANGS.md): one corpus's frozen sample
-//! rows, resolved by the shipped ladder against the frozen universe
-//! they were drawn from, judged against the frozen audit — the M5-2
-//! engine (eval_graph_precision_parts: the five-way verdict and its
-//! rescore) re-instantiated per language, plus one line per site kind
-//! (`type_ref`, the new kind, is attributable on its own). The
-//! generator (generate.rs, `#[ignore]`) and the verifier the CI gate
-//! runs (precision.rs) derive through these functions (G1).
+//! rows, resolved by the shipped ladder against the files of the frozen
+//! universe the product's own walk reads (walk.rs), judged against the
+//! frozen audit — the M5-2 engine (eval_graph_precision_parts: the
+//! five-way verdict and its rescore) re-instantiated per language, plus
+//! one line per site kind (`type_ref`, the new kind, is attributable on
+//! its own). The generator (generate.rs, `#[ignore]`) and the verifier
+//! the CI gate runs (precision.rs) derive through these functions (G1).
 
+use super::walk::Walk;
 use crate::common::{Fixture, reason_name};
 use crate::eval_graph_precision_parts::{ratio, rescore, verdict_of};
 use crate::eval_lang_parts::review::ECHO;
@@ -20,7 +21,7 @@ use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 use std::path::Path;
 
-pub const PRECISION_SCHEMA: &str = "ce.eval-lang-precision/1.0.0";
+pub const PRECISION_SCHEMA: &str = "ce.eval-lang-precision/1.1.0";
 
 /// The pre-registered floor (the M5-2 G2 contract, booklet §11):
 /// overall, and per corpus where the in-corpus truths reach 5.
@@ -63,7 +64,7 @@ pub fn tree(root: &Path, texts: &[(String, String)], configs: Vec<String>) -> Fi
 /// the in-corpus answer (a package at the tree root is "."; a section
 /// is `path#slug`, its slugless degrade the file), whether External
 /// answered, the rung, and the refusal reason.
-fn answer(out: &Outcome) -> Value {
+pub(super) fn answer(out: &Outcome) -> Value {
     let (answered, external, rung, reason) = match out {
         Outcome::Resolved { path, rung }
         | Outcome::ResolvedVia { path, rung }
@@ -108,8 +109,9 @@ fn resolved(path: &str, site: &RawSite, lang: &str, scope: &Scope) -> Value {
 }
 
 /// One judged sample row: the sampled identity, the ladder's answer and
-/// the verdict against the frozen truth (the M5-2 row shape).
-pub fn judge(row: &Value, truth: &str, scope: &Scope) -> Value {
+/// the verdict against the frozen truth as the walk scores it (the M5-2
+/// row shape, plus `audit_truth` when the walk rewrote the truth).
+pub fn judge(row: &Value, truth: &str, scope: &Scope, walk: &Walk) -> Value {
     let lang = row["lang"].as_str().expect("lang");
     let site = Site {
         kind: row["kind"].as_str().expect("kind"),
@@ -117,13 +119,27 @@ pub fn judge(row: &Value, truth: &str, scope: &Scope) -> Value {
         spec: row["spec"].as_str().expect("spec"),
         line: usize::try_from(row["line"].as_u64().expect("line")).expect("line"),
     };
-    let mut judged = answer(&ladder::resolve(lang_of(lang), &site, scope));
+    judged(
+        row,
+        truth,
+        walk,
+        answer(&ladder::resolve(lang_of(lang), &site, scope)),
+    )
+}
+
+/// A sample row judged on the answer given — the ladder's (judge), or
+/// the tamper frame's oracle (tamper.rs).
+pub(super) fn judged(row: &Value, truth: &str, walk: &Walk, mut judged: Value) -> Value {
     for field in ECHO.iter().chain(&["lang"]) {
         judged[*field] = row[*field].clone();
     }
-    judged["truth"] = json!(truth);
+    let scored = walk.scored(truth);
+    judged["truth"] = json!(scored);
+    if scored != truth {
+        judged["audit_truth"] = json!(truth);
+    }
     judged["verdict"] = json!(verdict_of(
-        truth,
+        scored,
         judged["answered"].as_str(),
         judged["external"] == true
     ));
@@ -210,7 +226,10 @@ pub fn gaps(review: &Value, texts: &[(String, String)], lang: &str, scope: &Scop
     let answered = |g: &Value| {
         let path = g["path"].as_str().expect("path");
         let line = usize::try_from(g["line"].as_u64().expect("line")).expect("line");
-        let sites: Vec<Value> = detect(text[path], lang_of(lang))
+        let Some(read) = text.get(path) else {
+            panic!("{path}: a site gap in a file the walk refuses")
+        };
+        let sites: Vec<Value> = detect(read, lang_of(lang))
             .into_iter()
             .filter(|s| s.line == line)
             .map(|s| {

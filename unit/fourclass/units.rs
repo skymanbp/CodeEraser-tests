@@ -26,6 +26,30 @@ fn markdown_sections_split_on_headings() {
     assert_eq!(owner(&units, 5).unwrap().key, "Two");
 }
 
+/// Plan v2.30 step 5: an HTML document's units are its elements that
+/// carry an `id`, keyed `#id` over the element's rows, nested ones
+/// resolving to the innermost; a heading without an id is span, a void
+/// element with one is a one-line unit, and every unit is a section
+/// with the document visibility.
+#[test]
+fn html_units_are_the_elements_with_an_id() {
+    let src = "<html>\n<body id=\"main\">\n<h1>t</h1>\n<section id=\"a\">\n<p id=\"a-p\">x</p>\n</section>\n<img id=\"pic\" src=\"i.png\">\n</body>\n</html>\n";
+    let (units, keys) = keyed(src, Lang::Html);
+    assert_eq!(keys, ["#main", "#a", "#a-p", "#pic"]);
+    assert_eq!(owner(&units, 1), None, "the root element has no id");
+    assert_eq!(owner(&units, 3).unwrap().key, "#main");
+    assert_eq!(owner(&units, 5).unwrap().key, "#a-p");
+    assert_eq!(owner(&units, 6).unwrap().key, "#a");
+    assert_eq!(owner(&units, 7).unwrap().key, "#pic");
+    let section = crate::fourclass::kinds::KIND_SECTION;
+    assert!(
+        units
+            .iter()
+            .all(|u| u.kind == section && u.vis == visibility::HTML_VIS),
+        "{units:?}"
+    );
+}
+
 /// The owning unit key of `line` in Rust `src` ("" = toplevel).
 fn rust_owner(src: &str, line: usize) -> String {
     let units = segments(src, Lang::Rust);

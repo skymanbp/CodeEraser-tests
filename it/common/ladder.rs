@@ -195,8 +195,16 @@ pub fn text_ladder(lang: Lang, text: &'static str) {
         "{}: a ladder text with no rows",
         lang.name()
     );
+    // the fixture directory is the text's own: two tests of one language
+    // run in parallel, and a shared name let each wipe the other's tree
+    let own = {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        text.hash(&mut h);
+        h.finish()
+    };
     for (n, (head, rows)) in runs.into_iter().enumerate() {
-        let mut fx = fixture(&format!("ladder-{}-{n}", lang.name()), &tree);
+        let mut fx = fixture(&format!("ladder-{}-{own:016x}-{n}", lang.name()), &tree);
         let mut words = head.split_whitespace();
         match words.next() {
             Some("@cases") => {}
@@ -256,7 +264,7 @@ fn text_outcome(spelled: &str) -> Outcome {
 }
 
 /// Every refusal reason, so a table can name one as the ledger does.
-const REASONS: [Reason; 10] = [
+const REASONS: [Reason; 11] = [
     Reason::Dynamic,
     Reason::AmbiguousPaths,
     Reason::AmbiguousRoot,
@@ -267,6 +275,7 @@ const REASONS: [Reason; 10] = [
     Reason::OutOfScope,
     Reason::Unsupported,
     Reason::Empty,
+    Reason::OwnUnit,
 ];
 
 /// A refusal reason as the design §4 vocabulary spells it: the variant

@@ -1,5 +1,5 @@
 use super::*;
-use crate::docdup::spec::KIND_DOCSTRING;
+use crate::docdup::spec::{KIND_DOCSTRING, KIND_HTML_TEXT};
 
 fn seg(kind: i64, start: i64, lines: &[&str]) -> RawSeg {
     RawSeg {
@@ -59,13 +59,32 @@ fn skeleton_lines_strip_from_docstrings_but_not_md() {
     let md = seg(KIND_MD_PARA, 1, &["Args:", "---"]);
     assert_eq!(strip_skeleton(&md, &mut lg).len(), 2);
     assert_eq!(lg.skeleton_line, 2, "md untouched");
+    let html = seg(KIND_HTML_TEXT, 1, &["Args:", "---"]);
+    assert_eq!(strip_skeleton(&html, &mut lg).len(), 2);
+    assert_eq!(lg.skeleton_line, 2, "html text is prose like md (step 5)");
 }
 
 #[test]
 fn jsdoc_and_sphinx_markers_match_under_decoration() {
-    for line in [" * @param x the input", "    :param x: input", "# Returns:"] {
+    // the v2.30 languages' conventions (DOCDUP_REV 6): Javadoc and
+    // Doxygen tags under `*` and `\`, LDoc under `---`, roxygen under `#'`
+    for line in [
+        " * @param x the input",
+        "    :param x: input",
+        "# Returns:",
+        " * @return the value",
+        " * @throws IOException",
+        "/// \\brief one line",
+        "--- @tparam string s",
+        "-- @treturn number",
+        "#' @export",
+        "#' @importFrom rlang abort",
+    ] {
         assert!(skeleton_line(line), "{line}");
     }
+    assert!(!skeleton_line("-- a plain lua comment"));
+    assert!(!skeleton_line("/// - Note: a bullet is prose"));
+    assert!(!skeleton_line("# - Returns: prose again"));
     assert!(!skeleton_line("returns the cached value"));
     assert!(skeleton_line(" * ----"));
 }

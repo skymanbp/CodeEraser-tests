@@ -185,7 +185,7 @@ fn phase_15_settles_an_orphan_debt_to_nothing() {
 /// must fail loudly, never silently invent a code.
 #[test]
 fn kind_codes_frozen_and_loud() {
-    for (i, label) in KINDS.iter().enumerate() {
+    for (i, label) in KINDS.split_ascii_whitespace().enumerate() {
         assert_eq!(kind_code(label).expect(label), i as i64);
     }
     assert!(kind_code("no_such_kind").is_err());

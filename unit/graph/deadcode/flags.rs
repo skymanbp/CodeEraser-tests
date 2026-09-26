@@ -51,7 +51,8 @@ fn allow_claim_requires_the_why_tail() {
 /// language there), an R package's script directories under its
 /// DESCRIPTION's directory (the scratch root holds `pkg/DESCRIPTION`,
 /// so the same directories outside it are nobody's) and the code
-/// directly in its `R/`, busted's and testthat's tests. One literal
+/// directly in its `R/`, busted's and testthat's tests. Step 5: a
+/// site's `index.html` and `404.html` by name at any depth. One literal
 /// rather than rows of typed tuples: rows of one shape repeat every
 /// dozen tokens under the clone gate.
 const ROLES: &str = "\
@@ -84,7 +85,12 @@ pkg/R/utils.R ⇒ p
 pkg/R/sub/deep.R ⇒ -
 R/utils.R ⇒ -
 tests/testthat/test-utils.R ⇒ t
-x/test_utils.r ⇒ t";
+x/test_utils.r ⇒ t
+index.html ⇒ n
+site/zh/how/index.html ⇒ n
+404.html ⇒ n
+gui/ui/index.html ⇒ n
+docs/about.html ⇒ -";
 
 #[test]
 fn roles_read_the_file_name_and_place() {
