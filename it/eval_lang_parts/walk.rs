@@ -5,6 +5,7 @@
 //! (precision.rs), the generator (generate.rs) and the tamper frame's
 //! oracle (tamper.rs).
 
+use super::Exam;
 use crate::eval_support::{TRUTH_KEYWORDS, site_summary};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
@@ -68,6 +69,14 @@ pub fn walk_record(slice: &Value, refused: &BTreeSet<String>) -> Value {
         .cloned()
         .collect();
     json!({"refused": refused, "refused_sites_by": site_summary(&rows)["sites_by"]})
+}
+
+/// Whether a path is of the exam's language by extension — the
+/// universe walk's first test (generate.rs walk) and the tree gate's
+/// partition of what a slice left out (tree.rs).
+pub fn in_scope(exam: &Exam, path: &str) -> bool {
+    let ext = path.rsplit_once('.').map_or("", |(_, e)| e);
+    exam.exts.contains(&ext)
 }
 
 /// The frozen universe's files, in the slice's order — what a walk

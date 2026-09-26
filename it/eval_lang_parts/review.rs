@@ -2,10 +2,13 @@
 //! corpus's blind ground truth (`lang-review-<corpus>-v<g>.json`,
 //! assembled verbatim from independent auditors who read the pinned
 //! clone and their batch, never a parse) against the frozen sample it
-//! answers and the frozen universe its truths must name. Split from
+//! answers and the frozen files its truths must name — the universe,
+//! or the pinned tree where the exam's references reach any file
+//! (Reach, tree.rs). Split from
 //! the gates like verify.rs: the tamper gate runs it on forged copies.
 
-use crate::eval_lang_parts::{AUDIT_TABLES, Exam, SLICES};
+use super::tree::{targets, universe};
+use crate::eval_lang_parts::{AUDIT_TABLES, Exam, Reach, SLICES, Stage};
 use crate::eval_support::{MIN_WHY, TRUTH_KEYWORDS};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -16,10 +19,10 @@ pub const REVIEW_SCHEMA: &str = "ce.eval-lang-review/1.0.0";
 /// audit tables' rows and the precision docs' alike.
 pub const ECHO: [&str; 6] = ["rank", "path", "line", "nth", "kind", "spec"];
 
-/// Whether an exam's audit is frozen: its EXAMS row says so, and the
-/// tables on disk agree (Exam::filed).
+/// Whether an exam's audit is frozen: its EXAMS row has reached the
+/// stage, and the tables on disk agree (Exam::filed).
 pub fn audited(exam: &Exam) -> bool {
-    exam.filed(&AUDIT_TABLES, exam.audited)
+    exam.filed(&AUDIT_TABLES, Stage::Audited)
 }
 
 /// The site kinds a package directory answers, each with where the
@@ -28,11 +31,13 @@ pub fn audited(exam: &Exam) -> bool {
 /// R's package load the package root, whose code sits in `R/`.
 pub const PACKAGE_KINDS: [(&str, &str); 2] = [("import_star", ""), ("library", "R/")];
 
-/// What a truth names (the M5-2 vocabulary): a keyword; a frozen file
-/// of the corpus, `#Name` naming a member declared in it; or — for a
-/// package-level site only — the package's directory (`.` is the
-/// corpus root), its code frozen where PACKAGE_KINDS says.
-fn class_of(truth: &str, kind: &str, files: &BTreeSet<String>) -> &'static str {
+/// What a truth names (the M5-2 vocabulary): a keyword; a file the
+/// exam's truths may name (tree.rs targets), `#Name` naming a member
+/// declared in it (a document language's section: the element id, the
+/// heading's slug); or — for a package-level site only — the package's
+/// directory (`.` is the corpus root), its code frozen where
+/// PACKAGE_KINDS says.
+pub fn class_of(truth: &str, kind: &str, files: &BTreeSet<String>) -> &'static str {
     if let Some(k) = TRUTH_KEYWORDS.iter().find(|k| **k == truth) {
         return k;
     }
@@ -69,9 +74,9 @@ fn class_of(truth: &str, kind: &str, files: &BTreeSet<String>) -> &'static str {
 /// One corpus's table against its exam: the envelope (schema, corpus,
 /// language, pinned tip), one judged row per sampled primary of the
 /// corpus in sample order echoing its identity, each truth in the
-/// vocabulary and bound to the corpus's frozen universe, each why past
-/// the floor with its batch named, the summary re-derived from the
-/// truths, and every site gap on a frozen file.
+/// vocabulary and bound to the files the exam's truths may name, each
+/// why past the floor with its batch named, the summary re-derived
+/// from the truths, and every gap on its side of the frozen universe.
 pub fn verify_review(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) {
     assert_eq!(doc["schema"], json!(REVIEW_SCHEMA), "{corpus}: schema");
     assert_eq!(doc["corpus"], json!(corpus), "{corpus}: corpus");
@@ -80,13 +85,8 @@ pub fn verify_review(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) {
         .tip(corpus)
         .unwrap_or_else(|| panic!("{corpus}: no corpus of the exam"));
     assert_eq!(doc["tip"], json!(tip), "{corpus}: not the pinned tip");
-    let slice = SLICES.load(exam, corpus);
-    let files: BTreeSet<String> = slice["files"]
-        .as_array()
-        .expect("files")
-        .iter()
-        .map(|f| f["path"].as_str().expect("path").to_string())
-        .collect();
+    let files = universe(&SLICES.load(exam, corpus));
+    let reach = targets(exam, corpus, &files);
     let sampled: Vec<&Value> = sample["rows"]
         .as_array()
         .expect("rows")
@@ -103,7 +103,7 @@ pub fn verify_review(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) {
         }
         let truth = row["truth"].as_str().expect("truth");
         *summary
-            .entry(class_of(truth, row["kind"].as_str().expect("kind"), &files))
+            .entry(class_of(truth, row["kind"].as_str().expect("kind"), &reach))
             .or_default() += 1;
         assert!(
             row["why"].as_str().expect("why").chars().count() >= MIN_WHY,
@@ -112,15 +112,23 @@ pub fn verify_review(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) {
         assert!(row["batch"].as_u64() >= Some(1), "{corpus}/{rank}: batch");
     }
     assert_eq!(doc["summary"], json!(summary), "{corpus}: summary drifted");
-    check_gaps(corpus, doc, &files);
+    check_gaps(exam, corpus, doc, &files, &reach);
 }
 
 /// Every gap sits at a real line and carries its note, on the side of
 /// the frozen universe its list names: a site gap on a frozen file, a
 /// scope gap on a file the universe does not walk (luarocks' launcher
-/// `src/bin/luarocks` is Lua without the extension). Java's tables
-/// were filed before scope gaps existed and hold none.
-fn check_gaps(corpus: &str, doc: &Value, files: &BTreeSet<String>) {
+/// `src/bin/luarocks` is Lua without the extension) — and, where the
+/// exam's truths reach the pinned tree, on a path of it (learning-
+/// area's gallery script builds the `src` its page swaps in). Java's
+/// tables were filed before scope gaps existed and hold none.
+fn check_gaps(
+    exam: &Exam,
+    corpus: &str,
+    doc: &Value,
+    files: &BTreeSet<String>,
+    reach: &BTreeSet<String>,
+) {
     let none = Vec::new();
     for (field, frozen) in [("site_gaps", true), ("scope_gaps", false)] {
         let gaps = match doc.get(field) {
@@ -130,8 +138,9 @@ fn check_gaps(corpus: &str, doc: &Value, files: &BTreeSet<String>) {
         };
         for gap in gaps {
             let path = gap["path"].as_str().expect("path");
+            let known = frozen || exam.reach == Reach::Universe || reach.contains(path);
             assert!(
-                files.contains(path) == frozen && gap["line"].as_u64() >= Some(1),
+                files.contains(path) == frozen && known && gap["line"].as_u64() >= Some(1),
                 "{corpus}: a {field} entry on the wrong side of the frozen universe ({path})"
             );
             assert!(

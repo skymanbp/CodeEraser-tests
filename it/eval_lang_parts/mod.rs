@@ -16,6 +16,7 @@ pub mod replay;
 pub mod review;
 pub mod score;
 pub mod tamper;
+pub mod tree;
 pub mod verify;
 pub mod walk;
 
@@ -23,30 +24,49 @@ use crate::eval_support::{UniverseFamily, eval_doc_path, eval_doc_v, load, site_
 use serde_json::{Value, json};
 
 /// One language's exam: its corpora at their pinned tips, the file
-/// extensions its universe walks, the pathspec of the rungs that
-/// may land only after its audit (lang_provenance.rs), whether that
-/// audit is frozen — flipped by the commit that files the tables —
-/// and whether its ladder is scored — flipped by the commit that
-/// files the precision docs — so a doc that vanishes is named, not
-/// read as pending; and the generation every doc of the exam carries.
-/// A re-freeze (the detector reading more of the language, a new tip)
-/// counts it up and retires the old generation by name in
+/// extensions its universe walks, what its truths may name (Reach),
+/// the pathspec of the rungs that may land only after its audit
+/// (lang_provenance.rs), how far it has come (Stage — flipped by the
+/// commit that files each doc family, so a doc that vanishes is named,
+/// not read as pending), and the generation every doc of the exam
+/// carries. A re-freeze (the detector reading more of the language, a
+/// new tip) counts it up and retires the old generation by name in
 /// docs/EVAL-SET-LANGS.md: the ordering gate reads a doc's first
 /// commit (intro_commit), which a doc rewritten in place would keep.
 pub struct Exam {
     pub lang: &'static str,
     pub corpora: &'static [(&'static str, &'static str)],
     pub exts: &'static [&'static str],
+    pub reach: Reach,
     pub ladder: &'static str,
-    pub audited: bool,
-    pub scored: bool,
+    pub stage: Stage,
     pub generation: u32,
 }
 
+/// How far an exam has come, one step per doc family filed: sampled
+/// (the universes and the sample), audited (the blind tables), scored
+/// (the precision docs). Ordered, so scored implies audited by
+/// construction — the two flags this replaces could disagree.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum Stage {
+    Sampled,
+    Audited,
+    Scored,
+}
+
+/// What an exam's truths may name: a file of its frozen universe or a
+/// package directory holding some (Java, Lua, R load their own code),
+/// or any path of the pinned tree, frozen per corpus (tree.rs) — a
+/// page fetches whatever the site serves (HTML).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Reach {
+    Universe,
+    Tree,
+}
+
 impl Exam {
-    /// A corpus's pinned tip, or None when the exam holds no such
-    /// corpus — the one lookup the table, the sample and the audit
-    /// verifiers read.
+    /// A corpus's pinned tip, or None when the exam holds no such corpus —
+    /// the one lookup the table, the sample and the audit verifiers read.
     pub fn tip(&self, corpus: &str) -> Option<&'static str> {
         self.corpora
             .iter()
@@ -54,12 +74,12 @@ impl Exam {
             .map(|(_, t)| *t)
     }
 
-    /// Whether one per-corpus doc family is filed, by the exam's flag
-    /// for it — and the disk must agree corpus by corpus: a doc that
-    /// vanished, or one filed ahead of its flag, is named here, never
-    /// read as "pending" (the audit tables' and the precision docs'
-    /// one reading).
-    pub fn filed(&self, docs: &Docs, flag: bool) -> bool {
+    /// Whether one per-corpus doc family is filed, by the exam's stage —
+    /// and the disk must agree corpus by corpus: a doc that vanished, or
+    /// one filed ahead of its stage, is named here, never read as
+    /// "pending" (the audit tables' and the precision docs' one reading).
+    pub fn filed(&self, docs: &Docs, at: Stage) -> bool {
+        let flag = self.stage >= at;
         for (corpus, _) in self.corpora {
             let path = docs.path(self, corpus);
             let present = crate::common::repo_root().join(&path).exists();
@@ -69,6 +89,17 @@ impl Exam {
             );
         }
         flag
+    }
+
+    /// A per-corpus doc's envelope: its schema, its corpus named with the
+    /// exam's pinned tip and language (the precision docs, the trees).
+    pub fn assert_envelope(&self, corpus: &str, doc: &Value, schema: &str) {
+        let tip = self
+            .tip(corpus)
+            .unwrap_or_else(|| panic!("{corpus}: no corpus of the exam"));
+        assert_eq!(doc["schema"], json!(schema), "{corpus}: schema");
+        let identity = json!({"name": corpus, "tip": tip, "lang": self.lang});
+        assert_eq!(doc["corpus"], identity, "{corpus}: not the exam's corpus");
     }
 
     /// The exam's frozen sample, its one per-language doc.
@@ -134,6 +165,9 @@ pub const PRECISION_DOCS: Docs = Docs("lang-precision");
 /// build-output rule, Java's source sets and own units, Lua's own
 /// directory — lang_provenance.rs holds a doc to it), so their docs
 /// are generated again once, beside HTML's, after the HTML ladder.
+use Reach::{Tree, Universe};
+use Stage::Audited;
+
 pub const EXAMS: [Exam; 4] = [
     Exam {
         lang: "java",
@@ -142,9 +176,9 @@ pub const EXAMS: [Exam; 4] = [
             ("jsoup", "093e2f58492c531667e551e8793513a41b22443e"),
         ],
         exts: &["java"],
+        reach: Universe,
         ladder: "cli/src/graph/ladder/java*",
-        audited: true,
-        scored: false,
+        stage: Audited,
         generation: 1,
     },
     Exam {
@@ -154,9 +188,9 @@ pub const EXAMS: [Exam; 4] = [
             ("koreader", "d9cd2788e4ec023b8fbf60b0982e831c82d15a44"),
         ],
         exts: &["lua"],
+        reach: Universe,
         ladder: "cli/src/graph/ladder/lua*",
-        audited: true,
-        scored: false,
+        stage: Audited,
         generation: 2,
     },
     Exam {
@@ -166,9 +200,9 @@ pub const EXAMS: [Exam; 4] = [
             ("covid19model", "fcc30e2b8d046ddf3ef10dfc222e42b5cd732622"),
         ],
         exts: &["R", "r"],
+        reach: Universe,
         ladder: "cli/src/graph/ladder/r/",
-        audited: true,
-        scored: false,
+        stage: Audited,
         generation: 1,
     },
     Exam {
@@ -182,9 +216,9 @@ pub const EXAMS: [Exam; 4] = [
             ("learning-area", "dbed6bcb8284634c7549c4da596ec30b0cfc6e7e"),
         ],
         exts: &["html", "htm"],
+        reach: Tree,
         ladder: "cli/src/graph/ladder/html*",
-        audited: false,
-        scored: false,
+        stage: Audited,
         generation: 1,
     },
 ];
@@ -259,8 +293,7 @@ pub fn corpus_names() -> Vec<String> {
 /// One sample `sources` row: which frozen universe a pool came from.
 pub fn source_row(name: &str, slice: &Value) -> Value {
     json!({
-        "corpus": name,
-        "tip": slice["corpus"]["tip"],
+        "corpus": name, "tip": slice["corpus"]["tip"],
         "total_sites": slice["summary"]["total_sites"],
     })
 }

@@ -16,6 +16,7 @@
 //! a change anywhere else that moves an answer.
 
 use super::review::verify_review;
+use super::walk::in_scope;
 use super::{
     AUDIT_TABLES, Exam, PRECISION_DOCS, SAMPLE_SCHEMA, SAMPLES, SLICE_SCHEMA, SLICES, score,
 };
@@ -55,7 +56,7 @@ pub(super) fn freeze(file: &str, doc: &Value) {
 /// The pinned tree's paths. -z: unquoted non-ASCII paths;
 /// --full-tree: root-relative paths whatever the cwd (the M5-2
 /// walker's two lessons).
-fn tree_paths(repo: &str, tip: &str) -> Vec<String> {
+pub(super) fn tree_paths(repo: &str, tip: &str) -> Vec<String> {
     let listing = git_in(
         Some(repo),
         &["ls-tree", "-r", "--full-tree", "--name-only", "-z", tip],
@@ -89,8 +90,7 @@ fn walk(exam: &Exam, repo: &str, tip: &str) -> (Vec<Value>, BTreeMap<&'static st
     let mut scope = product_walk(repo);
     let (mut files, mut excluded) = (Vec::new(), BTreeMap::new());
     for path in tree_paths(repo, tip) {
-        let ext = path.rsplit_once('.').map_or("", |(_, e)| e);
-        let tally = if !exam.exts.contains(&ext) {
+        let tally = if !in_scope(exam, &path) {
             "other_extension"
         } else if !scope.contains(Path::new(&path)) {
             "walk_refused"
@@ -238,6 +238,7 @@ pub(super) fn scored_doc(exam: &Exam, name: &str, tip: &str) -> Value {
     let review = AUDIT_TABLES.load(exam, name);
     verify_review(exam, name, &review, &sample);
     let repo = corpus_repo(name, tip);
+    super::tree::assert_frozen_tree(exam, name, &repo, tip);
     let mut reads = product_walk(&repo);
     let (walked, refused): (Vec<_>, Vec<_>) = frozen_texts(exam, name, tip, &slice)
         .into_iter()

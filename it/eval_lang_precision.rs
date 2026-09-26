@@ -9,7 +9,7 @@
 use crate::eval_lang_parts::precision::verify_precision;
 use crate::eval_lang_parts::score::{GATE, scored};
 use crate::eval_lang_parts::tamper::{oracle_precision, tamper_battery};
-use crate::eval_lang_parts::{EXAMS, PRECISION_DOCS, SLICES, exam_of_corpus};
+use crate::eval_lang_parts::{EXAMS, PRECISION_DOCS, SLICES, Stage, exam_of_corpus};
 use crate::eval_support::{assert_corpus_precision, assert_corpus_set, correct_wrong, doc_refused};
 use serde_json::{Map, Value, json};
 
@@ -22,12 +22,16 @@ use serde_json::{Map, Value, json};
 fn lang_precision_contract() {
     let mut corpora = Vec::new();
     for exam in EXAMS.iter().filter(|e| scored(e)) {
-        assert!(exam.audited, "{}: scored before its audit (G13)", exam.lang);
+        assert!(
+            exam.stage >= Stage::Audited,
+            "{}: scored before its audit (G13)",
+            exam.lang
+        );
         corpora.extend(exam.corpora.iter().map(|(c, _)| Some(c.to_string())));
     }
     corpora.sort();
     assert_corpus_set(PRECISION_DOCS.0, &corpora);
-    for exam in EXAMS.iter().filter(|e| e.scored) {
+    for exam in EXAMS.iter().filter(|e| e.stage == Stage::Scored) {
         let sample = exam.sample();
         let (mut c, mut w) = (0, 0);
         for (corpus, _) in exam.corpora {

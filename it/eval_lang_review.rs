@@ -7,11 +7,13 @@
 //! as eval_lang_precision.rs holds the precision docs'. No git, no
 //! corpus clone.
 
-use crate::eval_lang_parts::review::{self, PACKAGE_KINDS, verify_review};
+use crate::eval_lang_parts::review::{self, PACKAGE_KINDS, class_of, verify_review};
 use crate::eval_lang_parts::tamper::tamper_battery;
-use crate::eval_lang_parts::{AUDIT_TABLES, EXAMS, Exam};
+use crate::eval_lang_parts::tree::{targets, universe};
+use crate::eval_lang_parts::{AUDIT_TABLES, EXAMS, Exam, Reach, SLICES};
 use crate::eval_support::{TRUTH_KEYWORDS, assert_corpus_set, doc_refused};
 use serde_json::{Value, json};
+use std::collections::BTreeSet;
 
 /// Every frozen audit verifies against its exam's sample: one judged
 /// row per primary, truths bound to the frozen universe (review.rs).
@@ -79,8 +81,9 @@ fn a_tampered_review_is_refused() {
 fn a_misplaced_package_truth_is_refused() {
     let mut aimed = Vec::new();
     for (exam, corpus, pristine, sample) in audited_tables() {
+        let reach = reach_of(exam, corpus);
         let rows = pristine["rows"].as_array().expect("rows");
-        let Some(at) = rows.iter().position(|r| package_truth(r, exam)) else {
+        let Some(at) = rows.iter().position(|r| package_truth(r, &reach)) else {
             continue;
         };
         let check = |doc: &Value| verify_review(exam, corpus, doc, &sample);
@@ -103,13 +106,51 @@ fn a_misplaced_package_truth_is_refused() {
     );
 }
 
-/// Whether a row's truth is a package directory: no keyword, and no
-/// file of the exam's extensions (`#Member` aside) — every frozen file
-/// carries one.
-fn package_truth(row: &Value, exam: &Exam) -> bool {
+/// The files the exam's truths may name in one corpus (tree.rs).
+fn reach_of(exam: &Exam, corpus: &str) -> BTreeSet<String> {
+    targets(exam, corpus, &universe(&SLICES.load(exam, corpus)))
+}
+
+/// Whether a row's truth is a package directory, by the verifier's own
+/// reading of it (review.rs class_of): a file the exam's truths may
+/// name is no package, whatever its extension.
+fn package_truth(row: &Value, reach: &BTreeSet<String>) -> bool {
     let truth = row["truth"].as_str().expect("truth");
-    let path = truth.split('#').next().unwrap_or(truth);
-    !TRUTH_KEYWORDS.contains(&truth) && !exam.exts.iter().any(|e| path.ends_with(&format!(".{e}")))
+    class_of(truth, row["kind"].as_str().expect("kind"), reach) == "package"
+}
+
+/// Where an exam's references reach any tracked file, a truth names a
+/// path of the pinned tree beyond the universe (a page's stylesheet,
+/// an image) and passes; one off the tree refuses. The first such
+/// audited table aims it.
+#[test]
+fn a_truth_beyond_the_tree_is_refused() {
+    let (exam, corpus, pristine, sample) = audited_tables()
+        .into_iter()
+        .find(|(e, ..)| e.reach == Reach::Tree)
+        .expect("an audited exam reaching the tree");
+    let files = universe(&SLICES.load(exam, corpus));
+    let beyond = |r: &Value| {
+        let truth = r["truth"].as_str().expect("truth");
+        let path = truth.split('#').next().unwrap_or(truth);
+        !TRUTH_KEYWORDS.contains(&truth) && !files.contains(path)
+    };
+    let rows = pristine["rows"].as_array().expect("rows");
+    let at = rows
+        .iter()
+        .position(beyond)
+        .expect("a truth beyond the universe");
+    let check = |doc: &Value| verify_review(exam, corpus, doc, &sample);
+    assert!(
+        !doc_refused(&pristine, &check),
+        "{corpus}: pristine table must pass"
+    );
+    let mut forged = pristine.clone();
+    forged["rows"][at]["truth"] = json!("site/forged.png");
+    assert!(
+        doc_refused(&forged, &check),
+        "{corpus}: a truth beyond the tree must refuse"
+    );
 }
 
 /// The forgeries of row `at`'s package truth: the truth on the first

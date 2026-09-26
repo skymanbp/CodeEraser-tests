@@ -12,7 +12,7 @@ use super::walk::Walk;
 use crate::common::{Fixture, reason_name};
 use crate::eval_graph_precision_parts::{ratio, rescore, verdict_of};
 use crate::eval_lang_parts::review::ECHO;
-use crate::eval_lang_parts::{Exam, PRECISION_DOCS};
+use crate::eval_lang_parts::{Exam, PRECISION_DOCS, Stage};
 use crate::eval_support::{lang_of, tally_add};
 use codeeraser::graph::ladder::{self, Outcome, Scope, Site, java_header, lua_path};
 use codeeraser::graph::sites::{RawSite, detect};
@@ -27,10 +27,10 @@ pub const PRECISION_SCHEMA: &str = "ce.eval-lang-precision/1.1.0";
 /// overall, and per corpus where the in-corpus truths reach 5.
 pub const GATE: f64 = 0.90;
 
-/// Whether an exam's ladder is scored: its EXAMS row says so, and the
-/// docs on disk agree (Exam::filed).
+/// Whether an exam's ladder is scored: its EXAMS row has reached the
+/// stage, and the docs on disk agree (Exam::filed).
 pub fn scored(exam: &Exam) -> bool {
-    exam.filed(&PRECISION_DOCS, exam.scored)
+    exam.filed(&PRECISION_DOCS, Stage::Scored)
 }
 
 /// The frozen tree as the walk hands it to the ladder: the frozen

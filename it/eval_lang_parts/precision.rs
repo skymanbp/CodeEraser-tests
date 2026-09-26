@@ -27,12 +27,7 @@ use std::collections::{BTreeMap, BTreeSet};
 /// and the audit's site gaps, in order, none in a refused file, each
 /// site answered in one shape.
 pub fn verify_precision(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) {
-    let tip = exam
-        .tip(corpus)
-        .unwrap_or_else(|| panic!("{corpus}: no corpus of the exam"));
-    assert_eq!(doc["schema"], json!(PRECISION_SCHEMA), "{corpus}: schema");
-    let identity = json!({"name": corpus, "tip": tip, "lang": exam.lang});
-    assert_eq!(doc["corpus"], identity, "{corpus}: not the exam's corpus");
+    exam.assert_envelope(corpus, doc, PRECISION_SCHEMA);
     assert!(
         doc["generated_from"]["commit"].is_string(),
         "{corpus}: generated_from"
