@@ -24,6 +24,16 @@ fn python_functions_become_units() {
     owners(&units, &[(2, Some("alpha/2")), (3, None)]); // line 3 is the blank line between defs
 }
 
+/// A Markdown case: the source, its keys in order, each unit's rows and
+/// the owner probes (an alias because the tuple on the `let` trips
+/// clippy's `type_complexity`).
+type MdCase<'a> = (
+    &'a str,
+    &'a str,
+    &'a [(usize, usize)],
+    &'a [(usize, Option<&'a str>)],
+);
+
 /// Markdown sections are the ladder's own headings (plan v2.30 step
 /// 5b, boundary items 27 / 35): an ATX heading opens one and the
 /// preamble is toplevel; a setext heading opens one on its text's
@@ -32,7 +42,7 @@ fn python_functions_become_units() {
 /// the next heading.
 #[test]
 fn markdown_sections_are_the_ladders_headings() {
-    let docs: [(&str, &str, &[(usize, usize)], &[(usize, Option<&str>)]); 2] = [
+    let docs: [MdCase<'_>; 2] = [
         (
             "intro\n# One\nbody\n## Two\nmore\n",
             "One Two",
