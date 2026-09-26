@@ -174,6 +174,21 @@ function M.p(n) return M.p(n) end
 function M:q() return self:q() end
 local t = { spin = function(self) return self:spin() end }
 ====
+lua @@ none @@ a local bound to a value is Lua's import (register D21, plan v2.30 step 5b): inside the body that declares it the bare `helper()` reaches the local, never the file's same-named callable
+local function helper() end
+local function run()
+  local helper = other.helper
+  helper()
+end
+====
+lua @@ run -> f, run -> g @@ a local bound to a function value is a callable the index seats, not a shadow: the host's calls past the two forms reach them
+local function run()
+  local f = function() end
+  local function g() end
+  f()
+  g()
+end
+====
 r @@ fact -> fact, obj$step -> obj$step, ping -> pong, pong -> ping @@ R: a bare call reaches the function its assignment names, and `obj$step()` inside `obj$step` the member the caller's own name spells
 fact <- function(n) if (n <= 1) 1 else n * fact(n - 1)
 obj$step <- function(n) obj$step(n)

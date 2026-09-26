@@ -16,6 +16,22 @@
       "candidate": 3
     }
   ],
+  "rearbitrated": {
+    "date": "2026-09-26",
+    "corpus": "go",
+    "batch": "arb_out_v1.json",
+    "queries": 13,
+    "rows": 71,
+    "replaced": 76,
+    "reason": "plan v2.30 step 5b items 3 and 25 changed the Go fixture's unit universe (grouped parameters count per name, package-level const / var declarations are units), so every Go candidate list was re-measured live and the 13 drawn queries re-arbitrated whole; the other corpora's rows stand",
+    "arbiter": "codex exec gpt-6-astra (reasoning max, read-only sandbox), one batch of 13 queries; the prompt carried identities and verbatim source only - no scores, no role bits, no arm placements (RM18)",
+    "renamed_queries": [],
+    "transcription_repairs": [],
+    "tree": {
+      "tip": "a5ac21f5ed1801109174622dfe2401677432fbd1",
+      "dirty": true
+    }
+  },
   "rows": [
     {
       "rank": "00137ac155a12094960ed5b87e44f450cf3a4863335ca6e27ea0fa8a11dcb040",
@@ -1275,35 +1291,42 @@
       "candidate": 1,
       "truth": "same_role",
       "clone": true,
-      "why": "Both register lifecycle callbacks by appending supplied functions to a global list; OnInitialize targets command startup and OnFinalize targets command termination, using otherwise equivalent bodies."
+      "why": "OnInitialize registers initialization callbacks and OnFinalize registers finalization callbacks using identical append logic with renamed registries."
     },
     {
       "rank": "01be2bdf5c73955e4a76df39f9d50f7d179fc60d46a9de1a95bbd378341b625b",
       "candidate": 2,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "OnInitialize appends command lifecycle callbacks, while ShellCompDirective.string converts directive bits into descriptive names and detects out-of-range directive values."
+      "why": "OnInitialize registers callbacks by appending them to initializers, while initializers declares their storage, making them the registrar and registry of one mechanism."
     },
     {
       "rank": "01be2bdf5c73955e4a76df39f9d50f7d179fc60d46a9de1a95bbd378341b625b",
       "candidate": 3,
       "truth": "unrelated",
       "clone": false,
-      "why": "OnInitialize stores functions for later command initialization, while FixedCompletions constructs a completion callback that always returns supplied choices and a directive."
+      "why": "OnInitialize registers initialization callbacks, whereas EnableTraverseRunHooks holds a separate run-hook traversal setting with no shared registration mechanism shown."
     },
     {
       "rank": "01be2bdf5c73955e4a76df39f9d50f7d179fc60d46a9de1a95bbd378341b625b",
       "candidate": 4,
       "truth": "unrelated",
       "clone": false,
-      "why": "OnInitialize registers initialization functions, while NoFileCompletions returns no suggestions and a directive disabling filesystem completion."
+      "why": "OnInitialize registers lifecycle callbacks, whereas ShellCompDirective.string converts completion directive bits into readable text, serving a separate mechanism."
     },
     {
       "rank": "01be2bdf5c73955e4a76df39f9d50f7d179fc60d46a9de1a95bbd378341b625b",
       "candidate": 5,
       "truth": "unrelated",
       "clone": false,
-      "why": "OnInitialize appends lifecycle callbacks, while completeRequireFlags visits inherited and local flags to suggest required flags that have not already been supplied."
+      "why": "OnInitialize stores initialization callbacks, whereas FixedCompletions constructs a callback returning constant completion results, so their responsibilities and mechanisms differ."
+    },
+    {
+      "rank": "01be2bdf5c73955e4a76df39f9d50f7d179fc60d46a9de1a95bbd378341b625b",
+      "candidate": 6,
+      "truth": "unrelated",
+      "clone": false,
+      "why": "OnInitialize registers initialization hooks, whereas completeRequireFlags computes completion suggestions for missing required flags, performing unrelated work."
     },
     {
       "rank": "01c76cbef8307328b4521150e4e95e3ea3b2f75088d3a811651723e96f8263ac",
@@ -1378,44 +1401,44 @@
     {
       "rank": "01f0df74c2a39d0a956a7eb8567aee5c61ff448229c620c93da8c32bcc32457c",
       "candidate": 1,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "flagCompError stores the subcommand and unsupported flag identifying a completion error, while CompletionOptions stores switches controlling completion commands, descriptions, and default directives."
+      "why": "flagCompError stores unsupported-flag failure details, whereas CompletionOptions configures completion commands and presentation, giving the structures separate responsibilities."
     },
     {
       "rank": "01f0df74c2a39d0a956a7eb8567aee5c61ff448229c620c93da8c32bcc32457c",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "flagCompError defines the error's two identifying fields, while its Error method combines those fields into a human-readable unsupported-flag message."
+      "why": "flagCompError defines the data describing an unsupported flag, while flagCompError.Error formats that data as an error message, making them representation and rendering parts of one error type."
     },
     {
       "rank": "01f0df74c2a39d0a956a7eb8567aee5c61ff448229c620c93da8c32bcc32457c",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "flagCompError represents a particular completion failure, while CompError prefixes an arbitrary message with an error marker and sends it through CompDebug."
+      "why": "flagCompError represents an internal unsupported-flag failure, whereas ShellCompDirectiveError represents failure in the shell-facing directive protocol, giving them different roles in completion error reporting."
     },
     {
       "rank": "01f0df74c2a39d0a956a7eb8567aee5c61ff448229c620c93da8c32bcc32457c",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "flagCompError holds command and flag details for an error, while ShellCompDirective defines the integer type used to communicate shell-completion behavior."
+      "why": "flagCompError carries unsupported-flag failure details, while CompError formats and logs completion errors, separating error representation from diagnostic reporting."
     },
     {
       "rank": "01f0df74c2a39d0a956a7eb8567aee5c61ff448229c620c93da8c32bcc32457c",
       "candidate": 5,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "flagCompError represents an unsupported command flag, while PositionalArgs defines callbacks that validate a command's positional arguments and return an error."
+      "why": "flagCompError stores information about an unsupported flag, whereas compCmdNoDescFlagDefault supplies a completion-description flag default, serving separate purposes."
     },
     {
       "rank": "01f0df74c2a39d0a956a7eb8567aee5c61ff448229c620c93da8c32bcc32457c",
       "candidate": 6,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "flagCompError records an unsupported-flag failure, while helpOrVersionFlagPresent checks whether Cobra-provided help or version flags were explicitly changed during completion processing."
+      "why": "flagCompError represents unsupported-flag errors, whereas flagCompletionMutex supplies synchronization for completion callback storage, belonging to separate error and registry mechanisms."
     },
     {
       "rank": "01f7d5c8bdb4d63f78fde33980049cc513b1d924ed038070b98b3fbf934bef0c",
@@ -3849,51 +3872,37 @@
     {
       "rank": "0a3453852e4a52eb6864eec84ddfa6625ff449835166a31cb7813632ad46e296",
       "candidate": 1,
-      "truth": "related",
+      "truth": "same_role",
       "clone": false,
-      "why": "ExactArgs constructs a count-only validator, whereas ExactValidArgs composes that validator with OnlyValidArgs to enforce both argument count and allowed argument values."
+      "why": "ExactArgs produces an exact-count positional validator, and ExactValidArgs produces an exact-count validator with additional allowed-value checking, so both provide positional validation policies."
     },
     {
       "rank": "0a3453852e4a52eb6864eec84ddfa6625ff449835166a31cb7813632ad46e296",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "Both factories return an argument-count validator with the same conditional-error structure, changing the rejection condition from a count unequal to n to a count greater than n."
+      "why": "ExactArgs and MaximumNArgs both construct argument-count validators using nearly identical closures, differing in the comparison and diagnostic text."
     },
     {
       "rank": "0a3453852e4a52eb6864eec84ddfa6625ff449835166a31cb7813632ad46e296",
       "candidate": 3,
       "truth": "same_role",
       "clone": true,
-      "why": "Both factories build positional-argument count checks using nearly identical closures, with ExactArgs requiring equality and MinimumNArgs rejecting counts below n."
+      "why": "ExactArgs and MinimumNArgs both construct argument-count validators using nearly identical closures, changing only the count comparison and error message."
     },
     {
       "rank": "0a3453852e4a52eb6864eec84ddfa6625ff449835166a31cb7813632ad46e296",
       "candidate": 4,
       "truth": "same_role",
       "clone": true,
-      "why": "ExactArgs and RangeArgs use the same returned-validator structure to reject unacceptable argument counts, with RangeArgs replacing exact equality by lower and upper bounds."
+      "why": "ExactArgs checks one required count and RangeArgs checks count bounds using the same validator-closure structure with small parameter, condition, and message edits."
     },
     {
       "rank": "0a3453852e4a52eb6864eec84ddfa6625ff449835166a31cb7813632ad46e296",
       "candidate": 5,
-      "truth": "related",
-      "clone": false,
-      "why": "ExactArgs creates a validator for positional-argument cardinality, whereas NoDuplicateArgs checks argument contents for repetition using a set."
-    },
-    {
-      "rank": "0a3453852e4a52eb6864eec84ddfa6625ff449835166a31cb7813632ad46e296",
-      "candidate": 6,
       "truth": "same_role",
       "clone": false,
-      "why": "ExactArgs creates a validator requiring a specified positional-argument count, while NoArgs implements the corresponding fixed-zero count policy directly."
-    },
-    {
-      "rank": "0a3453852e4a52eb6864eec84ddfa6625ff449835166a31cb7813632ad46e296",
-      "candidate": 7,
-      "truth": "related",
-      "clone": false,
-      "why": "ExactArgs validates how many arguments were supplied, whereas OnlyValidArgs strips descriptions from ValidArgs and checks each supplied value against that vocabulary."
+      "why": "ExactArgs provides validation for a specified argument count, while NoArgs directly enforces zero arguments, so both enforce positional-argument arity despite different packaging."
     },
     {
       "rank": "0a4302f8e1792f5ba9b35d7646205bea0b1e7248e4c2486d5472c5d24acbd82c",
@@ -3975,79 +3984,72 @@
     {
       "rank": "0a9c12a4eeb7085ee1645cea8dfdc6fbc827b3ce1d75a475e4b47260f55d4ab4",
       "candidate": 1,
-      "truth": "related",
+      "truth": "same_role",
       "clone": false,
-      "why": "InitDefaultCompletionCmd installs user-facing subcommands that generate shell scripts, whereas initCompleteCmd installs the hidden endpoint that computes and prints completion choices and directives for those scripts."
+      "why": "InitDefaultCompletionCmd constructs and conditionally registers script-generation commands, while initCompleteCmd constructs and conditionally registers the completion-request command, making both completion command initializers."
     },
     {
       "rank": "0a9c12a4eeb7085ee1645cea8dfdc6fbc827b3ce1d75a475e4b47260f55d4ab4",
       "candidate": 2,
       "truth": "unrelated",
       "clone": false,
-      "why": "InitDefaultCompletionCmd constructs and registers shell-script generation commands, whereas tmpl wraps text in a function that parses and executes a Go template against supplied data."
+      "why": "InitDefaultCompletionCmd creates shell-completion commands, whereas templateFuncs declares helpers for template execution, serving a separate rendering mechanism."
     },
     {
       "rank": "0a9c12a4eeb7085ee1645cea8dfdc6fbc827b3ce1d75a475e4b47260f55d4ab4",
       "candidate": 3,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "InitDefaultCompletionCmd installs shell-completion setup commands, whereas checkIfFlagCompletion analyzes partially typed arguments to identify a flag value requiring runtime completion."
+      "why": "InitDefaultCompletionCmd installs commands that generate shell scripts, whereas tmpl builds a template execution wrapper, performing different work in separate mechanisms."
     },
     {
       "rank": "0a9c12a4eeb7085ee1645cea8dfdc6fbc827b3ce1d75a475e4b47260f55d4ab4",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "InitDefaultCompletionCmd registers commands that generate completion scripts, whereas getCompletions resolves a partial command line and gathers matching flags, subcommands, arguments, and custom completion results."
+      "why": "InitDefaultCompletionCmd installs commands for generating completion scripts, while checkIfFlagCompletion identifies flag-value completion contexts at runtime, serving setup and request-processing roles in shell completion."
     },
     {
       "rank": "0a9c12a4eeb7085ee1645cea8dfdc6fbc827b3ce1d75a475e4b47260f55d4ab4",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "InitDefaultCompletionCmd constructs the script-generation command hierarchy, whereas completeRequireFlags scans inherited and local flags and suggests required flags that have not been supplied."
+      "why": "InitDefaultCompletionCmd installs script-generation commands, while getCompletions computes the choices requested by those scripts, making them different stages of the completion mechanism."
     },
     {
       "rank": "0d0c48735bb53fc80f9b22703f44b617aa605db55b7caca02550ec899964116d",
       "candidate": 1,
       "truth": "same_role",
       "clone": false,
-      "why": "NoFileCompletions supplies a fixed empty completion result with a no-file directive, while FixedCompletions constructs a callback supplying configurable fixed choices and a fixed directive."
+      "why": "NoFileCompletions supplies a constant empty completion response disabling file fallback, while FixedCompletions constructs callbacks supplying arbitrary constant responses, so both provide fixed completion behavior."
     },
     {
       "rank": "0d0c48735bb53fc80f9b22703f44b617aa605db55b7caca02550ec899964116d",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "NoFileCompletions is a callback that returns completion policy, whereas RegisterFlagCompletionFunc validates a flag and stores a callback in the protected completion-function registry."
+      "why": "NoFileCompletions returns a policy disabling file completion, while ShellCompDirectiveFilterFileExt names a policy for filtering file completions, giving them different roles in the file-completion directive mechanism."
     },
     {
       "rank": "0d0c48735bb53fc80f9b22703f44b617aa605db55b7caca02550ec899964116d",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "NoFileCompletions returns a runtime directive suppressing file suggestions, whereas GenBashCompletionFileV2 creates an output file and writes a generated Bash completion script into it."
+      "why": "NoFileCompletions returns ShellCompDirectiveNoFileComp, while ShellCompDirectiveNoFileComp declares the directive being returned, making them a policy-producing callback and its protocol value."
     },
     {
       "rank": "0d0c48735bb53fc80f9b22703f44b617aa605db55b7caca02550ec899964116d",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "NoFileCompletions supplies a completion response, whereas GetFlagCompletionFunc locates a flag and retrieves its registered response-producing callback under a read lock."
+      "why": "NoFileCompletions implements completion callback behavior, while RegisterFlagCompletionFunc associates such callbacks with flags, giving them provider and registration roles in the same callback mechanism."
     },
     {
       "rank": "0d0c48735bb53fc80f9b22703f44b617aa605db55b7caca02550ec899964116d",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "NoFileCompletions controls shell completion by returning an empty result and directive, whereas CompDebugln emits completion diagnostics by adding a newline and delegating to CompDebug."
-    },
-    {
-      "rank": "0d0c48735bb53fc80f9b22703f44b617aa605db55b7caca02550ec899964116d",
-      "candidate": 6,
-      "truth": "related",
-      "clone": false,
-      "why": "NoFileCompletions provides a runtime no-file-completion response, whereas GenBashCompletionV2 delegates generation of a Bash completion script to an output writer."
+      "why": "NoFileCompletions supplies a runtime directive disabling file fallback, while GenBashCompletionFileV2 writes a Bash client script that interprets completion directives, serving different sides of the same protocol."
     },
     {
       "rank": "1062a7c8497ef8ed144bd4b4c683b71f09a5ed9a0dfd2c89b21ef6e54bd70cfd",
@@ -4103,49 +4105,42 @@
       "candidate": 1,
       "truth": "related",
       "clone": false,
-      "why": "RegisterFlagCompletionFunc validates a flag and stores its callback under a write lock, while GetFlagCompletionFunc retrieves an existing callback under a read lock."
+      "why": "RegisterFlagCompletionFunc validates and inserts a flag callback, while GetFlagCompletionFunc retrieves one under a read lock, making them complementary registry operations."
     },
     {
       "rank": "109a41b10c7d7f95110b9291b291aca9c0b5b5ec5056e1e79e11b1301fb6110c",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "RegisterFlagCompletionFunc associates a callback with a flag, while NoFileCompletions is a callback that returns no choices and the directive disabling file completion."
+      "why": "RegisterFlagCompletionFunc installs callbacks for flags, while NoFileCompletions implements one possible callback behavior, giving them registrar and provider roles."
     },
     {
       "rank": "109a41b10c7d7f95110b9291b291aca9c0b5b5ec5056e1e79e11b1301fb6110c",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "RegisterFlagCompletionFunc installs a supplied callback in the flag registry, while FixedCompletions constructs a callback that always returns captured choices and a directive."
+      "why": "RegisterFlagCompletionFunc stores a completion callback for a flag, while FixedCompletions constructs callbacks returning fixed results, making them registration and construction parts of the callback mechanism."
     },
     {
       "rank": "109a41b10c7d7f95110b9291b291aca9c0b5b5ec5056e1e79e11b1301fb6110c",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "RegisterFlagCompletionFunc stores callbacks for flags, while CompletionFunc declares the function signature those callbacks must implement, including choices and directive results."
+      "why": "RegisterFlagCompletionFunc installs callbacks that supply flag completions, while GenBashCompletionFileV2 writes the shell client that requests completions, serving different stages of shell-completion integration."
     },
     {
       "rank": "109a41b10c7d7f95110b9291b291aca9c0b5b5ec5056e1e79e11b1301fb6110c",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "RegisterFlagCompletionFunc configures runtime flag-completion callbacks, while GenBashCompletionFileV2 creates an output file and delegates generation of a Bash completion script."
+      "why": "RegisterFlagCompletionFunc installs flag-value completion providers, while checkIfFlagCompletion identifies which flag value is being completed, giving them configuration and request-analysis roles in flag completion."
     },
     {
       "rank": "109a41b10c7d7f95110b9291b291aca9c0b5b5ec5056e1e79e11b1301fb6110c",
       "candidate": 6,
-      "truth": "related",
+      "truth": "same_role",
       "clone": false,
-      "why": "RegisterFlagCompletionFunc registers a completion callback against a validated flag, while AddTemplateFunc registers a named helper in the separate help and usage template function map."
-    },
-    {
-      "rank": "109a41b10c7d7f95110b9291b291aca9c0b5b5ec5056e1e79e11b1301fb6110c",
-      "candidate": 7,
-      "truth": "related",
-      "clone": false,
-      "why": "RegisterFlagCompletionFunc installs one flag-completion callback with duplicate checking, while AddTemplateFuncs copies multiple named helpers into the template function registry."
+      "why": "RegisterFlagCompletionFunc registers a named flag's extension callback and AddTemplateFunc registers a named template helper, so both install functions in extension registries despite different validation and locking details."
     },
     {
       "rank": "14ac4dc7d204f0860b1ee4c3227c18bc39d353c71ec3db48db7206823b871915",
@@ -4194,42 +4189,49 @@
       "candidate": 1,
       "truth": "related",
       "clone": false,
-      "why": "CheckErr prints a non-nil error and exits, while WriteStringAndCheck performs a string write and passes any resulting error to CheckErr."
+      "why": "CheckErr reports a non-nil failure and exits, while WriteStringAndCheck performs a write and passes its error to CheckErr, making them error policy and checked-I/O caller."
     },
     {
       "rank": "163c41723a7840d4cd890d93bb15e62fe4dba8352581c4c09bab6a6768f971b4",
       "candidate": 2,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "CheckErr immediately reports a supplied error and exits, while preExecHook detects an Explorer launch, displays CLI usage guidance, waits, and then exits."
+      "why": "CheckErr handles arbitrary fatal errors, whereas preExecHook detects Explorer launches and displays launch guidance before exiting, so their shared exit operation serves different mechanisms."
     },
     {
       "rank": "163c41723a7840d4cd890d93bb15e62fe4dba8352581c4c09bab6a6768f971b4",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "CheckErr reports an error and terminates the process, while CompError adds an error prefix and delegates completion logging with stderr enabled without itself exiting."
+      "why": "CompError formats completion diagnostics for logging, while CheckErr handles failures from the checked writes used by that logging path, giving them reporting and fatal-I/O handling roles."
     },
     {
       "rank": "163c41723a7840d4cd890d93bb15e62fe4dba8352581c4c09bab6a6768f971b4",
       "candidate": 4,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "CheckErr is a fatal error-reporting utility, while initCompleteCmd installs a hidden command that obtains completion choices, filters their presentation, and prints completion directives."
+      "why": "CompDebug writes completion diagnostics through WriteStringAndCheck, while CheckErr handles errors passed by that helper, making them logging and write-failure handling stages."
     },
     {
       "rank": "163c41723a7840d4cd890d93bb15e62fe4dba8352581c4c09bab6a6768f971b4",
       "candidate": 5,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "CheckErr prints an error and exits with status 1, while CompErrorln appends a newline and forwards the message to the completion error logger."
+      "why": "CheckErr implements generic fatal-error handling, whereas initCompleteCmd constructs a command that serves shell-completion responses, so their primary responsibilities belong to different mechanisms."
     },
     {
       "rank": "163c41723a7840d4cd890d93bb15e62fe4dba8352581c4c09bab6a6768f971b4",
       "candidate": 6,
       "truth": "related",
       "clone": false,
-      "why": "CheckErr performs fatal stderr reporting, while CompDebugln adds a newline and delegates diagnostic logging with caller-controlled stderr output."
+      "why": "CompDebugln adds a newline before invoking the debug logger, while CheckErr handles failures from that logger's checked file writes, serving formatting and failure-handling roles in the logging path."
+    },
+    {
+      "rank": "163c41723a7840d4cd890d93bb15e62fe4dba8352581c4c09bab6a6768f971b4",
+      "candidate": 7,
+      "truth": "related",
+      "clone": false,
+      "why": "CompErrorln formats newline-terminated completion diagnostics, while CheckErr handles failures from the logging path's checked writes, giving them distinct diagnostic and I/O-error responsibilities."
     },
     {
       "rank": "16da3c19e58a5311dcedde3dca060eaa7f287aac2616ab7779e4a86a5a25ffd0",
@@ -4276,86 +4278,72 @@
     {
       "rank": "17040a7c23192d232698774e8c51c72c343f0a542a250912b6cf934d16fe7ad2",
       "candidate": 1,
-      "truth": "related",
+      "truth": "same_role",
       "clone": false,
-      "why": "FixedCompletions creates a callback capturing choices and a directive, while NoFileCompletions is an immediately callable completion handler returning no choices and disabling file completion."
+      "why": "FixedCompletions constructs callbacks returning constant choices and directives, while NoFileCompletions supplies the fixed empty response disabling file fallback, so both provide constant completion behavior."
     },
     {
       "rank": "17040a7c23192d232698774e8c51c72c343f0a542a250912b6cf934d16fe7ad2",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "FixedCompletions constructs a constant-result completion callback, while RegisterFlagCompletionFunc installs a supplied callback for a flag after validation and duplicate checks."
+      "why": "FixedCompletions constructs a completion callback, while RegisterFlagCompletionFunc stores such a callback for a flag, making them construction and registration stages of one extension mechanism."
     },
     {
       "rank": "17040a7c23192d232698774e8c51c72c343f0a542a250912b6cf934d16fe7ad2",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "FixedCompletions returns a closure implementing the completion callback contract, while CompletionFunc declares that contract as a function-type alias."
+      "why": "FixedCompletions constructs a function matching CompletionFunc, while CompletionFunc declares that callback signature, making them an implementation factory and its interface contract."
     },
     {
       "rank": "17040a7c23192d232698774e8c51c72c343f0a542a250912b6cf934d16fe7ad2",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "FixedCompletions creates a new callback with captured results, while GetFlagCompletionFunc retrieves a callback already registered for a flag."
+      "why": "FixedCompletions creates completion callbacks, while GetFlagCompletionFunc retrieves callbacks already registered for flags, serving construction and lookup roles in the callback mechanism."
     },
     {
       "rank": "17040a7c23192d232698774e8c51c72c343f0a542a250912b6cf934d16fe7ad2",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "FixedCompletions builds a callback returning a slice of completion values, while Completion declares those individual values to be strings through a type alias."
-    },
-    {
-      "rank": "17040a7c23192d232698774e8c51c72c343f0a542a250912b6cf934d16fe7ad2",
-      "candidate": 6,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "FixedCompletions creates a callback supplying shell-completion results, while OnInitialize appends functions to the command-execution initializer list."
+      "why": "FixedCompletions produces completion callbacks, while flagCompletionFunctions stores callbacks associated with flags, making them a callback factory and registry storage."
     },
     {
       "rank": "1957f90b2a3aaf8289ab6d5d78af119a0c917c9460fa45ba9ec129c3d7b6242d",
       "candidate": 1,
       "truth": "same_role",
       "clone": false,
-      "why": "AddTemplateFunc inserts one named helper into templateFuncs, and AddTemplateFuncs inserts every helper from a supplied map into that same registry."
+      "why": "AddTemplateFunc registers one named template helper, while AddTemplateFuncs registers a batch of helpers, so both extend the same template-function registry."
     },
     {
       "rank": "1957f90b2a3aaf8289ab6d5d78af119a0c917c9460fa45ba9ec129c3d7b6242d",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "AddTemplateFunc writes a named template helper into a registry, while GetFlagCompletionFunc reads a flag-completion callback from a different registry under a read lock."
+      "why": "AddTemplateFunc inserts a helper into templateFuncs, while templateFuncs declares and initializes the helper registry, making them its mutator and storage."
     },
     {
       "rank": "1957f90b2a3aaf8289ab6d5d78af119a0c917c9460fa45ba9ec129c3d7b6242d",
       "candidate": 3,
       "truth": "unrelated",
       "clone": false,
-      "why": "AddTemplateFunc mutates the help-template function map, while CompletionFunc defines a shell-completion callback signature returning choices and a directive."
+      "why": "AddTemplateFunc inserts template helpers, whereas GetFlagCompletionFunc retrieves flag-completion callbacks, performing different operations in separate extension systems."
     },
     {
       "rank": "1957f90b2a3aaf8289ab6d5d78af119a0c917c9460fa45ba9ec129c3d7b6242d",
       "candidate": 4,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "AddTemplateFunc registers a helper for template evaluation, while RegisterFlagCompletionFunc validates a flag and registers its shell-completion handler with locking and duplicate protection."
+      "why": "AddTemplateFunc registers template helpers, whereas CompletionFunc declares a shell-completion callback signature, so they have different jobs in separate extension mechanisms."
     },
     {
       "rank": "1957f90b2a3aaf8289ab6d5d78af119a0c917c9460fa45ba9ec129c3d7b6242d",
       "candidate": 5,
-      "truth": "related",
+      "truth": "same_role",
       "clone": false,
-      "why": "AddTemplateFunc installs template helpers, while rpad is a formatting helper that constructs a left-justified format string and pads its input to the requested width."
-    },
-    {
-      "rank": "1957f90b2a3aaf8289ab6d5d78af119a0c917c9460fa45ba9ec129c3d7b6242d",
-      "candidate": 6,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "AddTemplateFunc updates the template helper registry, while GenBashCompletionV2 delegates writing a Bash completion script to genBashCompletion."
+      "why": "AddTemplateFunc registers a named template helper and RegisterFlagCompletionFunc registers a named flag's completion callback, so both install function extensions in registries."
     },
     {
       "rank": "1b3224916ebfbf2780fc325f4869c0da42c0179ef894dcbbcd94d555322c9e34",
@@ -4411,35 +4399,35 @@
       "candidate": 1,
       "truth": "same_role",
       "clone": false,
-      "why": "AddTemplateFuncs copies a map of helpers into templateFuncs, and AddTemplateFunc performs the same registration responsibility for one named helper."
+      "why": "AddTemplateFuncs registers a batch of template helpers, while AddTemplateFunc registers a single helper, so both perform template-function registration."
     },
     {
       "rank": "1ee9f66d98d39f3de1c15b407fe4f8f4ab1c45e21301fe3def9350439cac9f08",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "AddTemplateFuncs registers template helpers by copying map entries, while GetFlagCompletionFunc retrieves a previously registered flag-completion callback under a read lock."
+      "why": "AddTemplateFuncs inserts entries into templateFuncs, while templateFuncs declares and initializes that registry, making them the bulk registrar and its backing storage."
     },
     {
       "rank": "1ee9f66d98d39f3de1c15b407fe4f8f4ab1c45e21301fe3def9350439cac9f08",
       "candidate": 3,
       "truth": "unrelated",
       "clone": false,
-      "why": "AddTemplateFuncs mutates the template helper registry, while CompletionFunc declares the function signature for shell-completion handlers."
+      "why": "AddTemplateFuncs installs template helpers, whereas GetFlagCompletionFunc retrieves a flag-completion callback, giving them different operations in separate extension systems."
     },
     {
       "rank": "1ee9f66d98d39f3de1c15b407fe4f8f4ab1c45e21301fe3def9350439cac9f08",
       "candidate": 4,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "AddTemplateFuncs registers multiple template helpers, while RegisterFlagCompletionFunc associates one completion handler with a validated flag and rejects duplicate registrations."
+      "why": "AddTemplateFuncs populates the template-helper registry, whereas CompletionFunc defines a completion callback signature, so their responsibilities and mechanisms differ."
     },
     {
       "rank": "1ee9f66d98d39f3de1c15b407fe4f8f4ab1c45e21301fe3def9350439cac9f08",
       "candidate": 5,
-      "truth": "unrelated",
+      "truth": "same_role",
       "clone": false,
-      "why": "AddTemplateFuncs adds helpers used in template evaluation, while GenBashCompletionV2 delegates generation of a Bash completion script into a writer."
+      "why": "AddTemplateFuncs registers named template functions in bulk and RegisterFlagCompletionFunc registers a flag's completion function individually, so both install function extensions in registries."
     },
     {
       "rank": "1ef81aea0d4a1ed4736d837bf6da0ad1a508f613330c6ed614c129652d2bc93a",
@@ -4584,44 +4572,37 @@
     {
       "rank": "29646d0139b5461fea8615a7c9cd8c8efd820386c2e763829eac6bae3b56c4b8",
       "candidate": 1,
-      "truth": "same_role",
-      "clone": true,
-      "why": "Both are near-verbatim wrappers that append a newline with fmt.Sprintf and forward a completion diagnostic, using CompError versus CompDebug with a stderr option."
+      "truth": "related",
+      "clone": false,
+      "why": "CompErrorln adds a newline and delegates to CompError, while CompError adds the error label and routes the message to logging, making them separate formatting stages of one diagnostic path."
     },
     {
       "rank": "29646d0139b5461fea8615a7c9cd8c8efd820386c2e763829eac6bae3b56c4b8",
       "candidate": 2,
       "truth": "same_role",
-      "clone": false,
-      "why": "CompErrorln emits a completion error through CompError after adding a newline, and CompError emits the same kind of error by adding its prefix and enabling stderr logging."
+      "clone": true,
+      "why": "CompErrorln and CompDebugln both add a newline before delegating to their corresponding logger, with nearly identical code differing in the callee and stderr parameter."
     },
     {
       "rank": "29646d0139b5461fea8615a7c9cd8c8efd820386c2e763829eac6bae3b56c4b8",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "CompErrorln supplies a newline-terminated error to the logging chain, while CompDebug implements the general logging backend by prefixing messages and writing to a configured file and optional stderr."
+      "why": "CompErrorln prepares a newline-terminated error message, while CompDebug performs the underlying file and stderr logging reached through CompError, making them formatting and output layers."
     },
     {
       "rank": "29646d0139b5461fea8615a7c9cd8c8efd820386c2e763829eac6bae3b56c4b8",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "CompErrorln reports a completion error line, while initCompleteCmd creates the completion-request command and calls CompErrorln when obtaining completion choices returns an error."
+      "why": "CompErrorln emits completion error diagnostics, while initCompleteCmd installs a completion-request handler that calls CompErrorln on failures, making them a reporting helper and its caller."
     },
     {
       "rank": "29646d0139b5461fea8615a7c9cd8c8efd820386c2e763829eac6bae3b56c4b8",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "CompErrorln logs runtime completion errors, while genBashComp writes the Bash script that requests completion results, interprets directives, and includes shell-side diagnostics."
-    },
-    {
-      "rank": "29646d0139b5461fea8615a7c9cd8c8efd820386c2e763829eac6bae3b56c4b8",
-      "candidate": 6,
-      "truth": "related",
-      "clone": false,
-      "why": "CompErrorln emits a completion error message through CompError, while ShellCompDirective declares the integer type used to communicate completion behavior to shells."
+      "why": "CompErrorln emits completion error diagnostics, while genBashComp generates the shell client that suppresses request stderr and records completion debug logs, serving different sides of completion diagnostics."
     },
     {
       "rank": "2cb1fa03af3ee0aab6a1009a95899e7053fdb3147464f36665204347ba60b47a",
@@ -4669,43 +4650,36 @@
       "rank": "2e038546ee3d9dc89ac7b03227a95ebaf458499bb9b38916567133c261f57623",
       "candidate": 1,
       "truth": "same_role",
-      "clone": false,
-      "why": "CompDebugln provides newline-terminated completion debug logging by forwarding to CompDebug, which prefixes the diagnostic and writes it to the configured file and optional stderr."
+      "clone": true,
+      "why": "CompDebugln and CompErrorln both append a newline before forwarding to their corresponding logger, using nearly identical code with a different callee and stderr parameter."
     },
     {
       "rank": "2e038546ee3d9dc89ac7b03227a95ebaf458499bb9b38916567133c261f57623",
       "candidate": 2,
-      "truth": "same_role",
-      "clone": true,
-      "why": "Both wrappers append a newline through fmt.Sprintf and forward a completion diagnostic, changing the target logger and whether stderr is supplied as an argument."
+      "truth": "related",
+      "clone": false,
+      "why": "CompDebugln adds a newline and delegates, while CompDebug implements diagnostic labeling and output, making them a formatting wrapper and its logging implementation."
     },
     {
       "rank": "2e038546ee3d9dc89ac7b03227a95ebaf458499bb9b38916567133c261f57623",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "CompDebugln adds a newline to a debug diagnostic with configurable stderr output, while CompError adds an error prefix and always requests stderr output from CompDebug."
+      "why": "CompDebugln adds line termination while preserving stderr selection, whereas CompError adds an error label and forces stderr output, giving them distinct adaptation duties around CompDebug."
     },
     {
       "rank": "2e038546ee3d9dc89ac7b03227a95ebaf458499bb9b38916567133c261f57623",
       "candidate": 4,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "CompDebugln forwards newline-terminated completion diagnostics, while configEnvVar constructs uppercase, sanitized environment-variable names for completion configuration."
+      "why": "CompDebugln formats diagnostic log lines, whereas ShellCompDirectiveFilterDirs identifies a directory-filtering completion policy, serving separate logging and completion-selection mechanisms."
     },
     {
       "rank": "2e038546ee3d9dc89ac7b03227a95ebaf458499bb9b38916567133c261f57623",
       "candidate": 5,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "CompDebugln logs shell-completion diagnostics, while NoFileCompletions supplies a completion result containing no choices and a directive disabling file suggestions."
-    },
-    {
-      "rank": "2e038546ee3d9dc89ac7b03227a95ebaf458499bb9b38916567133c261f57623",
-      "candidate": 6,
-      "truth": "related",
-      "clone": false,
-      "why": "CompDebugln emits completion diagnostics through CompDebug, while ShellCompDirective defines the integer representation of completion-control directives."
+      "why": "CompDebugln formats diagnostic log lines, whereas ShellCompDirectiveFilterFileExt identifies an extension-filtering completion policy, so their responsibilities belong to separate mechanisms."
     },
     {
       "rank": "31e093c73d980e6cc0c5e05f48def47b4c5030eac306d1fc5aa603fe6dfea6d1",
@@ -4780,37 +4754,44 @@
     {
       "rank": "3654ddd5a61892cfdf89d036b0aa59318ff972260ae95b93116714e0ea0d443a",
       "candidate": 1,
-      "truth": "same_role",
+      "truth": "related",
       "clone": false,
-      "why": "genBashCompletion generates a command's Bash script and writes it to the supplied writer, while GenBashCompletionV2 exposes exactly that operation by forwarding both arguments and its result."
+      "why": "genBashCompletion performs buffering, script generation, and output, while GenBashCompletionV2 exposes it through a delegating public method, making them implementation and facade."
     },
     {
       "rank": "3654ddd5a61892cfdf89d036b0aa59318ff972260ae95b93116714e0ea0d443a",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "genBashCompletion buffers and delivers the generated script to an existing writer, while GenBashCompletionFileV2 creates and closes a named file before delegating generation."
+      "why": "genBashCompletion generates a script into an existing writer, while GenBashCompletionFileV2 manages a destination file and invokes the generator through its public wrapper, serving generation and file-adaptation roles."
     },
     {
       "rank": "3654ddd5a61892cfdf89d036b0aa59318ff972260ae95b93116714e0ea0d443a",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "genBashCompletion orchestrates buffering and output for a Command, while genBashComp renders the actual Bash template using a supplied command name, description option, and directive constants."
+      "why": "genBashCompletion manages the output buffer and writer transfer, while genBashComp renders the Bash script into that buffer, making them orchestration and rendering stages of one generator."
     },
     {
       "rank": "3654ddd5a61892cfdf89d036b0aa59318ff972260ae95b93116714e0ea0d443a",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "genBashCompletion builds a completion script and copies its buffer to a writer, while WriteStringAndCheck writes an already supplied string and delegates write failures to CheckErr."
+      "why": "genBashCompletion emits the Bash completion client, while completeRequireFlags computes required-flag suggestions returned through completion requests, serving script-generation and runtime-provider roles."
     },
     {
       "rank": "3654ddd5a61892cfdf89d036b0aa59318ff972260ae95b93116714e0ea0d443a",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "genBashCompletion emits a shell integration script, while completeRequireFlags inspects inherited and local flags to suggest required flags that have not been supplied."
+      "why": "genBashCompletion orchestrates script generation and output, while WriteStringAndCheck handles checked string writes used by its genBashComp helper, making them orchestration and supporting I/O operations."
+    },
+    {
+      "rank": "3654ddd5a61892cfdf89d036b0aa59318ff972260ae95b93116714e0ea0d443a",
+      "candidate": 6,
+      "truth": "related",
+      "clone": false,
+      "why": "genBashCompletion generates a shell-completion client, whereas GetFlagCompletionFunc retrieves registered providers for the corresponding completion service, giving them different roles in shell-completion infrastructure."
     },
     {
       "rank": "5e8b89303b1bdb51f43fbc7c60c080dff624598078339efa0f15316405dd2138",

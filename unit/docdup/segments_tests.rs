@@ -49,6 +49,20 @@ fn fenced_inline_and_html_comment_text_is_invisible() {
     assert_eq!(segs.len(), 2, "alpha/beta and gamma/delta paragraphs");
 }
 
+/// Plan v2.30 step 5b (boundary items 22 / 23): indented code inside a
+/// list item — four columns past the item's content column after a
+/// blank line — never reaches the prose walk, while the item's
+/// continuation paragraph at its content column does, and is what the
+/// `indented` count now counts.
+#[test]
+fn list_item_code_is_not_prose_and_its_continuation_is() {
+    let text = "- item one two\n\n    continuation three four\n\n      code five six\n\nafter seven eight\n";
+    let (segs, shed) = extract(text, Lang::Markdown);
+    let spans: Vec<(i64, i64)> = segs.iter().map(|s| (s.start_line, s.end_line)).collect();
+    assert_eq!(spans, [(1, 1), (3, 3), (7, 7)]);
+    assert_eq!(shed.indented, 1, "the continuation line, counted and kept");
+}
+
 #[test]
 fn headings_tables_and_bare_markers_break_paragraphs() {
     let text = "one two\n# Head\nthree four\n| a | b |\nfive six\n-\nseven eight\n- item text\n";

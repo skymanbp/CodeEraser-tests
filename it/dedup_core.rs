@@ -16,6 +16,41 @@ fn toks(lang: Lang, src: &str) -> Vec<u64> {
         .collect()
 }
 
+/// Plan v2.30 step 5b (boundary item 1): a string-shaped literal is
+/// ONE token whole — a C++ raw string, with or without a delimiter, a
+/// prefixed wide string and a user-defined literal each weigh what a
+/// plain string weighs (one LIT) — while a Java string holding an
+/// interpolation keeps the interpolated code visible, and a plain
+/// string's stream is what it was.
+#[test]
+fn string_shaped_literals_are_one_token() {
+    let lit = toks(Lang::Cpp, "int x = 1;")[3];
+    let plain = toks(Lang::Cpp, "const char* s = \"a\";");
+    assert_eq!(
+        plain.iter().filter(|&&t| t == lit).count(),
+        1,
+        "one literal in the plain form"
+    );
+    for raw in [
+        "const char* s = R\"(a)\";",
+        "const char* s = R\"xy(a\nb)xy\";",
+        "const char* s = L\"a\";",
+        "const char* s = u8\"a\";",
+    ] {
+        assert_eq!(toks(Lang::Cpp, raw), plain, "{raw}");
+    }
+    assert_eq!(
+        toks(Lang::Cpp, "auto s = \"a\"_sv;"),
+        toks(Lang::Cpp, "auto s = \"a\";")
+    );
+    let one = toks(Lang::Java, "class A { String s = \"a\"; }");
+    let interpolated = toks(Lang::Java, "class A { String s = \"a\\{x}\"; }");
+    assert!(
+        interpolated.len() > one.len(),
+        "the interpolated identifier stays a token"
+    );
+}
+
 fn fp_set(tokens: &[u64], p: Params) -> BTreeSet<u64> {
     winnow::fingerprints(tokens, p)
         .into_iter()

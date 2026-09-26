@@ -11,6 +11,33 @@
       "candidate": 5
     }
   ],
+  "rearbitrated": {
+    "date": "2026-09-26",
+    "corpus": "go",
+    "batch": "arb_out_v2.json",
+    "queries": 13,
+    "rows": 76,
+    "replaced": 77,
+    "reason": "plan v2.30 step 5b items 3 and 25 changed the Go fixture's unit universe (grouped parameters count per name, package-level const / var declarations are units), so every Go candidate list was re-measured live and the 13 drawn queries re-arbitrated whole; the other corpora's rows stand",
+    "arbiter": "codex exec gpt-6-astra (reasoning max, read-only sandbox), one batch of 13 queries; the prompt carried identities and verbatim source only - no scores, no role bits, no arm placements (RM18)",
+    "renamed_queries": [
+      {
+        "key": "appendIfNotPresent/2",
+        "path": "cobra.go",
+        "rank": "d7e8741abaa8b7979c5a5aef3f1efdbceca748d9d7c4786003b81dd1d3324ead"
+      },
+      {
+        "key": "configEnvVar/2",
+        "path": "completions.go",
+        "rank": "bd621cfe0fb84a55bd9d3ebb9f4de93469ee7a3396be2462649a2894103a6740"
+      }
+    ],
+    "transcription_repairs": [],
+    "tree": {
+      "tip": "a5ac21f5ed1801109174622dfe2401677432fbd1",
+      "dirty": true
+    }
+  },
   "rows": [
     {
       "rank": "022624ef7aba373f96af3c05dbec1b9547e8d9e8958e977d8f79d1061401e9f2",
@@ -3685,119 +3712,133 @@
       "candidate": 1,
       "truth": "related",
       "clone": false,
-      "why": "preExecHook detects an Explorer launch, prints help, waits, and exits; CheckErr prints a supplied nonnil error to stderr and exits immediately."
+      "why": "preExecHook implements the Explorer launch guard, while preExecHookFn binds that implementation to a hook variable, making them implementation and binding of one mechanism."
     },
     {
       "rank": "1f8dd62418c370ac17b3d0011e507d53289905e8a0e308f733acb49feee2672a",
       "candidate": 2,
       "truth": "unrelated",
       "clone": false,
-      "why": "preExecHook prevents an accidental Windows Explorer launch from proceeding; initCompleteCmd installs a hidden shell-completion command that prints completion choices and a directive."
+      "why": "preExecHook detects Explorer launches and pauses before exiting, whereas CheckErr reports any supplied error and exits, so their shared termination operation serves different mechanisms."
     },
     {
       "rank": "1f8dd62418c370ac17b3d0011e507d53289905e8a0e308f733acb49feee2672a",
       "candidate": 3,
       "truth": "unrelated",
       "clone": false,
-      "why": "preExecHook handles Explorer-launched execution with help, a pause, and termination; CompDebug prefixes completion diagnostics and writes them to an optional log file or stderr."
+      "why": "preExecHook handles accidental Explorer launches, whereas initCompleteCmd installs a command for answering shell completion requests, so they have independent responsibilities."
     },
     {
       "rank": "1f8dd62418c370ac17b3d0011e507d53289905e8a0e308f733acb49feee2672a",
       "candidate": 4,
       "truth": "unrelated",
       "clone": false,
-      "why": "preExecHook detects and terminates an Explorer-launched invocation after displaying help; CompErrorln only appends a newline before forwarding a shell-completion error message."
+      "why": "preExecHook displays launch guidance and terminates Explorer-started processes, whereas CompDebug writes completion diagnostics to configured destinations, so their roles differ."
     },
     {
       "rank": "1f8dd62418c370ac17b3d0011e507d53289905e8a0e308f733acb49feee2672a",
       "candidate": 5,
       "truth": "unrelated",
       "clone": false,
-      "why": "preExecHook implements a Windows launch guard with waiting and process exit; CompError prefixes a completion error and sends it through CompDebug for logging."
+      "why": "preExecHook guards Explorer launches, whereas getCompletions resolves commands and computes completion suggestions and directives, so they implement separate mechanisms."
     },
     {
-      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
-      "candidate": 1,
-      "truth": "related",
-      "clone": false,
-      "why": "ExactValidArgs combines exact-count and allowed-value validators; ExactArgs constructs only the count validator and rejects argument lists whose length differs from n."
-    },
-    {
-      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
-      "candidate": 2,
-      "truth": "related",
-      "clone": false,
-      "why": "ExactValidArgs composes count and membership validation; OnlyValidArgs implements the membership component by stripping descriptions from allowed values and rejecting arguments outside that list."
-    },
-    {
-      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
-      "candidate": 3,
-      "truth": "related",
-      "clone": false,
-      "why": "ExactValidArgs requires exactly n arguments and allowed values; MaximumNArgs constructs a validator that checks only whether the argument count exceeds n."
-    },
-    {
-      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
-      "candidate": 4,
-      "truth": "related",
-      "clone": false,
-      "why": "ExactValidArgs combines exact cardinality with value admissibility; MinimumNArgs checks only that at least n positional arguments were supplied."
-    },
-    {
-      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
-      "candidate": 5,
-      "truth": "related",
-      "clone": false,
-      "why": "ExactValidArgs validates exact argument count and allowed values; NoDuplicateArgs tracks seen strings and rejects repeated arguments."
-    },
-    {
-      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
+      "rank": "1f8dd62418c370ac17b3d0011e507d53289905e8a0e308f733acb49feee2672a",
       "candidate": 6,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "ExactValidArgs composes explicit positional-argument restrictions; legacyArgs applies command-tree rules, accepting leaf arguments and reporting unknown commands at a root with subcommands."
+      "why": "preExecHook implements an Explorer launch guard, whereas defaultTraverseRunHooks supplies a default for run-hook traversal, with no connection to that guard shown."
     },
     {
-      "rank": "391a95ac214a757165f3987091d805a336627dd364731cc466e280259ad92f51",
+      "rank": "1f8dd62418c370ac17b3d0011e507d53289905e8a0e308f733acb49feee2672a",
+      "candidate": 7,
+      "truth": "unrelated",
+      "clone": false,
+      "why": "preExecHook checks how the process was launched, whereas EnableTraverseRunHooks stores a run-hook traversal setting, so they address distinct execution concerns."
+    },
+    {
+      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
       "candidate": 1,
       "truth": "same_role",
       "clone": false,
-      "why": "Both public APIs generate Bash V2 completion output with the description option; the query accepts a writer, while the candidate creates a named file and passes its writer to that API."
+      "why": "ExactValidArgs supplies a validator for exact count and allowed values, while ExactArgs supplies an exact-count validator, so both define positional-argument validation policies."
+    },
+    {
+      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
+      "candidate": 2,
+      "truth": "same_role",
+      "clone": false,
+      "why": "ExactValidArgs combines count and allowed-value constraints, while OnlyValidArgs checks allowed values, so both provide validation rules for positional arguments."
+    },
+    {
+      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
+      "candidate": 3,
+      "truth": "same_role",
+      "clone": false,
+      "why": "ExactValidArgs constructs a validator for exact count and allowed values, while MaximumNArgs constructs an upper-count validator, so both supply positional-argument validators."
+    },
+    {
+      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
+      "candidate": 4,
+      "truth": "same_role",
+      "clone": false,
+      "why": "ExactValidArgs constructs a validator combining count and membership rules, while MinimumNArgs constructs a minimum-count validator, giving them the same validation-policy role."
+    },
+    {
+      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
+      "candidate": 5,
+      "truth": "same_role",
+      "clone": false,
+      "why": "ExactValidArgs enforces exact count and allowed values through a composed validator, while NoDuplicateArgs rejects repeated arguments, so both express positional-argument acceptance rules."
+    },
+    {
+      "rank": "36c56089ad5591c236855ababfb9bd9c350a20d57fc9818e71f23326d2bb4b0a",
+      "candidate": 6,
+      "truth": "same_role",
+      "clone": false,
+      "why": "ExactValidArgs supplies count-and-membership validation, while NoArgs rejects every nonempty argument list, so both serve as positional-argument validation policies."
+    },
+    {
+      "rank": "391a95ac214a757165f3987091d805a336627dd364731cc466e280259ad92f51",
+      "candidate": 1,
+      "truth": "related",
+      "clone": false,
+      "why": "GenBashCompletionV2 exposes generation to a writer, while GenBashCompletionFileV2 creates and closes a file before calling it, making them generation entry point and file adapter."
     },
     {
       "rank": "391a95ac214a757165f3987091d805a336627dd364731cc466e280259ad92f51",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "GenBashCompletionV2 is the public forwarding entry point; genBashCompletion implements its output plumbing by generating into a buffer and copying that buffer to the supplied writer."
+      "why": "GenBashCompletionV2 forwards the public generation request, while genBashCompletion builds a buffer and writes the generated script, so they are facade and implementation."
     },
     {
       "rank": "391a95ac214a757165f3987091d805a336627dd364731cc466e280259ad92f51",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "The query forwards a public generation request; genBashComp renders the actual Bash template, substituting the command name, completion request mode, directive constants, and active-help marker."
+      "why": "GenBashCompletionV2 delegates a script-generation request, while genBashComp renders the Bash template and protocol constants, so they occupy different stages of generation."
     },
     {
       "rank": "391a95ac214a757165f3987091d805a336627dd364731cc466e280259ad92f51",
       "candidate": 4,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "The query exposes Bash script generation; InitDefaultCompletionCmd creates the completion command and shell-specific subcommands, wiring the Bash subcommand to invoke that generator."
+      "why": "GenBashCompletionV2 delegates Bash script generation, whereas RegisterFlagCompletionFunc validates and stores runtime flag callbacks, so they operate on separate generation and registry mechanisms."
     },
     {
       "rank": "391a95ac214a757165f3987091d805a336627dd364731cc466e280259ad92f51",
       "candidate": 5,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "GenBashCompletionV2 generates a shell completion script; RegisterFlagCompletionFunc validates a flag and installs its completion callback in a mutex-protected registry."
+      "why": "GenBashCompletionV2 requests Bash script output, whereas GetFlagCompletionFunc retrieves a registered callback for a flag, so their generation and registry-access duties are independent."
     },
     {
       "rank": "391a95ac214a757165f3987091d805a336627dd364731cc466e280259ad92f51",
       "candidate": 6,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "GenBashCompletionV2 exposes script generation; GetFlagCompletionFunc resolves a flag and retrieves its registered completion callback under a read lock."
+      "why": "GenBashCompletionV2 delegates script generation, whereas flagCompletionMutex protects the runtime callback registry, and the shown script-generation path does not use that synchronization mechanism."
     },
     {
       "rank": "396a2e81b836713dcb4a04b42575cc5e36b62a37f5bca62c0c137289972eea9a",
@@ -3954,95 +3995,46 @@
       "why": "The query declares an overload for ordinary parameter encoding; _encode_files builds multipart request content from fields and file inputs, returning both encoded bytes and their content type."
     },
     {
-      "rank": "42c430bd858849d1f85e873270d1d7933fe46a0a6de9035f59cd407869e98009",
-      "candidate": 1,
-      "truth": "related",
-      "clone": false,
-      "why": "appendIfNotPresent conditionally appends a missing substring, while Eq uses reflection to compare integers or strings; both are registered template helpers with different responsibilities."
-    },
-    {
-      "rank": "42c430bd858849d1f85e873270d1d7933fe46a0a6de9035f59cd407869e98009",
-      "candidate": 2,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "appendIfNotPresent checks substring presence before concatenating text, while CompDebugln appends a newline and delegates diagnostic logging to CompDebug."
-    },
-    {
-      "rank": "42c430bd858849d1f85e873270d1d7933fe46a0a6de9035f59cd407869e98009",
-      "candidate": 3,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "appendIfNotPresent conditionally extends a string, while helpOrVersionFlagPresent checks whether Cobra-provided help or version flags were changed."
-    },
-    {
-      "rank": "42c430bd858849d1f85e873270d1d7933fe46a0a6de9035f59cd407869e98009",
-      "candidate": 4,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "appendIfNotPresent conditionally concatenates a substring, while checkIfFlagCompletion examines command-line flag syntax and adjusts arguments to identify an incomplete flag value."
-    },
-    {
-      "rank": "42c430bd858849d1f85e873270d1d7933fe46a0a6de9035f59cd407869e98009",
-      "candidate": 5,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "appendIfNotPresent conditionally extends text, while GenBashCompletionV2 delegates Bash completion script generation for an output writer."
-    },
-    {
-      "rank": "42c430bd858849d1f85e873270d1d7933fe46a0a6de9035f59cd407869e98009",
-      "candidate": 6,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "appendIfNotPresent checks and concatenates strings, while GenBashCompletionFileV2 creates a file, defers its closure, and generates a Bash completion script into it."
-    },
-    {
-      "rank": "42c430bd858849d1f85e873270d1d7933fe46a0a6de9035f59cd407869e98009",
-      "candidate": 7,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "appendIfNotPresent appends text only when its substring is absent, while CompErrorln adds a newline to a message and invokes completion error reporting."
-    },
-    {
       "rank": "456a80b62c0615f750e1f3dc5f5ee8f51ae75a0e5b4a9dc1561add44a92641fa",
       "candidate": 1,
       "truth": "related",
       "clone": false,
-      "why": "GenBashCompletionFileV2 owns file creation and closure, then calls GenBashCompletionV2, which forwards an existing writer to the internal script generator."
+      "why": "GenBashCompletionFileV2 creates and closes the output file, while GenBashCompletionV2 accepts its writer and delegates generation, making them file adapter and generation entry point."
     },
     {
       "rank": "456a80b62c0615f750e1f3dc5f5ee8f51ae75a0e5b4a9dc1561add44a92641fa",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "GenBashCompletionFileV2 manages a destination file, while genBashCompletion assembles the script in a bytes.Buffer and transfers that buffer to a writer."
+      "why": "GenBashCompletionFileV2 manages the destination file, while genBashCompletion buffers and writes the script through the delegated call chain, so they handle different generation stages."
     },
     {
       "rank": "456a80b62c0615f750e1f3dc5f5ee8f51ae75a0e5b4a9dc1561add44a92641fa",
       "candidate": 3,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "GenBashCompletionFileV2 saves a shell completion script, while NoFileCompletions supplies an empty completion result with a directive disabling filename suggestions."
+      "why": "GenBashCompletionFileV2 creates a file for generated Bash code, whereas RegisterFlagCompletionFunc installs runtime flag callbacks, so they manage separate output and registry mechanisms."
     },
     {
       "rank": "456a80b62c0615f750e1f3dc5f5ee8f51ae75a0e5b4a9dc1561add44a92641fa",
       "candidate": 4,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "GenBashCompletionFileV2 writes a Bash completion script to a file, while InitDefaultCompletionCmd installs the completion command and shell-specific subcommands that invoke script generators."
+      "why": "GenBashCompletionFileV2 manages file output for a generated script, whereas GetFlagCompletionFunc reads the runtime callback registry, so they have independent responsibilities."
     },
     {
       "rank": "456a80b62c0615f750e1f3dc5f5ee8f51ae75a0e5b4a9dc1561add44a92641fa",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "GenBashCompletionFileV2 provides the file destination and delegates generation, while genBashComp formats the Bash functions, directive handling, and completion registration into the script text."
+      "why": "GenBashCompletionFileV2 provides file output for Bash generation, while InitDefaultCompletionCmd installs shell-generation commands that invoke the same generator, so they serve different integration roles."
     },
     {
       "rank": "456a80b62c0615f750e1f3dc5f5ee8f51ae75a0e5b4a9dc1561add44a92641fa",
       "candidate": 6,
       "truth": "related",
       "clone": false,
-      "why": "GenBashCompletionFileV2 saves completion infrastructure as a script, while GetFlagCompletionFunc resolves a flag and retrieves its registered completion callback under a read lock."
+      "why": "GenBashCompletionFileV2 writes a generated Bash client, while ShellCompDirectiveFilterFileExt supplies a protocol value embedded in that client, so they are output adapter and protocol element."
     },
     {
       "rank": "4692ccb3c33e89c94c6bf8a05de2ab9f6d9da55753e8042018e850d926f2c1cc",
@@ -4154,105 +4146,119 @@
       "candidate": 1,
       "truth": "same_role",
       "clone": false,
-      "why": "Both directly validate Cobra positional arguments: NoArgs rejects a nonempty argument list, while NoDuplicateArgs tracks arguments in a map and rejects repeated values."
+      "why": "NoArgs rejects any supplied positional arguments, while NoDuplicateArgs rejects repeated ones, so both validate positional-argument lists under different acceptance policies."
     },
     {
       "rank": "4b64dde74dec32f3563977374e2bc064fd8b1e08c7202d9b762f289f19de6609",
       "candidate": 2,
       "truth": "same_role",
       "clone": false,
-      "why": "Both implement positional-argument validation hooks: NoArgs rejects any supplied argument, while OnlyValidArgs removes descriptions from ValidArgs and rejects values outside that allowed set."
+      "why": "NoArgs enforces an empty argument list, while OnlyValidArgs enforces membership in allowed values, so both perform command positional-argument validation."
     },
     {
       "rank": "4b64dde74dec32f3563977374e2bc064fd8b1e08c7202d9b762f289f19de6609",
       "candidate": 3,
       "truth": "same_role",
       "clone": false,
-      "why": "Both validate leftover positional arguments and can report an unknown command; NoArgs always rejects nonempty input, while legacyArgs does so only for a root command with subcommands."
+      "why": "NoArgs rejects all arguments, while legacyArgs conditionally rejects arguments on a root command with subcommands, so both implement argument-acceptance validation with different conditions."
     },
     {
       "rank": "4b64dde74dec32f3563977374e2bc064fd8b1e08c7202d9b762f289f19de6609",
       "candidate": 4,
-      "truth": "related",
+      "truth": "same_role",
       "clone": false,
-      "why": "NoArgs immediately validates a command's supplied arguments, while ExactArgs accepts a count and constructs a PositionalArgs closure that later enforces that count."
+      "why": "NoArgs enforces zero positional arguments, while RangeArgs supplies a validator enforcing a configurable count interval, so both provide argument-count validation policies."
     },
     {
       "rank": "4b64dde74dec32f3563977374e2bc064fd8b1e08c7202d9b762f289f19de6609",
       "candidate": 5,
-      "truth": "related",
+      "truth": "same_role",
       "clone": false,
-      "why": "NoArgs directly rejects nonempty argument lists, while MaximumNArgs creates a configurable validator closure that later rejects lists longer than its captured limit."
+      "why": "NoArgs enforces an empty argument list, while ExactArgs supplies a validator for a specified argument count, so both serve the same positional-count validation role."
+    },
+    {
+      "rank": "4b64dde74dec32f3563977374e2bc064fd8b1e08c7202d9b762f289f19de6609",
+      "candidate": 6,
+      "truth": "same_role",
+      "clone": false,
+      "why": "NoArgs rejects counts above zero, while MaximumNArgs supplies a validator rejecting counts above a configurable limit, so both enforce positional-argument count constraints."
     },
     {
       "rank": "4d2afd7c8cb669517ac2f59bad937485c6b00409079c168448cb8f07cd64c927",
       "candidate": 1,
       "truth": "same_role",
       "clone": false,
-      "why": "Both directly validate Cobra positional arguments: OnlyValidArgs checks membership in description-stripped ValidArgs, while legacyArgs rejects leftover arguments on root commands that have subcommands."
+      "why": "OnlyValidArgs validates argument membership, while legacyArgs validates argument acceptance according to command hierarchy, so both are positional-argument validation policies."
     },
     {
       "rank": "4d2afd7c8cb669517ac2f59bad937485c6b00409079c168448cb8f07cd64c927",
       "candidate": 2,
-      "truth": "related",
+      "truth": "same_role",
       "clone": false,
-      "why": "OnlyValidArgs executes allowed-value validation, while ExactValidArgs constructs a combined validation policy by passing ExactArgs(n) and OnlyValidArgs to MatchAll."
+      "why": "OnlyValidArgs rejects values outside the allowed list, while NoArgs rejects every supplied argument, so both validate positional arguments using different rules."
     },
     {
       "rank": "4d2afd7c8cb669517ac2f59bad937485c6b00409079c168448cb8f07cd64c927",
       "candidate": 3,
       "truth": "same_role",
       "clone": false,
-      "why": "Both are positional-argument validators returning an error on a policy violation: OnlyValidArgs checks an allowed-value list, while NoDuplicateArgs checks a map of previously seen values."
+      "why": "OnlyValidArgs checks allowed-value membership, while NoDuplicateArgs checks uniqueness, so both enforce acceptance constraints on command positional arguments."
     },
     {
       "rank": "4d2afd7c8cb669517ac2f59bad937485c6b00409079c168448cb8f07cd64c927",
       "candidate": 4,
       "truth": "same_role",
       "clone": false,
-      "why": "Both implement direct positional-argument validation: OnlyValidArgs rejects values missing from ValidArgs, while NoArgs rejects every nonempty argument list."
+      "why": "OnlyValidArgs enforces allowed values, while ExactValidArgs supplies a validator combining that policy with an exact count, so both provide positional-argument validation rules."
     },
     {
       "rank": "4d2afd7c8cb669517ac2f59bad937485c6b00409079c168448cb8f07cd64c927",
       "candidate": 5,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "OnlyValidArgs validates command argument values, while initCompleteCmd installs a hidden command whose handler obtains, cleans, and prints suggestions for command-line arguments."
+      "why": "OnlyValidArgs validates supplied arguments against allowed values, whereas initCompleteCmd installs and formats responses for a shell completion command, so their responsibilities differ."
     },
     {
       "rank": "4d3fd3598243213f2c68b006c62134d7f771bad7f96baa2a5630bfa133171cf8",
       "candidate": 1,
       "truth": "related",
       "clone": false,
-      "why": "getCompletions resolves the command and orchestrates suggestion generation, while its helper completeRequireFlags only gathers matching flags annotated as required and not already changed."
+      "why": "getCompletions orchestrates completion for an entire command line, while getFlagNameCompletions supplies matching names for one flag, making them coordinator and specialized helper."
     },
     {
       "rank": "4d3fd3598243213f2c68b006c62134d7f771bad7f96baa2a5630bfa133171cf8",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "getCompletions coordinates command, argument, flag, and custom completions, while getFlagNameCompletions produces matching long and shorthand names with descriptions for one flag."
+      "why": "getCompletions computes the full completion response, while completeRequireFlags collects suggestions for unset required flags that it consumes, so they perform different stages of one mechanism."
     },
     {
       "rank": "4d3fd3598243213f2c68b006c62134d7f771bad7f96baa2a5630bfa133171cf8",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "getCompletions parses command state and assembles completion results, while checkIfFlagCompletion identifies whether the current token is a flag value and adjusts the arguments before that parsing."
+      "why": "getCompletions generates suggestions and directives, while checkIfFlagCompletion detects a pending flag value and prepares its arguments, making them completion coordinator and context analyzer."
     },
     {
       "rank": "4d3fd3598243213f2c68b006c62134d7f771bad7f96baa2a5630bfa133171cf8",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "getCompletions computes suggestions and a directive, while initCompleteCmd registers the hidden request command whose handler calls getCompletions and serializes its results for the shell."
+      "why": "getCompletions computes completion results, while initCompleteCmd registers the request command that calls it and serializes those results, so they are engine and command adapter."
     },
     {
       "rank": "4d3fd3598243213f2c68b006c62134d7f771bad7f96baa2a5630bfa133171cf8",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "getCompletions answers an individual completion request, while InitDefaultCompletionCmd installs public shell-specific commands that generate the scripts used to request those completions."
+      "why": "getCompletions coordinates command-line completion, while findFlag resolves long or shorthand flag names for its flag-analysis helper, so they are coordinator and lookup support."
+    },
+    {
+      "rank": "4d3fd3598243213f2c68b006c62134d7f771bad7f96baa2a5630bfa133171cf8",
+      "candidate": 6,
+      "truth": "related",
+      "clone": false,
+      "why": "getCompletions answers runtime completion requests, while InitDefaultCompletionCmd installs commands that generate shell clients and accommodates completion of those commands, so they serve different completion stages."
     },
     {
       "rank": "4dd0bcb18c21bf168112010843dddac068be7b55134adcdfc59462b60e0916c1",
@@ -4362,51 +4368,51 @@
     {
       "rank": "5f69edaada30d58e9f0335eed88663581e88201502aff22feced0da0efa54958",
       "candidate": 1,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "SliceValue declares GetSlice for multi-valued flags recognized by completion logic, while getEnvConfig obtains completion configuration from command-specific environment variables with a global fallback."
+      "why": "SliceValue defines access to a flag's list of values, whereas getEnvConfig resolves environment configuration with a global fallback, so they implement separate value and configuration mechanisms."
     },
     {
       "rank": "5f69edaada30d58e9f0335eed88663581e88201502aff22feced0da0efa54958",
       "candidate": 2,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "SliceValue defines a flag-value capability through GetSlice, while ShellCompDirective defines the integer type used to communicate completion behavior to shells."
+      "why": "SliceValue specifies a list-valued flag interface, whereas configEnvVarGlobalPrefix supplies the global environment-variable prefix, so their contracts and configuration-naming duties are independent."
     },
     {
       "rank": "5f69edaada30d58e9f0335eed88663581e88201502aff22feced0da0efa54958",
       "candidate": 3,
       "truth": "unrelated",
       "clone": false,
-      "why": "SliceValue specifies an interface method returning a flag's string values, while stringInSlice scans an arbitrary string slice for an exact match; the shared slice type does not give them the same responsibility."
+      "why": "SliceValue defines a flag-value accessor contract, whereas shellCompDirectiveMaxValue is a boundary marker for completion directives, so they concern separate value and protocol representations."
     },
     {
       "rank": "5f69edaada30d58e9f0335eed88663581e88201502aff22feced0da0efa54958",
       "candidate": 4,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "SliceValue describes how multi-valued flags expose their values, while Completion aliases string to represent a shell completion choice."
+      "why": "SliceValue declares how to retrieve a flag's string list, whereas stringInSlice searches a supplied list for membership, and neither implements or invokes the other's operation."
     },
     {
       "rank": "5f69edaada30d58e9f0335eed88663581e88201502aff22feced0da0efa54958",
       "candidate": 5,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "SliceValue defines a flag-value interface used during completion, while CompletionOptions stores switches governing completion-command creation, descriptions, visibility, and the default directive."
+      "why": "SliceValue defines access to list-valued flags, whereas EnableCommandSorting stores a command-sorting setting, so they address independent flag-value and ordering concerns."
     },
     {
       "rank": "5f69edaada30d58e9f0335eed88663581e88201502aff22feced0da0efa54958",
       "candidate": 6,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "SliceValue describes a multi-valued flag capability, while RegisterFlagCompletionFunc resolves a flag and stores its completion callback under a mutex after rejecting missing or duplicate registrations."
+      "why": "SliceValue describes retrieval of flag values, whereas ShellCompDirectiveFilterFileExt identifies a shell file-filtering instruction, so they have separate value-access and protocol roles."
     },
     {
       "rank": "5f69edaada30d58e9f0335eed88663581e88201502aff22feced0da0efa54958",
       "candidate": 7,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "SliceValue specifies access to a flag's value list, while FixedCompletions creates a callback that always returns captured completion choices and a directive."
+      "why": "SliceValue declares a string-list accessor for flags, whereas configEnvVar builds normalized environment-variable names, so their mechanisms and responsibilities are unrelated."
     },
     {
       "rank": "6247c1ab2cde586363fa97eed6c9bf326c5cf65844a85829355695aa473d3ae1",
@@ -4514,179 +4520,193 @@
       "why": "The query benchmarks successful parsing with an extra key in Zod v3, while Russian error constructs translation dictionaries and an issue-to-message callback for Zod v4."
     },
     {
-      "rank": "6d51374a71b89b6ff3dd09f2fa9f66df95e95797244de36e8b57ca9458a3fe9b",
+      "rank": "6df5af3466ed7925afd55b0619f62bd81c13a32ad708eb7fea209ec5022c6b1d",
       "candidate": 1,
       "truth": "related",
       "clone": false,
-      "why": "configEnvVar uppercases a combined name and suffix and replaces regex matches with underscores, while getEnvConfig calls it to look up command-specific and fallback global environment values."
-    },
-    {
-      "rank": "6d51374a71b89b6ff3dd09f2fa9f66df95e95797244de36e8b57ca9458a3fe9b",
-      "candidate": 2,
-      "truth": "related",
-      "clone": false,
-      "why": "configEnvVar constructs normalized names for completion configuration variables, while CompDebugln adds a newline and delegates emission of completion diagnostics."
-    },
-    {
-      "rank": "6d51374a71b89b6ff3dd09f2fa9f66df95e95797244de36e8b57ca9458a3fe9b",
-      "candidate": 3,
-      "truth": "related",
-      "clone": false,
-      "why": "configEnvVar formats names used to configure completion behavior through the environment, while InitDefaultCompletionCmd uses CompletionOptions to install shell-specific script-generation commands and description flags."
-    },
-    {
-      "rank": "6d51374a71b89b6ff3dd09f2fa9f66df95e95797244de36e8b57ca9458a3fe9b",
-      "candidate": 4,
-      "truth": "related",
-      "clone": false,
-      "why": "configEnvVar produces normalized environment-variable names for completion settings, while CompDebug reads BASH_COMP_DEBUG_FILE to choose a log destination and optionally also writes diagnostics to stderr."
-    },
-    {
-      "rank": "6d51374a71b89b6ff3dd09f2fa9f66df95e95797244de36e8b57ca9458a3fe9b",
-      "candidate": 5,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "configEnvVar uppercases and normalizes an environment-variable name, while ExactValidArgs composes exact-count and allowed-value positional-argument validators."
-    },
-    {
-      "rank": "6d51374a71b89b6ff3dd09f2fa9f66df95e95797244de36e8b57ca9458a3fe9b",
-      "candidate": 6,
-      "truth": "related",
-      "clone": false,
-      "why": "configEnvVar formats the environment names used by completion configuration, while Completion aliases string for the completion choices that the subsystem returns."
-    },
-    {
-      "rank": "6d51374a71b89b6ff3dd09f2fa9f66df95e95797244de36e8b57ca9458a3fe9b",
-      "candidate": 7,
-      "truth": "related",
-      "clone": false,
-      "why": "configEnvVar constructs names for completion settings such as description control, while CompletionWithDesc encodes a choice and its description by joining them with a tab."
-    },
-    {
-      "rank": "6d51374a71b89b6ff3dd09f2fa9f66df95e95797244de36e8b57ca9458a3fe9b",
-      "candidate": 8,
-      "truth": "related",
-      "clone": false,
-      "why": "configEnvVar supports completion configuration by normalizing environment names, while completeRequireFlags generates suggestions by visiting inherited and local flags that are required and still unset."
+      "why": "CompError prefixes an error and requests diagnostic output, while CompErrorln appends a newline before calling CompError, so they are error-reporting implementation and convenience adapter."
     },
     {
       "rank": "6df5af3466ed7925afd55b0619f62bd81c13a32ad708eb7fea209ec5022c6b1d",
-      "candidate": 1,
+      "candidate": 2,
       "truth": "same_role",
       "clone": false,
-      "why": "Both report completion errors through the same logging path: CompError adds the error prefix and forces stderr output, while CompErrorln adds a newline before invoking CompError."
-    },
-    {
-      "rank": "6df5af3466ed7925afd55b0619f62bd81c13a32ad708eb7fea209ec5022c6b1d",
-      "candidate": 2,
-      "truth": "related",
-      "clone": false,
-      "why": "CompError marks a message as an error and forces stderr logging, while CompDebugln supplies newline-terminated debug logging with caller-controlled stderr output."
+      "why": "CompError formats an error message and delegates to CompDebug, while CompDebugln formats a newline-terminated diagnostic and delegates to CompDebug, so both adapt messages for the same logger."
     },
     {
       "rank": "6df5af3466ed7925afd55b0619f62bd81c13a32ad708eb7fea209ec5022c6b1d",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "CompError emits a supplied error message through CompDebug, while flagCompError.Error constructs the text describing an unsupported flag from stored command and flag names."
+      "why": "CompError emits a human-readable completion error, while ShellCompDirectiveError represents an error in the shell completion protocol, so they support different channels of completion failure reporting."
     },
     {
       "rank": "6df5af3466ed7925afd55b0619f62bd81c13a32ad708eb7fea209ec5022c6b1d",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "CompError logs an error string with forced stderr output, while flagCompError stores the subcommand and flag names representing a particular completion failure."
+      "why": "CompError reports completion error text, while flagCompError.Error constructs the unsupported-flag error text that completion handling can report, so they are reporter and message provider."
     },
     {
       "rank": "6df5af3466ed7925afd55b0619f62bd81c13a32ad708eb7fea209ec5022c6b1d",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "CompError adds error-specific labeling and calls CompDebug with stderr enabled, while CompDebug implements the underlying debug prefix, optional environment-selected file logging, and stderr output."
-    },
-    {
-      "rank": "6df5af3466ed7925afd55b0619f62bd81c13a32ad708eb7fea209ec5022c6b1d",
-      "candidate": 6,
-      "truth": "related",
-      "clone": false,
-      "why": "CompError reports completion failures as diagnostic text, while ShellCompDirective defines the integer type used for shell-facing completion instructions, including error directives."
+      "why": "CompError decorates an error and forces stderr output through CompDebug, while CompDebug implements file and stderr logging, making them error adapter and logging backend."
     },
     {
       "rank": "717762d3b6520af96184c633cc46e19a0d9c2e02dcd69f82576f97b19d634396",
       "candidate": 1,
       "truth": "related",
       "clone": false,
-      "why": "WriteStringAndCheck performs a string write and passes its error to CheckErr, while CheckErr prints any nonnil error and terminates the process."
+      "why": "WriteStringAndCheck writes text and passes its error to CheckErr, while CheckErr reports nonnil errors and exits, so they are checked-write operation and failure handler."
     },
     {
       "rank": "717762d3b6520af96184c633cc46e19a0d9c2e02dcd69f82576f97b19d634396",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "WriteStringAndCheck provides a generic checked string write, while genBashComp constructs the complete Bash completion script and calls that helper to emit it."
+      "why": "WriteStringAndCheck performs a checked string write, while genBashComp constructs a Bash script and calls that helper to emit it, so they are output primitive and content generator."
     },
     {
       "rank": "717762d3b6520af96184c633cc46e19a0d9c2e02dcd69f82576f97b19d634396",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "WriteStringAndCheck writes text and handles the resulting error, while CompDebug chooses diagnostic destinations, adds a debug prefix, and uses the helper when writing its log file."
+      "why": "WriteStringAndCheck writes text with fatal error checking, while CompDebug selects diagnostic destinations and uses that helper for file output, so they are write helper and logging caller."
     },
     {
       "rank": "717762d3b6520af96184c633cc46e19a0d9c2e02dcd69f82576f97b19d634396",
       "candidate": 4,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "WriteStringAndCheck performs output and delegates error handling, while Eq reflects over two values to compare supported integer or string kinds."
+      "why": "WriteStringAndCheck provides the checked write used by the script renderer, while genBashCompletion invokes that renderer and transfers its buffer to a writer, so they support different generation stages."
     },
     {
       "rank": "717762d3b6520af96184c633cc46e19a0d9c2e02dcd69f82576f97b19d634396",
       "candidate": 5,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "WriteStringAndCheck handles one generic string write, while genBashCompletion generates a Bash script in a buffer, copies it to a writer, and returns the transfer error."
+      "why": "WriteStringAndCheck writes strings and handles write failures, whereas Eq compares supported values through reflection, so they perform independent output and comparison operations."
     },
     {
       "rank": "717762d3b6520af96184c633cc46e19a0d9c2e02dcd69f82576f97b19d634396",
       "candidate": 6,
       "truth": "unrelated",
       "clone": false,
-      "why": "WriteStringAndCheck writes text and checks its error, while Gt converts reflected lengths, integer values, or numeric strings into integers and compares their magnitudes."
+      "why": "WriteStringAndCheck performs checked output, whereas flagCompletionMutex synchronizes access to registered flag callbacks, so they belong to separate output and registry mechanisms."
     },
     {
       "rank": "751b3da086fbed2544cf3ed8476776cf51f9b27c5dca6a37ab4c4e5d6a598936",
       "candidate": 1,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "trimRightSpace removes trailing Unicode whitespace as a registered template helper, while tmpl constructs a renderer that registers those helpers, parses template text, and executes it with data."
+      "why": "trimRightSpace removes existing trailing whitespace from a string, whereas ShellCompDirectiveNoSpace tells a shell not to append a completion space, so they implement distinct whitespace behaviors."
     },
     {
       "rank": "751b3da086fbed2544cf3ed8476776cf51f9b27c5dca6a37ab4c4e5d6a598936",
       "candidate": 2,
-      "truth": "related",
+      "truth": "unrelated",
       "clone": false,
-      "why": "trimRightSpace performs standalone trailing-whitespace removal, while initCompleteCmd installs a completion handler that truncates, trims, and prints suggestions as part of the shell completion protocol."
+      "why": "trimRightSpace removes trailing Unicode whitespace, whereas tmpl constructs a template-rendering wrapper, and the supplied code shows no registration or call connecting those operations."
     },
     {
       "rank": "751b3da086fbed2544cf3ed8476776cf51f9b27c5dca6a37ab4c4e5d6a598936",
       "candidate": 3,
       "truth": "unrelated",
       "clone": false,
-      "why": "trimRightSpace transforms a string by removing trailing whitespace, while SetDefaultShellCompDirective stores a directive pointer in CompletionOptions."
+      "why": "trimRightSpace is a trailing-whitespace utility, whereas initCompleteCmd registers and serves shell completion requests, so incidental trimming inside the latter does not give them the same role."
     },
     {
       "rank": "751b3da086fbed2544cf3ed8476776cf51f9b27c5dca6a37ab4c4e5d6a598936",
       "candidate": 4,
       "truth": "unrelated",
       "clone": false,
-      "why": "trimRightSpace removes trailing Unicode whitespace from text, while OnFinalize appends supplied callbacks to the finalizers list."
+      "why": "trimRightSpace transforms a string by removing trailing whitespace, whereas ExactArgs constructs an exact-count argument validator, so their jobs and mechanisms are unrelated."
     },
     {
       "rank": "751b3da086fbed2544cf3ed8476776cf51f9b27c5dca6a37ab4c4e5d6a598936",
       "candidate": 5,
       "truth": "unrelated",
       "clone": false,
-      "why": "trimRightSpace trims the end of a string, while OnInitialize appends supplied callbacks to the initializers list."
+      "why": "trimRightSpace removes trailing whitespace from text, whereas MaximumNArgs constructs an upper-count argument validator, so they serve independent text-processing and validation roles."
+    },
+    {
+      "rank": "bd621cfe0fb84a55bd9d3ebb9f4de93469ee7a3396be2462649a2894103a6740",
+      "candidate": 1,
+      "truth": "related",
+      "clone": false,
+      "why": "configEnvVar constructs normalized environment-variable names, while getEnvConfig calls it to read command-specific and fallback settings, so they are naming helper and configuration reader."
+    },
+    {
+      "rank": "bd621cfe0fb84a55bd9d3ebb9f4de93469ee7a3396be2462649a2894103a6740",
+      "candidate": 2,
+      "truth": "related",
+      "clone": false,
+      "why": "configEnvVar formats environment-variable names, while configEnvVarGlobalPrefix supplies the prefix used for global fallback names, so they are formatter and configuration input."
+    },
+    {
+      "rank": "bd621cfe0fb84a55bd9d3ebb9f4de93469ee7a3396be2462649a2894103a6740",
+      "candidate": 3,
+      "truth": "related",
+      "clone": false,
+      "why": "configEnvVar normalizes configuration-variable names, while configEnvVarSuffixDescriptions supplies the suffix for the completion-description setting, so they are formatter and naming component."
+    },
+    {
+      "rank": "bd621cfe0fb84a55bd9d3ebb9f4de93469ee7a3396be2462649a2894103a6740",
+      "candidate": 4,
+      "truth": "related",
+      "clone": false,
+      "why": "configEnvVar builds and sanitizes environment-variable names, while configEnvVarPrefixSubstRegexp identifies characters it replaces, making them normalization procedure and matching rule."
+    },
+    {
+      "rank": "bd621cfe0fb84a55bd9d3ebb9f4de93469ee7a3396be2462649a2894103a6740",
+      "candidate": 5,
+      "truth": "unrelated",
+      "clone": false,
+      "why": "configEnvVar constructs normalized environment-variable names, whereas CompDebugln appends a newline and delegates diagnostic logging, so their formatting serves independent mechanisms."
+    },
+    {
+      "rank": "d7e8741abaa8b7979c5a5aef3f1efdbceca748d9d7c4786003b81dd1d3324ead",
+      "candidate": 1,
+      "truth": "unrelated",
+      "clone": false,
+      "why": "appendIfNotPresent conditionally appends text to a string, whereas Eq compares supported reflected values, so they perform independent string-construction and equality operations."
+    },
+    {
+      "rank": "d7e8741abaa8b7979c5a5aef3f1efdbceca748d9d7c4786003b81dd1d3324ead",
+      "candidate": 2,
+      "truth": "unrelated",
+      "clone": false,
+      "why": "appendIfNotPresent conditionally extends a string, whereas helpOrVersionFlagPresent detects changed Cobra-provided flags, so they share neither a role nor a demonstrated mechanism."
+    },
+    {
+      "rank": "d7e8741abaa8b7979c5a5aef3f1efdbceca748d9d7c4786003b81dd1d3324ead",
+      "candidate": 3,
+      "truth": "unrelated",
+      "clone": false,
+      "why": "appendIfNotPresent adds missing text to a string, whereas CompDebugln adds a newline and sends a diagnostic to the logger, so their string operations serve unrelated purposes."
+    },
+    {
+      "rank": "d7e8741abaa8b7979c5a5aef3f1efdbceca748d9d7c4786003b81dd1d3324ead",
+      "candidate": 4,
+      "truth": "unrelated",
+      "clone": false,
+      "why": "appendIfNotPresent conditionally concatenates text, whereas checkIfFlagCompletion identifies an unfinished flag value and adjusts arguments, so they implement unrelated operations."
+    },
+    {
+      "rank": "d7e8741abaa8b7979c5a5aef3f1efdbceca748d9d7c4786003b81dd1d3324ead",
+      "candidate": 5,
+      "truth": "unrelated",
+      "clone": false,
+      "why": "appendIfNotPresent extends a string only when text is absent, whereas GenBashCompletionFileV2 manages a file for Bash script generation, so their responsibilities are unrelated."
+    },
+    {
+      "rank": "d7e8741abaa8b7979c5a5aef3f1efdbceca748d9d7c4786003b81dd1d3324ead",
+      "candidate": 6,
+      "truth": "unrelated",
+      "clone": false,
+      "why": "appendIfNotPresent conditionally appends string content, whereas MousetrapDisplayDuration configures the launch-help delay, so they belong to separate mechanisms."
     }
   ]
 }

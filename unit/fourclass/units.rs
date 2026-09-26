@@ -6,6 +6,14 @@ fn keyed(src: &str, lang: Lang) -> (Vec<Unit>, Vec<String>) {
     (units, keys)
 }
 
+/// `owner` at each row: the innermost unit's key, None for a toplevel row.
+fn owners(units: &[Unit], want: &[(usize, Option<&str>)]) {
+    for (line, key) in want {
+        let got = owner(units, *line).map(|u| u.key.as_str());
+        assert_eq!(got, *key, "owner of line {line}");
+    }
+}
+
 #[test]
 fn python_functions_become_units() {
     let (units, keys) = keyed(
@@ -13,17 +21,38 @@ fn python_functions_become_units() {
         Lang::Python,
     );
     assert_eq!(keys, ["alpha/2", "beta/0"]);
-    assert_eq!(owner(&units, 2).unwrap().key, "alpha/2");
-    assert_eq!(owner(&units, 3), None); // blank line between defs
+    owners(&units, &[(2, Some("alpha/2")), (3, None)]); // line 3 is the blank line between defs
 }
 
+/// Markdown sections are the ladder's own headings (plan v2.30 step
+/// 5b, boundary items 27 / 35): an ATX heading opens one and the
+/// preamble is toplevel; a setext heading opens one on its text's
+/// first row, a fenced `# x` opens none, a closing run drops only
+/// after a space, seven `#` are text; a section runs to the row above
+/// the next heading.
 #[test]
-fn markdown_sections_split_on_headings() {
-    let (units, keys) = keyed("intro\n# One\nbody\n## Two\nmore\n", Lang::Markdown);
-    assert_eq!(keys, ["One", "Two"]);
-    assert_eq!(owner(&units, 1), None); // preamble is toplevel
-    assert_eq!(owner(&units, 3).unwrap().key, "One");
-    assert_eq!(owner(&units, 5).unwrap().key, "Two");
+fn markdown_sections_are_the_ladders_headings() {
+    let docs: [(&str, &str, &[(usize, usize)], &[(usize, Option<&str>)]); 2] = [
+        (
+            "intro\n# One\nbody\n## Two\nmore\n",
+            "One Two",
+            &[(2, 3), (4, 5)],
+            &[(1, None), (3, Some("One")), (5, Some("Two"))],
+        ),
+        (
+            "Setext\n======\nbody\n```\n# fenced\n```\n# C#\ntail\n####### seven\nlast\n",
+            "Setext C#",
+            &[(1, 6), (7, 10)],
+            &[(9, Some("C#"))],
+        ),
+    ];
+    for (text, want_keys, spans, rows) in docs {
+        let (units, keys) = keyed(text, Lang::Markdown);
+        assert_eq!(keys.join(" "), want_keys, "{text:?}");
+        let got: Vec<_> = units.iter().map(|u| (u.start_line, u.end_line)).collect();
+        assert_eq!(got, spans, "{text:?}");
+        owners(&units, rows);
+    }
 }
 
 /// Plan v2.30 step 5: an HTML document's units are its elements that
@@ -36,11 +65,15 @@ fn html_units_are_the_elements_with_an_id() {
     let src = "<html>\n<body id=\"main\">\n<h1>t</h1>\n<section id=\"a\">\n<p id=\"a-p\">x</p>\n</section>\n<img id=\"pic\" src=\"i.png\">\n</body>\n</html>\n";
     let (units, keys) = keyed(src, Lang::Html);
     assert_eq!(keys, ["#main", "#a", "#a-p", "#pic"]);
-    assert_eq!(owner(&units, 1), None, "the root element has no id");
-    assert_eq!(owner(&units, 3).unwrap().key, "#main");
-    assert_eq!(owner(&units, 5).unwrap().key, "#a-p");
-    assert_eq!(owner(&units, 6).unwrap().key, "#a");
-    assert_eq!(owner(&units, 7).unwrap().key, "#pic");
+    // the root element has no id
+    let rows = [
+        (1, None),
+        (3, Some("#main")),
+        (5, Some("#a-p")),
+        (6, Some("#a")),
+        (7, Some("#pic")),
+    ];
+    owners(&units, &rows);
     let section = crate::fourclass::kinds::KIND_SECTION;
     assert!(
         units
@@ -88,7 +121,8 @@ fn impl_blocks_contain_their_methods() {
 /// The multi-param rows pin the M5-close arity repayment (3h
 /// blind-audit defect): the receiver-collapsed count keyed every
 /// method `/1`; the `parameters` field carries the real list.
-/// Grouped `a, b int` stays ONE declaration by standing stance.
+/// Grouped `a, b int` declares two parameters (Go spec ParameterDecl;
+/// plan v2.30 step 5b — the count used to be one per declaration).
 #[test]
 fn go_method_keys_carry_the_receiver_type_and_real_arity() {
     let src = "func (t T) add(x int) {}\nfunc (u *U) add(x int) {}\nfunc free(x int) {}\n\
@@ -100,7 +134,7 @@ fn go_method_keys_carry_the_receiver_type_and_real_arity() {
         "(*U) add/1",
         "free/1",
         "(T) mix/2",
-        "(T) grouped/1",
+        "(T) grouped/2",
         "(T) none/0",
     ];
     for k in want {
@@ -108,18 +142,62 @@ fn go_method_keys_carry_the_receiver_type_and_real_arity() {
     }
 }
 
-/// Plan v2.30 step 2: the C family keys a typedef by the leaf of its
-/// declarator chain, a type specifier only when it carries a body (a
-/// `struct T *` parameter type and a forward `class Fwd;` are
-/// references), a namespace and an alias by name, and a macro as a
-/// declaration of its own.
+/// Named units per language — the sorted keys one source yields, a
+/// block per language: a Go const or var spec at package level is a
+/// unit per name it binds while the same kinds inside a function body
+/// declare locals and no unit (plan v2.30 step 5b, boundary item 25);
+/// the C family keys a typedef by the leaf of its declarator chain, a
+/// type specifier only when it carries a body (a `struct T *`
+/// parameter type and a forward `class Fwd;` are references), a
+/// namespace and an alias by name, and a macro as a declaration of its
+/// own (plan v2.30 step 2).
+const NAMED: &str = "\
+go @@ A B Y c f/0 x z
+package p
+const A = 1
+const (
+\tB = 2
+\tc = 3
+)
+var x, Y int
+var z = 1
+func f() {
+\tconst local = 1
+\tvar v, w int
+\t_ = v + w + local
+}
+====
+cpp @@ A M T f/1 fp ns
+struct T { int x; };
+struct T *f(struct T *t) { return t; }
+typedef int (*fp)(int);
+class Fwd;
+#define M 1
+namespace ns { using A = int; }
+";
+
 #[test]
-fn c_family_named_units_need_a_body_or_a_declarator_leaf() {
-    let src = "struct T { int x; };\nstruct T *f(struct T *t) { return t; }\ntypedef int (*fp)(int);\n\
-               class Fwd;\n#define M 1\nnamespace ns { using A = int; }\n";
-    let (_, mut keys) = keyed(src, Lang::Cpp);
-    keys.sort_unstable();
-    assert_eq!(keys, ["A", "M", "T", "f/1", "fp", "ns"]);
+fn named_units_per_language() {
+    for block in NAMED.split("====\n") {
+        let (head, src) = block.split_once('\n').unwrap();
+        let (name, want) = head.split_once(" @@ ").unwrap();
+        let lang = if name == "go" { Lang::Go } else { Lang::Cpp };
+        let (_, mut keys) = keyed(src, lang);
+        keys.sort_unstable();
+        assert_eq!(keys.join(" "), want, "{name}");
+    }
+}
+
+/// Plan v2.30 step 5b (boundary item 28, register D12): a K&R
+/// definition is a unit whose parameters are the identifiers of its
+/// list — the declarations between the list and the body belong to
+/// the function and key nothing of their own.
+#[test]
+fn c_knr_definitions_are_units_with_their_identifier_list() {
+    let src = "int add(a, b)\nint a;\nint b;\n{ return a + b; }\nint zero() { return 0; }\n";
+    let (units, keys) = keyed(src, Lang::C);
+    assert_eq!(keys, ["add/2", "zero/0"]);
+    owners(&units, &[(2, Some("add/2"))]);
 }
 
 #[test]

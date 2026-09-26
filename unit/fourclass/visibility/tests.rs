@@ -73,6 +73,13 @@ fn go_type_forms_are_units_with_their_own_word() {
         "package p\ntype Pub struct{}\ntype priv = Pub\nfunc F() { type inner int; type Inner int } \
          ⇒ Pub:ES priv:- F/0:ES Inner:E inner:-",
     );
+    // plan v2.30 step 5b: a package-level const or var is keyed, each
+    // name of a grouped spec by its own initial; a body-local one is not
+    check_units(
+        Lang::Go,
+        "package p\nconst Max = 1\nvar a, B int\nfunc F() { const in = 1; var In = 2; _ = in + In } \
+         ⇒ Max:ES B:ES a:- F/0:ES",
+    );
 }
 
 fn bit_of(letter: char) -> i64 {
@@ -140,12 +147,14 @@ fn python_scope_bit_reads_defs_and_class_names() {
 /// list — an underscore name it lists is exported, a public name it
 /// omits is not, `+=` unions, a tuple reads like a list; a method is
 /// never a module name so the convention keeps speaking for it; a
-/// dynamic `__all__` is unreadable and the convention answers. The
-/// step-8 review's three shapes are the unreadable half's load-bearing
-/// rows: a `.extend`, a guarded `+=`, an escaped or f-string entry
-/// each build the list dynamically, and reading the literal part alone
-/// had narrowed bit 0 on a name the module exports; a docstring
-/// mention falls the same (wider) way by design.
+/// dynamic `__all__` is unreadable and the convention answers. Plan
+/// v2.30 step 5b (boundary item 26) reads three of the step-8
+/// review's shapes: a top-level `.extend` / `.append` with literal
+/// arguments unions like `+=`, an escaped entry decodes (`\x66oo` is
+/// `foo`), and a docstring mentioning the name is prose, not a
+/// spelling — so a public name those lists omit is NOT exported now;
+/// a guarded `+=`, an f-string entry, a `\N{…}` escape and a
+/// non-literal right-hand side stay unreadable.
 #[test]
 fn python_all_is_the_module_export_list_when_literal() {
     for case in [
@@ -154,11 +163,13 @@ fn python_all_is_the_module_export_list_when_literal() {
          __all__ += (\"late\",)\ndef late():\n    pass ⇒ _hid:ES omitted:- m:ES _p:- late:ES",
         "__all__ = [n for n in dir()]\ndef open():\n    pass\ndef _shut():\n    pass ⇒ open:ES _shut:-",
         "__all__ = other.__all__\ndef open():\n    pass ⇒ open:ES",
-        "__all__ = []\n__all__.extend([\"open\"])\ndef open():\n    pass\ndef _shut():\n    pass ⇒ open:ES _shut:-",
+        "__all__ = []\n__all__.extend([\"open\"])\n__all__.append(\"_also\")\ndef open():\n    pass\ndef _also():\n    pass\ndef omitted():\n    pass ⇒ open:ES _also:ES omitted:-",
         "__all__ = [\"base\"]\nif X:\n    __all__ += [\"cond\"]\ndef base():\n    pass\ndef cond():\n    pass ⇒ base:ES cond:ES",
-        "__all__ = [\"\\x66oo\"]\ndef foo():\n    pass\ndef _bar():\n    pass ⇒ foo:ES _bar:-",
+        "__all__ = [\"\\x66oo\", '\\u0062ar']\ndef foo():\n    pass\ndef bar():\n    pass\ndef _baz():\n    pass\ndef omitted():\n    pass ⇒ foo:ES bar:ES _baz:- omitted:-",
+        "__all__ = [\"\\N{LATIN SMALL LETTER A}\"]\ndef a():\n    pass\ndef b():\n    pass ⇒ a:ES b:ES",
         "__all__ = [f\"h_{S}\"]\ndef h_x():\n    pass\ndef h_y():\n    pass ⇒ h_x:ES h_y:ES",
-        "\"\"\"see __all__\"\"\"\n__all__ = [\"a\"]\ndef a():\n    pass\ndef b():\n    pass ⇒ a:ES b:ES",
+        "\"\"\"see __all__\"\"\"\n# and __all__ here\n__all__ = [\"a\"]\ndef a():\n    pass\ndef b():\n    pass ⇒ a:ES b:-",
+        "__all__ = [\"a\"]\ndel __all__\ndef a():\n    pass\ndef b():\n    pass ⇒ a:ES b:ES",
     ] {
         check(Lang::Python, case);
     }

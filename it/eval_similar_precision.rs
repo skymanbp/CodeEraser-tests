@@ -30,7 +30,10 @@ const TRUTHS: [&str; 3] = ["same_role", "related", "unrelated"];
 /// A re-frozen oracle below it is a worse instrument: an event, not a
 /// number to accept. v1 measured 39/59, 74/118, 101/165; the v2
 /// holdout 30/56, 69/115, 86/177 — the role bit's precision there is
-/// what sets its floor.
+/// what sets its floor. The Go fixture's re-measurement of 2026-09-26
+/// (plan v2.30 step 5b: grouped parameters, package-level const / var)
+/// re-read them as 39/59, 75/118, 100/165 and 29/57, 69/115, 89/179;
+/// both floors stand.
 const GENERATIONS: [(u32, u64); 2] = [(1, 60), (2, 40)];
 
 fn oracle(generation: u32) -> Value {

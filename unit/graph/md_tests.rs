@@ -36,18 +36,26 @@ fn fences_and_code_spans_emit_nothing() {
     assert_eq!(kinds_specs(text), vec![]);
 }
 
-/// Indented code (step 8, O57): four columns at the document start or
-/// after a blank line open a block outside a list — its link-shaped
-/// content emits nothing and the block runs across blank lines; a
-/// list item's continuation paragraph indented the same way is prose;
-/// a lazy line without the blank continues its paragraph; a tab
-/// counts four; a fence close leaves no paragraph open, so an
-/// indented line right after it is code.
+/// Indented code (step 8, O57; the list column since plan v2.30 step
+/// 5b): four columns at the document start or after a blank line open
+/// a block — its link-shaped content emits nothing and the block runs
+/// across blank lines; a fence close leaves no paragraph open, so an
+/// indented line right after it is code; a tab counts four. Inside a
+/// list item the block opens four columns past the item's content
+/// column (CommonMark §5.2): a continuation paragraph at that column
+/// is prose, a line four deeper after a blank is code, a lazy line
+/// without the blank continues its paragraph, a nested item moves the
+/// column, an ordered marker's column is its own width, a marker at an
+/// outer level closes the inner item, and a non-blank line short of
+/// the column after a blank closes the list — four columns are code
+/// again.
 #[test]
-fn indented_code_blocks_emit_nothing_outside_lists() {
-    let text = "    [top](./no.md)\nintro\n\n    [code](./no.md)\n\n    [still](./no.md)\nback [a](./a.md)\n- item\n\n    [prose](./b.md)\npara\n    [lazy](./c.md)\n\n\t[tab](./no.md)\n```\nx\n```\n    [after](./no.md)\n";
+fn indented_code_blocks_follow_the_list_content_column() {
+    let text = "    [top](./no.md)\nintro\n\n    [code](./no.md)\n\n    [still](./no.md)\nback [a](./a.md)\n```\nx\n```\n    [after](./no.md)\n\n\t[tab](./no.md)\n\
+                - item\n\n    [prose](./b.md)\npara\n    [lazy](./c.md)\n\n      [item code](./no.md)\n\n  - nested\n\n      [nested prose](./d.md)\n\n        [nested code](./no.md)\n\
+                - sibling\n\n      [sibling code](./no.md)\n1. ordered\n\n   [ordered prose](./e.md)\n\n       [ordered code](./no.md)\nout\n\n    [top again](./no.md)\n";
     let specs: Vec<String> = kinds_specs(text).into_iter().map(|(_, s)| s).collect();
-    assert_eq!(specs, ["./a.md", "./b.md", "./c.md"]);
+    assert_eq!(specs, ["./a.md", "./b.md", "./c.md", "./d.md", "./e.md"]);
 }
 
 /// Opus review: single-backtick pairing masked nothing inside a

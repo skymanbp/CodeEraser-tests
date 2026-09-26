@@ -7,6 +7,7 @@
 //! way that debt returns, so it is pinned here as a table.
 
 use super::slug::{percent_decode, slug_hash, slug_set};
+use crate::graph::ladder::md::head::{atx_heading, headings};
 
 #[test]
 fn hash_moves_exactly_when_the_consulted_projection_moves() {
@@ -74,4 +75,43 @@ fn rendered_slugs_html_anchors_and_percent_decoding() {
     assert_eq!(slug_set(doc).join(" "), want);
     assert_eq!(percent_decode("%E4%B8%AD-x%2"), "中-x%2");
     assert_eq!(percent_decode("bad%ZZ%ff"), "bad%ZZ%ff");
+}
+
+/// Plan v2.30 step 5b (boundary items 20 / 21 / 35): a setext heading
+/// slugs like an ATX one — a paragraph under `===` or `---`, its lines
+/// joined, starting on the paragraph's first row — while a `---` after
+/// a blank line, a list item, a table row or an HTML block is a break
+/// and no heading; an anchor tag is read across lines and with spaces
+/// around `=` or a bare value, and a `<div>` spread the same way is
+/// still no anchor; a closing `#` run drops only after a space (`C#`
+/// keeps its sharp), seven `#` open nothing and a tab after the run
+/// still does. The section units read the same headings.
+#[test]
+fn setext_headings_and_spread_anchor_tags_enter_the_set() {
+    let doc = "Title Line\n=====\nSecond\nrow here\n---\n\n---\n- item\n---\n| a |\n---\n<div>\n---\n\n# C#\n## Two ##\n####### seven\n#\tTabbed\n\
+               <a\n  id = \"spread\" >x</a>\n<h2\nname=bare>H</h2>\n<div\n id=\"no\">\n";
+    let want = "title-line second-row-here c two tabbed spread bare";
+    assert_eq!(slug_set(doc).join(" "), want);
+    let rows: Vec<(usize, String)> = headings(doc)
+        .into_iter()
+        .map(|h| (h.line, h.text))
+        .collect();
+    let want_rows = [
+        (1, "Title Line"),
+        (3, "Second row here"),
+        (15, "C#"),
+        (16, "Two"),
+        (18, "Tabbed"),
+    ];
+    assert_eq!(rows, want_rows.map(|(l, t)| (l, t.to_string())));
+    assert_eq!(
+        atx_heading("# #"),
+        Some(""),
+        "a lone closing run is an empty heading"
+    );
+    assert_eq!(
+        atx_heading("# a #b"),
+        Some("a #b"),
+        "a run inside the text stays"
+    );
 }
