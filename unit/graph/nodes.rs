@@ -87,7 +87,10 @@ fn assignment_is_shuffle_proof() {
 
 /// An absent-file target is a FILE node unless an edge's stored
 /// granularity SAYS package: the asset / dangling-ref shapes the
-/// old absence-inference minted as packages (review LOW).
+/// old absence-inference minted as packages (review LOW). Since
+/// plan v2.30 step 5 that file node is marked an ASSET — the ladder's
+/// candidate set makes it one by construction — and a held file or a
+/// package never is.
 #[test]
 fn absent_targets_are_files_unless_an_edge_says_package() {
     let files = vec!["doc.md".to_string()];
@@ -96,11 +99,13 @@ fn absent_targets_are_files_unless_an_edge_says_package() {
         edge("doc.md", "gone.md", "", 0),
         edge("doc.md", "pkg", "", crate::graph::wire::GRAN_PACKAGE),
     ];
-    let by: std::collections::BTreeMap<String, i64> = nodes_of(&files, &edges, &Default::default())
-        .into_iter()
-        .map(|n| (n.path, n.kind))
-        .collect();
-    assert_eq!(by["art/logo.png"], crate::graph::wire::GRAN_FILE);
-    assert_eq!(by["gone.md"], crate::graph::wire::GRAN_FILE);
-    assert_eq!(by["pkg"], crate::graph::wire::GRAN_PACKAGE);
+    let by: std::collections::BTreeMap<String, (i64, bool)> =
+        nodes_of(&files, &edges, &Default::default())
+            .into_iter()
+            .map(|n| (n.path, (n.kind, n.asset)))
+            .collect();
+    assert_eq!(by["art/logo.png"], (crate::graph::wire::GRAN_FILE, true));
+    assert_eq!(by["gone.md"], (crate::graph::wire::GRAN_FILE, true));
+    assert_eq!(by["pkg"], (crate::graph::wire::GRAN_PACKAGE, false));
+    assert_eq!(by["doc.md"], (crate::graph::wire::GRAN_FILE, false));
 }

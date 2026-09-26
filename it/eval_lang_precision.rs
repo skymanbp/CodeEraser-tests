@@ -9,8 +9,10 @@
 use crate::eval_lang_parts::precision::verify_precision;
 use crate::eval_lang_parts::score::{GATE, scored};
 use crate::eval_lang_parts::tamper::{oracle_precision, tamper_battery};
-use crate::eval_lang_parts::{EXAMS, PRECISION_DOCS, SLICES, Stage, exam_of_corpus};
-use crate::eval_support::{assert_corpus_precision, assert_corpus_set, correct_wrong, doc_refused};
+use crate::eval_lang_parts::{EXAMS, Exam, PRECISION_DOCS, SLICES, Stage, exam_of_corpus, tree};
+use crate::eval_support::{
+    TRUTH_KEYWORDS, assert_corpus_precision, assert_corpus_set, correct_wrong, doc_refused,
+};
 use serde_json::{Map, Value, json};
 
 /// Every scored exam: the frozen set is exactly the scored exams'
@@ -105,17 +107,15 @@ fn a_tampered_precision_doc_is_refused() {
 /// doc, whose walk refuses the vendored modules as the product's does
 /// (`vendor/`, scan/walk.rs) — and two truths name one: a refused file
 /// outside the universe, a refused file dropped (the sites no longer
-/// add up), a cooked refused tally, an unwalked truth scored as the
+/// add up), a cooked refused tally, an unreached path on an exam whose
+/// truths stay in the universe, an unwalked truth scored as the
 /// in-corpus file it names, and the audit's word beside a truth the
 /// walk left alone each refuse.
 #[test]
 fn a_forged_walk_is_refused() {
     let exam = &EXAMS[1];
     let (corpus, _) = exam.corpora[0];
-    let sample = exam.sample();
-    let pristine = oracle_precision(exam, corpus, &|p| p.starts_with("vendor/"));
-    let check = |doc: &Value| verify_precision(exam, corpus, doc, &sample);
-    assert!(!doc_refused(&pristine, &check), "the pristine doc passes");
+    let (pristine, check) = passing_oracle(exam, corpus, &|p| p.starts_with("vendor/"));
     let rows = pristine["rows"].as_array().expect("rows");
     let rewritten = rows
         .iter()
@@ -136,6 +136,11 @@ fn a_forged_walk_is_refused() {
         .expect("refused")
         .pop();
     let tally = bumped(&pristine, "walk", "refused_sites_by");
+    let mut unreached = pristine.clone();
+    unreached["walk"]["unreached"]
+        .as_array_mut()
+        .expect("unreached")
+        .push(json!("zz/beyond-the-universe.js"));
     let mut in_corpus = pristine.clone();
     let row = &mut in_corpus["rows"][rewritten];
     row["truth"] = row["audit_truth"].take();
@@ -146,11 +151,67 @@ fn a_forged_walk_is_refused() {
         ("a refused file outside the universe", &outside),
         ("a refused file dropped", &dropped),
         ("a cooked refused tally", &tally),
+        (
+            "an unreached path where truths stay in the universe",
+            &unreached,
+        ),
         ("an unwalked truth scored in-corpus", &in_corpus),
         ("the audit's word beside a walked truth", &beside),
     ] {
         assert!(doc_refused(doc, &check), "{label} must refuse");
     }
+}
+
+/// The unreached paths of an exam whose truths reach the pinned tree
+/// (HTML, learning-area), on the oracle's doc: a universe page listed
+/// as unreached refuses, a path off the tree refuses, and a tree path
+/// a truth names, listed as unreached, refuses because that truth is
+/// then scored as outside the corpus while the doc still echoes the
+/// audit's word — the record rewrites truths, so a forged one cannot
+/// pass beside frozen rows.
+#[test]
+fn an_unreached_path_is_held_to_the_tree_and_rewrites_its_truths() {
+    let exam = &EXAMS[3];
+    let (corpus, _) = exam.corpora[2];
+    let (pristine, check) = passing_oracle(exam, corpus, &|_| false);
+    let universe = tree::universe(&SLICES.load(exam, corpus));
+    let page = universe.iter().next().expect("a universe page").clone();
+    let named = pristine["rows"]
+        .as_array()
+        .expect("rows")
+        .iter()
+        .map(|r| r["truth"].as_str().expect("truth"))
+        .find(|t| {
+            !TRUTH_KEYWORDS.contains(t) && !universe.contains(t.split('#').next().unwrap_or(t))
+        })
+        .expect("a truth naming a tree path outside the universe")
+        .to_string();
+    for (label, path) in [
+        ("a universe page listed as unreached", page),
+        ("a path off the tree", "zz/not-in-the-tree.png".to_string()),
+        ("a tree path a truth names", named),
+    ] {
+        let mut doc = pristine.clone();
+        doc["walk"]["unreached"]
+            .as_array_mut()
+            .expect("unreached")
+            .push(json!(path));
+        assert!(doc_refused(&doc, &check), "{label} must refuse");
+    }
+}
+
+/// The oracle's doc under `refuse`, and the check that must pass it —
+/// the prelude both walk legs share.
+fn passing_oracle<'a>(
+    exam: &'a Exam,
+    corpus: &'a str,
+    refuse: &dyn Fn(&str) -> bool,
+) -> (Value, impl Fn(&Value) + 'a) {
+    let sample = exam.sample();
+    let pristine = oracle_precision(exam, corpus, refuse);
+    let check = move |doc: &Value| verify_precision(exam, corpus, doc, &sample);
+    assert!(!doc_refused(&pristine, &check), "the pristine doc passes");
+    (pristine, check)
 }
 
 /// The RG1 trigger both ways: a ledger whose R1 share is past it

@@ -7,29 +7,43 @@ use codeeraser::scan::lang::Lang;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
+/// What the walk hands the resolver: the judged files, the assets
+/// and the resolver-config paths.
+pub type Walked = (BTreeSet<String>, BTreeSet<String>, Vec<String>);
+
 /// Materialize a ladder fixture tree and collect what the real walk
-/// would hand the resolver: the in-scope lang files (node_modules is
-/// never entered) plus the resolver-config paths.
-pub fn materialize(dir: &Path, tree: &[(&str, &str)]) -> (BTreeSet<String>, Vec<String>) {
-    let mut files = BTreeSet::new();
-    let mut configs = Vec::new();
+/// would hand the resolver (node_modules is never entered).
+pub fn materialize(dir: &Path, tree: &[(&str, &str)]) -> Walked {
     for (rel, content) in tree {
         let path = dir.join(rel);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, content).expect(rel);
-        if rel.starts_with("node_modules/") {
-            continue;
-        }
-        // judged_path — the index walk's own gate (plan v2.5): the
-        // scan-only arm never enters the file set the resolver sees
-        if codeeraser::scan::lang::Lang::judged_path(&path).is_some() {
-            files.insert(rel.to_string());
-        }
+    }
+    let seen = tree
+        .iter()
+        .map(|(rel, _)| rel.to_string())
+        .filter(|rel| !rel.starts_with("node_modules/"));
+    walk_sets(dir, seen)
+}
+
+/// Walked paths sorted the walk's own way (dedup/walkidx.rs
+/// refresh_tree): a resolver config aside, a judged file into the set
+/// the resolver sees (judged_path, the index walk's gate — the
+/// scan-only arm never enters it), every other walked path an asset a
+/// page may name.
+pub fn walk_sets(dir: &Path, paths: impl IntoIterator<Item = String>) -> Walked {
+    let (mut files, mut assets, mut configs) = (BTreeSet::new(), BTreeSet::new(), Vec::new());
+    for rel in paths {
+        let path = dir.join(&rel);
         if codeeraser::graph::store::is_resolver_config(&path) {
-            configs.push(rel.to_string());
+            configs.push(rel);
+        } else if codeeraser::scan::lang::Lang::judged_path(&path).is_some() {
+            files.insert(rel);
+        } else {
+            assets.insert(rel);
         }
     }
-    (files, configs)
+    (files, assets, configs)
 }
 
 /// A materialized ladder fixture that OWNS what a Scope borrows —
@@ -38,6 +52,9 @@ pub fn materialize(dir: &Path, tree: &[(&str, &str)]) -> (BTreeSet<String>, Vec<
 pub struct Fixture {
     pub dir: PathBuf,
     pub files: BTreeSet<String>,
+    /// The walked files the index never holds (WalkIndex::assets) —
+    /// what a page may name besides a judged file (the HTML rungs).
+    pub assets: BTreeSet<String>,
     pub configs: Vec<String>,
     pub memo: ladder::Memo,
     /// Declared crate roots (ce.toml `[graph] crate_roots`); empty
@@ -56,7 +73,7 @@ pub struct Fixture {
 
 pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
     let dir = super::tmp(tag);
-    let (files, configs) = materialize(&dir, tree);
+    let (files, assets, configs) = materialize(&dir, tree);
     let in_scope = &files;
     let of = |ext: &'static str| {
         tree.iter()
@@ -71,6 +88,7 @@ pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
     Fixture {
         dir,
         files,
+        assets,
         configs,
         memo: Default::default(),
         crate_roots: BTreeSet::new(),
@@ -84,6 +102,7 @@ impl Fixture {
     pub fn scope(&self) -> Scope<'_> {
         Scope {
             files: &self.files,
+            assets: &self.assets,
             configs: &self.configs,
             root: &self.dir,
             memo: &self.memo,
@@ -230,8 +249,9 @@ fn text_tree(text: &'static str) -> Vec<(&'static str, &'static str)> {
 
 /// One run's rows, `kind @@ from @@ spec @@ outcome` per line; the
 /// outcome is `ok <path> <rung>`, `pkg <dir> <rung>` (`.` = the tree
-/// root), `ext <rung>` or `no <reason>` (the reason as the ledger
-/// spells it, reason_name).
+/// root), `sec <path> <slug> <rung>` (a section), `secf <path> <rung>`
+/// (the section claim degraded to its file), `ext <rung>` or `no
+/// <reason>` (the reason as the ledger spells it, reason_name).
 fn text_cases(lang: Lang, table: &'static str) -> Vec<Case> {
     table
         .trim()
@@ -254,6 +274,8 @@ fn text_outcome(spelled: &str) -> Outcome {
         ["ok", path, r] => ok(path, rung(r)),
         ["pkg", ".", r] => pkg("", rung(r)),
         ["pkg", dir, r] => pkg(dir, rung(r)),
+        ["sec", path, slug, r] => sec(path, slug, rung(r)),
+        ["secf", path, r] => secf(path, rung(r)),
         ["ext", r] => ext(rung(r)),
         ["no", why] => no(REASONS
             .into_iter()

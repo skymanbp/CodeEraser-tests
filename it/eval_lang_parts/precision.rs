@@ -8,7 +8,8 @@
 //! forged copies.
 
 use super::score::{PRECISION_SCHEMA, ledger, shape_of, summary};
-use super::walk::{Walk, universe_files, walk_record};
+use super::tree;
+use super::walk::{Walk, walk_record};
 use crate::eval_graph_precision_parts::verdict_of;
 use crate::eval_lang_parts::review::ECHO;
 use crate::eval_lang_parts::{AUDIT_TABLES, Exam, SLICES, slice_constants};
@@ -34,7 +35,7 @@ pub fn verify_precision(exam: &Exam, corpus: &str, doc: &Value, sample: &Value) 
     );
     let review = AUDIT_TABLES.load(exam, corpus);
     let slice = SLICES.load(exam, corpus);
-    let walk = verify_walk(corpus, doc, &slice);
+    let walk = verify_walk(exam, corpus, doc, &slice);
     let rows = doc["rows"].as_array().expect("rows");
     let sampled = of_corpus(sample["rows"].as_array().expect("rows"), corpus);
     assert_eq!(rows.len(), sampled.len(), "{corpus}: judged row count (G3)");
@@ -94,28 +95,43 @@ fn verify_row(corpus: &str, row: &Value, s: &Value, audit: &Value, walk: &Walk) 
 }
 
 /// The walk record against the frozen slice: its refused files are
-/// universe files, sorted and distinct, and its tally is theirs.
-fn verify_walk(corpus: &str, doc: &Value, slice: &Value) -> Walk {
-    let listed: Vec<&str> = doc["walk"]["refused"]
-        .as_array()
-        .expect("walk.refused")
-        .iter()
-        .map(|p| p.as_str().expect("path"))
-        .collect();
-    let refused: BTreeSet<String> = listed.iter().map(|p| p.to_string()).collect();
-    let universe = universe_files(slice);
+/// universe files, its unreached paths are outside the universe among
+/// what a truth may name (the pinned tree; none for an exam whose
+/// truths stay in the universe), both sorted and distinct, and its
+/// tally is the refused files' own.
+fn verify_walk(exam: &Exam, corpus: &str, doc: &Value, slice: &Value) -> Walk {
+    let listed = |key: &str| -> BTreeSet<String> {
+        doc["walk"][key]
+            .as_array()
+            .unwrap_or_else(|| panic!("walk.{key}"))
+            .iter()
+            .map(|p| p.as_str().expect("path").to_string())
+            .collect()
+    };
+    let (refused, unreached) = (listed("refused"), listed("unreached"));
+    let universe = tree::universe(slice);
+    let named = tree::targets(exam, corpus, &universe);
     for path in &refused {
         assert!(
-            universe.contains(&path.as_str()),
+            universe.contains(path),
             "{corpus}: the walk refuses {path}, no file of the frozen universe"
+        );
+    }
+    for path in &unreached {
+        assert!(
+            named.contains(path) && !universe.contains(path),
+            "{corpus}: the walk leaves {path} unreached, no path outside the universe a truth may name"
         );
     }
     assert_eq!(
         doc["walk"],
-        walk_record(slice, &refused),
-        "{corpus}: the walk record is not its refused files' own (sorted, distinct, tallied from the slice)"
+        walk_record(slice, &refused, &unreached),
+        "{corpus}: the walk record is not its refused paths' own (sorted, distinct, tallied from the slice)"
     );
-    Walk::new(universe, refused)
+    Walk::new(
+        named.iter().map(String::as_str),
+        refused.into_iter().chain(unreached).collect(),
+    )
 }
 
 /// The ledger's rates re-derived from its tallies, the tallies and the

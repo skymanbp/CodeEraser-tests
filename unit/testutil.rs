@@ -59,6 +59,7 @@ pub fn node(path: &str, unit: &str, kind: i64) -> crate::graph::nodes::Node {
         unit: unit.into(),
         kind,
         foreign: false,
+        asset: false,
     }
 }
 

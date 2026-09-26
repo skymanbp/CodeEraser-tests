@@ -72,7 +72,7 @@ pub fn oracle_precision(exam: &Exam, corpus: &str, refuses: &dyn Fn(&str) -> boo
         .map(|p| p.to_string())
         .collect();
     let walk = Walk::new(universe, refused.clone());
-    let record = walk_record(&slice, &refused);
+    let record = walk_record(&slice, &refused, &BTreeSet::new());
     let sample = exam.sample();
     let rows: Vec<Value> = of_corpus(sample["rows"].as_array().expect("rows"), corpus)
         .into_iter()

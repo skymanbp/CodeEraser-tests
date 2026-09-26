@@ -24,7 +24,6 @@ use crate::eval_support::{
     generated_from, git_in, lang_of, of_corpus, pinned_root, site_row, site_summary,
 };
 use codeeraser::graph::sites::detect;
-use codeeraser::graph::store::is_resolver_config;
 use codeeraser::scan::walk::Scope;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -210,10 +209,12 @@ fn lang_sample() {
 }
 
 const PRECISION_METHOD: &str = "the frozen sample rows of one corpus, resolved by the shipped \
-    ladder against the files of its frozen universe the product's own walk reads at the pinned \
-    tip (every file re-read there and reproduced against its frozen row first; a drifted tree \
-    never scores), with the resolver configs the walk reads and no declared root, judged \
-    against the frozen blind audit — a truth naming a file the walk refuses is scored as \
+    ladder against what the product's own walk reads at the pinned tip - every judged file of \
+    the tree (the frozen universe among them, each file re-read there and reproduced against \
+    its frozen row first; a drifted tree never scores), every other walked path as an asset a \
+    page may name, the resolver configs it reads - with no declared root, judged \
+    against the frozen blind audit — a truth naming a path the walk refuses (a universe \
+    file, or any path of the pinned tree where the truths reach the tree) is scored as \
     outside the corpus, the audit's word kept beside it, and no sampled site may lie in a \
     refused file. An in-corpus answer \
     matches its truth exactly, or at file level when the ladder made no unit claim; a package \
@@ -244,12 +245,20 @@ pub(super) fn scored_doc(exam: &Exam, name: &str, tip: &str) -> Value {
         .into_iter()
         .partition(|(p, _)| reads.contains(Path::new(p)));
     let refused: BTreeSet<String> = refused.into_iter().map(|(p, _)| p).collect();
-    let walk = super::walk::Walk::new(walked.iter().map(|(p, _)| p.as_str()), refused.clone());
-    let configs = tree_paths(&repo, tip)
-        .into_iter()
-        .filter(|p| is_resolver_config(Path::new(p)) && reads.contains(Path::new(p)))
+    let universe: BTreeSet<String> = walked
+        .iter()
+        .map(|(p, _)| p.clone())
+        .chain(refused.iter().cloned())
         .collect();
-    let tree = score::tree(Path::new(&repo), &walked, configs);
+    let (read, unread): (Vec<String>, Vec<String>) = tree_paths(&repo, tip)
+        .into_iter()
+        .partition(|p| reads.contains(Path::new(p)));
+    let (named, unreached) = super::walk::reach(exam, &universe, &read, &unread);
+    let walk = super::walk::Walk::new(
+        named.iter().map(String::as_str),
+        refused.iter().chain(&unreached).cloned().collect(),
+    );
+    let tree = score::tree(Path::new(&repo), &walked, read);
     let scope = tree.scope();
     let sampled = of_corpus(sample["rows"].as_array().expect("rows"), name);
     let truths = review["rows"].as_array().expect("rows");
@@ -263,7 +272,7 @@ pub(super) fn scored_doc(exam: &Exam, name: &str, tip: &str) -> Value {
         "corpus": {"name": name, "tip": tip, "lang": exam.lang},
         "generated_from": generated_from(),
         "method": PRECISION_METHOD,
-        "walk": super::walk::walk_record(&slice, &refused),
+        "walk": super::walk::walk_record(&slice, &refused, &unreached),
         "summary": score::summary(&rows),
         "universe": score::universe(&walked, exam.lang, &scope),
         "site_gaps": score::gaps(&review, &walked, exam.lang, &scope),

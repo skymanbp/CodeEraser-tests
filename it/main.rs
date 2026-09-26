@@ -116,6 +116,7 @@ mod graph_export_surface;
 mod graph_knobs;
 mod graph_ladder;
 mod graph_ladder_c;
+mod graph_ladder_html;
 mod graph_ladder_java;
 mod graph_ladder_lua;
 mod graph_ladder_md;

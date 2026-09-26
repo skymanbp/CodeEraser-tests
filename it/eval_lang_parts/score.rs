@@ -33,12 +33,16 @@ pub fn scored(exam: &Exam) -> bool {
     exam.filed(&PRECISION_DOCS, Stage::Scored)
 }
 
-/// The frozen tree as the walk hands it to the ladder: the frozen
-/// files, each Java file's header and each Lua file's `package.path`
-/// templates read the walk's way (dedup/walkidx.rs, by the product's
-/// own path table), the tree's resolver configs, and no declared root
-/// — the product's defaults, for no corpus carries a ce.toml.
-pub fn tree(root: &Path, texts: &[(String, String)], configs: Vec<String>) -> Fixture {
+/// The frozen tree as the walk hands it to the ladder: every path the
+/// walk reads at the pinned tip sorted the walk's way (common::walk_sets
+/// — a judged file of any language, the frozen universe among them,
+/// for a page names a document or a code file; every other path an
+/// asset; the resolver configs aside), each Java file's header and
+/// each Lua file's `package.path` templates read the walk's way
+/// (dedup/walkidx.rs, by the product's own path table), and no
+/// declared root — the product's defaults, for no corpus carries a
+/// ce.toml.
+pub fn tree(root: &Path, texts: &[(String, String)], read: Vec<String>) -> Fixture {
     let of = |lang: Lang| {
         texts
             .iter()
@@ -48,9 +52,16 @@ pub fn tree(root: &Path, texts: &[(String, String)], configs: Vec<String>) -> Fi
         .map(|(p, t)| (p.clone(), java_header::read(t)))
         .collect();
     let lua = of(Lang::Lua).flat_map(|(_, t)| lua_path::read(t)).collect();
+    let (files, assets, configs) = crate::common::walk_sets(root, read);
+    let stray = texts.iter().find(|(p, _)| !files.contains(p));
+    assert!(
+        stray.is_none(),
+        "{stray:?}: a frozen universe file the walk does not read as a judged file"
+    );
     Fixture {
         dir: root.to_path_buf(),
-        files: texts.iter().map(|(p, _)| p.clone()).collect(),
+        files,
+        assets,
         configs,
         memo: Default::default(),
         crate_roots: Default::default(),
