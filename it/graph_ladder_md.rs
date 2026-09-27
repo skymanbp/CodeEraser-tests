@@ -49,11 +49,13 @@ fn md_cases() -> Vec<Case> {
         // has no such ATX heading and the section edge still lands
         // (raw-HTML anchors are legal targets we do not model)
         (m, ln, rm, "#raw-html-anchor", sec(rm, "raw-html-anchor", 4)),
-        // R5: schemes leave the corpus; a relative asset is outside
-        // the modeled file set, never a guessed edge
+        // R5: schemes leave the corpus; R1: a relative asset the walk
+        // read is a file edge (step 5b — its node stands as an asset),
+        // one the walk never read is out of scope, never a guessed edge
         (m, ln, rm, "https://github.com/x/y", ext(5)),
         (m, im, rm, "https://img.shields.io/b.svg", ext(5)),
-        (m, im, rm, "./assets/logo.svg", no(Reason::OutOfScope)),
+        (m, im, rm, "./assets/logo.svg", ok("assets/logo.svg", 1)),
+        (m, im, rm, "./assets/gone.svg", no(Reason::OutOfScope)),
         (m, "url", rm, "mailto:a@b.example", ext(5)),
         // R2: unique slug, the -1 duplicate suffix, the audited
         // punctuation-strip and Hangul rows — then four degrades:

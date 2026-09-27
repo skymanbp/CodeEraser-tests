@@ -12,7 +12,8 @@ use std::path::{Path, PathBuf};
 pub type Walked = (BTreeSet<String>, BTreeSet<String>, Vec<String>);
 
 /// Materialize a ladder fixture tree and collect what the real walk
-/// would hand the resolver (node_modules is never entered).
+/// would hand the resolver (a node_modules is never entered, wherever
+/// it sits — scan/walk.rs).
 pub fn materialize(dir: &Path, tree: &[(&str, &str)]) -> Walked {
     for (rel, content) in tree {
         let path = dir.join(rel);
@@ -22,7 +23,7 @@ pub fn materialize(dir: &Path, tree: &[(&str, &str)]) -> Walked {
     let seen = tree
         .iter()
         .map(|(rel, _)| rel.to_string())
-        .filter(|rel| !rel.starts_with("node_modules/"));
+        .filter(|rel| !rel.starts_with("node_modules/") && !rel.contains("/node_modules/"));
     walk_sets(dir, seen)
 }
 
@@ -120,19 +121,23 @@ impl Fixture {
 pub type Case = (Lang, &'static str, &'static str, &'static str, Outcome);
 
 /// Drive a case table through the dispatcher against one
-/// materialized fixture — the shared act + assert throat. Case rows
-/// carry no line: table fixtures hold no inline modules, so line 1
-/// is exact (the inline-module cases pass real lines directly).
+/// materialized fixture — the shared act + assert throat. A row's
+/// kind may carry the site's line as `kind@line` (a folded import, a
+/// type reference inside a class body — step 5b); a bare kind stands
+/// on line 1, exact for a fixture with nothing above the site.
 pub fn run_cases(fx: &Fixture, cases: Vec<Case>) {
     let scope = fx.scope();
     for (lang, kind, from, spec, want) in cases {
-        let got = ladder::resolve(lang, &site(kind, from, spec, 1), &scope);
-        assert_eq!(got, want, "{lang:?} {kind} {spec:?}");
+        let (kind, line) = kind
+            .split_once('@')
+            .map_or((kind, 1), |(k, l)| (k, l.parse().expect("a line after @")));
+        let got = ladder::resolve(lang, &site(kind, from, spec, line), &scope);
+        assert_eq!(got, want, "{lang:?} {kind}@{line} {spec:?}");
     }
 }
 
-/// A one-off site for direct dispatch — the inline-module cases need
-/// a REAL line; the tables go through run_cases at line 1.
+/// A one-off site for direct dispatch — the inline-module cases build
+/// theirs here; the tables go through run_cases.
 pub fn site(
     kind: &'static str,
     from: &'static str,
@@ -247,7 +252,8 @@ fn text_tree(text: &'static str) -> Vec<(&'static str, &'static str)> {
         .collect()
 }
 
-/// One run's rows, `kind @@ from @@ spec @@ outcome` per line; the
+/// One run's rows, `kind @@ from @@ spec @@ outcome` per line (the
+/// kind `kind@line` for a site off line 1, run_cases); the
 /// outcome is `ok <path> <rung>`, `pkg <dir> <rung>` (`.` = the tree
 /// root), `sec <path> <slug> <rung>` (a section), `secf <path> <rung>`
 /// (the section claim degraded to its file), `ext <rung>` or `no

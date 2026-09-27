@@ -18,6 +18,7 @@ fn the_self_corpus_cabal_parses_to_its_known_facts() {
         .expect("cli/ has a parent");
     let c = parse(root, "core/ce-core.cabal").expect("parse");
     assert_eq!(c.dir, "core");
+    assert_eq!(c.name, "ce-core");
     let roots: Vec<&[String]> = c.stanzas.iter().map(|s| s.roots.as_slice()).collect();
     assert_eq!(
         roots,
@@ -138,6 +139,15 @@ fn hidden_modules_are_other_minus_exposed_and_keep_their_files() {
         "library\n  hs-source-dirs: src\n  exposed-modules: A, A.B\n  other-modules:\n    Internal.C\n    A.B\ntest-suite t\n  hs-source-dirs: test\n  other-modules: A\n",
     );
     assert!(c.has_library);
+    // the public library's face (step 5b, the Haskell depended rung):
+    // an exposed module is exposed, a hidden or absent one is not, the
+    // library's roots are its own, and this file names no package
+    assert!(c.exposes("A.B") && !c.exposes("Internal.C") && !c.exposes("Nope"));
+    assert_eq!(
+        c.library_roots().map(String::as_str).collect::<Vec<_>>(),
+        ["pkg/src"]
+    );
+    assert_eq!(c.name, "");
     assert_eq!(
         c.hidden_modules.iter().collect::<Vec<_>>(),
         ["Internal.C"],
@@ -184,4 +194,8 @@ fn privacy_does_not_depend_on_stanza_order_or_count_sublibraries() {
     );
     assert!(!sub_only.has_library, "a named library is a sublibrary");
     assert!(sub_only.keeps_private("pkg/src/U.hs"));
+    assert!(
+        !sub_only.exposes("U"),
+        "a sublibrary exposes nothing to another package"
+    );
 }

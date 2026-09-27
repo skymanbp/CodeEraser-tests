@@ -14,8 +14,11 @@ use crate::scan::lang::Lang;
 /// Pinned shapes: `mod foo { … }` is not a site, a plain export
 /// is not a site, one site per Python import target, a
 /// multi-line use keeps ONE site whose spec is the first-line
-/// fragment (module header), a qualified/aliased Haskell import
-/// keeps the bare module name, `foreign import` is NOT a
+/// fragment (module header) while a group with no path before its
+/// brace opens one site per entry on the entry's own line (plan
+/// v2.30 step 5b), a qualified/aliased Haskell import keeps the
+/// bare module name and a PackageImports one leads with its quoted
+/// package, `foreign import` is NOT a
 /// site — its anon `import` token shares the kind name (the 3k
 /// D11 collision class) but carries no module field — and a TS
 /// star export (bare or namespaced) is ONE `export_star` site
@@ -68,8 +71,8 @@ const CASES: [Case; 8] = [
         // the #[path] attribute emits NO site of its own — the
         // remap is ladder-side (rs.rs path_attr), which is what
         // keeps the frozen site universe standing across REV 5
-        "mod alpha;\n#[path = \"x.rs\"]\nmod beta { fn x() {} }\nuse crate::a::{b, c};\nuse crate::{\n    d,\n    e,\n};\n",
-        "mod_decl=alpha|use=crate::a::{b, c}|use=crate::{",
+        "mod alpha;\n#[path = \"x.rs\"]\nmod beta { fn x() {} }\nuse crate::a::{b, c};\nuse crate::{\n    d,\n    e,\n};\nuse {\n    crate::f::g,\n    std::io as sio,\n};\n",
+        "mod_decl=alpha|use=crate::a::{b, c}|use=crate::{|use=crate::f::g|use=std::io as sio",
     ),
     (
         Lang::Go,
@@ -80,8 +83,8 @@ const CASES: [Case; 8] = [
     // ladder answers M.hs for it (step 8, O28)
     (
         Lang::Haskell,
-        "module Main where\n\nimport CE.Alpha\nimport qualified Data.Map as M\nimport Data.List (sort)\nimport {-# SOURCE #-} CE.Boot (x)\n\nforeign import ccall \"math.h sin\" c_sin :: Double -> Double\n",
-        "import=CE.Alpha|import=Data.Map|import=Data.List|import=CE.Boot",
+        "module Main where\n\nimport CE.Alpha\nimport qualified Data.Map as M\nimport Data.List (sort)\nimport {-# SOURCE #-} CE.Boot (x)\nimport \"containers\" Data.Map.Strict (Map)\nimport qualified \"text\" Data.Text as T\n\nforeign import ccall \"math.h sin\" c_sin :: Double -> Double\n",
+        "import=CE.Alpha|import=Data.Map|import=Data.List|import=CE.Boot|import=\"containers\" Data.Map.Strict|import=\"text\" Data.Text",
     ),
     // HTML (plan v2.30 step 5): a site per URL-valued attribute of
     // the elements the pass's table names — a `<link>` names an

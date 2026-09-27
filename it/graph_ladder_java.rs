@@ -24,7 +24,13 @@ use crate::common::text_ladder;
 /// answer and a test-only class is out of its reach; a test file sees
 /// both and answers its own part. A name the file declares itself —
 /// its own nested type, itself — is own_unit, never an edge back to
-/// the file.
+/// the file. Step 5b: an import folded over lines is read whole from
+/// the header's import on the site's line (`import@2` rows name the
+/// line); a second top-level class answers by its declared name; a
+/// member type an enclosing class inherits, through a supertype
+/// chain in other files, answers ahead of the unit's imports, the
+/// nearest level hiding the rest, two supertypes each declaring it
+/// refusing.
 const LADDER: &str = "
 ==== src/a/b/Main.java
 package a.b;
@@ -57,6 +63,44 @@ package s1; class S {}
 package s2; class S {}
 ==== Default.java
 class Default {}
+==== src/a/b/Folded.java
+package a.b;
+import x.y.
+    Z;
+import static x.y.
+    Z.m;
+class Folded {}
+==== src/a/b/Kin.java
+package a.b;
+import x.y.Z;
+class Kin extends Z {
+    class Deep extends h.Base {
+        Inner i; Leaf l; Grand g;
+    }
+}
+==== src/a/b/Shade.java
+package a.b;
+import s1.Leaf;
+class Shade extends h.Base { Leaf l; }
+==== src/s1/Leaf.java
+package s1; class Leaf {}
+==== src/h/Base.java
+package h;
+public class Base extends Root { public static class Leaf {} }
+==== src/h/Root.java
+package h;
+public class Root { public static class Grand {} public static class Leaf {} }
+==== src/h/Extra.java
+package h;
+class Extra {}
+class Second { static class Nested {} }
+==== src/h/IA.java
+package h; public interface IA { class Amb {} }
+==== src/h/IB.java
+package h; public interface IB { class Amb {} }
+==== src/h/Both.java
+package h;
+class Both implements IA, IB { Amb a; }
 ==== @cases
 import @@ src/a/b/Main.java @@ x.y.Z @@ ok src/x/y/Z.java 1
 import @@ src/a/b/Main.java @@ x.y.Z.Inner @@ ok src/x/y/Z.java 2
@@ -88,6 +132,16 @@ type_ref @@ src/a/b/Main.java @@ List @@ ext 4
 type_ref @@ src/a/b/Main.java @@ java.util.Map.Entry @@ ext 4
 type_ref @@ src/p/Q.java @@ Test @@ no out_of_scope
 type_ref @@ src/gone/G.java @@ Z @@ no out_of_scope
+import@2 @@ src/a/b/Folded.java @@ x.y. @@ ok src/x/y/Z.java 1
+import@4 @@ src/a/b/Folded.java @@ static x.y. @@ ok src/x/y/Z.java 2
+import @@ src/a/b/Main.java @@ h.Second @@ ok src/h/Extra.java 1
+import @@ src/a/b/Main.java @@ h.Second.Nested @@ ok src/h/Extra.java 2
+type_ref@5 @@ src/a/b/Kin.java @@ Inner @@ ok src/x/y/Z.java 3
+type_ref@5 @@ src/a/b/Kin.java @@ Leaf @@ ok src/h/Base.java 3
+type_ref@5 @@ src/a/b/Kin.java @@ Grand @@ ok src/h/Root.java 3
+type_ref@5 @@ src/a/b/Kin.java @@ Nope @@ no out_of_scope
+type_ref@3 @@ src/a/b/Shade.java @@ Leaf @@ ok src/h/Base.java 3
+type_ref@2 @@ src/h/Both.java @@ Amb @@ no ambiguous_paths
 ==== @rooted src
 import @@ src/a/b/Main.java @@ p.Q @@ ok src/p/Q.java 1
 import_star @@ src/a/b/Main.java @@ p @@ pkg src/p 2

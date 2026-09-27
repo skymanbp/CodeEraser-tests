@@ -30,7 +30,7 @@ pcall(m.require, "no")
 pcall(require)
 pcall(print, "no")
 ====
-R @@ library=dplyr@1|library=tidyr@2|library=stats@3|library=rlang@4|source=helpers.R@5|source=b.R@6|source=raw.R@7|library=stringr@9|library=q@11|library=base@13|source=multi.R@15 @@ R matches a named argument before a positional one, so `package =` and `file =` win wherever they sit; `library` and `require` take an unquoted name unless `character.only` is passed as anything but FALSE, while `requireNamespace` evaluates its argument (a bare name there is a variable); `pkg::name` names its package whatever it selects, and a qualified `base::source` is that `library` site alone; a raw string reads by its content, and a call spanning lines puts its site on the argument's line
+R @@ library=dplyr@1|library=tidyr@2|library=stats@3|library=rlang@4|source=helpers.R@5|source=b.R@6|source=raw.R@7|library=stringr@9|library=q@11|source=no.R@13|library=base@13|source=multi.R@15|source=part.R@17|library=pm@18|library=stats@21 @@ R matches a named argument before a positional one, so `package =` and `file =` win wherever they sit, and a name matches exactly or as the one prefix no other formal shares (`fi =` is `file`, `pack =` is `package`, `e =` opens three formals and names nothing, `ch =` is `character.only`); `library` and `require` take an unquoted name unless `character.only` is passed as anything but FALSE, while `requireNamespace` evaluates its argument (a bare name there is a variable); `pkg::name` names its package whatever it selects, and a qualified `base::source` opens its `source` site beside that `library` site — under any other package it is some other function; a raw string reads by its content, and a call spanning lines puts its site on the argument's line
 library(dplyr)
 library("tidyr")
 require(quietly = TRUE, package = "stats")
@@ -47,6 +47,11 @@ base::source("no.R")
 source(
   "multi.R"
 )
+source(fi = "part.R")
+library(pack = "pm")
+source(e = "amb.R")
+library(qq, ch = TRUE)
+stats::source("np.R")
 "#;
 
 #[test]

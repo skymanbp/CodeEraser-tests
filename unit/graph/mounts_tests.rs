@@ -48,7 +48,9 @@ fn every_node_gets_a_row_and_only_file_nodes_carry_facts() {
 /// clause is read past a leading comment block in BOTH directions — a
 /// doc comment's indented `package main` example must not keep a
 /// `package cmdutil` file, and a comment naming another package must
-/// not hide a real `package main`.
+/// not hide a real `package main`. A comment sharing the clause's line
+/// (step 5b) is spliced out: `*/ package main` is the clause, `//
+/// package main` above `package lib` is not.
 #[test]
 fn go_privacy_reads_the_clause_and_the_path() {
     let root = scratch("mounts-go");
@@ -72,6 +74,13 @@ fn go_privacy_reads_the_clause_and_the_path() {
             "legacy/legacy.go",
             "/*\nDeprecated: package helper moved here.\n*/\npackage main\n",
         ),
+        // a block comment closing on the clause's line, comments on
+        // both sides of it, a line comment naming main above a lib
+        // clause, two block comments before main (step 5b)
+        ("mixed/a.go", "/*\n doc\n*/ package main\n"),
+        ("mixed/b.go", "/* a */ package lib /* b */\n"),
+        ("mixed/c.go", "// package main\npackage lib\n"),
+        ("mixed/e.go", "/* x */ /* y */ package main // z\n"),
     ];
     write_tree(&root, &tree);
     let kept: Vec<&str> = tree
@@ -79,7 +88,16 @@ fn go_privacy_reads_the_clause_and_the_path() {
         .map(|(p, _)| *p)
         .filter(|p| go_private(&root, p))
         .collect();
-    assert_eq!(kept, ["cmd/main.go", "internal/y/y.go", "legacy/legacy.go"]);
+    assert_eq!(
+        kept,
+        [
+            "cmd/main.go",
+            "internal/y/y.go",
+            "legacy/legacy.go",
+            "mixed/a.go",
+            "mixed/e.go"
+        ]
+    );
     std::fs::remove_dir_all(&root).ok();
 }
 

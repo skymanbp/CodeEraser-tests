@@ -8,14 +8,18 @@
 //! language (3l): splitting per language would re-create the caught
 //! pattern. The Markdown rungs read document CONTENT (headings,
 //! definitions), so their doc-shaped habitat lives in
-//! graph_ladder_md.rs; the broken-chain case gets its own tree.
+//! graph_ladder_md.rs; the tsconfig `extends` chains and the Rust
+//! habitats with trees of their own (inline `mod`, `#[path]`, the
+//! re-export facade) live in graph_ladder_ts_config.rs and
+//! graph_ladder_rs_habitats.rs — this file met the 750 hard line in
+//! step 5b.
 
-use codeeraser::graph::ladder::{self, Outcome, Reason};
+use codeeraser::graph::ladder::{Outcome, Reason};
 use codeeraser::scan::lang::Lang;
 
 // two groups on purpose: the one-line form token-chained against
 // graph_ladder_md.rs's header under T2 (the census's catch)
-use crate::common::{Case, run_cases, site, via};
+use crate::common::{Case, run_cases, via};
 use crate::common::{ext, fixture, no, ok, pkg};
 
 /// The shared fixture tree — every rung's habitat, all languages.
@@ -46,13 +50,18 @@ const TREE: &[(&str, &str)] = &[
     ("src/dup_a/thing.ts", "export {};\n"),
     ("src/dup_b/thing.ts", "export {};\n"),
     // TS R4: one clean member, one duplicate-name pair, one member
-    // whose exports conditions point at two distinct in-scope files
+    // whose exports conditions point at two distinct in-scope files;
+    // subpath patterns (step 5b: the longest matching key wins, a
+    // null target exports nothing) and a package's own node_modules
+    // (a bare name it vendors is External from inside it alone)
     (
         "packages/pkga/package.json",
-        "{\"name\": \"pkga\", \"exports\": {\".\": {\"source\": \"./src/index.ts\", \"default\": \"./dist/index.js\"}, \"./sub\": \"./src/sub.ts\"}}\n",
+        "{\"name\": \"pkga\", \"exports\": {\".\": {\"source\": \"./src/index.ts\", \"default\": \"./dist/index.js\"}, \"./sub\": \"./src/sub.ts\", \"./lib/*\": \"./src/*.ts\", \"./lib/deep/*\": \"./src/nested/*.ts\", \"./lib/private\": null}}\n",
     ),
     ("packages/pkga/src/index.ts", "export {};\n"),
     ("packages/pkga/src/sub.ts", "export {};\n"),
+    ("packages/pkga/src/nested/x.ts", "export {};\n"),
+    ("packages/pkga/node_modules/vend/index.js", "// vendored\n"),
     ("packages/dupa/package.json", "{\"name\": \"dup-pkg\"}\n"),
     ("packages/dupb/package.json", "{\"name\": \"dup-pkg\"}\n"),
     (
@@ -103,6 +112,12 @@ const TREE: &[(&str, &str)] = &[
     ("src/nest/deep.rs", "\n"),
     ("src/dual.rs", "\n"),
     ("src/dual/mod.rs", "\n"),
+    // a `use` folded over lines (step 5b): the detector's site is the
+    // first line's `crate::util::`, the whole is read from the file
+    (
+        "src/folded.rs",
+        "use crate::util::\n    helper::Deep;\nuse crate::nest::\n    deep::X;\n",
+    ),
     // a local module sharing its name with a member crate and with a
     // builtin (step 8 review): the bare head reads the local module
     // first, the global `::` form never does
@@ -150,7 +165,7 @@ const TREE: &[(&str, &str)] = &[
     // loose pair with no cabal at all
     (
         "hs/pkg.cabal",
-        "cabal-version: 3.0\nname: fixture-hs\n\nexecutable app\n    main-is:          Main.hs\n    hs-source-dirs:   app\n    build-depends:\n        base >=4.19 && <5,\n        -- a comment inside the block must not eat what follows\n        bytestring >=0.11,\n        aeson >=2.2\n\ntest-suite spec\n    type:             exitcode-stdio-1.0\n    main-is:          Spec.hs\n    hs-source-dirs:   app, tst\n    build-depends:    base\n",
+        "cabal-version: 3.0\nname: fixture-hs\n\nexecutable app\n    main-is:          Main.hs\n    hs-source-dirs:   app\n    build-depends:\n        base >=4.19 && <5,\n        -- a comment inside the block must not eat what follows\n        bytestring >=0.11,\n        aeson >=2.2,\n        corelib\n\ntest-suite spec\n    type:             exitcode-stdio-1.0\n    main-is:          Spec.hs\n    hs-source-dirs:   app, tst\n    build-depends:    base\n",
     ),
     ("hs/app/Main.hs", "module Main where\n"),
     ("hs/app/CE/Alpha.hs", "module CE.Alpha where\n"),
@@ -159,6 +174,14 @@ const TREE: &[(&str, &str)] = &[
     ("hs/tst/Spec.hs", "module Main where\n"),
     ("hs/tst/Props.hs", "module Props where\n"),
     ("hs/tst/Dup.hs", "module Dup where\n"),
+    // a second in-corpus package (step 5b): the executable above
+    // depends on it, its library exposes Core.Api and hides Core.Hidden
+    (
+        "hslib/core.cabal",
+        "name: corelib\nlibrary\n    hs-source-dirs: src\n    exposed-modules: Core.Api\n    other-modules: Core.Hidden\n",
+    ),
+    ("hslib/src/Core/Api.hs", "module Core.Api where\n"),
+    ("hslib/src/Core/Hidden.hs", "module Core.Hidden where\n"),
     ("hs/wsdup/one.cabal", "library\n    hs-source-dirs: src\n"),
     ("hs/wsdup/two.cabal", "library\n    hs-source-dirs: src\n"),
     ("hs/wsdup/src/W.hs", "module W where\n"),
@@ -167,11 +190,12 @@ const TREE: &[(&str, &str)] = &[
     ("Helper.hs", "module Helper where\n"),
 ];
 
-/// TS + Py rows — the kind-uniform import ladders. Tables split by
-/// dispatch shape, not to hide length.
-fn import_cases() -> Vec<Case> {
-    let (ts, py, im) = (Lang::TypeScript, Lang::Python, "import");
-    let (app, con) = ("src/app.ts", "pkg/consumer.py");
+/// TS rows, the in-tree rungs — relative and twin (R1 / R2), tsconfig
+/// paths (R3), workspace members and their exports (R4); every site
+/// from src/app.ts. Tables split by dispatch shape, not to hide length.
+fn ts_cases() -> Vec<Case> {
+    let (ts, im) = (Lang::TypeScript, "import");
+    let app = "src/app.ts";
     vec![
         (ts, im, app, "./util", ok("src/util.ts", 1)),
         (ts, im, app, "./widget", ok("src/widget.ts", 1)),
@@ -184,33 +208,89 @@ fn import_cases() -> Vec<Case> {
         (ts, im, app, "@dup/thing", no(Reason::AmbiguousPaths)),
         (ts, im, app, "pkga", ok("packages/pkga/src/index.ts", 4)),
         (ts, im, app, "pkga/sub", ok("packages/pkga/src/sub.ts", 4)),
+        (
+            ts,
+            im,
+            app,
+            "pkga/lib/sub",
+            ok("packages/pkga/src/sub.ts", 4),
+        ),
+        (
+            ts,
+            im,
+            app,
+            "pkga/lib/deep/x",
+            ok("packages/pkga/src/nested/x.ts", 4),
+        ),
+        (ts, im, app, "pkga/lib/private", no(Reason::OutOfScope)),
         (ts, im, app, "dup-pkg", no(Reason::AmbiguousWorkspace)),
         (ts, im, app, "pkgb", no(Reason::AmbiguousExports)),
-        (ts, im, app, "lodash", ext(5)),
-        (ts, im, app, "leftover", ext(5)),
-        (ts, im, app, "unknown-pkg", no(Reason::OutOfScope)),
-        (ts, im, app, "./missing", no(Reason::OutOfScope)),
-        // the degenerate specifier is refused by name before any
-        // rung reads `""` as a bare package (O60)
-        (ts, im, app, "", no(Reason::Empty)),
-        (py, im, con, ".mod", ok("pkg/mod.py", 1)),
-        (py, im, con, ".", ok("pkg/__init__.py", 1)),
-        (py, im, con, ".sub", ok("pkg/sub/__init__.py", 1)),
-        (py, im, con, ".sub.leaf", ok("pkg/sub/leaf.py", 1)),
-        (py, im, con, "..other", ok("other.py", 1)),
-        (py, im, con, "...breaks", no(Reason::OutOfScope)),
-        (py, im, con, "top", ok("top.py", 2)),
-        (py, im, con, "pkg.mod", ok("pkg/mod.py", 2)),
-        (py, im, con, "tool", no(Reason::AmbiguousRoot)),
-        (py, im, con, "pkg.missing", ok("pkg/__init__.py", 3)),
-        (py, im, con, "pkg.sub.missing", ok("pkg/sub/__init__.py", 3)),
-        (py, im, con, "os", ext(4)),
-        (py, im, con, "os.path", ext(4)),
-        // the `from __future__` site (step 8, O27): a stdlib module
-        // the public-names table omits, answered by name
+    ]
+}
+
+/// TS rows, the bare rung (R5) and the refusals: a dependency, a
+/// leftover, Node's builtins (step 5b, ts_node.rs: bare or `node:`-
+/// prefixed, a subpath, a prefix-only name; a `node:` name Node has no
+/// module for is nothing), a package vendored under the importing
+/// file's own package (External from inside that package alone), an
+/// unknown name, a missing relative file, and the degenerate specifier
+/// refused by name before any rung reads `""` as a bare package (O60).
+fn ts_bare_cases() -> Vec<Case> {
+    let at = |spec: &'static str, want: Outcome| -> Case {
+        (Lang::TypeScript, "import", "src/app.ts", spec, want)
+    };
+    vec![
+        at("lodash", ext(5)),
+        at("leftover", ext(5)),
+        at("fs", ext(5)),
+        at("node:fs", ext(5)),
+        at("fs/promises", ext(5)),
+        at("node:test", ext(5)),
+        at("node:nope", no(Reason::OutOfScope)),
+        (
+            Lang::TypeScript,
+            "import",
+            "packages/pkga/src/index.ts",
+            "vend",
+            ext(5),
+        ),
+        at("vend", no(Reason::OutOfScope)),
+        at("unknown-pkg", no(Reason::OutOfScope)),
+        at("./missing", no(Reason::OutOfScope)),
+        at("", no(Reason::Empty)),
+    ]
+}
+
+/// Py rows — the dotted-relative, source-root, `__init__` degradation
+/// and stdlib / dependency rungs, every site from pkg/consumer.py; the
+/// `from __future__` site (step 8, O27) is a stdlib module the
+/// public-names table omits, answered by name.
+fn py_cases() -> Vec<Case> {
+    let py = Lang::Python;
+    let con = "pkg/consumer.py";
+    vec![
+        (py, "import", con, ".mod", ok("pkg/mod.py", 1)),
+        (py, "import", con, ".", ok("pkg/__init__.py", 1)),
+        (py, "import", con, ".sub", ok("pkg/sub/__init__.py", 1)),
+        (py, "import", con, ".sub.leaf", ok("pkg/sub/leaf.py", 1)),
+        (py, "import", con, "..other", ok("other.py", 1)),
+        (py, "import", con, "...breaks", no(Reason::OutOfScope)),
+        (py, "import", con, "top", ok("top.py", 2)),
+        (py, "import", con, "pkg.mod", ok("pkg/mod.py", 2)),
+        (py, "import", con, "tool", no(Reason::AmbiguousRoot)),
+        (py, "import", con, "pkg.missing", ok("pkg/__init__.py", 3)),
+        (
+            py,
+            "import",
+            con,
+            "pkg.sub.missing",
+            ok("pkg/sub/__init__.py", 3),
+        ),
+        (py, "import", con, "os", ext(4)),
+        (py, "import", con, "os.path", ext(4)),
         (py, "import_from", con, "__future__", ext(4)),
-        (py, im, con, "requests", ext(4)),
-        (py, im, con, "nosuch_pkg", no(Reason::OutOfScope)),
+        (py, "import", con, "requests", ext(4)),
+        (py, "import", con, "nosuch_pkg", no(Reason::OutOfScope)),
     ]
 }
 
@@ -280,8 +360,11 @@ fn rust_mount_cases() -> Vec<Case> {
     ]
 }
 
-/// Rust rows, R2–R3 — use walks inside the crate: crate:: paths and
-/// the bare / self / super heads.
+/// Rust rows, R2 — use walks inside the crate: crate:: paths from the
+/// covering roots. A walk ending AT the root sees lib+main and refuses;
+/// a folded fragment's pre-{ prefix is complete; a hand-folded mid-path
+/// fragment is read whole from the `use` on its line (step 5b), and one
+/// no `use` on its line opens is refused.
 fn rust_walk_cases() -> Vec<Case> {
     let (rs, us) = (Lang::Rust, "use");
     let (rlib, rutil, nmod, deep) = (
@@ -292,9 +375,6 @@ fn rust_walk_cases() -> Vec<Case> {
     );
     let (tbin, uh) = ("tools/gen.rs", "src/util/helper.rs");
     vec![
-        // R2: crate:: walks; a walk ending AT the root sees lib+main
-        // and refuses; a folded fragment's pre-{ prefix is complete;
-        // a hand-folded mid-path fragment is refused
         (rs, us, rutil, "crate::nest::deep", ok(deep, 2)),
         (rs, us, deep, "crate::util::helper as h", ok(uh, 2)),
         (rs, us, rutil, "crate::nest::{", ok(nmod, 2)),
@@ -307,26 +387,44 @@ fn rust_walk_cases() -> Vec<Case> {
         (rs, us, tbin, "crate::gadget", ok("tools/gadget.rs", 2)),
         (rs, us, rutil, "crate::dual::x", no(Reason::AmbiguousPaths)),
         (rs, us, rutil, "foo::", no(Reason::OutOfScope)),
-        // R3 bare head (step 8, ruling ④): a module DECLARED in the
-        // site's own namespace is read before any crate name — a
-        // declaration mounts and descends, the E0761 double still
-        // refuses, and a head nothing declares there is a crate name
-        // (deep.rs declares no `mod util`; lib.rs declares no `mod
-        // nest` though nest/mod.rs sits on disk — a file is not a
-        // module until a declaration mounts it)
-        (rs, us, rlib, "util::helper::x", ok(uh, 3)),
-        (rs, us, rutil, "helper::thing", ok(uh, 3)),
-        (rs, us, nmod, "deep::x", ok(deep, 3)),
-        (rs, us, rlib, "dual::x", no(Reason::AmbiguousPaths)),
-        (rs, us, deep, "util::x", no(Reason::OutOfScope)),
-        (rs, us, rlib, "nest::deep::x", no(Reason::OutOfScope)),
-        // R3: the island red condition — an intra-file self::
-        // reference must come home to its own file, never dangle
-        (rs, us, deep, "self::helpers", ok(deep, 3)),
-        (rs, us, nmod, "self::deep", ok(deep, 3)),
-        (rs, us, deep, "super::x", ok(nmod, 3)),
-        (rs, us, rutil, "super::super::x", no(Reason::OutOfScope)),
-        (rs, us, deep, "super::super::util", ok("src/util.rs", 3)),
+        (rs, "use@1", "src/folded.rs", "crate::util::", ok(uh, 2)),
+        (rs, "use@3", "src/folded.rs", "crate::nest::", ok(deep, 2)),
+        (
+            rs,
+            "use@3",
+            "src/folded.rs",
+            "crate::util::",
+            no(Reason::OutOfScope),
+        ),
+    ]
+}
+
+/// Rust rows, R3 — the bare, self and super heads (step 8, ruling ④):
+/// a module DECLARED in the site's own namespace is read before any
+/// crate name — a declaration mounts and descends, the E0761 double
+/// still refuses, and a head nothing declares there is a crate name
+/// (deep.rs declares no `mod util`; lib.rs declares no `mod nest`
+/// though nest/mod.rs sits on disk — a file is not a module until a
+/// declaration mounts it); the island red condition — an intra-file
+/// self:: reference must come home to its own file, never dangle.
+fn rust_head_cases() -> Vec<Case> {
+    let at = |from: &'static str, spec: &'static str, want: Outcome| -> Case {
+        (Lang::Rust, "use", from, spec, want)
+    };
+    let (rlib, rutil) = ("src/lib.rs", "src/util.rs");
+    let (nmod, deep, uh) = ("src/nest/mod.rs", "src/nest/deep.rs", "src/util/helper.rs");
+    vec![
+        at(rlib, "util::helper::x", ok(uh, 3)),
+        at(rutil, "helper::thing", ok(uh, 3)),
+        at(nmod, "deep::x", ok(deep, 3)),
+        at(rlib, "dual::x", no(Reason::AmbiguousPaths)),
+        at(deep, "util::x", no(Reason::OutOfScope)),
+        at(rlib, "nest::deep::x", no(Reason::OutOfScope)),
+        at(deep, "self::helpers", ok(deep, 3)),
+        at(nmod, "self::deep", ok(deep, 3)),
+        at(deep, "super::x", ok(nmod, 3)),
+        at(rutil, "super::super::x", no(Reason::OutOfScope)),
+        at(deep, "super::super::util", ok(rutil, 3)),
     ]
 }
 
@@ -380,7 +478,9 @@ fn rust_member_cases() -> Vec<Case> {
 /// and with no cabal at all the whole global db is default-visible
 /// (bare-ghc semantics); a declared dep OUTSIDE the global db
 /// (aeson, store-installed) refuses — module→package needs evidence,
-/// never a guess.
+/// never a guess. Since step 5b a module another in-corpus package
+/// exposes answers at R2 (hs_package_cases), so the external table
+/// sits at R3.
 fn hs_cases() -> Vec<Case> {
     let (hs, im) = (Lang::Haskell, "import");
     let (hm, hsp, lo) = ("hs/app/Main.hs", "hs/tst/Spec.hs", "loose.hs");
@@ -398,10 +498,10 @@ fn hs_cases() -> Vec<Case> {
         (hs, im, hsp, "Dup", no(Reason::AmbiguousRoot)),
         (hs, im, hm, "Dup", no(Reason::AmbiguousRoot)),
         (hs, im, lo, "Helper", ok("Helper.hs", 1)),
-        (hs, im, hm, "Data.List", ext(2)),
-        (hs, im, hm, "Data.ByteString.Lazy", ext(2)),
+        (hs, im, hm, "Data.List", ext(3)),
+        (hs, im, hm, "Data.ByteString.Lazy", ext(3)),
         (hs, im, hm, "Data.Map", no(Reason::OutOfScope)),
-        (hs, im, lo, "Data.Map", ext(2)),
+        (hs, im, lo, "Data.Map", ext(3)),
         (hs, im, hm, "Data.Aeson", no(Reason::OutOfScope)),
         (hs, im, hm, "CE.Missing", no(Reason::OutOfScope)),
         (hs, im, hm, "lowercase.name", no(Reason::OutOfScope)),
@@ -415,252 +515,56 @@ fn hs_cases() -> Vec<Case> {
     ]
 }
 
+/// Haskell rows, R2 (step 5b): a module another in-corpus package
+/// exposes, through the owner's build-depends or named; a hidden module
+/// and an undeclared named package are out of scope, a PackageImports
+/// spec naming the owner's own package walks R1, a loose file (no
+/// owner) reaches only what it names.
+fn hs_package_cases() -> Vec<Case> {
+    let (hs, im, hm, lo, api) = (
+        Lang::Haskell,
+        "import",
+        "hs/app/Main.hs",
+        "loose.hs",
+        "hslib/src/Core/Api.hs",
+    );
+    vec![
+        (hs, im, hm, "Core.Api", ok(api, 2)),
+        (hs, im, hm, "Core.Hidden", no(Reason::OutOfScope)),
+        (hs, im, hm, "\"corelib\" Core.Api", ok(api, 2)),
+        (
+            hs,
+            im,
+            hm,
+            "\"fixture-hs\" CE.Alpha",
+            ok("hs/app/CE/Alpha.hs", 1),
+        ),
+        (hs, im, hm, "\"base\" Data.List", ext(3)),
+        (
+            hs,
+            im,
+            hm,
+            "\"containers\" Data.Map",
+            no(Reason::OutOfScope),
+        ),
+        (hs, im, lo, "Core.Api", no(Reason::OutOfScope)),
+        (hs, im, lo, "\"corelib\" Core.Api", ok(api, 2)),
+    ]
+}
+
 #[test]
 fn rungs_resolve_and_refuse() {
     let fx = fixture("ladder-rungs", TREE);
-    let all = import_cases()
+    let all = ts_cases()
         .into_iter()
+        .chain(ts_bare_cases())
+        .chain(py_cases())
         .chain(rust_mount_cases())
         .chain(rust_walk_cases())
+        .chain(rust_head_cases())
         .chain(rust_member_cases())
         .chain(go_cases())
-        .chain(hs_cases());
+        .chain(hs_cases())
+        .chain(hs_package_cases());
     run_cases(&fx, all.collect());
-}
-
-/// An extends cycle must refuse the whole tsconfig rung — config
-/// beyond the modeled chain is config_depth, never a guess.
-#[test]
-fn extends_cycle_is_config_depth() {
-    let fx = fixture(
-        "ladder-cycle",
-        &[
-            ("a.ts", "export {};\n"),
-            ("tsconfig.json", "{\"extends\": \"./other.json\"}\n"),
-            ("other.json", "{\"extends\": \"./tsconfig.json\"}\n"),
-        ],
-    );
-    assert_eq!(
-        ladder::resolve(
-            Lang::TypeScript,
-            &site("import", "a.ts", "anything", 1),
-            &fx.scope()
-        ),
-        Outcome::Unresolved(Reason::ConfigDepth)
-    );
-}
-
-/// Inline `mod` bodies anchor self/super at the FILE, not its parent
-/// (the audited interpolate.rs and globset rows): ups consume inline
-/// depth before any file climb, self inside an inline module is a
-/// self edge, and a post-climb tail may still name a FILE module.
-#[test]
-fn inline_mod_super_comes_home() {
-    let fx = fixture(
-        "ladder-inline",
-        &[
-            ("Cargo.toml", "[package]\nname='inl'"),
-            (
-                "src/lib.rs",
-                "pub fn escape() {}\nmod util;\n#[cfg(test)]\nmod tests {\n    use super::escape;\n    use self::helper::x;\n    use super::util;\n    mod deep {\n        use super::super::escape;\n    }\n}\n",
-            ),
-            ("src/util.rs", "\n"),
-        ],
-    );
-    let scope = fx.scope();
-    let at = |spec: &'static str, line: usize| {
-        ladder::resolve(Lang::Rust, &site("use", "src/lib.rs", spec, line), &scope)
-    };
-    assert_eq!(at("super::escape", 5), ok("src/lib.rs", 3));
-    assert_eq!(at("self::helper::x", 6), ok("src/lib.rs", 3));
-    assert_eq!(at("super::util", 7), ok("src/util.rs", 3));
-    assert_eq!(at("super::super::escape", 9), ok("src/lib.rs", 3));
-    // a bare head inside the inline module (step 8): the bodied
-    // `mod deep` declared in `tests` is in scope and stays in this
-    // file; the file-level `mod util;` is one namespace up, so the
-    // head falls to the crate rung and nothing declares it
-    assert_eq!(at("deep::x", 5), ok("src/lib.rs", 3));
-    assert_eq!(at("util::x", 5), no(Reason::OutOfScope));
-}
-
-/// `#[path = "…"]` remaps answer at R1 (design §4 Rust row, R5
-/// column: the literal answers at R1). Line-anchored like the inline
-/// cases — the shared table drives line 1 only. Pinned here: the
-/// FILE-LEVEL base is the declarer's OWN directory for every
-/// declarer kind (never the convention child_dir — the one bug this
-/// rung can have); the INLINE-module base is child_dir plus the
-/// enclosing mod names (both rustc-reference habitats); raw-string
-/// literals carry the same content node; attributes stack in either
-/// order; `../` traverses while a repo escape or a missing target
-/// refuses, never invents.
-/// The #[path] habitat tree (the TREE convention: the fixture IS the
-/// spec) — both declarer kinds, stacked attributes, a raw string,
-/// traversal/escape/missing targets, and both inline-module bases.
-const PATH_TREE: &[(&str, &str)] = &[
-    ("Cargo.toml", "[package]\nname='pa'"),
-    (
-        "src/graph/md.rs",
-        "#[cfg(test)]\n#[path = \"md_tests.rs\"]\nmod tests;\n#[path = \"also.rs\"]\n#[cfg(test)]\nmod also;\n#[path = \"../up.rs\"]\nmod up;\n#[path = \"../../../out.rs\"]\nmod esc;\n#[path = \"nope.rs\"]\nmod nope;\n#[path = r\"also.rs\"]\nmod raw;\nmod inline {\n    #[path = \"md_tests.rs\"]\n    mod hidden;\n    mod conv;\n    mod shallow;\n    use conv::Thing;\n}\n",
-    ),
-    ("src/graph/md_tests.rs", "\n"),
-    ("src/graph/also.rs", "\n"),
-    ("src/graph/md/inline/md_tests.rs", "\n"),
-    // the convention habitat inside the inline mod (step 8 review):
-    // rustc loads md/inline/conv.rs, never the shallow decoy md/conv.rs,
-    // and a name with only the shallow file refuses
-    ("src/graph/md/inline/conv.rs", "pub struct Thing;\n"),
-    ("src/graph/md/conv.rs", "\n"),
-    ("src/graph/md/shallow.rs", "\n"),
-    ("src/up.rs", "\n"),
-    ("src/lib.rs", "mod graph;\n"),
-    (
-        "src/graph/mod.rs",
-        "mod md;\n#[path = \"store_tests.rs\"]\nmod tests;\nmod deep {\n    #[path = \"extra.rs\"]\n    mod e;\n}\n",
-    ),
-    ("src/graph/store_tests.rs", "\n"),
-    ("src/graph/deep/extra.rs", "\n"),
-];
-
-/// The re-export habitat (§4 R5 as amended 2026-08-18): a facade
-/// whose nested `pub use` binds a remaining segment answers the
-/// DEFINITION file as ResolvedVia — one hop, bind-free inside.
-/// Refusal rows: a glob never binds, two matching entries never
-/// pick, a locally-defined name never hops, a chained facade
-/// terminates at the middle (pub extern crate is invisible), and a
-/// private `use` re-exports nothing.
-const REEXPORT_TREE: &[(&str, &str)] = &[
-    (
-        "Cargo.toml",
-        "[package]\nname = \"fac\"\n\n[dependencies]\nsearcher-lib = { path = \"crates/searcher\" }\n",
-    ),
-    ("src/lib.rs", "mod consumer;\n"),
-    // the BinaryDetection shape: extern member -> lib root facade ->
-    // nested group re-export -> definition file
-    (
-        "crates/searcher/Cargo.toml",
-        "[package]\nname='searcher-lib'",
-    ),
-    // the file OPENS with a bodied mod holding a same-named `uni` (step
-    // 8 review): the hop reads its namespace at the pub use's own line,
-    // never at line 1, so the file-level `mod uni;` answers
-    (
-        "crates/searcher/src/lib.rs",
-        "mod shadow {\n    pub mod uni {\n        pub struct Uni;\n    }\n}\npub use crate::{searcher::{Binary, Config as Conf}, sink::*};\nuse crate::quiet::Hidden;\npub use crate::dup_a::Twice;\npub use crate::dup_b::Twice;\npub use crate::local::Local;\npub use uni::Uni;\nmod searcher;\nmod sink;\nmod quiet;\nmod dup_a;\nmod dup_b;\nmod local;\nmod uni;\npub struct Local;\n",
-    ),
-    ("crates/searcher/src/uni.rs", "pub struct Uni;\n"),
-    (
-        "crates/searcher/src/searcher.rs",
-        "pub struct Binary;\npub struct Config;\n",
-    ),
-    ("crates/searcher/src/sink.rs", "pub struct Sink;\n"),
-    ("crates/searcher/src/quiet.rs", "pub struct Hidden;\n"),
-    ("crates/searcher/src/dup_a.rs", "pub struct Twice;\n"),
-    ("crates/searcher/src/dup_b.rs", "pub struct Twice;\n"),
-    ("crates/searcher/src/local.rs", "pub struct Local;\n"),
-];
-
-#[test]
-fn reexport_binds_one_hop_to_the_definition() {
-    let fx = fixture("ladder-reexport", REEXPORT_TREE);
-    let scope = fx.scope();
-    let lib = "crates/searcher/src/lib.rs";
-    // (spec from src/lib.rs, want) — every row rides the R4 member
-    // rung into the facade, then the binder speaks or refuses
-    let cases: &[(&'static str, Outcome)] = &[
-        // nested group binds -> definition file, marked via
-        (
-            "searcher_lib::Binary",
-            via("crates/searcher/src/searcher.rs", 4),
-        ),
-        // `as` binds the ALIAS, not the source name
-        (
-            "searcher_lib::Conf",
-            via("crates/searcher/src/searcher.rs", 4),
-        ),
-        ("searcher_lib::Config", ok(lib, 4)),
-        // a glob binds an unknown set — never followed
-        ("searcher_lib::Sink", ok(lib, 4)),
-        // two entries bind Twice — picking would invent a path
-        ("searcher_lib::Twice", ok(lib, 4)),
-        // the facade defines Local itself — definition wins
-        ("searcher_lib::Local", ok(lib, 4)),
-        // a private use re-exports nothing
-        ("searcher_lib::Hidden", ok(lib, 4)),
-        // a uniform-path facade `pub use uni::Uni` binds too (step 8,
-        // ruling ④): the hop's bare head reads the facade's own
-        // `mod uni;` — before it the head fell to the crate rung and
-        // this row answered the facade
-        ("searcher_lib::Uni", via("crates/searcher/src/uni.rs", 4)),
-        // the R6 side door, guarded (step 8, O05/O15): a braced leaf
-        // carrying its own path segment is cut at the brace — the
-        // walk consumes the prefix alone, the facade file is the
-        // edge, and neither `searcher` nor `Binary` is ever read off
-        // the prefix file (the binder hops only on a prefix segment
-        // the walk left unconsumed, never on a braced one)
-        ("searcher_lib::{searcher::Binary, sink::Sink}", ok(lib, 4)),
-        ("searcher_lib::{searcher::Binary}", ok(lib, 4)),
-    ];
-    for (spec, want) in cases {
-        let got = ladder::resolve(Lang::Rust, &site("use", "src/lib.rs", spec, 1), &scope);
-        assert_eq!(&got, want, "{spec}");
-    }
-}
-
-#[test]
-fn path_attr_remaps_resolve_at_r1() {
-    let fx = fixture("ladder-path-attr", PATH_TREE);
-    let scope = fx.scope();
-    // (from, spec, line, want) — row order: own-dir base (never
-    // child_dir), attribute stacking both ways, ../ traversal, repo
-    // escape, missing target, raw string, inline habitat in both
-    // declarer kinds, and the un-hijacked plain convention
-    let cases: &[(&'static str, &'static str, usize, Outcome)] = &[
-        (
-            "src/graph/md.rs",
-            "tests",
-            3,
-            ok("src/graph/md_tests.rs", 1),
-        ),
-        ("src/graph/md.rs", "also", 6, ok("src/graph/also.rs", 1)),
-        ("src/graph/md.rs", "up", 8, ok("src/up.rs", 1)),
-        ("src/graph/md.rs", "esc", 10, no(Reason::OutOfScope)),
-        ("src/graph/md.rs", "nope", 12, no(Reason::OutOfScope)),
-        ("src/graph/md.rs", "raw", 14, ok("src/graph/also.rs", 1)),
-        (
-            "src/graph/md.rs",
-            "hidden",
-            17,
-            ok("src/graph/md/inline/md_tests.rs", 1),
-        ),
-        (
-            "src/graph/mod.rs",
-            "tests",
-            3,
-            ok("src/graph/store_tests.rs", 1),
-        ),
-        ("src/graph/mod.rs", "e", 6, ok("src/graph/deep/extra.rs", 1)),
-        ("src/graph/mod.rs", "md", 1, ok("src/graph/md.rs", 1)),
-        // the convention lookup shares the inline base (step 8 review)
-        (
-            "src/graph/md.rs",
-            "conv",
-            18,
-            ok("src/graph/md/inline/conv.rs", 1),
-        ),
-        ("src/graph/md.rs", "shallow", 19, no(Reason::OutOfScope)),
-    ];
-    for (from, spec, line, want) in cases {
-        let got = ladder::resolve(Lang::Rust, &site("mod_decl", from, spec, *line), &scope);
-        assert_eq!(&got, want, "{from} {spec} @{line}");
-    }
-    // the bare head declared in the inline mod mounts through the same
-    // base and descends from there
-    assert_eq!(
-        ladder::resolve(
-            Lang::Rust,
-            &site("use", "src/graph/md.rs", "conv::Thing", 20),
-            &scope
-        ),
-        ok("src/graph/md/inline/conv.rs", 3)
-    );
 }

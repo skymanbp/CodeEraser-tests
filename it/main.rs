@@ -121,6 +121,8 @@ mod graph_ladder_java;
 mod graph_ladder_lua;
 mod graph_ladder_md;
 mod graph_ladder_r;
+mod graph_ladder_rs_habitats;
+mod graph_ladder_ts_config;
 mod graph_mounts;
 mod graph_mounts_codes;
 mod graph_provenance;
