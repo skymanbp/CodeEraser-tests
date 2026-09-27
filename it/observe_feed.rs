@@ -10,7 +10,10 @@
 //! normalized (ts_ms,
 //! elapsed_ms, absolute file path); key sets, schema/event tags,
 //! counts, mode, and degraded flags must match byte-for-byte.
-//! Bless flow: `CE_BLESS=1 cargo test --test it -- observe_feed::`.
+//! No write of this run lands on disk, so since plan v2.30 step 5b the
+//! tombstone lines' `session_erased` reads 0 — the union drops a key its
+//! erasing file still declares (the session battery carries the positive
+//! path). Bless flow: `CE_BLESS=1 cargo test --test it -- observe_feed::`.
 //!
 //! `session_id` is deliberately NOT normalized: the hook envelopes
 //! carry the literal "t", so the golden pins that the id survives the

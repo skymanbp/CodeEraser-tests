@@ -228,6 +228,29 @@ fn typescript_scope_bit_reads_the_namespace_chain() {
     }
 }
 
+/// Plan v2.30 step 5b (UNSURE item 4): an ambient namespace's elements
+/// are exported by the spec (12.1.4) whether or not they spell
+/// `export`, a nested namespace opens the same way, a string-named
+/// `declare module` is open to its importers, and a `declare global`
+/// block's declarations are global on the empty chain; the `declare
+/// namespace` itself still needs `export` at a module file's top level,
+/// and a top-level ambient declaration is no element of anything.
+#[test]
+fn typescript_ambient_elements_are_exported_by_the_spec() {
+    // one text table (run_table): a case array apiece was the loop the
+    // clone gate paired with the export-climb battery above
+    run_table(
+        r#"ts export {};\ndeclare global { interface W {} } ⇒ W:ES
+ts export {};\ndeclare global { namespace H { interface J {} } } ⇒ J:ES
+ts export {};\ndeclare namespace A { interface I {} namespace B { class C {} } } ⇒ C:E I:E
+ts export declare namespace D { enum E { X } } ⇒ E:ES
+ts export {};\ndeclare module "m" { interface Q {} } ⇒ Q:ES
+ts declare namespace G { interface K {} } ⇒ K:ES
+ts export {};\ndeclare interface Top {} ⇒ Top:-"#,
+        check_units,
+    );
+}
+
 /// Markdown has no private heading: the constant units.rs stamps on
 /// every section says so, and this pins it against a silent flip to 0
 /// (which would make every section read private).

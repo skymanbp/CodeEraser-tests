@@ -1,9 +1,10 @@
 //! The PreToolUse leg across a SESSION and at its declared tier (split
 //! from tombstone_guard.rs at the 300-line wall): a name erased edits
 //! ago still binds through the feed's union; a name written back leaves
-//! it (a revival, codex review 2026-09-04); the class speaks at its own
-//! tier past its own budget and records the decision as `applied` — a
-//! denied erasure never entered the union; `observe` stays silent.
+//! it (a revival, codex review 2026-09-04), and so does a name put back
+//! outside the hook path (plan v2.30 step 5b); the class speaks at its
+//! own tier past its own budget and records the decision as `applied` —
+//! a denied erasure never entered the union; `observe` stays silent.
 
 use crate::common;
 use crate::tombstone_guard::{seed, site, sites, written};
@@ -64,6 +65,30 @@ fn a_name_written_back_leaves_the_session_union() {
         )
         .is_none(),
         "the union forgot the name"
+    );
+}
+
+#[test]
+fn a_name_restored_outside_the_hook_leaves_the_session_union() {
+    // plan v2.30 step 5b (UNSURE item 9): edit 1 erases `dongpo` and
+    // lands; a checkout puts the file back with no hook in the way;
+    // edit 2's frame binds nothing — the union re-reads the erasing
+    // file and a name the tree carries is not erased (the same frame
+    // binds when the file stays erased: the first test of this file)
+    let dir = seed("tomb-guard-restored");
+    let before = "fn dongpo() {}\n";
+    let first = written(&dir, "a.rs", Some(before), "fn other() {}\n").expect("erased");
+    assert_eq!(first["erased"], 1, "{first}");
+    std::fs::write(dir.join("a.rs"), before).expect("restored by hand");
+    assert!(
+        written(
+            &dir,
+            "r.md",
+            Some("# Menu\n"),
+            "# Menu\n\n## Sides (no dongpo)\n"
+        )
+        .is_none(),
+        "the tree carries the name again"
     );
 }
 

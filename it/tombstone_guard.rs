@@ -17,9 +17,10 @@ pub(crate) fn seed(name: &str) -> PathBuf {
 }
 
 /// Seed `before` at `rel` (None = a brand-new file), send `after` as a
-/// Write, and hand back the tombstone line the hook left — or None
-/// when the last line is still the probe's (nothing erased, nothing
-/// bound).
+/// Write, land it on disk as the tool does once PreToolUse lets it
+/// through (the union's disk check reads the tree, plan v2.30 step
+/// 5b), and hand back the tombstone line the hook left — or None when
+/// the last line is still the probe's (nothing erased, nothing bound).
 pub(crate) fn written(
     dir: &Path,
     rel: &str,
@@ -32,6 +33,7 @@ pub(crate) fn written(
     let env = common::pretooluse_envelope_at(dir, rel, "Write", after);
     let out = common::run_hook(dir, &["probe", "--hook"], &env);
     assert!(out.trim().is_empty(), "observe stays silent: {out}");
+    std::fs::write(dir.join(rel), after).expect("the tool lands the write");
     let line = common::last_observe(dir);
     (line["event"] == "tombstone").then_some(line)
 }
