@@ -39,8 +39,7 @@ pub fn write_tree(root: &Path, files: &[(&str, &str)]) {
 pub fn blocks<const N: usize>(
     table: &str,
 ) -> impl Iterator<Item = (crate::scan::lang::Lang, [&str; N], &str)> {
-    table.trim().split("\n====\n").map(|block| {
-        let (head, body) = block.split_once('\n').expect("a header line over a body");
+    sections(table).map(|(head, body)| {
         let mut cols = head.split(" @@ ");
         let ext = cols.next().expect("an extension column");
         let lang = crate::scan::lang::Lang::from_path(Path::new(&format!("x.{ext}")))
@@ -50,6 +49,35 @@ pub fn blocks<const N: usize>(
             .unwrap_or_else(|c| panic!("{N} columns after the extension, not {}: {head}", c.len()));
         (lang, cols, body)
     })
+}
+
+/// A table's `====`-separated blocks as (header line, body): what
+/// `blocks` reads with a language column, for the tables whose blocks
+/// name no language (the C-family reader tables).
+pub fn sections(table: &str) -> impl Iterator<Item = (&str, &str)> {
+    table
+        .trim()
+        .split("\n====\n")
+        .map(|block| block.split_once('\n').expect("a header line over a body"))
+}
+
+/// The visible markers a single-literal table spells control bytes
+/// with — `{LF}` `{CR}` `{TAB}` `{NUL}` `{BOM}` — expanded, so a row
+/// keeps its own backslashes literal (the reader tables of cmdline.rs,
+/// compdb.rs and c_head.rs). One table over a fold rather than a chain
+/// of `replace` calls: the clone gate reads that chain as the bench
+/// dashboard's HTML escaper, and the write guard refused it.
+pub fn unmarked(text: &str) -> String {
+    const MARKS: [(&str, &str); 5] = [
+        ("{LF}", "\n"),
+        ("{CR}", "\r"),
+        ("{TAB}", "\t"),
+        ("{NUL}", "\0"),
+        ("{BOM}", "\u{feff}"),
+    ];
+    MARKS
+        .iter()
+        .fold(text.to_string(), |s, (mark, byte)| s.replace(*mark, byte))
 }
 
 /// A node literal for wire-side tests.

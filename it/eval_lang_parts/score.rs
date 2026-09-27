@@ -14,7 +14,7 @@ use crate::eval_graph_precision_parts::{ratio, rescore, verdict_of};
 use crate::eval_lang_parts::review::ECHO;
 use crate::eval_lang_parts::{Exam, PRECISION_DOCS, Stage};
 use crate::eval_support::{lang_of, tally_add};
-use codeeraser::graph::ladder::{self, Outcome, Scope, Site, java_header, lua_path};
+use codeeraser::graph::ladder::{self, Outcome, Scope, Site, c_head, java_header, lua_path};
 use codeeraser::graph::sites::{RawSite, detect};
 use codeeraser::scan::lang::Lang;
 use serde_json::{Map, Value, json};
@@ -37,21 +37,26 @@ pub fn scored(exam: &Exam) -> bool {
 /// walk reads at the pinned tip sorted the walk's way (common::walk_sets
 /// — a judged file of any language, the frozen universe among them,
 /// for a page names a document or a code file; every other path an
-/// asset; the resolver configs aside), each Java file's header and
-/// each Lua file's `package.path` templates read the walk's way
-/// (dedup/walkidx.rs, by the product's own path table), and no
-/// declared root — the product's defaults, for no corpus carries a
-/// ce.toml.
+/// asset; the resolver configs aside), each Java file's header, each
+/// Lua file's `package.path` templates and each C-family file's
+/// include list read the walk's way (dedup/walkidx.rs, by the product's
+/// own path table), and no declared root — the product's defaults, for
+/// no corpus carries a ce.toml.
 pub fn tree(root: &Path, texts: &[(String, String)], read: Vec<String>) -> Fixture {
-    let of = |lang: Lang| {
+    let of = |keep: fn(Lang) -> bool| {
         texts
             .iter()
-            .filter(move |(p, _)| Lang::from_path(Path::new(p)) == Some(lang))
+            .filter(move |(p, _)| Lang::from_path(Path::new(p)).is_some_and(keep))
     };
-    let java = of(Lang::Java)
+    let java = of(|l| l == Lang::Java)
         .map(|(p, t)| (p.clone(), java_header::read(t)))
         .collect();
-    let lua = of(Lang::Lua).flat_map(|(_, t)| lua_path::read(t)).collect();
+    let lua = of(|l| l == Lang::Lua)
+        .flat_map(|(_, t)| lua_path::read(t))
+        .collect();
+    let includes = of(|l| matches!(l, Lang::C | Lang::Cpp))
+        .map(|(p, t)| (p.clone(), c_head::read(t)))
+        .collect();
     let (files, assets, configs) = crate::common::walk_sets(root, read);
     let stray = texts.iter().find(|(p, _)| !files.contains(p));
     assert!(
@@ -68,6 +73,7 @@ pub fn tree(root: &Path, texts: &[(String, String)], read: Vec<String>) -> Fixtu
         search_roots: Default::default(),
         java,
         lua,
+        includes,
     }
 }
 
