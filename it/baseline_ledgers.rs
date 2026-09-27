@@ -16,7 +16,7 @@
 /// cleanups are this tool's whole point and retire BY NAME, never
 /// silently. A listed id back in the baseline = a stale entry,
 /// refused — the ledger can only ever describe the present.
-pub const RETIRED: [(u64, &str); 16] = [
+pub const RETIRED: [(u64, &str); 17] = [
     (
         10398559894504384704,
         "v2.30 step 3: the LangSpec schema change (fn_required_fields, if_kinds, call_fields, owner_kinds on every table) broke the GO / HASKELL table rhyme; the shape re-paired as FAMILY / TYPESCRIPT, the new member 12441163793521289489",
@@ -84,6 +84,10 @@ pub const RETIRED: [(u64, &str); 16] = [
     (
         1045130446377401539,
         "v2.18 subtraction batch 2026-08-28: the clone/docdup parse_result zip-and-shape tails moved INTO lockstep::parse_scores as its row shaper — the two families' last clone pair, one member",
+    ),
+    (
+        18165864476337164842,
+        "v2.30 step 5b-7 2026-09-27: the PostToolUse leg restated the PreToolUse hook's prelude and the gate named it twice, so both write hooks now read one gate (guard::write_event) — the audit/guard prelude pair this member rode left with the restatement",
     ),
 ];
 

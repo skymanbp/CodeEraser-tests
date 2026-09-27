@@ -16,6 +16,7 @@ const OMITTED: &str = "
 daemon: machine surface — every face starts it lazily
 ping: daemon liveness probe, not a judgment
 probe: the PreToolUse hook's private face
+settle: the PostToolUse hook's private face
 audit: the Stop hook's private face
 health: the SessionStart hook's private face
 precommit: the git pre-commit hook's private face

@@ -159,6 +159,7 @@ mod rescache_face;
 mod root_anchor;
 mod sarif_face;
 mod scan_classes;
+mod settle_hook;
 mod setup_e2e;
 mod similar_face;
 mod similar_replay;

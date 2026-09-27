@@ -18,12 +18,32 @@ pub fn pretooluse_envelope(dir: &Path, tool: &str, content: &str) -> String {
 /// Same envelope with the target path chosen by the test (budget-rule
 /// coverage needs targets other than b.rs).
 pub fn pretooluse_envelope_at(dir: &Path, rel: &str, tool: &str, content: &str) -> String {
+    pretooluse_envelope_id(dir, rel, tool, content, "t")
+}
+
+/// The same, under the tool call's own identity: the PostToolUse leg
+/// joins its `settled` line to the event's lines by `tool_use_id`, so
+/// the settle battery needs ids that differ.
+pub fn pretooluse_envelope_id(
+    dir: &Path,
+    rel: &str,
+    tool: &str,
+    content: &str,
+    id: &str,
+) -> String {
     let input = if tool == "Write" {
         serde_json::json!({"content": content})
     } else {
         serde_json::json!({"old_string": "x", "new_string": content, "replace_all": false})
     };
-    envelope_shell(dir, rel, tool, input)
+    envelope_shell(dir, rel, tool, input, ("PreToolUse", id))
+}
+
+/// PostToolUse envelope per the hooks reference: the PreToolUse fields
+/// under the same `tool_use_id`, plus the tool's own response, which
+/// the settle leg never reads.
+pub fn posttooluse_envelope(dir: &Path, rel: &str, tool: &str, id: &str) -> String {
+    envelope_shell(dir, rel, tool, serde_json::json!({}), ("PostToolUse", id))
 }
 
 /// Edit envelope with the replaced span chosen by the test — the
@@ -35,22 +55,33 @@ pub fn pretooluse_edit_envelope(dir: &Path, rel: &str, old: &str, new: &str) -> 
         rel,
         "Edit",
         serde_json::json!({"old_string": old, "new_string": new, "replace_all": false}),
+        ("PreToolUse", "t"),
     )
 }
 
 /// The one envelope scaffold (file_path/cwd spelling included) every
-/// PreToolUse battery rides; `input` arrives without file_path and
-/// gets it stamped here.
-fn envelope_shell(dir: &Path, rel: &str, tool: &str, mut input: serde_json::Value) -> String {
+/// tool-event battery rides; `input` arrives without file_path and
+/// gets it stamped here, `call` is the event name and the tool call's
+/// id, and a PostToolUse envelope carries the response the tool gave.
+fn envelope_shell(
+    dir: &Path,
+    rel: &str,
+    tool: &str,
+    mut input: serde_json::Value,
+    call: (&str, &str),
+) -> String {
     let file = dir.join(rel).display().to_string().replace('\\', "/");
     let cwd = dir.display().to_string().replace('\\', "/");
     input["file_path"] = serde_json::json!(file);
-    serde_json::json!({
+    let mut env = serde_json::json!({
         "session_id": "t", "transcript_path": "t", "cwd": cwd,
-        "hook_event_name": "PreToolUse", "tool_name": tool,
-        "tool_input": input, "tool_use_id": "t"
-    })
-    .to_string()
+        "hook_event_name": call.0, "tool_name": tool,
+        "tool_input": input, "tool_use_id": call.1
+    });
+    if call.0 == "PostToolUse" {
+        env["tool_response"] = serde_json::json!({"filePath": file, "type": "update"});
+    }
+    env.to_string()
 }
 
 /// Run `ce probe --hook`, assert the decision tier, and hand back
@@ -169,10 +200,19 @@ pub fn run_hook_env(dir: &Path, args: &[&str], stdin: &str, env: &[(&str, &str)]
     String::from_utf8_lossy(&out.stdout).to_string()
 }
 
+/// The project's whole observe feed, parsed line by line (no feed =
+/// no lines).
+pub fn observe_lines(dir: &Path) -> Vec<serde_json::Value> {
+    std::fs::read_to_string(dir.join(".ce/observe.ndjson"))
+        .unwrap_or_default()
+        .lines()
+        .map(|l| serde_json::from_str(l).expect("ndjson"))
+        .collect()
+}
+
 /// Last line of the project's observe feed, parsed as JSON.
 pub fn last_observe(dir: &Path) -> serde_json::Value {
-    let log = std::fs::read_to_string(dir.join(".ce/observe.ndjson")).expect("observe log");
-    serde_json::from_str(log.lines().last().expect("line")).expect("ndjson")
+    observe_lines(dir).pop().expect("an observe line")
 }
 
 /// Run a hook expecting SILENCE and return the observe entry it

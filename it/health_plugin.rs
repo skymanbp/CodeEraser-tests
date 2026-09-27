@@ -69,13 +69,17 @@ fn plugin_manifests_parse_and_wire_real_subcommands() {
     // M7-P1: hooks enter through the ADR-007 starter (verified pinned
     // copy -> pinned download -> PATH ce); the literals ARE the
     // contract — a drifted wiring is a broken plugin install.
-    let known = ["health", "probe", "audit"]
+    let known = ["health", "probe", "settle", "audit"]
         .map(|sub| format!("sh \"${{CLAUDE_PLUGIN_ROOT}}/bin/ce.sh\" {sub} --hook"));
     let events = hooks["hooks"].as_object().expect("events");
-    assert_eq!(events.len(), 3, "SessionStart + PreToolUse + Stop");
+    assert_eq!(
+        events.len(),
+        4,
+        "SessionStart + PreToolUse + PostToolUse + Stop"
+    );
     for (event, entries) in events {
         assert!(
-            ["SessionStart", "PreToolUse", "Stop"].contains(&event.as_str()),
+            ["SessionStart", "PreToolUse", "PostToolUse", "Stop"].contains(&event.as_str()),
             "unexpected event {event}"
         );
         for entry in entries.as_array().expect("array") {

@@ -45,6 +45,7 @@ machine state | 本机状态 | doctor | tab:doctor, doctor_report | mcp:doctor |
 update check | 更新检查 | update | tab:update, update_check | mcp:update_check, cmd:update, hook:SessionStart | |
 update apply | 更新执行 | update --yes | tab:update, update_apply | | the plugin's copy is re-pinned by `/plugin update codeeraser` | 插件副本由 `/plugin update codeeraser` 重钉
 write-time guard | 写入时守卫 | probe --hook | | hook:PreToolUse | hooks are the plugin's face | 钩子即插件之面
+asked-write settlement | ask 档写入的落地记录 | settle --hook | | hook:PostToolUse | hooks are the plugin's face | 钩子即插件之面
 stop audit / git hooks | Stop 审计 / git 钩子 | audit --hook, precommit, commitmsg | | hook:Stop | hooks are the plugin's face; precommit and commitmsg are git's | 钩子即插件之面；precommit 与 commitmsg 挂在 git 里
 session health line | 会话健康行 | health --hook | | hook:SessionStart | hooks are the plugin's face | 钩子即插件之面
 project daemon | 项目 daemon | daemon, ping | | | started lazily by every face | 每一面惰性启动

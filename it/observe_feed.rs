@@ -1,7 +1,8 @@
-//! Observe-feed contract (ce.observe/0.10.0): the NDJSON feed is the
+//! Observe-feed contract (ce.observe/0.11.0): the NDJSON feed is the
 //! M4 evaluation-set raw material, so its line shape is pinned by a
 //! golden. One deterministic run of every producer — probe, budget
-//! (§4.2 step 2), zone unarmed AND armed (plan v2.6 §A / v2.7 ①),
+//! (§4.2 step 2), zone unarmed AND armed (plan v2.6 §A / v2.7 ①), the
+//! armed map's `ask` and the PostToolUse leg's settlement of it (0.11.0),
 //! tombstone (plan v2.26, the per-edit leg; the Stop and precommit
 //! lines carry its object), stop audit (whose `similar` object, 0.10.0,
 //! is ABSENT here by design: the staged twin shares one name word and
@@ -22,8 +23,10 @@
 //! instead of borrowing one.
 
 use crate::common;
+use std::path::Path;
+
 /// The whole feed, volatile fields zeroed, as pretty JSON.
-fn normalized_feed(dir: &std::path::Path) -> String {
+fn normalized_feed(dir: &Path) -> String {
     let log = std::fs::read_to_string(dir.join(".ce/observe.ndjson")).expect("feed");
     let entries: Vec<serde_json::Value> = log
         .lines()
@@ -46,6 +49,45 @@ fn normalized_feed(dir: &std::path::Path) -> String {
 /// declared `work_1`.
 const TOMB: &str = "/// This file no longer needs work_1.\nfn without_work() {}\n";
 
+/// Entries 8-10 (0.11.0): the armed map ASKS about a 700-line write
+/// (888‰) — the probe line, written once the event is decided, records
+/// `decision` ask under the call's `tool_use_id` and the zone line
+/// follows it (the tombstone line of that rewrite reads `applied`
+/// null) — and the PostToolUse leg's `settled` line once the tool ran
+/// under that id.
+fn asked_write_settles(dir: &Path) {
+    let asked = "// filler\n".repeat(700);
+    let env = common::pretooluse_envelope_id(dir, "b.rs", "Write", &asked, "toolu_ask");
+    common::expect_decision(dir, &env, "ask");
+    let ran = common::posttooluse_envelope(dir, "b.rs", "Write", "toolu_ask");
+    common::run_hook(dir, &["settle", "--hook"], &ran);
+}
+
+/// Entry 13: the stop audit (staged b.rs = one touched duplicate);
+/// entry 14: precommit (observe mode reports but exits 0); entry 15:
+/// commitmsg — the staged set now erases a.rs's `work_1` and the
+/// message argues it away: precommit's line shape under its own event,
+/// the message's own site, session null.
+fn stop_and_git_faces(dir: &Path) {
+    common::run_hook(
+        dir,
+        &["audit", "--hook"],
+        &common::stop_envelope(dir, false),
+    );
+    assert!(common::run_ce(dir, &["precommit"]).status.success());
+    common::git(dir, &["rm", "-q", "a.rs"]);
+    std::fs::write(
+        dir.join(".git/COMMIT_EDITMSG"),
+        "Drop a.rs\n\nwork_1 is no longer needed.\n",
+    )
+    .expect("message");
+    assert!(
+        common::run_ce(dir, &["commitmsg", ".git/COMMIT_EDITMSG"])
+            .status
+            .success()
+    );
+}
+
 #[test]
 fn feed_shape_matches_golden() {
     let dir = common::tmp("observe-golden");
@@ -54,18 +96,20 @@ fn feed_shape_matches_golden() {
     // entry 1: probe (T2 rewrite of indexed content -> matches)
     let env = common::pretooluse_envelope(&dir, "Write", &common::rust_fn(3));
     common::run_hook(&dir, &["probe", "--hook"], &env);
+    // a filler write of `lines` lines through the probe; each one
+    // below leaves the lines its comment names
+    let filler = |lines: usize| {
+        let env = common::pretooluse_envelope(&dir, "Write", &"// filler\n".repeat(lines));
+        common::run_hook(&dir, &["probe", "--hook"], &env);
+    };
     // entries 2+3: an over-cap write logs a no-match probe line plus
     // the budget event (0.4.0) — in every tier, observe included
-    let big = "// filler\n".repeat(751);
-    let env2 = common::pretooluse_envelope(&dir, "Write", &big);
-    common::run_hook(&dir, &["probe", "--hook"], &env2);
+    filler(751);
     // entries 4+5: an IN-ZONE write (400 lines, soft fallback 300,
     // hard 750 -> position 222‰) logs the 0.5.0 zone event — feed
     // only, no enforcement; the producer must ride this golden run
     // or it ships untested (the v0.6 map's own warning)
-    let mid = "// filler\n".repeat(400);
-    let env3 = common::pretooluse_envelope(&dir, "Write", &mid);
-    common::run_hook(&dir, &["probe", "--hook"], &env3);
+    filler(400);
     // entries 6+7: the ARMED map (v2.7 ①): ce.toml opts in (keeping
     // the seeded observe mode — the zone's tier is its own, not the
     // class mode) and the same producer's zone line now carries the
@@ -76,35 +120,15 @@ fn feed_shape_matches_golden() {
         "[guard]\nmode = \"observe\"\nzone_tiers = true\n",
     )
     .expect("ce.toml");
-    let deep = "// filler\n".repeat(600);
-    let env4 = common::pretooluse_envelope(&dir, "Write", &deep);
-    common::run_hook(&dir, &["probe", "--hook"], &env4);
-    // entries 8+9: a Write erasing `work_1` and writing it back as an
+    filler(600);
+    // entries 8-10 (0.11.0): an asked write and its settlement
+    asked_write_settles(&dir);
+    // entries 11+12: a Write erasing `work_1` and writing it back as an
     // absence logs the 0.8.0 tombstone line after its own probe
     let tomb = common::pretooluse_envelope_at(&dir, "a.rs", "Write", TOMB);
     common::run_hook(&dir, &["probe", "--hook"], &tomb);
-    // entry 10: stop audit (staged b.rs = one touched duplicate)
-    common::run_hook(
-        &dir,
-        &["audit", "--hook"],
-        &common::stop_envelope(&dir, false),
-    );
-    // entry 11: precommit (observe mode reports but exits 0)
-    assert!(common::run_ce(&dir, &["precommit"]).status.success());
-    // entry 12: commitmsg — the staged set now erases a.rs's `work_1`
-    // and the message argues it away: precommit's line shape under its
-    // own event, the message's own site, session null
-    common::git(&dir, &["rm", "-q", "a.rs"]);
-    std::fs::write(
-        dir.join(".git/COMMIT_EDITMSG"),
-        "Drop a.rs\n\nwork_1 is no longer needed.\n",
-    )
-    .expect("message");
-    assert!(
-        common::run_ce(&dir, &["commitmsg", ".git/COMMIT_EDITMSG"])
-            .status
-            .success()
-    );
+    // entries 13-15: the stop audit and the two git-hook faces
+    stop_and_git_faces(&dir);
     common::assert_matches_golden(
         &normalized_feed(&dir),
         &common::golden_path("observe-feed/feed.golden.json"),
