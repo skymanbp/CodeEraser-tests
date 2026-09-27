@@ -11,23 +11,9 @@
 use crate::baseline_ledgers::{RETIRED, rekeyed_pairs, suite_pairs};
 use crate::baseline_reanchored::{present, reanchored, reanchored_rows, relocated_rows};
 use crate::common;
-use crate::common::core_bin;
-use codeeraser::score::{self, Opts};
-use std::path::{Path, PathBuf};
-
-/// The committed baseline is the CALLER's one read (O31): score::run
-/// judges what it is handed and never opens the file itself.
-fn opts(dir: &Path, db: Option<PathBuf>, floor: Option<u32>) -> Opts {
-    Opts {
-        db,
-        core: core_bin(),
-        days: None,
-        floor,
-        establish: false,
-        pinned_soft: None,
-        baseline: score::baseline::read(dir).expect("baseline read"),
-    }
-}
+use crate::common::check_opts as opts;
+use codeeraser::score;
+use std::path::Path;
 
 /// Conservation on the self repo, every leg independently sourced:
 /// blocks from the dedup report, budget from ce.toml, members and

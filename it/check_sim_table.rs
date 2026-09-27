@@ -16,7 +16,6 @@
 
 use crate::common;
 use crate::common::core_bin;
-use codeeraser::score::{self, Opts};
 use std::path::PathBuf;
 
 /// 75 words of prose, verbatim in both files: past the admission
@@ -72,17 +71,7 @@ fn a_pair_both_families_judged_rides_the_sim_table_once() {
     );
 
     // (2) the request the core refused: judged, one row, one candidate
-    let opts = Opts {
-        db: None,
-        core: core_bin(),
-        days: None,
-        floor: None,
-        establish: false,
-        pinned_soft: None,
-        baseline: score::baseline::read(&dir).expect("baseline read"),
-    };
-    let o = score::run(&dir, opts).expect("the core judges the request");
-    assert!(o.reply.degraded.is_none(), "healthy judgment");
+    let o = common::judged(&dir);
     assert_eq!(o.files, 2, "both files are in the verdict universe");
     assert_eq!(o.sim_pairs, 1, "the pair rides once, not once per family");
     assert_eq!(

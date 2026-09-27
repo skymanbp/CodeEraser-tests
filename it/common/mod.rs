@@ -49,6 +49,29 @@ pub fn analyze(dir: &Path, blocks: usize, groups: usize) -> codeeraser::dedup::p
 /// tracked file starts here. It lived as seven private copies across
 /// the test binaries until the clone gate pointed at one pair; the
 /// class was all seven, so the definition moved here once.
+/// `ce check`'s options over a judged tree: the committed baseline is
+/// the CALLER's one read (O31) — score::run judges what it is handed
+/// and never opens the file itself — and there is no churn window.
+pub fn check_opts(dir: &Path, db: Option<PathBuf>, floor: Option<u32>) -> codeeraser::score::Opts {
+    codeeraser::score::Opts {
+        db,
+        core: core_bin(),
+        days: None,
+        floor,
+        establish: false,
+        pinned_soft: None,
+        baseline: codeeraser::score::baseline::read(dir).expect("baseline read"),
+    }
+}
+
+/// One healthy judgment of a fixture under the shipped knobs.
+pub fn judged(dir: &Path) -> codeeraser::score::Outcome {
+    let o = codeeraser::score::run(dir, check_opts(dir, None, None))
+        .expect("the core judges the request");
+    assert!(o.reply.degraded.is_none(), "healthy judgment");
+    o
+}
+
 pub fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()

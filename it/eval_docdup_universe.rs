@@ -13,7 +13,7 @@
 //!   rm -rf cli/tests/eval_docdup_universe.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 use crate::eval_support::*;
-use codeeraser::docdup::spec::{KIND_HTML_TEXT, KIND_NAMES};
+use codeeraser::docdup::spec::{KIND_HTML_TEXT, KIND_NAMES, KIND_TEXT_PARA};
 use std::collections::BTreeMap;
 
 const FAMILY: UniverseFamily = UniverseFamily {
@@ -26,7 +26,8 @@ const FAMILY: UniverseFamily = UniverseFamily {
 /// re-derived with row-level conservation, frozen constants and
 /// scope, pinned tip, sorted rows) and the graph-slice sibling
 /// anchor; this family then requires every frozen-era segment kind
-/// alive somewhere across the five corpora (html_text's leg is below)
+/// alive somewhere across the five corpora (the html_text and text_para
+/// legs are below)
 /// and every exemption route either counted or explained in
 /// route_notes.
 #[test]
@@ -39,11 +40,11 @@ fn docdup_segments_consistent() {
             sum_obj_into(&doc["summary"][key], &mut totals);
         }
     });
-    // html_text (plan v2.30 step 5) joined after the five universes
-    // were frozen over the launch extensions, so no frozen row can
-    // hold one; its liveness leg is html_text_is_alive_on_the_pages
-    let html = KIND_NAMES[KIND_HTML_TEXT as usize];
-    let frozen_kinds = KIND_NAMES.iter().copied().filter(|k| *k != html);
+    // html_text (plan v2.30 step 5) and text_para (step 5b-8) joined
+    // after the five universes were frozen over the launch extensions,
+    // so no frozen row can hold either; their liveness legs follow
+    let later = [KIND_HTML_TEXT, KIND_TEXT_PARA].map(|k| KIND_NAMES[k as usize]);
+    let frozen_kinds = KIND_NAMES.iter().copied().filter(|k| !later.contains(k));
     assert_covered(&totals, frozen_kinds, "segments");
     let notes = docdup_constants()["route_notes"].clone();
     for route in ["license_header", "inline_allow", "skeleton_line"] {
@@ -69,17 +70,23 @@ fn self_docdup_tracks_segments() {
 /// the admission floor (the GUI page's labels are all short), the
 /// site's prose pages must store live ones, and the ledger must show
 /// the code and script elements the extractor shed on the way.
+/// One repository file's segment row through the frozen rows' throat
+/// — the liveness legs' opening (html_text's and text_para's).
+fn own_row(page: &str, code: &str) -> serde_json::Value {
+    let root = crate::common::repo_root();
+    let text = std::fs::read_to_string(root.join(page)).expect(page);
+    docdup_row(page, code, &text)
+}
+
 #[test]
 fn html_text_is_alive_on_the_pages() {
-    let root = crate::common::repo_root();
     let mut shed = 0;
     for (page, prose) in [
         ("site/index.html", true),
         ("site/how/index.html", true),
         ("gui/ui/index.html", false),
     ] {
-        let text = std::fs::read_to_string(root.join(page)).expect(page);
-        let row = docdup_row(page, "html", &text);
+        let row = own_row(page, "html");
         let stored = row["segs_by"]["html_text"].as_u64().unwrap_or(0);
         let short = row["ledger"]["below_floor"].as_u64().unwrap_or(0);
         assert!(stored + short > 0, "{page}: no html_text segment: {row}");
@@ -88,4 +95,30 @@ fn html_text_is_alive_on_the_pages() {
             + row["ledger"]["script_element"].as_u64().unwrap_or(0);
     }
     assert!(shed > 0, "no code or script element shed across the pages");
+}
+
+/// The fifth kind's liveness (plan v2.30 step 5b-8): the frozen
+/// universes hold no `.txt`, so text_para is proven on the repository's
+/// own demo transcripts through the same row throat — each is one
+/// unbroken run of lines, so one paragraph, live (hundreds of words
+/// past the floor), with an empty ledger: plain text has nothing to
+/// shed, and its long lines are prose, never an overlong mask.
+#[test]
+fn text_para_is_alive_on_the_transcripts() {
+    for page in [
+        "demo/out/with-codeeraser.txt",
+        "demo/out/without-codeeraser.txt",
+    ] {
+        let row = own_row(page, "txt");
+        assert_eq!(
+            (row["segs_by"]["text_para"].as_u64(), row["live"].as_u64()),
+            (Some(1), Some(1)),
+            "{page}: {row}"
+        );
+        assert_eq!(
+            row["ledger"],
+            serde_json::json!({}),
+            "{page}: nothing to shed"
+        );
+    }
 }

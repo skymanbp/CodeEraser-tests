@@ -38,9 +38,10 @@ use std::collections::HashMap;
 
 /// Manifest lang codes and file extensions share one vocabulary, so a
 /// code is read through the product's own path table — and refused
-/// unless it names a judged language.
+/// unless it names an indexed language (the judged set or the
+/// prose-only arm, plan v2.30 step 5b-8).
 pub fn lang_of(code: &str) -> Lang {
-    Lang::judged_path(std::path::Path::new(&format!("x.{code}")))
+    Lang::indexed_path(std::path::Path::new(&format!("x.{code}")))
         .unwrap_or_else(|| panic!("unexpected lang {code}"))
 }
 

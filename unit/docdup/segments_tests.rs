@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::docdup::shingle;
-use crate::docdup::spec::KIND_HTML_TEXT;
+use crate::docdup::spec::{KIND_HTML_TEXT, KIND_TEXT_PARA};
 
 fn md_segs(text: &str) -> Vec<RawSeg> {
     extract(text, Lang::Markdown).0
@@ -198,4 +198,26 @@ fn an_html_comment_carries_the_allow_marker() {
     let mut prose = Vec::new();
     shingle::line_words("one set of links", None, &mut prose);
     assert_eq!(seg_words(&segs[0]), prose, "the comment is no prose");
+}
+
+/// Plan v2.30 step 5b-8: plain text has one separator, the blank line
+/// — a paragraph is a maximal run of non-blank lines, a whitespace-only
+/// line breaks it, and no line is structure: a `#`, a `|` or a `<` opens
+/// prose here, where Markdown's walk would shed it. Every segment is
+/// text_para, its lines ride whole and unmasked, and the shed ledger
+/// stays empty.
+#[test]
+fn plain_text_paragraphs_split_on_blank_lines_only() {
+    let text =
+        "one two\nthree four\n\n# not a heading\n| not a table\n<p>not markup\n   \nfive six\n";
+    let (segs, shed) = extract(text, Lang::Text);
+    let (k, lines) = (KIND_TEXT_PARA, segs.iter().flat_map(|s| &s.lines));
+    assert_eq!(rows(text, Lang::Text), [(k, 1, 2), (k, 4, 6), (k, 8, 8)]);
+    assert!(lines.clone().all(|l| l.mask.is_none()), "no line is masked");
+    let kept: Vec<&str> = segs[1].lines.iter().map(|l| l.text.as_str()).collect();
+    assert_eq!(kept, ["# not a heading", "| not a table", "<p>not markup"]);
+    assert_eq!(
+        (shed.html, shed.indented, shed.code, shed.script),
+        (0, 0, 0, 0)
+    );
 }

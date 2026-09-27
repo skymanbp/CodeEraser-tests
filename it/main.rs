@@ -54,6 +54,7 @@ mod dedup_property;
 mod dedup_provenance;
 mod demo_replay;
 mod divergence_stances;
+mod docdup_text;
 mod docs_citations;
 mod docs_citations_parts;
 mod docs_consts;

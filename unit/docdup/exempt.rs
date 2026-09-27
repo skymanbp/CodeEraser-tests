@@ -1,5 +1,5 @@
 use super::*;
-use crate::docdup::spec::{KIND_DOCSTRING, KIND_HTML_TEXT};
+use crate::docdup::spec::{KIND_DOCSTRING, KIND_HTML_TEXT, KIND_TEXT_PARA};
 
 fn seg(kind: i64, start: i64, lines: &[&str]) -> RawSeg {
     RawSeg {
@@ -56,12 +56,13 @@ fn skeleton_lines_strip_from_docstrings_but_not_md() {
     let kept = strip_skeleton(&ds, &mut lg);
     assert_eq!(kept.len(), 3);
     assert_eq!(lg.skeleton_line, 2);
-    let md = seg(KIND_MD_PARA, 1, &["Args:", "---"]);
-    assert_eq!(strip_skeleton(&md, &mut lg).len(), 2);
-    assert_eq!(lg.skeleton_line, 2, "md untouched");
-    let html = seg(KIND_HTML_TEXT, 1, &["Args:", "---"]);
-    assert_eq!(strip_skeleton(&html, &mut lg).len(), 2);
-    assert_eq!(lg.skeleton_line, 2, "html text is prose like md (step 5)");
+    // the prose kinds pass through untouched: md, HTML text (step 5)
+    // and plain text (step 5b-8) alike
+    for kind in [KIND_MD_PARA, KIND_HTML_TEXT, KIND_TEXT_PARA] {
+        let prose = seg(kind, 1, &["Args:", "---"]);
+        assert_eq!(strip_skeleton(&prose, &mut lg).len(), 2, "kind {kind}");
+        assert_eq!(lg.skeleton_line, 2, "kind {kind} untouched");
+    }
 }
 
 #[test]
