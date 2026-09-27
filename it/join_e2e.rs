@@ -3,7 +3,7 @@
 //! history that rewrites inside one clone body and appends outside
 //! the other. Pins: the file tier carries all three legs (graph
 //! position answered through the SAME wire deadcode judges), the
-//! unit tier joins churn on the (path, key, nth) identity, and the
+//! unit tier joins churn on the (path, key, anchor) identity, and the
 //! run is report-only (no verdicts before 3i).
 
 use crate::common;
@@ -58,8 +58,8 @@ fn assert_tier_f(r: &join::Report) {
 }
 
 /// Tier U: the block's sides attribute to the two work units, and
-/// churn joins on the SAME (path, key, nth) identity the caches
-/// persist — the rewrite lands on work_1, never its twin.
+/// churn joins on the SAME (path, key, anchor) identity the ledger
+/// wrote — the rewrite lands on work_1, never its twin.
 fn assert_tier_u(r: &join::Report) {
     let u = r
         .units

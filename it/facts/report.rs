@@ -24,6 +24,7 @@ const LINKED: &[(&str, &str)] = &[
     // this table keys by family name and `erase-log` is the record's
     ("erase-trail", codeeraser::erase::log::REPORT_SCHEMA),
     ("graph-canvas", codeeraser::graph::canvas::SCHEMA_ID),
+    ("graph-screen", codeeraser::graph::canvas::SCREEN_SCHEMA_ID),
     ("join", codeeraser::join::SCHEMA_ID),
     ("mentions", codeeraser::mention::face::SCHEMA_ID),
     ("observe", codeeraser::hookio::OBSERVE_SCHEMA),

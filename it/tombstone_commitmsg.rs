@@ -91,7 +91,7 @@ fn the_message_is_read_with_the_repository_s_own_comment_prefix() {
     // lead — a structural position that keeps a name alive in a file —
     // declares nothing here, so the item is a site.
     type Probe<'a> = (&'a str, &'a [(&'a str, &'a str)], &'a str, Vec<String>);
-    let cases: [Probe; 3] = [
+    let cases: [Probe; 4] = [
         (
             "tomb-commitmsg-prefix",
             &[("core.commentChar", ";")],
@@ -102,6 +102,18 @@ fn the_message_is_read_with_the_repository_s_own_comment_prefix() {
             "tomb-commitmsg-exact",
             &[("core.commentString", "// "), ("core.commentary", "zzz")],
             "Drop the pork module\n// braise_pork is no longer needed.\n//x braise_pork is no longer needed.\n",
+            vec![site("COMMIT_EDITMSG", 3, "prose")],
+        ),
+        (
+            // `auto`: git picked `@` (the message it was handed began
+            // lines with `#` and `;`), wrote its block under it, and
+            // strips only `@` lines: the `;` line is prose and a site, the
+            // `#` line a Markdown heading, and the block's own
+            // `braise_pork` line nothing (the old `#` reading seated it as
+            // a second site)
+            "tomb-commitmsg-auto",
+            &[("core.commentChar", "auto")],
+            "Drop the pork module\n# Context\n; braise_pork is no longer needed.\n\n@ Please enter the commit message for your changes. Lines starting\n@ with '@' will be ignored, and an empty message aborts the commit.\n@\n@ braise_pork is no longer needed.\n",
             vec![site("COMMIT_EDITMSG", 3, "prose")],
         ),
         (

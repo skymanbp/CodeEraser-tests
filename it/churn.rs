@@ -35,9 +35,10 @@ fn root_commit_additions_are_counted() {
     // the whole seed lands in ONE ledger row: a.rs's work_1 unit
     assert_eq!(r.units.len(), 1, "rows: {:?}", r.units);
     let row = &r.units[0];
-    assert_eq!(
-        (row.path.as_str(), row.key.as_str(), row.nth),
-        ("a.rs", "work_1/2", 0)
+    assert_eq!((row.path.as_str(), row.key.as_str()), ("a.rs", "work_1/2"));
+    assert!(
+        row.anchor.ends_with("#0"),
+        "a top-level unit's chain: {row:?}"
     );
     assert_eq!(row.appended, r.added_in_window());
     assert_eq!(row.rewrote, 0, "an empty before side cannot rewrite");
@@ -70,6 +71,43 @@ fn a_declared_submodule_with_no_parent_history_is_named_not_a_silent_zero() {
     assert_eq!(
         json["submodules_without_file_history"],
         serde_json::json!(["suite"])
+    );
+}
+
+/// Plan v2.30 step 5b item 29: a same-key sibling deleted AFTER the
+/// commit that edited the survivor. Under the old (path, key, nth) key
+/// the survivor's row said nth 1 (impl A's `add` still stood when it
+/// was edited) while HEAD says nth 0, and a HEAD-side join found no
+/// row; under the anchor the row and HEAD's unit agree.
+#[test]
+fn a_sibling_deleted_later_in_the_window_leaves_the_survivors_ledger_identity() {
+    let root = common::tmp("churn-anchor");
+    common::git(&root, &["init", "-q"]);
+    let both = "impl A {\n    fn add(&self) -> u32 {\n        1\n    }\n}\nimpl B {\n    fn add(&self) -> u32 {\n        2\n    }\n}\n";
+    std::fs::write(root.join("x.rs"), both).expect("x.rs");
+    common::commit_all(&root, "both impls");
+    let edited = both.replace("        2\n", "        2 + 40\n");
+    std::fs::write(root.join("x.rs"), &edited).expect("edit B");
+    common::commit_all(&root, "edit impl B's add");
+    let b_only = &edited[edited.find("impl B").expect("impl B")..];
+    std::fs::write(root.join("x.rs"), b_only).expect("delete A");
+    common::commit_all(&root, "delete impl A");
+    let r = churn::run(&root, 30).expect("churn");
+    let head = codeeraser::fourclass::units::segments(b_only, codeeraser::scan::lang::Lang::Rust);
+    let anchors = codeeraser::fourclass::anchor::for_units(&head);
+    let (i, _) = head
+        .iter()
+        .enumerate()
+        .find(|(_, u)| u.key == "add/1")
+        .expect("HEAD's add");
+    let row = r
+        .units
+        .iter()
+        .find(|u| u.path == "x.rs" && u.key == "add/1" && u.anchor == anchors[i])
+        .unwrap_or_else(|| panic!("no ledger row at HEAD's anchor: {:?}", r.units));
+    assert!(
+        row.rewrote >= 1,
+        "the commit-2 edit is impl B's rewrite: {row:?}"
     );
 }
 
@@ -112,14 +150,10 @@ fn assert_report(r: &churn::Report) {
 }
 
 /// Per-unit attribution (M5-3h): every fixture edit is pinned to its
-/// owning (path, key, nth) row, and the top level ("" key) is a real
-/// destination, not lost lines.
+/// owning (path, key, anchor) row, and the top level ("" key) is a
+/// real destination, not lost lines.
 fn assert_ledger(r: &churn::Report) {
-    let row = |p: &str, k: &str| {
-        r.units
-            .iter()
-            .find(|u| u.path == p && u.key == k && u.nth == 0)
-    };
+    let row = |p: &str, k: &str| r.units.iter().find(|u| u.path == p && u.key == k);
     let work1 = row("a.rs", "work_1/2").expect("a.rs work_1 row");
     assert!(work1.rewrote >= 2, "commit-2 edits: {work1:?}");
     assert!(work1.appended >= 8, "the seed body: {work1:?}");

@@ -30,7 +30,7 @@ T1/T2 clone blocks | T1/T2 克隆块 | dedup | tab:reports, dedup_report | mcp:c
 T3 near-miss clones | T3 近似克隆 | clone | tab:reports, clone_report | mcp:clone | |
 documentation duplication | 文档重复 | docdup | tab:reports, docdup_report | mcp:docdup | |
 reference sites and the mention universe | 引用站点与提及宇宙 | graph | tab:reports, sites_report | mcp:graph_sites | |
-liveness verdicts + symbol advisory | 存活性判决 + 符号顾问 | deadcode | tab:graph, graphcanvas_report, deadcode_report | mcp:deadcode | |
+liveness verdicts + symbol advisory | 存活性判决 + 符号顾问 | deadcode | tab:graph, graphscreen_report, tab:reports, deadcode_report | mcp:deadcode | |
 git-window churn | git 窗口变动 | churn | tab:candidates, churn_report | mcp:churn | |
 three-signal join | 三信号联判 | join | tab:candidates, join_report | mcp:join | |
 tree-scale structure (split pricing) | 树尺度结构（拆分定价） | structure | tab:structure, structure_report | mcp:structure | |
