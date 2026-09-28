@@ -5,7 +5,7 @@
 
 use super::Exam;
 use super::Reach::{Tree, Universe};
-use super::Stage::{Sampled, Scored};
+use super::Stage::{Audited, Scored};
 
 /// The C family's rungs and the compilation-database readers they
 /// consult: one ladder for both exams, since a C++ include resolves
@@ -79,7 +79,9 @@ const fn exam(
 /// fmtlib/fmt for C++, one apiece: `include` is the one site kind, and
 /// a `.h` is C++ by the product's extension table, so the interpreter's
 /// headers belong to no C exam and fmt's headers, sources and tests are
-/// one universe.
+/// one universe. The C exam's truths therefore reach the pinned tree
+/// (Reach::Tree, like HTML's): a `.c` includes the interpreter's `.h`,
+/// a file outside the `*.c` universe, and the audit names it.
 pub const EXAMS: [Exam; 6] = [
     exam(
         "java",
@@ -129,8 +131,9 @@ pub const EXAMS: [Exam; 6] = [
         )
     },
     Exam {
+        reach: Tree,
         ladder_first: Some(C_LADDER_FIRST),
-        stage: Sampled,
+        stage: Audited,
         ..exam(
             "c",
             &[("lua", "0b29f408433e92953cc72b1d3e06c7ac8139e439")],
@@ -141,7 +144,7 @@ pub const EXAMS: [Exam; 6] = [
     },
     Exam {
         ladder_first: Some(C_LADDER_FIRST),
-        stage: Sampled,
+        stage: Audited,
         ..exam(
             "cpp",
             &[("fmt", "6d71f74624be5daa548073ff8e4e0c8aa5476010")],
