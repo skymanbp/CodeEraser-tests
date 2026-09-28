@@ -53,6 +53,16 @@ c struct T { int x; };\nstatic struct T *f(struct T *t) { return t; }\ntypedef s
 # anonymous namespace loses bit 0, and a macro inside a class body is
 # no member of it.
 cpp class Fwd;\nstruct Top { int x; };\ntypedef struct { int y; } Anon;\ntypedef int (*fp)(int);\nusing Alias = int;\nenum class E { A };\nnamespace ns { class C { public: void m() {} }; }\nnamespace { struct Hidden { int q; }; }\nclass B {\n#define FN(x) ((x) + 1)\n}; ⇒ Top:ES Anon:ES fp:ES Alias:ES E:ES C:ES C::m/0:ES ns:ES Hidden:- B:ES FN:ES
+# Plan v2.30 step 5b-6: a file-scope variable definition reads its
+# linkage — `static` closes bit 0, a bare `extern` and a prototype are
+# no unit, each declarator of `int e, *f;` and a function-pointer
+# variable are units, a body local is none.
+c int a;\nstatic int b = 1;\nextern int c;\nextern int d = 2;\nint e, *f;\nint (*fp)(int);\nint proto(int);\nvoid g(void) { int local; static int sl; } ⇒ a:ES b:- d:ES e:ES f:ES fp:ES g/0:ES
+# C++: a namespace-scope variable reads its namespace (an anonymous one
+# closes bit 0), `extern "C"` is transparent, a class's static member
+# is the class's own and its out-of-class definition the file-scope
+# unit, and a structured binding binds each name.
+cpp namespace ns { int nv = 1; static int sv; namespace { int an; } }\nextern "C" int cv;\nclass K { static int count; };\nint K::count = 0;\nauto [x, y] = pr(); ⇒ an:- ns:ES nv:ES sv:- cv:ES K:ES K::count:ES x:ES y:ES
 "#;
 
 #[test]

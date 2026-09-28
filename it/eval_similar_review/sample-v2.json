@@ -11,33 +11,51 @@
       "candidate": 5
     }
   ],
-  "rearbitrated": {
-    "date": "2026-09-26",
-    "corpus": "go",
-    "batch": "arb_out_v2.json",
-    "queries": 13,
-    "rows": 76,
-    "replaced": 77,
-    "reason": "plan v2.30 step 5b items 3 and 25 changed the Go fixture's unit universe (grouped parameters count per name, package-level const / var declarations are units), so every Go candidate list was re-measured live and the 13 drawn queries re-arbitrated whole; the other corpora's rows stand",
-    "arbiter": "codex exec gpt-6-astra (reasoning max, read-only sandbox), one batch of 13 queries; the prompt carried identities and verbatim source only - no scores, no role bits, no arm placements (RM18)",
-    "renamed_queries": [
-      {
-        "key": "appendIfNotPresent/2",
-        "path": "cobra.go",
-        "rank": "d7e8741abaa8b7979c5a5aef3f1efdbceca748d9d7c4786003b81dd1d3324ead"
-      },
-      {
-        "key": "configEnvVar/2",
-        "path": "completions.go",
-        "rank": "bd621cfe0fb84a55bd9d3ebb9f4de93469ee7a3396be2462649a2894103a6740"
+  "rearbitrated": [
+    {
+      "date": "2026-09-26",
+      "corpus": "go",
+      "batch": "arb_out_v2.json",
+      "queries": 13,
+      "rows": 76,
+      "replaced": 77,
+      "reason": "plan v2.30 step 5b items 3 and 25 changed the Go fixture's unit universe (grouped parameters count per name, package-level const / var declarations are units), so every Go candidate list was re-measured live and the 13 drawn queries re-arbitrated whole; the other corpora's rows stand",
+      "arbiter": "codex exec gpt-6-astra (reasoning max, read-only sandbox), one batch of 13 queries; the prompt carried identities and verbatim source only - no scores, no role bits, no arm placements (RM18)",
+      "renamed_queries": [
+        {
+          "key": "appendIfNotPresent/2",
+          "path": "cobra.go",
+          "rank": "d7e8741abaa8b7979c5a5aef3f1efdbceca748d9d7c4786003b81dd1d3324ead"
+        },
+        {
+          "key": "configEnvVar/2",
+          "path": "completions.go",
+          "rank": "bd621cfe0fb84a55bd9d3ebb9f4de93469ee7a3396be2462649a2894103a6740"
+        }
+      ],
+      "transcription_repairs": [],
+      "tree": {
+        "tip": "a5ac21f5ed1801109174622dfe2401677432fbd1",
+        "dirty": true
       }
-    ],
-    "transcription_repairs": [],
-    "tree": {
-      "tip": "a5ac21f5ed1801109174622dfe2401677432fbd1",
-      "dirty": true
+    },
+    {
+      "date": "2026-09-27",
+      "corpus": "typescript",
+      "batch": "out-v2.json",
+      "queries": 6,
+      "rows": 30,
+      "replaced": 30,
+      "reason": "plan v2.30 step 5b-6: TypeScript module-level const / let / var declarations are units (the declaration domain widened by rule), so the typescript fixture's unit universe (26 -> 32, the six module-level consts of benchmarks/object.ts) and every candidate list over it changed; the 6 queries are the frozen draw, re-measured live and re-arbitrated whole",
+      "arbiter": "codex exec gpt-6-astra (reasoning max, read-only sandbox), one batch per generation; the prompt carried identities and verbatim source only - no scores, no role bits, no arm placements (RM18)",
+      "renamed_queries": [],
+      "transcription_repairs": [],
+      "tree": {
+        "tip": "04e9723055601d6cbe5b092f81b2b803d55bb47a",
+        "dirty": true
+      }
     }
-  },
+  ],
   "rows": [
     {
       "rank": "022624ef7aba373f96af3c05dbec1b9547e8d9e8958e977d8f79d1061401e9f2",
@@ -3887,35 +3905,35 @@
       "candidate": 1,
       "truth": "related",
       "clone": false,
-      "why": "getRussianPlural selects one of three noun forms using a count's final digits; the Bulgarian error factory defines localization dictionaries and returns a mapper from validation issues to complete messages."
+      "why": "The query selects Russian noun forms by count, while the candidate constructs a Bulgarian validation error formatter within the same localization family."
     },
     {
       "rank": "3cdf1e63929a2ccbc4762691a9e71c266c322cd3421b2a8725a374212bbfcd95",
       "candidate": 2,
       "truth": "related",
       "clone": false,
-      "why": "getRussianPlural chooses a count-dependent grammatical form; the Bulgarian callback switches on validation issue codes and formats full error messages, including limits and invalid formats."
+      "why": "The query supplies Russian plural selection, while the candidate builds an Ottoman Turkish error map, serving different parts of validation localization."
     },
     {
       "rank": "3cdf1e63929a2ccbc4762691a9e71c266c322cd3421b2a8725a374212bbfcd95",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "getRussianPlural implements noun-form selection; the Russian issue callback calls it for minimum and maximum units while constructing complete validation-error messages."
+      "why": "The query chooses a count-dependent noun form, while the candidate translates complete validation issues into Bulgarian messages."
     },
     {
       "rank": "3cdf1e63929a2ccbc4762691a9e71c266c322cd3421b2a8725a374212bbfcd95",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "getRussianPlural performs Russian count-based inflection; the ota error factory initializes localized type, format, and sizing vocabulary and returns a full validation-issue message mapper."
+      "why": "The candidate constructs the Russian error map whose size-error branches call the query to select the appropriate unit form."
     },
     {
       "rank": "3cdf1e63929a2ccbc4762691a9e71c266c322cd3421b2a8725a374212bbfcd95",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "getRussianPlural selects among supplied one/few/many strings; the Russian error factory defines those strings and other dictionaries, then creates the issue renderer that uses the helper."
+      "why": "The candidate calls the query when formatting minimum and maximum size errors, making them the message formatter and its pluralization helper."
     },
     {
       "rank": "4004907581a5f02c395b4207eb7b07208b8c8f17faa1d8c7283d3899a8b36c48",
@@ -4111,35 +4129,35 @@
       "candidate": 1,
       "truth": "same_role",
       "clone": true,
-      "why": "The Russian and Bulgarian default exports have identical bodies that call their local error factory and return its callback in a localeError configuration object."
+      "why": "Both identical exported functions construct a locale configuration object containing the error map returned by their local error factory."
     },
     {
       "rank": "48b7f8ab03440a63a1662dd45de13cc022b249f30966b3cced74ad64f09d9aae",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "The Russian and Ottoman Turkish default exports identically construct a configuration object whose localeError property is supplied by their local error factory."
+      "why": "Both use identical code to expose their locale's initialized error map through the localeError configuration property."
     },
     {
       "rank": "48b7f8ab03440a63a1662dd45de13cc022b249f30966b3cced74ad64f09d9aae",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "The Russian default export packages an error-map callback into locale configuration, while Bulgarian getSizing looks up an origin's sizing words and returns null when absent."
+      "why": "The query exports a Russian locale configuration, while the candidate looks up sizing vocabulary used inside the Bulgarian localization mechanism."
     },
     {
       "rank": "48b7f8ab03440a63a1662dd45de13cc022b249f30966b3cced74ad64f09d9aae",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "The Russian default export returns a localeError configuration object, while Ottoman Turkish getSizing retrieves sizing vocabulary from Sizable for use when formatting size errors."
+      "why": "The query packages an error map as locale configuration, while the candidate retrieves origin-specific sizing vocabulary for another locale's formatter."
     },
     {
       "rank": "48b7f8ab03440a63a1662dd45de13cc022b249f30966b3cced74ad64f09d9aae",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "The Russian default export wraps an already-created error map in configuration, while Ottoman Turkish error initializes translation dictionaries and constructs the issue-to-message callback itself."
+      "why": "The query wraps an initialized error map in configuration, while the candidate constructs the underlying kind of issue formatter for another locale."
     },
     {
       "rank": "4b64dde74dec32f3563977374e2bc064fd8b1e08c7202d9b762f289f19de6609",
@@ -4265,70 +4283,70 @@
       "candidate": 1,
       "truth": "same_role",
       "clone": true,
-      "why": "Both benchmark rejection of null by an object schema using identical try/catch bodies; the query calls long.parse(null), while the candidate calls empty.parse(null)."
+      "why": "Both benchmark rejection of null by an object schema and swallow the resulting exception, differing only in the schema receiver."
     },
     {
       "rank": "4dd0bcb18c21bf168112010843dddac068be7b55134adcdfc59462b60e0916c1",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "Both benchmark invalid null parsing and swallow the resulting exception, with the duplicated callback differing only between long.parse and short.parse."
+      "why": "Both execute the same null-rejection benchmark with an empty catch block, substituting the short schema for the long schema."
     },
     {
       "rank": "4dd0bcb18c21bf168112010843dddac068be7b55134adcdfc59462b60e0916c1",
       "candidate": 3,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "The query benchmarks long.parse(null) inside try/catch, while Russian getSizing retrieves an origin's sizing vocabulary from a table and falls back to null."
+      "why": "The query benchmarks failed parsing of null with exception handling, while the candidate benchmarks successful parsing of an empty object."
     },
     {
       "rank": "4dd0bcb18c21bf168112010843dddac068be7b55134adcdfc59462b60e0916c1",
       "candidate": 4,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "The query measures failed null parsing with the long object schema, while Bulgarian getSizing performs a table lookup for localized sizing words."
+      "why": "The query measures null rejection, while the candidate measures successful object parsing with an extra key in the same benchmark family."
     },
     {
       "rank": "4dd0bcb18c21bf168112010843dddac068be7b55134adcdfc59462b60e0916c1",
       "candidate": 5,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "The query catches exceptions from long.parse(null) as a benchmark workload, while Ottoman Turkish getSizing returns sizing metadata indexed by origin."
+      "why": "The query measures an object schema's null-error path, while the candidate measures the short schema's successful string-field parsing path."
     },
     {
       "rank": "51738451b92e4fc5bfb6fcbdb34d989a3423e285a3ddbcf05445dde75fbb28d9",
       "candidate": 1,
       "truth": "same_role",
       "clone": false,
-      "why": "Both callbacks switch on Zod issue codes to produce localized validation messages; the Russian callback selects plural sizing units, while the Ottoman Turkish callback uses its own translated templates and sizing words."
+      "why": "Both convert validation issues into localized messages by issue code, with Russian count-dependent unit selection and different Ottoman Turkish wording."
     },
     {
       "rank": "51738451b92e4fc5bfb6fcbdb34d989a3423e285a3ddbcf05445dde75fbb28d9",
       "candidate": 2,
       "truth": "same_role",
       "clone": false,
-      "why": "Both map Zod issues to localized error text through issue-code switches; Russian size messages select plural forms, while Bulgarian format messages additionally choose grammatical adjective forms."
+      "why": "Both format validation issues for their locales, with the query handling Russian unit plurals and the candidate adjusting Bulgarian format adjectives."
     },
     {
       "rank": "51738451b92e4fc5bfb6fcbdb34d989a3423e285a3ddbcf05445dde75fbb28d9",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "The Russian callback consumes an issue and returns its message, while Bulgarian error initializes translation tables and returns a callback that performs that mapping later."
+      "why": "The query formats an individual issue, while the candidate initializes Bulgarian dictionaries and returns an issue-formatting callback."
     },
     {
       "rank": "51738451b92e4fc5bfb6fcbdb34d989a3423e285a3ddbcf05445dde75fbb28d9",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "The Russian query directly formats an individual issue, while Ottoman Turkish error builds sizing, format, and type dictionaries and returns an issue-formatting closure."
+      "why": "The query consumes validation issues to produce messages, while the candidate constructs the dictionaries and callback implementing another locale's error map."
     },
     {
       "rank": "51738451b92e4fc5bfb6fcbdb34d989a3423e285a3ddbcf05445dde75fbb28d9",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "The query is the issue-to-message callback, while Russian error is its enclosing factory that initializes the lookup dictionaries and returns that callback."
+      "why": "The candidate is the enclosing factory that initializes Russian localization tables and returns the query as its issue-formatting callback."
     },
     {
       "rank": "55de7776b8b8e02fb895e15c61b7e325c2eda2a0885e987449827dd86b24bb87",
@@ -4454,70 +4472,70 @@
       "candidate": 1,
       "truth": "same_role",
       "clone": true,
-      "why": "Both callbacks benchmark rejection of null and suppress the exception with identical try/catch code, differing only between short.parse(null) and empty.parse(null)."
+      "why": "Both benchmark object-schema rejection of null using identical try-and-catch logic with only the schema receiver changed."
     },
     {
       "rank": "68a09176abb4bc442e5696f2165b2b267c9c94664f33b7db5aa2b5e6e6987717",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "Both benchmark invalid null input using the same try/catch callback, with only the schema receiver changing from short to long."
+      "why": "Both measure null parsing failures and suppress the exception, differing only between the short and long object schemas."
     },
     {
       "rank": "68a09176abb4bc442e5696f2165b2b267c9c94664f33b7db5aa2b5e6e6987717",
       "candidate": 3,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "The query benchmarks short.parse(null) and catches its exception, while Russian getSizing performs an origin-indexed lookup of sizing vocabulary."
+      "why": "The query exercises null rejection with exception handling, while the candidate exercises successful empty-object parsing in the same benchmark suite."
     },
     {
       "rank": "68a09176abb4bc442e5696f2165b2b267c9c94664f33b7db5aa2b5e6e6987717",
       "candidate": 4,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "The query measures failed parsing of null by the short schema, while Bulgarian getSizing returns a sizing-table entry or null."
+      "why": "The query benchmarks an invalid null input, while the candidate benchmarks an accepted object containing a key beyond the empty schema."
     },
     {
       "rank": "68a09176abb4bc442e5696f2165b2b267c9c94664f33b7db5aa2b5e6e6987717",
       "candidate": 5,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "The query catches the failure of short.parse(null) as a benchmark workload, while Ottoman Turkish getSizing retrieves localized size units and verbs by origin."
+      "why": "Both exercise the short schema, but the query measures null rejection and the candidate measures successful parsing of its declared string field."
     },
     {
       "rank": "697a13460aa9225398d1515d4ca17630fd83f40d2fcaab127123629a4c8a03f7",
       "candidate": 1,
-      "truth": "same_role",
-      "clone": false,
-      "why": "Both benchmark successful object parsing with extra keys: the query gives an undeclared string key to empty, while the candidate gives an undeclared list key alongside long's required fields."
+      "truth": "related",
+      "clone": true,
+      "why": "The callbacks share the same single-parse structure, but the query benchmarks surplus keys and the candidate benchmarks the long schema's matching fields."
     },
     {
       "rank": "697a13460aa9225398d1515d4ca17630fd83f40d2fcaab127123629a4c8a03f7",
       "candidate": 2,
-      "truth": "related",
-      "clone": false,
-      "why": "The query benchmarks extra-key handling by parsing a nonempty object with the empty schema, while the candidate benchmarks ordinary successful parsing of exactly long's three declared fields."
+      "truth": "same_role",
+      "clone": true,
+      "why": "Both use nearly identical callbacks to benchmark accepted objects with an extra key, changing the schema and its corresponding input fixture."
     },
     {
       "rank": "697a13460aa9225398d1515d4ca17630fd83f40d2fcaab127123629a4c8a03f7",
       "candidate": 3,
       "truth": "same_role",
       "clone": true,
-      "why": "Both use near-identical successful extra-key benchmark callbacks: the query calls empty.parse with an extra string field, while the candidate calls short.parse with an additional number field."
+      "why": "Both benchmark valid object parsing with surplus keys through the same callback structure, varying the schema and supplied properties."
     },
     {
       "rank": "697a13460aa9225398d1515d4ca17630fd83f40d2fcaab127123629a4c8a03f7",
       "candidate": 4,
-      "truth": "same_role",
+      "truth": "related",
       "clone": true,
-      "why": "Both callback bodies parse the identical string-field object and differ only in the schema receiver; the benchmark labels distinguish an extra key for empty from a declared key for short, but the code is a near-verbatim duplicate."
+      "why": "The nearly identical callbacks parse the same object literal, but its string property is extra for the query's schema and declared for the candidate's schema."
     },
     {
       "rank": "697a13460aa9225398d1515d4ca17630fd83f40d2fcaab127123629a4c8a03f7",
       "candidate": 5,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "The query benchmarks successful parsing with an extra key in Zod v3, while Russian error constructs translation dictionaries and an issue-to-message callback for Zod v4."
+      "truth": "related",
+      "clone": true,
+      "why": "Both use nearly identical calls to the empty schema, but the query benchmarks an extra property and the candidate benchmarks an empty input object."
     },
     {
       "rank": "6df5af3466ed7925afd55b0619f62bd81c13a32ad708eb7fea209ec5022c6b1d",

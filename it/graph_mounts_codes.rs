@@ -18,7 +18,11 @@ use std::collections::BTreeMap;
 /// beside a library package ⇒ 0, a TS `export *` target ⇒ 3, and
 /// cabal's exposed ⇒ 0 / other-modules ⇒ 1. `h` and `shown` are the
 /// fixture's own unmentioned names (nothing spells them from another
-/// file), so they are rows too.
+/// file), so they are rows too, and since plan v2.30 step 5b-6 made a
+/// TypeScript module-level `const` a symbol (fourclass/declared.rs),
+/// so are `sp` (an `export * as` target => 3) and `used` (=> 0) - the
+/// other two consts, `all` and `a`, are spelled by index.ts's module
+/// path and named export.
 const WANT_CODES: &str = "\
 h 1
 shown 1
@@ -34,6 +38,8 @@ LibUnspoken 0
 tsUnspoken 3
 aUnspoken 0
 bUnspoken 1
+sp 3
+used 0
 ";
 
 #[test]

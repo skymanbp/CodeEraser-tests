@@ -16,22 +16,40 @@
       "candidate": 3
     }
   ],
-  "rearbitrated": {
-    "date": "2026-09-26",
-    "corpus": "go",
-    "batch": "arb_out_v1.json",
-    "queries": 13,
-    "rows": 71,
-    "replaced": 76,
-    "reason": "plan v2.30 step 5b items 3 and 25 changed the Go fixture's unit universe (grouped parameters count per name, package-level const / var declarations are units), so every Go candidate list was re-measured live and the 13 drawn queries re-arbitrated whole; the other corpora's rows stand",
-    "arbiter": "codex exec gpt-6-astra (reasoning max, read-only sandbox), one batch of 13 queries; the prompt carried identities and verbatim source only - no scores, no role bits, no arm placements (RM18)",
-    "renamed_queries": [],
-    "transcription_repairs": [],
-    "tree": {
-      "tip": "a5ac21f5ed1801109174622dfe2401677432fbd1",
-      "dirty": true
+  "rearbitrated": [
+    {
+      "date": "2026-09-26",
+      "corpus": "go",
+      "batch": "arb_out_v1.json",
+      "queries": 13,
+      "rows": 71,
+      "replaced": 76,
+      "reason": "plan v2.30 step 5b items 3 and 25 changed the Go fixture's unit universe (grouped parameters count per name, package-level const / var declarations are units), so every Go candidate list was re-measured live and the 13 drawn queries re-arbitrated whole; the other corpora's rows stand",
+      "arbiter": "codex exec gpt-6-astra (reasoning max, read-only sandbox), one batch of 13 queries; the prompt carried identities and verbatim source only - no scores, no role bits, no arm placements (RM18)",
+      "renamed_queries": [],
+      "transcription_repairs": [],
+      "tree": {
+        "tip": "a5ac21f5ed1801109174622dfe2401677432fbd1",
+        "dirty": true
+      }
+    },
+    {
+      "date": "2026-09-27",
+      "corpus": "typescript",
+      "batch": "out-v1.json",
+      "queries": 9,
+      "rows": 45,
+      "replaced": 45,
+      "reason": "plan v2.30 step 5b-6: TypeScript module-level const / let / var declarations are units (the declaration domain widened by rule), so the typescript fixture's unit universe (26 -> 32, the six module-level consts of benchmarks/object.ts) and every candidate list over it changed; the 9 queries are the frozen draw, re-measured live and re-arbitrated whole",
+      "arbiter": "codex exec gpt-6-astra (reasoning max, read-only sandbox), one batch per generation; the prompt carried identities and verbatim source only - no scores, no role bits, no arm placements (RM18)",
+      "renamed_queries": [],
+      "transcription_repairs": [],
+      "tree": {
+        "tip": "04e9723055601d6cbe5b092f81b2b803d55bb47a",
+        "dirty": true
+      }
     }
-  },
+  ],
   "rows": [
     {
       "rank": "00137ac155a12094960ed5b87e44f450cf3a4863335ca6e27ea0fa8a11dcb040",
@@ -2529,36 +2547,36 @@
       "rank": "03901efef4a858edccf7a2d24204a101a7bfa37473a149c15750853770fd44b9",
       "candidate": 1,
       "truth": "same_role",
-      "clone": true,
-      "why": "Both factories define localized sizing, format, and type dictionaries and return nearly identical issue-code dispatchers, with Ottoman Turkish messages replacing Bulgarian text and a few locale-specific branches differing."
+      "clone": false,
+      "why": "Both factories initialize locale dictionaries and return Zod error maps, with different translations and Bulgarian adjective handling."
     },
     {
       "rank": "03901efef4a858edccf7a2d24204a101a7bfa37473a149c15750853770fd44b9",
       "candidate": 2,
       "truth": "same_role",
       "clone": false,
-      "why": "Both factories construct localized Zod error maps, with the query supplying Bulgarian wording and adjective forms and the candidate supplying Russian wording and number-dependent plural forms."
+      "why": "Both factories create localized Zod error maps, but the Russian implementation selects plural forms for sizing units while the Bulgarian implementation adjusts format adjectives."
     },
     {
       "rank": "03901efef4a858edccf7a2d24204a101a7bfa37473a149c15750853770fd44b9",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "The query initializes Bulgarian dictionaries and returns an error-map function, while the candidate is that returned function and directly turns one issue into a Bulgarian message."
+      "why": "The query initializes dictionaries and creates the Bulgarian error mapper, while the candidate is its returned function that formats individual issues."
     },
     {
       "rank": "03901efef4a858edccf7a2d24204a101a7bfa37473a149c15750853770fd44b9",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "The query creates a Bulgarian error mapper and its supporting dictionaries, while the candidate consumes an individual issue and renders a Russian message using existing dictionaries and pluralization helpers."
+      "why": "The query constructs a Bulgarian error-map closure, while the candidate formats individual issues using captured Ottoman Turkish locale dictionaries."
     },
     {
       "rank": "03901efef4a858edccf7a2d24204a101a7bfa37473a149c15750853770fd44b9",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "The query constructs a Bulgarian error-map closure, while the candidate is an Ottoman Turkish issue-processing closure that dispatches directly on issue.code."
+      "why": "The query constructs a Bulgarian error mapper and its supporting dictionaries, while the candidate consumes individual issues to produce Russian messages."
     },
     {
       "rank": "039517e809058ff0a8d2063ca476995b21d4b883cdc0cdcd98c6094b717d27b5",
@@ -3587,35 +3605,35 @@
       "candidate": 1,
       "truth": "same_role",
       "clone": true,
-      "why": "Both cycle callbacks log the benchmark suite name and event target with identical code, differing only in whether they reference emptySuite or shortSuite."
+      "why": "Both cycle listeners print the suite name and event target, differing only in whether they reference emptySuite or shortSuite."
     },
     {
       "rank": "081efee968a8d7b3461bbe4215c1e700275519946bb8b04819542713b5664b81",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "Both cycle callbacks print the suite name followed by the benchmark event target, with longSuite substituted for emptySuite."
+      "why": "Both cycle listeners print the suite name and event target, differing only in whether they reference emptySuite or longSuite."
     },
     {
       "rank": "081efee968a8d7b3461bbe4215c1e700275519946bb8b04819542713b5664b81",
       "candidate": 3,
       "truth": "unrelated",
       "clone": false,
-      "why": "The benchmark callback logs cycle results, whereas the ota locale callback switches on validation issue codes to return localized error messages."
+      "why": "The query logs benchmark cycle results, while the candidate initializes a Bulgarian validation-error message mapper."
     },
     {
       "rank": "081efee968a8d7b3461bbe4215c1e700275519946bb8b04819542713b5664b81",
       "candidate": 4,
       "truth": "unrelated",
       "clone": false,
-      "why": "The benchmark callback reports a suite's timing event to the console, whereas the Bulgarian locale callback translates validation issues and adjusts message wording for particular formats."
+      "why": "The query logs benchmark cycle results, while the candidate creates an Ottoman Turkish mapper for validation issues."
     },
     {
       "rank": "081efee968a8d7b3461bbe4215c1e700275519946bb8b04819542713b5664b81",
       "candidate": 5,
       "truth": "unrelated",
       "clone": false,
-      "why": "The benchmark callback prints a cycle event, whereas the Russian locale callback constructs validation errors and selects plural forms for size-related messages."
+      "why": "The query reports benchmark cycle results to the console, while the candidate creates a Russian validation-error mapper with plural-aware sizing messages."
     },
     {
       "rank": "0828cc5e9086f0e788e748eda5924f36866575c2324cb44291b87716847d69c9",
@@ -4434,70 +4452,70 @@
       "candidate": 1,
       "truth": "same_role",
       "clone": true,
-      "why": "Both cycle callbacks log the suite name and event target using the same interpolation, changing only shortSuite to emptySuite."
+      "why": "Both callbacks report benchmark cycles through identical console formatting, changing only the referenced shortSuite or emptySuite."
     },
     {
       "rank": "1ef81aea0d4a1ed4736d837bf6da0ad1a508f613330c6ed614c129652d2bc93a",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "Both cycle callbacks report benchmark results with console.log of the suite name and event target, changing only shortSuite to longSuite."
+      "why": "Both callbacks report benchmark cycles through identical console formatting, changing only the referenced shortSuite or longSuite."
     },
     {
       "rank": "1ef81aea0d4a1ed4736d837bf6da0ad1a508f613330c6ed614c129652d2bc93a",
       "candidate": 3,
       "truth": "unrelated",
       "clone": false,
-      "why": "The query logs a benchmark cycle result, while the Ottoman Turkish callback switches on validation issue codes and returns localized error messages."
+      "why": "The query prints shortSuite benchmark results, while the candidate prepares dictionaries and a formatter for Bulgarian validation errors."
     },
     {
       "rank": "1ef81aea0d4a1ed4736d837bf6da0ad1a508f613330c6ed614c129652d2bc93a",
       "candidate": 4,
       "truth": "unrelated",
       "clone": false,
-      "why": "The query prints a benchmark suite name and event target, while the Bulgarian callback formats validation issues using localized dictionaries, size metadata, and grammatical adjustments."
+      "why": "The query prints shortSuite benchmark results, while the candidate constructs an Ottoman Turkish validation-error mapper."
     },
     {
       "rank": "1ef81aea0d4a1ed4736d837bf6da0ad1a508f613330c6ed614c129652d2bc93a",
       "candidate": 5,
       "truth": "unrelated",
       "clone": false,
-      "why": "The query reports benchmark cycle results, while the Russian callback maps validation issue codes to messages and selects pluralized size units."
+      "why": "The query prints shortSuite benchmark results, while the candidate constructs a Russian validation-error mapper and its locale dictionaries."
     },
     {
       "rank": "23188a04bccb59d7e2627eb86230f1d2b9f1b1c1eeade2733e2da0b9d9adcc97",
       "candidate": 1,
-      "truth": "same_role",
-      "clone": true,
-      "why": "Both callbacks benchmark successful object parsing with extra keys through a single parse call, changing the short schema and number field to the long schema and extra list field."
+      "truth": "related",
+      "clone": false,
+      "why": "The query benchmarks a short object with an extra number property, while the candidate benchmarks a valid long object without extra properties."
     },
     {
       "rank": "23188a04bccb59d7e2627eb86230f1d2b9f1b1c1eeade2733e2da0b9d9adcc97",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "Both are near-verbatim single-call benchmarks of successful object parsing; the query uses short with an extra number field, while the candidate uses long with its declared fields."
+      "why": "Both callbacks benchmark successful object parsing with extra keys using the same registration and parse-call structure with different schemas and sample fields."
     },
     {
       "rank": "23188a04bccb59d7e2627eb86230f1d2b9f1b1c1eeade2733e2da0b9d9adcc97",
       "candidate": 3,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "The query benchmarks short.parse on a valid object containing an extra field, while the Russian error factory builds localization dictionaries and returns a validation-issue message mapper."
+      "truth": "same_role",
+      "clone": true,
+      "why": "Both callbacks benchmark successful parsing with extra keys, changing the schema and sample object within the same one-call benchmark structure."
     },
     {
       "rank": "23188a04bccb59d7e2627eb86230f1d2b9f1b1c1eeade2733e2da0b9d9adcc97",
       "candidate": 4,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "The query executes a successful object parse for benchmarking, while the Bulgarian error factory constructs localized sizing and format dictionaries and returns an issue-formatting callback."
+      "why": "Both benchmark the short schema, but the query exercises an extra number property while the candidate supplies only the declared string property."
     },
     {
       "rank": "23188a04bccb59d7e2627eb86230f1d2b9f1b1c1eeade2733e2da0b9d9adcc97",
       "candidate": 5,
       "truth": "unrelated",
       "clone": false,
-      "why": "The query benchmarks parsing an object with an extra number field, while the Ottoman Turkish error factory creates dictionaries and a callback translating validation issues into messages."
+      "why": "The query supplies an extra-key parsing workload to a benchmark, while the candidate creates a Bulgarian validation-error message mapper."
     },
     {
       "rank": "241b23e5d089390901fadebb35ff20f4709c1f985f8d3870e6212a861bb96576",
@@ -4537,37 +4555,37 @@
     {
       "rank": "27f89cbf84dee27d87788543028cad4c82d6d88345d55ccdec1d8029d9fe6c03",
       "candidate": 1,
-      "truth": "same_role",
-      "clone": true,
-      "why": "Both callbacks benchmark a successful long.parse call on nearly identical object literals; the query adds an extra list field and uses the extra-keys benchmark label."
+      "truth": "related",
+      "clone": false,
+      "why": "Both benchmark the long schema, but the query includes an extra list property while the candidate measures the ordinary valid-input case."
     },
     {
       "rank": "27f89cbf84dee27d87788543028cad4c82d6d88345d55ccdec1d8029d9fe6c03",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "Both callbacks benchmark valid object parsing with extra keys using a single parse call, differing in schema size and which fixture field is additional."
+      "why": "Both callbacks benchmark successful parsing with extra properties through the same single parse-call structure, varying the schema and sample fields."
     },
     {
       "rank": "27f89cbf84dee27d87788543028cad4c82d6d88345d55ccdec1d8029d9fe6c03",
       "candidate": 3,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "The query benchmarks long.parse with an extra list field, while the Russian error factory constructs dictionaries and returns a localized validation-error mapper with pluralized size messages."
+      "truth": "same_role",
+      "clone": true,
+      "why": "Both callbacks register an extra-key parsing benchmark, substituting the long or empty schema and the corresponding sample object."
     },
     {
       "rank": "27f89cbf84dee27d87788543028cad4c82d6d88345d55ccdec1d8029d9fe6c03",
       "candidate": 4,
-      "truth": "unrelated",
+      "truth": "related",
       "clone": false,
-      "why": "The query repeatedly parses a valid object for a benchmark, while the Bulgarian error factory prepares localization metadata and an issue-code-driven message formatter."
+      "why": "The query benchmarks the long schema with an extra list property, while the candidate benchmarks the short schema with only its declared string property."
     },
     {
       "rank": "27f89cbf84dee27d87788543028cad4c82d6d88345d55ccdec1d8029d9fe6c03",
       "candidate": 5,
       "truth": "unrelated",
       "clone": false,
-      "why": "The query benchmarks successful long-schema parsing, while the Ottoman Turkish error factory builds localized dictionaries and returns a callback formatting validation failures."
+      "why": "The query benchmarks parsing a long object with an extra property, while the candidate constructs a Bulgarian error-message mapping function."
     },
     {
       "rank": "29646d0139b5461fea8615a7c9cd8c8efd820386c2e763829eac6bae3b56c4b8",
@@ -4686,35 +4704,35 @@
       "candidate": 1,
       "truth": "same_role",
       "clone": true,
-      "why": "Both callbacks benchmark successful object parsing through a single parse call, with near-verbatim bodies differing in schema, fixture fields, and whether the benchmark includes an extra key."
+      "why": "Both callbacks register ordinary valid-object parsing benchmarks with the same structure, changing the schema and its required sample fields."
     },
     {
       "rank": "31e093c73d980e6cc0c5e05f48def47b4c5030eac306d1fc5aa603fe6dfea6d1",
       "candidate": 2,
-      "truth": "same_role",
-      "clone": true,
-      "why": "Both valid-case callbacks call parse once on an object satisfying the chosen schema, changing short with one field to long with three fields."
+      "truth": "related",
+      "clone": false,
+      "why": "Both benchmark the short schema, but the query supplies only its string field while the candidate specifically exercises an extra number property."
     },
     {
       "rank": "31e093c73d980e6cc0c5e05f48def47b4c5030eac306d1fc5aa603fe6dfea6d1",
       "candidate": 3,
-      "truth": "same_role",
-      "clone": true,
-      "why": "Both callbacks benchmark short.parse with nearly identical object literals; the candidate adds a number field and changes the benchmark label to identify extra keys."
+      "truth": "related",
+      "clone": false,
+      "why": "The query measures ordinary valid parsing for the short schema, while the candidate measures the long schema's extra-key parsing case."
     },
     {
       "rank": "31e093c73d980e6cc0c5e05f48def47b4c5030eac306d1fc5aa603fe6dfea6d1",
       "candidate": 4,
-      "truth": "same_role",
-      "clone": true,
-      "why": "Both callbacks parse the identical object literal in near-verbatim benchmark bodies, changing the receiver from short to empty and consequently treating string as an extra key."
+      "truth": "related",
+      "clone": false,
+      "why": "The query's string property belongs to its short schema's valid input, while the candidate supplies a string property as an extra key to the empty schema."
     },
     {
       "rank": "31e093c73d980e6cc0c5e05f48def47b4c5030eac306d1fc5aa603fe6dfea6d1",
       "candidate": 5,
-      "truth": "unrelated",
-      "clone": false,
-      "why": "The query benchmarks successful parsing of a one-field object, while the Russian error factory constructs localization metadata and returns an issue-to-message callback."
+      "truth": "same_role",
+      "clone": true,
+      "why": "Both callbacks benchmark valid parsing without extra properties using the same structure, with a string-bearing object for short and an empty object for empty."
     },
     {
       "rank": "35f3e7c61c73c731785d0c6ea83dcc6a318a6f7b99f7d877741a1b7106591018",
@@ -4798,105 +4816,105 @@
       "candidate": 1,
       "truth": "same_role",
       "clone": true,
-      "why": "Both getSizing functions return Sizable[origin] with a null fallback; only the declared metadata type differs between Russian plural-aware units and Bulgarian string units."
+      "why": "Both helpers return Sizable metadata indexed by origin or null when absent, with only the return-type annotation differing."
     },
     {
       "rank": "5e8b89303b1bdb51f43fbc7c60c080dff624598078339efa0f15316405dd2138",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "Both getSizing functions perform the identical origin-indexed sizing lookup with a null fallback, differing only in the declared Russian versus Ottoman Turkish metadata type."
+      "why": "Both helpers perform the same origin-indexed Sizable lookup with a null fallback, differing only in the declared metadata type."
     },
     {
       "rank": "5e8b89303b1bdb51f43fbc7c60c080dff624598078339efa0f15316405dd2138",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "getSizing retrieves size-unit metadata by issue origin, while getRussianPlural examines a count's final digits to select one, few, or many word forms."
+      "why": "The query retrieves sizing metadata by origin, while the candidate selects a Russian noun form from a numeric count for the same size-message mechanism."
     },
     {
       "rank": "5e8b89303b1bdb51f43fbc7c60c080dff624598078339efa0f15316405dd2138",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "The Russian getSizing retrieves one sizing record, while the Ottoman Turkish error factory builds sizing and translation dictionaries and returns a callback formatting complete validation messages."
+      "why": "The query provides sizing metadata, while the candidate builds an Ottoman Turkish error mapper that uses an analogous lookup when formatting size violations."
     },
     {
       "rank": "5e8b89303b1bdb51f43fbc7c60c080dff624598078339efa0f15316405dd2138",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "The Russian getSizing performs a metadata lookup, while the Bulgarian error factory defines its own sizing lookup and dictionaries within a complete issue-message formatter."
+      "why": "The query retrieves origin-specific sizing metadata, while the candidate constructs a Bulgarian error mapper whose size branches use the corresponding locale lookup."
     },
     {
       "rank": "85faa2d5b94950255b69e66ca930375bd1e28c3a7d177da9edfd682a7bb43b5e",
       "candidate": 1,
       "truth": "same_role",
       "clone": true,
-      "why": "The Bulgarian and Ottoman Turkish getSizing excerpts are identical: both return the origin's Sizable record or null with the same unit-and-verb return type."
+      "why": "The helpers have identical source and both retrieve origin-specific sizing metadata with a null fallback."
     },
     {
       "rank": "85faa2d5b94950255b69e66ca930375bd1e28c3a7d177da9edfd682a7bb43b5e",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "Both functions look up Sizable[origin] and fall back to null, with the Russian version changing only the return annotation to its plural-aware metadata type."
+      "why": "Both helpers return Sizable metadata for an origin or null, with the Russian version changing only the return-type annotation."
     },
     {
       "rank": "85faa2d5b94950255b69e66ca930375bd1e28c3a7d177da9edfd682a7bb43b5e",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "The Bulgarian getSizing chooses sizing metadata by origin, while getRussianPlural chooses a grammatical word form using the absolute count's last digit and last two digits."
+      "why": "Both support localized size-error wording, but the query retrieves origin metadata while the candidate selects a Russian plural form from a numeric count."
     },
     {
       "rank": "85faa2d5b94950255b69e66ca930375bd1e28c3a7d177da9edfd682a7bb43b5e",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "The Bulgarian getSizing returns a size-unit record, while the Ottoman Turkish error factory builds localization dictionaries and a callback handling many validation issue codes."
+      "why": "The query supplies sizing metadata, while the candidate creates an Ottoman Turkish error mapper containing an equivalent helper for its size-error branches."
     },
     {
       "rank": "85faa2d5b94950255b69e66ca930375bd1e28c3a7d177da9edfd682a7bb43b5e",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "getSizing is the Bulgarian factory's origin-to-sizing lookup helper, while error constructs the surrounding dictionaries and returns the complete localized issue formatter that uses that helper."
+      "why": "The query is the sizing lookup enclosed by the candidate factory, whose returned mapper calls it when composing Bulgarian size-error messages."
     },
     {
       "rank": "9afebf8d50c8f535afa73da27ba8840b4deeb606701105129e870155626fe2c5",
       "candidate": 1,
       "truth": "same_role",
       "clone": true,
-      "why": "The Ottoman Turkish and Bulgarian getSizing functions have identical signatures and bodies, returning Sizable[origin] or null."
+      "why": "Both helpers have identical implementations that look up sizing metadata by origin and return null for missing entries."
     },
     {
       "rank": "9afebf8d50c8f535afa73da27ba8840b4deeb606701105129e870155626fe2c5",
       "candidate": 2,
       "truth": "same_role",
       "clone": true,
-      "why": "Both functions retrieve sizing metadata through Sizable[origin] with a null fallback, differing only in the Russian version's declared metadata type."
+      "why": "Both helpers perform the same Sizable lookup and null fallback, with only the Russian metadata return type differing."
     },
     {
       "rank": "9afebf8d50c8f535afa73da27ba8840b4deeb606701105129e870155626fe2c5",
       "candidate": 3,
       "truth": "related",
       "clone": false,
-      "why": "The Ottoman Turkish getSizing retrieves units and verbs by origin, while getRussianPlural applies count-based digit rules to select among three grammatical forms."
+      "why": "The query retrieves sizing metadata and the candidate selects count-dependent Russian word forms, providing different helpers for localized size messages."
     },
     {
       "rank": "9afebf8d50c8f535afa73da27ba8840b4deeb606701105129e870155626fe2c5",
       "candidate": 4,
       "truth": "related",
       "clone": false,
-      "why": "getSizing performs the Ottoman Turkish factory's sizing-record lookup, while error creates that lookup's dictionary and returns the broader validation-issue message formatter."
+      "why": "The candidate factory defines the query's sizing lookup and uses it in the returned Ottoman Turkish mapper's size-error branches."
     },
     {
       "rank": "9afebf8d50c8f535afa73da27ba8840b4deeb606701105129e870155626fe2c5",
       "candidate": 5,
       "truth": "related",
       "clone": false,
-      "why": "The Ottoman Turkish getSizing returns one origin's sizing metadata, while the Bulgarian error factory builds dictionaries and a callback producing complete localized validation messages."
+      "why": "The query retrieves sizing metadata, while the candidate constructs a Bulgarian error mapper that contains and uses the corresponding locale lookup."
     }
   ]
 }

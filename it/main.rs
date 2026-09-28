@@ -46,6 +46,7 @@ mod daemon_e2e;
 mod daemon_proto;
 mod daemon_singleton;
 mod deadcode_e2e;
+mod declared_domain;
 mod dedup_core;
 mod dedup_groups;
 mod dedup_index;

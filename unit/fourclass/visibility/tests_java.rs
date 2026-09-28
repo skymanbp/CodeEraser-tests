@@ -35,6 +35,12 @@ const ALL: &str = r#"
 # keeps its package bit 0 and loses the scope bit; an anonymous class
 # declares no type at all. (Units of one line read in key order.)
 java public class T {\n  interface I {}\n  public enum E { A }\n  protected record R(int x) {}\n  private @interface Ann {}\n  void f() { class L {} Object o = new Object() {}; }\n} ⇒ T:ES I:ESR E:ES R:ESR Ann:- L:ER f/0:ESR
+# Plan v2.30 step 5b-6: a static field reads its own spelled access
+# (package access is exported and restricted, `private` is nothing);
+# an interface constant is public by the language and keeps its bit 0
+# where a package-access interface closes the scope; an enum's static
+# field likewise; an instance field is no unit.
+java public class T {\n  public static final int A = 1, B = 2;\n  static int c;\n  private static int d;\n  int inst;\n  enum E { X; static int n; }\n  interface I { int K = 1; }\n} ⇒ T:ES A:ES B:ES c:ESR d:- E:ESR n:ER I:ESR K:E
 "#;
 
 #[test]

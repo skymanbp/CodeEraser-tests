@@ -29,7 +29,7 @@ pub(super) fn check(lang: Lang, case: &str) {
 /// line (no language spells that extension) is commentary. Every
 /// text-table language shares it (run_tables below) — a runner apiece
 /// was the loop the clone gate pairs across files.
-fn run_table(table: &str, measure: impl Fn(Lang, &str)) {
+pub(super) fn run_table(table: &str, measure: impl Fn(Lang, &str)) {
     for (tag, case) in table.lines().filter_map(|l| l.split_once(' ')) {
         let Some(lang) = Lang::from_path(std::path::Path::new(&format!("x.{tag}"))) else {
             continue;
@@ -197,50 +197,33 @@ fn typescript_export_climb_is_identity_guarded() {
     }
 }
 
-/// K26: a destructuring export declares no unit at all — the producer
-/// must not mint a symbol for `a`, `b` or `x` (and cannot, for there
-/// is no declaration node to hang one on).
+/// K26, bit 1: the namespace chain under the module/script split — a
+/// script's top-level namespace is global, a module's private namespace
+/// is not, and `export namespace` opens it again; `declare global` is
+/// no chain member and an ambient signature is no unit. Then plan v2.30
+/// step 5b (UNSURE item 4): an ambient namespace's elements are
+/// exported by the spec (12.1.4) whether or not they spell `export`, a
+/// nested namespace opens the same way, a string-named `declare module`
+/// is open to its importers, and a `declare global` block's
+/// declarations are global on the empty chain; the `declare namespace`
+/// itself still needs `export` at a module file's top level, and a
+/// top-level ambient declaration is no element of anything. One text
+/// table: a case array apiece was the loop the clone gate paired with
+/// the export-climb battery above, and two tables the pair it found in
+/// another file (5b-6).
 #[test]
-fn typescript_destructuring_export_declares_no_symbol() {
-    let src = "export const [a, b] = pair();\nexport const { x } = obj();\n";
-    assert!(units::segments(src, Lang::TypeScript).is_empty());
-}
-
-/// K26, bit 1: the namespace chain under the module/script split —
-/// a script's top-level namespace is global, a module's private
-/// namespace is not, and `export namespace` opens it again. The last
-/// case is the empty chain: `declare global` is no member, and an
-/// ambient signature is no unit.
-#[test]
-fn typescript_scope_bit_reads_the_namespace_chain() {
-    for case in [
-        "namespace N { export function nf() {} } ⇒ nf:ES",
-        "namespace N { function g() {} } ⇒ g:-",
-        "import x from 'y';\nnamespace P { export function pf() {} } ⇒ pf:E",
-        "export namespace P { export function pf() {} } ⇒ pf:ES",
-        "export namespace A { namespace B { export function bf() {} } } ⇒ bf:E",
-        "export namespace A { export namespace B { export function bf() {} } } ⇒ bf:ES",
-        "export {};\ndeclare global { function gf(): void; } ⇒ ",
-        "export {};\nmodule Foo { export function ff() {} } ⇒ ff:E",
-        "module Foo { export function ff() {} } ⇒ ff:ES",
-    ] {
-        check(Lang::TypeScript, case);
-    }
-}
-
-/// Plan v2.30 step 5b (UNSURE item 4): an ambient namespace's elements
-/// are exported by the spec (12.1.4) whether or not they spell
-/// `export`, a nested namespace opens the same way, a string-named
-/// `declare module` is open to its importers, and a `declare global`
-/// block's declarations are global on the empty chain; the `declare
-/// namespace` itself still needs `export` at a module file's top level,
-/// and a top-level ambient declaration is no element of anything.
-#[test]
-fn typescript_ambient_elements_are_exported_by_the_spec() {
-    // one text table (run_table): a case array apiece was the loop the
-    // clone gate paired with the export-climb battery above
+fn typescript_namespace_chain_and_ambient_elements_follow_the_table() {
     run_table(
-        r#"ts export {};\ndeclare global { interface W {} } ⇒ W:ES
+        r#"ts namespace N { export function nf() {} } ⇒ nf/0:ES
+ts namespace N { function g() {} } ⇒ g/0:-
+ts import x from 'y';\nnamespace P { export function pf() {} } ⇒ pf/0:E
+ts export namespace P { export function pf() {} } ⇒ pf/0:ES
+ts export namespace A { namespace B { export function bf() {} } } ⇒ bf/0:E
+ts export namespace A { export namespace B { export function bf() {} } } ⇒ bf/0:ES
+ts export {};\ndeclare global { function gf(): void; } ⇒ 
+ts export {};\nmodule Foo { export function ff() {} } ⇒ ff/0:E
+ts module Foo { export function ff() {} } ⇒ ff/0:ES
+ts export {};\ndeclare global { interface W {} } ⇒ W:ES
 ts export {};\ndeclare global { namespace H { interface J {} } } ⇒ J:ES
 ts export {};\ndeclare namespace A { interface I {} namespace B { class C {} } } ⇒ C:E I:E
 ts export declare namespace D { enum E { X } } ⇒ E:ES

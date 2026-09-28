@@ -153,14 +153,28 @@ fn go_method_keys_carry_the_receiver_type_and_real_arity() {
 }
 
 /// Named units per language — the sorted keys one source yields, a
-/// block per language: a Go const or var spec at package level is a
-/// unit per name it binds while the same kinds inside a function body
-/// declare locals and no unit (plan v2.30 step 5b, boundary item 25);
-/// the C family keys a typedef by the leaf of its declarator chain, a
-/// type specifier only when it carries a body (a `struct T *`
-/// parameter type and a forward `class Fwd;` are references), a
-/// namespace and an alias by name, and a macro as a declaration of its
-/// own (plan v2.30 step 2).
+/// block per language (the head names the language by extension): a
+/// Go const or var spec at package level is a unit per name it binds
+/// while the same kinds inside a function body declare locals and no
+/// unit (plan v2.30 step 5b, boundary item 25); the C family keys a
+/// typedef by the leaf of its declarator chain, a type specifier only
+/// when it carries a body (a `struct T *` parameter type and a forward
+/// `class Fwd;` are references), a namespace and an alias by name, and
+/// a macro as a declaration of its own (plan v2.30 step 2). Step 5b-6
+/// widened the domain by rule (fourclass/declared.rs): a Java `static`
+/// field and an interface's or annotation type's constant, each
+/// declarator its own unit — never an instance field, an enum constant
+/// or a local; a C / C++ file-scope variable definition — never a bare
+/// `extern`, a prototype (`int (*fp)(int)` is a variable, `signal`'s
+/// shape a prototype), a class member or a body local, while a
+/// namespace, `extern "C"`, a template head, a preprocessor branch and
+/// a structured binding are read through; a TypeScript module-level
+/// `const` / `let` / `var` per bound identifier, patterns included,
+/// under `export` / `declare` wrappers and namespace / module /
+/// `declare global` bodies — never in a function, a loop head, a
+/// branch or a bare block, never a second symbol for a function the
+/// extractor already named after its declarator (`f/0`, `k/0`),
+/// while `g = function h()` binds both.
 const NAMED: &str = "\
 go @@ A B Y c f/0 x z
 package p
@@ -184,6 +198,72 @@ typedef int (*fp)(int);
 class Fwd;
 #define M 1
 namespace ns { using A = int; }
+====
+java @@ A Ann B E F I K L R Rec Z c d m/0 n s v
+public class F {
+  public static final int A = 1, B = 2;
+  static int c;
+  private static String d = \"x\";
+  int inst;
+  public static final Runnable R = () -> {};
+  enum E { X, Y; static int n; int q; }
+  interface I { int K = 1; void im(); }
+  void m() { int local = 1; class L { static final int Z = 1; } }
+  record Rec(int q) { static int s; }
+  @interface Ann { int v = 1; }
+}
+====
+c @@ S a b d e f fn/0 fp g s1 under_else under_if
+int a;
+static int b = 1;
+extern int c;
+extern int d = 2;
+int e, *f, g[3];
+int (*fp)(int);
+int proto(int);
+int *pproto(int);
+struct S { int x; } s1;
+#ifdef X
+int under_if;
+#else
+int under_else;
+#endif
+void fn(void) { int local; static int slocal; for (int i = 0; i < 1; i++) {} }
+void (*signal(int, void (*)(int)))(int);
+====
+cpp @@ K K::count anon cv cv2 ns nv obj pi ref sv x y
+namespace ns { int nv = 1; static int sv; namespace { int anon; } }
+extern \"C\" { int cv; }
+extern \"C\" int cv2;
+template <class T> constexpr T pi = T(3);
+class K { static int count; int inst; public: static const int M = 3; };
+int K::count = 0;
+auto [x, y] = std::pair<int,int>{1, 2};
+K obj(1, 2);
+using ns::nv;
+int& ref = il;
+====
+ts @@ A B C G K amb c d e f/0 fn/0 g h/0 inM inN k/0 p priv r rest s t u w
+import { z } from \"./z\";
+export const A = 1, B = 2;
+const c = 3;
+let d: number;
+var e = 4;
+export let f = () => 1;
+export const g = function h() {};
+export const k = function () {};
+export const { p, q: r, ...rest } = z;
+export const [s, , t = 1, ...u] = [];
+export const K = class {};
+declare const amb: number;
+namespace N { export const inN = 1; const priv = 2; }
+declare module \"m\" { const inM: number; }
+declare global { const G: number; }
+function fn() { const loc = 1; for (const it of []) {} for (let i = 0; i < 1; i++) {} if (c) { let blk = 1; } }
+class C { static sf = 1; }
+for (const top of []) {}
+{ const inBlock = 1; }
+export const { w = 1 } = z;
 ";
 
 #[test]
@@ -191,7 +271,7 @@ fn named_units_per_language() {
     for block in NAMED.split("====\n") {
         let (head, src) = block.split_once('\n').unwrap();
         let (name, want) = head.split_once(" @@ ").unwrap();
-        let lang = if name == "go" { Lang::Go } else { Lang::Cpp };
+        let lang = Lang::from_path(std::path::Path::new(&format!("x.{name}"))).unwrap();
         let (_, mut keys) = keyed(src, lang);
         keys.sort_unstable();
         assert_eq!(keys.join(" "), want, "{name}");
