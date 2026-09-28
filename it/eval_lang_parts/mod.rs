@@ -166,7 +166,7 @@ pub const PRECISION_DOCS: Docs = Docs("lang-precision");
 /// directory — lang_provenance.rs holds a doc to it), so their docs
 /// are generated again once, beside HTML's, after the HTML ladder.
 use Reach::{Tree, Universe};
-use Stage::Audited;
+use Stage::Scored;
 
 pub const EXAMS: [Exam; 4] = [
     Exam {
@@ -178,7 +178,7 @@ pub const EXAMS: [Exam; 4] = [
         exts: &["java"],
         reach: Universe,
         ladder: "cli/src/graph/ladder/java*",
-        stage: Audited,
+        stage: Scored,
         generation: 1,
     },
     Exam {
@@ -190,7 +190,7 @@ pub const EXAMS: [Exam; 4] = [
         exts: &["lua"],
         reach: Universe,
         ladder: "cli/src/graph/ladder/lua*",
-        stage: Audited,
+        stage: Scored,
         generation: 2,
     },
     Exam {
@@ -202,7 +202,7 @@ pub const EXAMS: [Exam; 4] = [
         exts: &["R", "r"],
         reach: Universe,
         ladder: "cli/src/graph/ladder/r/",
-        stage: Audited,
+        stage: Scored,
         generation: 1,
     },
     Exam {
@@ -218,7 +218,7 @@ pub const EXAMS: [Exam; 4] = [
         exts: &["html", "htm"],
         reach: Tree,
         ladder: "cli/src/graph/ladder/html*",
-        stage: Audited,
+        stage: Scored,
         generation: 1,
     },
 ];
