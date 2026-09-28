@@ -94,13 +94,15 @@ fn shared(ms: &[Match]) -> BTreeMap<String, usize> {
     out
 }
 
-/// The replay's fixed context: the repository, the shadow tree and
-/// the operating point every probe reads at.
+/// The replay's fixed context: the repository, the shadow tree, the
+/// operating point every probe reads at and the one language whose
+/// files are events (every judged language when none is named).
 struct Walk<'a> {
     repo: &'a Path,
     shadow: &'a Path,
     p: Params,
     f: Filter,
+    lang: Option<Lang>,
 }
 
 impl Walk<'_> {
@@ -172,7 +174,9 @@ fn settle(
 }
 
 /// One commit's events: probe, read against the parent, advance, then
-/// settle once the commit is whole.
+/// settle once the commit is whole. Every judged file advances the
+/// shadow and the index; only a file of the walk's language (all of
+/// them when none is named) is an event.
 fn replay_commit(
     w: &Walk,
     idx: &mut Index,
@@ -200,11 +204,13 @@ fn replay_commit(
         }
         let lang = judged(rel).expect("judged");
         let bytes = blob(w.repo, commit, rel);
-        events += 1;
-        let before = rows.len();
-        read_event(w, idx, &c, (rel, &bytes, lang, *status), fired, rows);
-        if rows.len() > before {
-            children.insert(rel.clone(), (bytes.clone(), lang));
+        if w.lang.is_none_or(|l| l == lang) {
+            events += 1;
+            let before = rows.len();
+            read_event(w, idx, &c, (rel, &bytes, lang, *status), fired, rows);
+            if rows.len() > before {
+                children.insert(rel.clone(), (bytes.clone(), lang));
+            }
         }
         apply(w.shadow, idx, rel, &bytes, lang, w.p);
         live.insert(rel.clone());
@@ -215,24 +221,30 @@ fn replay_commit(
     events
 }
 
-#[test]
-#[ignore = "history instrument: replays a repository's first-parent chain, minutes; run by hand"]
-fn every_intercept_is_read_against_its_parent_baseline() {
-    let repo = std::env::var_os("CE_FPR_REPO").map_or_else(repo_root, PathBuf::from);
-    let shadow = tmp("fpr-shadow");
+/// One history replayed end to end at the guard's default operating
+/// point: the seed at the chain's first commit, then every later
+/// commit's events — all judged languages, or the one named — and
+/// the rows they raised. The standing ledger and the per-language
+/// ledger (fpr_lang_replay.rs) share this one walk.
+pub fn replay(
+    repo: &Path,
+    shadow: &Path,
+    lang: Option<Lang>,
+    commits: &[String],
+) -> (usize, Vec<Intercept>) {
     let p = Params::default();
     let w = Walk {
-        repo: &repo,
-        shadow: &shadow,
+        repo,
+        shadow,
         p,
         f: Filter {
             min_tokens: p.guarantee(),
             min_distinct: DEFAULT_MIN_DISTINCT,
         },
+        lang,
     };
     let mut idx = Index::open(&shadow.join(".ce/index.db"), p).expect("open index");
-    let commits = chain(&repo);
-    let mut live = seed(&repo, &shadow, &mut idx, &commits[0], p);
+    let mut live = seed(repo, shadow, &mut idx, &commits[0], p);
     let (mut fired, mut rows, mut events) = (BTreeSet::new(), Vec::new(), 0usize);
     for step in commits.windows(2) {
         events += replay_commit(
@@ -244,5 +256,14 @@ fn every_intercept_is_read_against_its_parent_baseline() {
             &mut rows,
         );
     }
+    (events, rows)
+}
+
+#[test]
+#[ignore = "history instrument: replays a repository's first-parent chain, minutes; run by hand"]
+fn every_intercept_is_read_against_its_parent_baseline() {
+    let repo = std::env::var_os("CE_FPR_REPO").map_or_else(repo_root, PathBuf::from);
+    let commits = chain(&repo);
+    let (events, rows) = replay(&repo, &tmp("fpr-shadow"), None, &commits);
     report(events, &rows);
 }

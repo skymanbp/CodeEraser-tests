@@ -30,13 +30,12 @@
 //! the row of the same name and leaving the other corpus alone.
 
 use crate::common::{blob, chain, changed, git_lines, repo_root, tmp};
-use crate::fpr_zone_replay_parts::{Corpus, DOC, GATE_PPM, Landed, SCHEMA, table};
+use crate::fpr_zone_replay_parts::{Corpus, LEDGER, Landed, table};
 use codeeraser::config::Config;
 use codeeraser::guard::zone;
 use codeeraser::scan::lang::Lang;
 use codeeraser::scan::walk::Scope;
 use codeeraser::score::baseline;
-use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -185,32 +184,6 @@ pub fn replay(repo: &Path, shadow: &Path, name: &str) -> Corpus {
     }
 }
 
-/// The measured row into the frozen doc: the row of the same name is
-/// replaced and every other row stays as its own run left it, because
-/// the two corpora are two runs.
-fn merge(root: &Path, row: Value) {
-    let path = root.join(DOC);
-    let mut doc: Value = std::fs::read_to_string(&path)
-        .ok()
-        .and_then(|t| serde_json::from_str(&t).ok())
-        .unwrap_or_else(|| json!({ "corpora": [] }));
-    doc["schema"] = json!(SCHEMA);
-    doc["generated_from"] = json!("cli/tests/it/fpr_zone_replay.rs");
-    doc["gate_ppm"] = json!(GATE_PPM);
-    let corpora = doc["corpora"].as_array_mut().expect("a corpora array");
-    corpora.retain(|c| c["name"] != row["name"]);
-    corpora.push(row);
-    corpora.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
-    std::fs::write(
-        &path,
-        format!(
-            "{}\n",
-            serde_json::to_string_pretty(&doc).expect("the frozen doc")
-        ),
-    )
-    .expect("write the frozen doc");
-}
-
 #[test]
 #[ignore = "history instrument: replays a repository's first-parent chain, minutes; run by hand"]
 fn every_zone_landing_is_read_against_the_baseline_of_its_parent() {
@@ -235,6 +208,10 @@ fn every_zone_landing_is_read_against_the_baseline_of_its_parent() {
         c.unreadable
     );
     if crate::facts::blessing() {
-        merge(&repo_root(), row);
+        // the two corpora are two runs: the row of the same name is
+        // replaced, the other kept, both in name order
+        LEDGER.merge(&repo_root(), row, &[], |c| {
+            (0, c["name"].as_str().unwrap_or_default().to_string())
+        });
     }
 }

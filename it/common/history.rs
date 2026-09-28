@@ -65,13 +65,20 @@ pub fn changed(repo: &Path, parent: &str, commit: &str) -> Vec<(char, String)> {
 /// before them as the seed.
 pub fn chain(repo: &Path) -> Vec<String> {
     let tip = std::env::var("CE_FPR_TIP").unwrap_or_else(|_| "HEAD".into());
-    let mut all = first_parent(repo, &tip);
+    let limit = std::env::var("CE_FPR_LIMIT")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok());
+    chain_of(repo, &tip, limit)
+}
+
+/// The same chain for a caller that names its tip and window itself —
+/// the per-language ledger pins both from the exam registry, so no
+/// environment variable can move what it measures.
+pub fn chain_of(repo: &Path, tip: &str, limit: Option<usize>) -> Vec<String> {
+    let mut all = first_parent(repo, tip);
     all.reverse();
     assert!(all.len() >= 2, "need history to replay");
-    match std::env::var("CE_FPR_LIMIT")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-    {
+    match limit {
         Some(n) if n < all.len() - 1 => all[all.len() - n - 1..].to_vec(),
         _ => all,
     }

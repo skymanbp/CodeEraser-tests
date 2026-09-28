@@ -105,6 +105,8 @@ mod fixtures_why;
 mod foreign_readers;
 mod fourclass_decls;
 mod fpr_fourclass;
+mod fpr_lang_gate;
+mod fpr_lang_replay;
 mod fpr_replay;
 mod fpr_replay_parts;
 mod fpr_zone_gate;

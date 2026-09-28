@@ -8,7 +8,7 @@
 use std::collections::BTreeSet;
 
 /// What the parent baseline says about one intercept.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum Class {
     /// the parent shared nothing with this twin: the pair is new here
     New,
@@ -29,8 +29,12 @@ impl Class {
     }
 }
 
+/// One intercept row; the per-language ledger freezes it as written
+/// (fpr_lang_replay.rs), the standing report prints it.
+#[derive(serde::Serialize)]
 pub struct Intercept {
     pub commit: String,
+    #[serde(rename = "file")]
     pub rel: String,
     pub twin: String,
     pub parent: usize,

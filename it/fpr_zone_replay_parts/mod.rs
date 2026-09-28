@@ -6,6 +6,7 @@
 //! inside the repository's own file budget, the fpr_replay_parts
 //! shape.
 
+use crate::common::ledger::{self, Ledger, corpus_at};
 pub use crate::common::stats::{cp_upper_ppm, rate_ppm};
 use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
@@ -99,36 +100,21 @@ impl Corpus {
     }
 }
 
-/// A ppm as a percentage with four decimals, integer arithmetic only.
-pub fn pct(ppm: u64) -> String {
-    format!("{}.{:04} %", ppm / 10_000, ppm % 10_000)
-}
+/// The zone ledger's frozen doc.
+pub const LEDGER: Ledger = Ledger {
+    rel: DOC,
+    schema: SCHEMA,
+    generated_from: "cli/tests/it/fpr_zone_replay.rs",
+    gate_ppm: GATE_PPM,
+};
 
 /// The ledger table docs/FPR-REPLAY.md carries — one row per corpus,
-/// printed by the instrument for the maintainer to paste (the page is
-/// hand-maintained prose, not a generated block).
+/// printed by the instrument for the maintainer to paste.
 pub fn table(corpora: &[Value]) -> String {
-    let mut s = String::from(
+    ledger::table(
         "| 语料 | 提交 | 事件 | 同分母事件 | 落区 | observe | warn | ask | ask 被硬线遮蔽 | 误拦 ask | 率 | CP 95 % 上界 |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n",
-    );
-    for c in corpora {
-        let n = |k: &str| c[k].as_u64().unwrap_or_default();
-        s += &format!(
-            "| {} @ {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
-            c["name"].as_str().unwrap_or("?"),
-            c["tip"].as_str().unwrap_or("?"),
-            n("commits"),
-            n("events"),
-            n("events_shared"),
-            n("in_zone"),
-            n("observe"),
-            n("warn"),
-            n("ask"),
-            n("ask_shadowed"),
-            n("false_asks"),
-            pct(n("rate_ppm")),
-            pct(n("cp_upper_ppm")),
-        );
-    }
-    s
+        corpus_at,
+        "commits events events_shared in_zone observe warn ask ask_shadowed false_asks %rate_ppm %cp_upper_ppm",
+        corpora,
+    )
 }

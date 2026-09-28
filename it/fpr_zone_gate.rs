@@ -12,33 +12,23 @@
 //! exactly what that arithmetic licenses: armed if and only if every
 //! corpus measured at or under the §4.2 line. Plus one e2e over a
 //! synthetic history, so the walk itself is tested and not only its
-//! record.
+//! record. The ledger shapes — the doc, the table, the closing check,
+//! the two-commit history — are common::ledger's, shared with the
+//! per-language ledger (fpr_lang_gate.rs).
 
-use crate::common::{self, repo_root, tmp};
-use crate::eval_support::{eval_doc, load};
+use crate::common::ledger::{closes, count, intercepts, rate_pair, two_commits};
+use crate::common::tmp;
 use crate::fpr_zone_gate_helpers::filler;
 use crate::fpr_zone_replay::replay;
-use crate::fpr_zone_replay_parts::{
-    GATE_PPM, SCHEMA, cp_upper_ppm, false_asks, rate_ppm, shadowed, table,
-};
+use crate::fpr_zone_replay_parts::{GATE_PPM, LEDGER, false_asks, shadowed, table};
 use serde_json::Value;
 
 #[test]
 fn the_shipped_default_is_the_one_the_frozen_ledger_licenses() {
-    let doc = load(&eval_doc("fpr-zone"));
-    assert_eq!(doc["schema"], SCHEMA);
-    assert_eq!(doc["gate_ppm"].as_u64(), Some(GATE_PPM));
-    let corpora = doc["corpora"].as_array().expect("a corpora array");
-    let names: Vec<&str> = corpora.iter().filter_map(|c| c["name"].as_str()).collect();
-    assert_eq!(
-        names,
-        ["requests", "self"],
-        "both measured corpora, once each"
-    );
     let mut licensed = true;
-    for c in corpora {
+    for c in &LEDGER.rows(&["requests", "self"]) {
         coherent(c);
-        licensed &= c["rate_ppm"].as_u64().expect("rate") <= GATE_PPM;
+        licensed &= count(c, "rate_ppm") <= GATE_PPM;
     }
     assert_eq!(
         codeeraser::config::Guard::default().zone_tiers,
@@ -50,11 +40,8 @@ fn the_shipped_default_is_the_one_the_frozen_ledger_licenses() {
 }
 
 fn coherent(c: &Value) {
-    let n = |k: &str| {
-        c[k].as_u64()
-            .unwrap_or_else(|| panic!("{}: no {k}", c["name"]))
-    };
-    let asks = c["intercepts"].as_array().expect("an intercepts array");
+    let n = |k: &str| count(c, k);
+    let asks = intercepts(c);
     let hidden = asks.iter().filter(|r| r["shadowed"] == true).count() as u64;
     let (k, events) = (n("false_asks") as usize, n("events") as usize);
     assert!(events > 0 && n("events_shared") <= n("events"));
@@ -66,37 +53,21 @@ fn coherent(c: &Value) {
         .map(|v| v.as_u64().expect("soft-line events"))
         .sum();
     assert_eq!(soft_events, n("events"), "each event has a soft line");
-    assert_eq!(
-        (
-            n("observe") + n("warn") + n("ask"),
-            asks.len() as u64,
-            hidden,
-            n("ask") - hidden,
-            rate_ppm(k, events),
-            cp_upper_ppm(k, events),
-        ),
-        (
-            n("in_zone"),
-            n("ask"),
-            n("ask_shadowed"),
-            n("false_asks"),
-            n("rate_ppm"),
-            n("cp_upper_ppm"),
-        ),
-        "{}: re-run the instrument; the row's arithmetic does not close",
-        c["name"]
+    closes(
+        c,
+        &[
+            ("in_zone", n("observe") + n("warn") + n("ask")),
+            ("ask", asks.len() as u64),
+            ("ask_shadowed", hidden),
+            ("false_asks", n("ask") - hidden),
+        ],
     );
+    closes(c, &rate_pair(k, events, ("rate_ppm", "cp_upper_ppm")));
 }
 
 #[test]
 fn the_zone_doc_quotes_the_frozen_table() {
-    let doc = load(&eval_doc("fpr-zone"));
-    let text = crate::facts::read(&repo_root(), "docs/FPR-REPLAY.md");
-    let printed = table(doc["corpora"].as_array().expect("corpora"));
-    assert!(
-        text.contains(printed.trim()),
-        "paste the instrument's measured zone table"
-    );
+    LEDGER.page_quotes("docs/FPR-REPLAY.md", &table(&LEDGER.corpora()));
 }
 
 /// The ce.toml the synthetic history declares: S = 10, H = 30, so the
@@ -111,26 +82,20 @@ const TABLE: &str = "[thresholds]\nfile_lines_warn = 10\nfile_lines_fail = 30\n"
 /// is not this rule's false intercept.
 #[test]
 fn a_synthetic_history_lands_one_ask_one_warn_and_one_shadowed() {
-    let repo = tmp("fpr-zone-e2e");
-    common::write_all(
-        &repo,
+    let repo = two_commits(
+        "fpr-zone-e2e",
         &[
             ("ce.toml", TABLE),
             ("a.rs", &filler(1)),
             ("b.rs", &filler(1)),
             ("c.rs", &filler(1)),
         ],
-    );
-    common::init_and_commit(&repo, "seed");
-    common::write_all(
-        &repo,
         &[
             ("a.rs", &filler(26)),
             ("b.rs", &filler(16)),
             ("c.rs", &filler(40)),
         ],
     );
-    common::commit_all(&repo, "three landings");
     let c = replay(&repo, &tmp("fpr-zone-e2e-shadow"), "e2e");
     assert_eq!(
         (c.commits, c.events, c.rows.len()),

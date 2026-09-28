@@ -19,6 +19,7 @@ pub mod gitio;
 mod history;
 pub mod hooks;
 pub mod ladder;
+pub mod ledger;
 pub mod mcp;
 pub mod metric;
 pub mod stats;
