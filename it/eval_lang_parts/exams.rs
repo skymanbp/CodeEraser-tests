@@ -5,7 +5,7 @@
 
 use super::Exam;
 use super::Reach::{Tree, Universe};
-use super::Stage::{Audited, Scored};
+use super::Stage::Scored;
 
 /// The C family's rungs and the compilation-database readers they
 /// consult: one ladder for both exams, since a C++ include resolves
@@ -133,7 +133,6 @@ pub const EXAMS: [Exam; 6] = [
     Exam {
         reach: Tree,
         ladder_first: Some(C_LADDER_FIRST),
-        stage: Audited,
         ..exam(
             "c",
             &[("lua", "0b29f408433e92953cc72b1d3e06c7ac8139e439")],
@@ -144,7 +143,6 @@ pub const EXAMS: [Exam; 6] = [
     },
     Exam {
         ladder_first: Some(C_LADDER_FIRST),
-        stage: Audited,
         ..exam(
             "cpp",
             &[("fmt", "6d71f74624be5daa548073ff8e4e0c8aa5476010")],
