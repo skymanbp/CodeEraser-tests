@@ -76,10 +76,13 @@ fn mcp_report_faces_match_library() {
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-qm", "seed"]);
     // Steady-state the index once first: Summary carries refresh
-    // counters (refreshed/removed/stale_skipped), so both faces must
-    // observe the same warm index — otherwise this compares cache
-    // states, not serializations.
+    // counters (refreshed/removed/stale_skipped) and the clone report
+    // carries the verdict cache's (cached/judged/requests, plan v2.30
+    // step 5b-9), so both faces must observe the same warm index and
+    // warm cache — otherwise this compares cache states, not
+    // serializations.
     codeeraser::dedup::analyze(&dir, None, None, None).expect("warm");
+    codeeraser::dedup::t3::run(&dir, None, &common::core_bin()).expect("warm t3");
     let mut s = McpSession::over(&dir);
     for (id, (name, args, want)) in library_reports(&dir).into_iter().enumerate() {
         let got = s.ask(serde_json::json!({

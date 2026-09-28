@@ -90,6 +90,78 @@ pub fn rust_fn(seed: u32) -> String {
     )
 }
 
+/// A near-miss sibling of `rust_near_miss(seed ^ 1)` (plan v2.30 step
+/// 5b-9): ~65 normalized tokens in a shape the T2 seed does not have
+/// (a `while` over a `match`); an odd seed carries one extra statement
+/// a fifth of the way in and the default arm's operator differs, so no
+/// shared run reaches the T1/T2 floor of 50 tokens while the trees
+/// differ by four nodes — ted 4 over 68 / 64, TSED above 0.85. Two
+/// consecutive seeds are a pair the T3 family alone finds.
+pub fn rust_near_miss(seed: u32) -> String {
+    let (extra, op) = if seed % 2 == 1 {
+        (format!("    count_{seed} ^= {seed};\n"), "+=")
+    } else {
+        (String::new(), "-=")
+    };
+    format!(
+        "fn scan_{seed}(items_{seed}: &[u32], cap_{seed}: u32) -> u32 {{
+    let mut count_{seed} = 0;
+    let mut index_{seed} = 0;
+{extra}    while index_{seed} < items_{seed}.len() {{
+        let item_{seed} = items_{seed}[index_{seed}];
+        match item_{seed} {{
+            0 => count_{seed} += cap_{seed},
+            _ if item_{seed} > cap_{seed} => count_{seed} += {seed},
+            _ => count_{seed} {op} 1,
+        }}
+        index_{seed} += 1;
+    }}
+    count_{seed}
+}}
+"
+    )
+}
+
+/// a.rs, b.rs and c.rs as the T2 seeds 1..3: one tree thrice — three
+/// pairwise blocks for the group tests, three T3 pairs at ted 0 for
+/// the verdict cache's.
+pub fn seed_clone_trio(dir: &Path) {
+    for (name, seed) in [("a.rs", 1), ("b.rs", 2), ("c.rs", 3)] {
+        std::fs::write(dir.join(name), rust_fn(seed)).expect(name);
+    }
+}
+
+/// A real Cargo layout under a fresh git repository: without
+/// Cargo.toml the rs ladder has no crate root and `mod x;` correctly
+/// refuses. Each (module, source) lands under src/ and main.rs
+/// declares exactly those modules.
+fn cargo_crate(dir: &Path, mods: &[(&str, String)]) {
+    git(dir, &["init", "-q"]);
+    std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"fx\"\n").expect("Cargo.toml");
+    std::fs::create_dir_all(dir.join("src")).expect("src");
+    let decls: String = mods.iter().map(|(m, _)| format!("mod {m};\n")).collect();
+    std::fs::write(dir.join("src/main.rs"), format!("{decls}fn main() {{}}\n")).expect("main.rs");
+    modules(dir, mods);
+}
+
+/// Write each (module, source) under src/.
+fn modules(dir: &Path, mods: &[(&str, String)]) {
+    for (m, src) in mods {
+        std::fs::write(dir.join("src").join(format!("{m}.rs")), src).expect(m);
+    }
+}
+
+/// Two commits of a real Cargo layout for the window batteries: the
+/// seed modules, then `later` rewriting some of them.
+pub fn crate_history(tag: &str, seed: &[(&str, String)], later: &[(&str, String)]) -> PathBuf {
+    let dir = tmp(tag);
+    cargo_crate(&dir, seed);
+    commit_all(&dir, "seed");
+    modules(&dir, later);
+    commit_all(&dir, "window");
+    dir
+}
+
 /// Write `a.rs` (the T2 seed) plus a ce.toml pinning the guard mode.
 pub fn seed_sources(dir: &Path, mode: &str) {
     std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("a.rs");

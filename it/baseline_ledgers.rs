@@ -16,7 +16,11 @@
 /// cleanups are this tool's whole point and retire BY NAME, never
 /// silently. A listed id back in the baseline = a stale entry,
 /// refused — the ledger can only ever describe the present.
-pub const RETIRED: [(u64, &str); 17] = [
+pub const RETIRED: [(u64, &str); 18] = [
+    (
+        13445979226203383951,
+        "v2.30 step 5b-9: score::measure and the join's judge_pairs each spelled the same path -> row map and the first lines of the clone-row seating after it; the seating is one function both roads read, score::clone_rows, and the map another, score::row_index, so the join/verdicts.rs <-> score/mod.rs member dissolved",
+    ),
     (
         10398559894504384704,
         "v2.30 step 3: the LangSpec schema change (fn_required_fields, if_kinds, call_fields, owner_kinds on every table) broke the GO / HASKELL table rhyme; the shape re-paired as FAMILY / TYPESCRIPT, the new member 12441163793521289489",

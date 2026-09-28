@@ -31,9 +31,7 @@ fn match_fn(seed: u32) -> String {
 #[test]
 fn three_way_family_is_one_group() {
     let dir = common::tmp("groups-threeway");
-    for (name, seed) in [("a.rs", 1), ("b.rs", 2), ("c.rs", 3)] {
-        std::fs::write(dir.join(name), common::rust_fn(seed)).expect("seed");
-    }
+    common::seed_clone_trio(&dir);
     let found = common::analyze(&dir, 3, 1);
     let g = &found.groups[0];
     let files: Vec<&str> = g.members.iter().map(|m| m.file.as_str()).collect();

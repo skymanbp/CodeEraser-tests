@@ -45,10 +45,6 @@ pub fn analyze(dir: &Path, blocks: usize, groups: usize) -> codeeraser::dedup::p
     found
 }
 
-/// The repository root — cli/'s parent. Every gate that reads a
-/// tracked file starts here. It lived as seven private copies across
-/// the test binaries until the clone gate pointed at one pair; the
-/// class was all seven, so the definition moved here once.
 /// `ce check`'s options over a judged tree: the committed baseline is
 /// the CALLER's one read (O31) — score::run judges what it is handed
 /// and never opens the file itself — and there is no churn window.
@@ -72,6 +68,17 @@ pub fn judged(dir: &Path) -> codeeraser::score::Outcome {
     o
 }
 
+/// One healthy `ce join` over a fixture's window.
+pub fn join_report(dir: &Path, days: u32) -> codeeraser::join::Report {
+    let r = codeeraser::join::run(dir, None, &core_bin(), days).expect("join");
+    assert!(r.degraded.is_none(), "healthy graph reply");
+    r
+}
+
+/// The repository root — cli/'s parent. Every gate that reads a
+/// tracked file starts here. It lived as seven private copies across
+/// the test binaries until the clone gate pointed at one pair; the
+/// class was all seven, so the definition moved here once.
 pub fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()

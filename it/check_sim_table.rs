@@ -34,8 +34,8 @@ const SHARED_DOC: &str = "// The ledger this module keeps is append only: every 
 /// seed's two renamings. Comments never enter the token stream, so
 /// the clone pair is the seed's own calibrated one and the doc pair
 /// is the block, on the same two files.
-fn fixture() -> PathBuf {
-    let dir = common::tmp("check-sim-table");
+fn fixture(tag: &str) -> PathBuf {
+    let dir = common::tmp(tag);
     for (name, seed) in [("a.rs", 1), ("b.rs", 2)] {
         let src = format!("{SHARED_DOC}{}", common::rust_fn(seed));
         std::fs::write(dir.join(name), src).expect(name);
@@ -45,7 +45,7 @@ fn fixture() -> PathBuf {
 
 #[test]
 fn a_pair_both_families_judged_rides_the_sim_table_once() {
-    let dir = fixture();
+    let dir = fixture("check-sim-table");
     // (1) the fixture IS the defect's shape — both families, one pair
     let found = common::analyze(&dir, 1, 1);
     let block = &found.blocks[0];
@@ -80,4 +80,50 @@ fn a_pair_both_families_judged_rides_the_sim_table_once() {
         "one join candidate per sim row: {:?}",
         o.reply.candidates
     );
+}
+
+/// Two files the T3 family alone relates (plan v2.30 step 5b-9): no
+/// T1/T2 block, one near-miss pair — and the check seats it as one
+/// sim row of kind 1, charging the clone axis exactly as the block
+/// pair above charges it (two touched files over two code files) and
+/// the docdup axis nothing. Until 5b-9 the table took the free T1/T2
+/// blocks and kind 1 was dead on every live road.
+#[test]
+fn a_t3_only_pair_rides_the_sim_table_as_kind_one() {
+    let dir = common::tmp("check-sim-t3");
+    for (name, seed) in [("c.rs", 1), ("d.rs", 2)] {
+        std::fs::write(dir.join(name), common::rust_near_miss(seed)).expect(name);
+    }
+    // (1) the fixture IS the shape: no block, one T3 clone, c <-> d
+    common::analyze(&dir, 0, 0);
+    let t3 = codeeraser::dedup::t3::run(&dir, None, &core_bin()).expect("clone");
+    let pair: Vec<(&str, &str)> = t3.hits.iter().map(|h| (&*h.a, &*h.b)).collect();
+    assert!(
+        matches!(pair[..], [(a, b)] if a.starts_with("c.rs:") && b.starts_with("d.rs:")),
+        "one near-miss pair, c <-> d: {pair:?}"
+    );
+    // (2) one sim row, one candidate, the clone axis charged as the
+    // block pair's is, the docdup axis not at all
+    let (t3_only, block_pair) = (
+        common::judged(&dir),
+        common::judged(&fixture("check-sim-twin")),
+    );
+    let axis = |o: &codeeraser::score::Outcome, c: i64| {
+        o.reply.axes.iter().find(|a| a[0] == c).map(|a| a[1])
+    };
+    assert_eq!(
+        (
+            t3_only.files,
+            t3_only.sim_pairs,
+            t3_only.reply.candidates.len()
+        ),
+        (2, 1, 1)
+    );
+    assert_eq!(
+        (axis(&t3_only, 2), axis(&t3_only, 3)),
+        (axis(&block_pair, 2), Some(0)),
+        "kind 1 reads as kind 0 on the clone axis: {:?}",
+        t3_only.reply.axes
+    );
+    assert!(axis(&t3_only, 2) > Some(0), "{:?}", t3_only.reply.axes);
 }

@@ -10,33 +10,20 @@ use crate::common;
 use codeeraser::join;
 use std::path::PathBuf;
 
-fn core_bin() -> String {
-    std::env::var("CE_CORE_BIN").expect(
-        "CE_CORE_BIN is unset — build the core and export it:\n  \
-         cd core && cabal build all && export CE_CORE_BIN=$(cabal list-bin ce-core)",
-    )
-}
-
 /// Two commits of a real Cargo layout: without Cargo.toml the rs
 /// ladder has no crate root and `mod a;` correctly refuses. The
 /// window edit is a literal tweak INSIDE work_1 (T2-invariant, so
 /// the clone pair survives; churn sees a rewrite) plus a top-level
 /// comment on b.rs (append; comments never enter the token stream).
 fn fixture() -> PathBuf {
-    let dir = common::tmp("join-e2e");
-    common::git(&dir, &["init", "-q"]);
-    std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"fx\"\n").expect("Cargo.toml");
-    std::fs::create_dir_all(dir.join("src")).expect("src");
-    std::fs::write(dir.join("src/main.rs"), "mod a;\nmod b;\nfn main() {}\n").expect("main.rs");
-    std::fs::write(dir.join("src/a.rs"), common::rust_fn(1)).expect("a.rs");
-    std::fs::write(dir.join("src/b.rs"), common::rust_fn(2)).expect("b.rs");
-    common::commit_all(&dir, "seed");
-    let tweaked = common::rust_fn(1).replace("+ 7;", "+ 9;");
-    std::fs::write(dir.join("src/a.rs"), tweaked).expect("a.rs tweak");
-    let touched = format!("{}// touched\n", common::rust_fn(2));
-    std::fs::write(dir.join("src/b.rs"), touched).expect("b.rs touch");
-    common::commit_all(&dir, "tweak + touch");
-    dir
+    common::crate_history(
+        "join-e2e",
+        &[("a", common::rust_fn(1)), ("b", common::rust_fn(2))],
+        &[
+            ("a", common::rust_fn(1).replace("+ 7;", "+ 9;")),
+            ("b", format!("{}// touched\n", common::rust_fn(2))),
+        ],
+    )
 }
 
 /// Tier F: the one similar pair carries all three legs.
@@ -85,9 +72,7 @@ fn assert_tier_u(r: &join::Report) {
 
 #[test]
 fn three_legs_assemble_on_both_tiers() {
-    let dir = fixture();
-    let r = join::run(&dir, None, &core_bin(), 30).expect("join");
-    assert!(r.degraded.is_none(), "healthy graph reply");
+    let r = common::join_report(&fixture(), 30);
     assert_eq!(r.commits, 2);
     assert_tier_f(&r);
     assert_tier_u(&r);
@@ -95,7 +80,7 @@ fn three_legs_assemble_on_both_tiers() {
     // graph leg: null plus the R6 caveat CODE on every unit row
     // (plan v2.15 — the sentence stopped riding the machine face)
     let doc = join::report_json(&r);
-    assert_eq!(doc["schema"], "ce.join-report/0.3.0");
+    assert_eq!(doc["schema"], "ce.join-report/0.4.0");
     for row in doc["units"].as_array().expect("units") {
         assert!(row["graph"].is_null(), "unit graph leg is null: {row}");
         assert!(row["caveat"].is_null(), "the prose field is gone: {row}");
