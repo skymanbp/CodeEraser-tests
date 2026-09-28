@@ -32,6 +32,11 @@ fn typed() -> Vec<Fact> {
             "cli/src/scan/lang.rs::Lang::judged_mask (set bits)",
         ),
         linked(
+            "count:grammars#word",
+            scan::lang::Lang::with_grammar().count(),
+            "cli/src/scan/lang.rs::Lang::with_grammar (GRAMMARS rows)",
+        ),
+        linked(
             "count:erase_reasons#word",
             erase::REASON_NAMES.len(),
             "cli/src/erase/model.rs::REASON_NAMES",
@@ -171,17 +176,6 @@ fn structure_axis_arms(axes_hs: &str) -> usize {
         .count()
 }
 
-/// The rows of `GRAMMARS`, the table `Lang::grammar` reads — one per
-/// tree-sitter grammar (TypeScript and TSX are two grammars from one
-/// crate, so the Cargo dependency lines undercount). Each row spells
-/// its variant once and the type column spells none, so the variant
-/// prefix counts rows whether rustfmt keeps a row on one line or not.
-fn grammar_arms(lang_rs: &str) -> usize {
-    between(lang_rs, "const GRAMMARS", "];")
-        .matches("Lang::")
-        .count()
-}
-
 /// The slice of `text` after the first `start` and before the next
 /// `end` — the one cut every source-slice scrape makes.
 fn between<'a>(text: &'a str, start: &str, end: &str) -> &'a str {
@@ -206,12 +200,6 @@ fn scrapes(root: &Path) -> Vec<Fact> {
         .expect("Cost.hs declares eraseRowCap")
         .trim();
     vec![
-        scraped(
-            "count:grammars#word",
-            grammar_arms(&read(root, "cli/src/scan/lang.rs")),
-            "cli/src/scan/lang.rs::GRAMMARS (rows)",
-            "Lang has no variant iterator; promote = Lang::judged() + grammar().is_some()",
-        ),
         scraped(
             "count:structure_axes#word",
             structure_axis_arms(&read(root, "core/app/CE/Structure/Axes.hs")),

@@ -55,6 +55,33 @@ fn langs_table_is_total_and_the_boundary_holds() {
     );
 }
 
+/// The grammar face is the GRAMMARS table read out: exactly the
+/// languages that parse, twelve of them, each once — the docs' grammar
+/// count reads this face since step 7 (before it the registry scraped
+/// lang.rs's text).
+#[test]
+fn with_grammar_reads_the_grammar_table_out() {
+    let parsing: Vec<Lang> = Lang::with_grammar().collect();
+    let expected: Vec<Lang> = LANGS
+        .iter()
+        .map(|&(l, ..)| l)
+        .filter(|l| l.grammar().is_some())
+        .collect();
+    assert_eq!(
+        parsing.len(),
+        12,
+        "twelve grammars (step 7 promoted the count off a scrape)"
+    );
+    for l in &expected {
+        assert_eq!(parsing.iter().filter(|p| *p == l).count(), 1, "{l:?} once");
+    }
+    assert_eq!(
+        parsing.len(),
+        expected.len(),
+        "no grammar row outside the table"
+    );
+}
+
 /// The boundary as a path meets it: a size-only extension is sized and
 /// never judged, every judged extension reaches its language (R under
 /// either case, HTML under either extension), a header reads as C++,
