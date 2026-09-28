@@ -10,6 +10,7 @@
 //! integer largest remainder (eval_support::largest_remainder).
 
 pub mod draw;
+pub mod exams;
 pub mod generate;
 pub mod precision;
 pub mod replay;
@@ -23,9 +24,11 @@ pub mod walk;
 use crate::eval_support::{UniverseFamily, eval_doc_path, eval_doc_v, load, site_summary};
 use serde_json::{Value, json};
 
+pub use exams::EXAMS;
+
 /// One language's exam: its corpora at their pinned tips, the file
 /// extensions its universe walks, what its truths may name (Reach),
-/// the pathspec of the rungs that may land only after its audit
+/// the pathspecs of the rungs that may land only after its audit
 /// (lang_provenance.rs), how far it has come (Stage — flipped by the
 /// commit that files each doc family, so a doc that vanishes is named,
 /// not read as pending), and the generation every doc of the exam
@@ -38,7 +41,13 @@ pub struct Exam {
     pub corpora: &'static [(&'static str, &'static str)],
     pub exts: &'static [&'static str],
     pub reach: Reach,
-    pub ladder: &'static str,
+    pub ladder: &'static [&'static str],
+    /// Some(why) for an exam whose ladder landed before its sample — the
+    /// C family, whose rungs step 2 committed before any exam existed:
+    /// the ordering gate then checks the reversal as a fact and holds
+    /// the ladder still inside the sample→audit blind window, instead
+    /// of reading the ladder's first commit as a breach.
+    pub ladder_first: Option<&'static str>,
     pub stage: Stage,
     pub generation: u32,
 }
@@ -140,88 +149,6 @@ pub const SLICES: Docs = Docs(SLICE.family);
 pub const SAMPLES: Docs = Docs("lang-sample");
 pub const AUDIT_TABLES: Docs = Docs("lang-review");
 pub const PRECISION_DOCS: Docs = Docs("lang-precision");
-
-/// Every language whose exam is frozen, in landing order; a language
-/// joins with its step (booklet §13) and never leaves. A second corpus
-/// joins when the first holds none of a site kind: gson has no wildcard
-/// import (its style guide forbids them), jsoup brings them. Lua and R
-/// take two from the start (booklet §14 item 17), a package and an
-/// application apiece: a package reaches its own files by module name,
-/// an application by path (`dofile`, `source`). The R ladder is a
-/// directory of its own — a `r*` pathspec would hold the Rust rungs.
-/// Lua's exam is at its second generation: the first was frozen before
-/// the detector read a load under protection (`pcall(require, "x")`,
-/// graph/spec.rs LUA_PROTECTED).
-/// HTML (step 5, the document language the user upgraded to a judged
-/// one) takes this repository's own pages — `site/`, the GUI page and
-/// the demo scoreboards at the tip that closed step 4 (booklet §11:
-/// self-feeding) — h5bp/html5-boilerplate, and mdn/learning-area (the
-/// user's ruling for a third: 269 teaching pages holding the forms and
-/// `srcset` lists the first two hold none of): a page
-/// reaches another by `href` and its assets by `src`. Its universes
-/// are the files the product's own walk reads (generate.rs walk).
-/// Java, Lua and R are unscored from step 5's first commit to its
-/// last: that step moved the code their answers come from (the walk's
-/// build-output rule, Java's source sets and own units, Lua's own
-/// directory — lang_provenance.rs holds a doc to it), so their docs
-/// are generated again once, beside HTML's, after the HTML ladder.
-use Reach::{Tree, Universe};
-use Stage::Scored;
-
-pub const EXAMS: [Exam; 4] = [
-    Exam {
-        lang: "java",
-        corpora: &[
-            ("gson", "854c8255b625cf1e13c701a83ea9ccb4caaa576a"),
-            ("jsoup", "093e2f58492c531667e551e8793513a41b22443e"),
-        ],
-        exts: &["java"],
-        reach: Universe,
-        ladder: "cli/src/graph/ladder/java*",
-        stage: Scored,
-        generation: 1,
-    },
-    Exam {
-        lang: "lua",
-        corpora: &[
-            ("luarocks", "2d2cc8eff2f03c23d142f8059146fb241dcf56b5"),
-            ("koreader", "d9cd2788e4ec023b8fbf60b0982e831c82d15a44"),
-        ],
-        exts: &["lua"],
-        reach: Universe,
-        ladder: "cli/src/graph/ladder/lua*",
-        stage: Scored,
-        generation: 2,
-    },
-    Exam {
-        lang: "r",
-        corpora: &[
-            ("stringr", "ae054b1d28f630fee22ddb3cb7525396e62af4fe"),
-            ("covid19model", "fcc30e2b8d046ddf3ef10dfc222e42b5cd732622"),
-        ],
-        exts: &["R", "r"],
-        reach: Universe,
-        ladder: "cli/src/graph/ladder/r/",
-        stage: Scored,
-        generation: 1,
-    },
-    Exam {
-        lang: "html",
-        corpora: &[
-            ("codeeraser", "d4b7f1f37aa50b61ecd21816204bb7f5b06d673c"),
-            (
-                "html5-boilerplate",
-                "b6597338e695dc4a8165c5abcb2bfffa586c3ee5",
-            ),
-            ("learning-area", "dbed6bcb8284634c7549c4da596ec30b0cfc6e7e"),
-        ],
-        exts: &["html", "htm"],
-        reach: Tree,
-        ladder: "cli/src/graph/ladder/html*",
-        stage: Scored,
-        generation: 1,
-    },
-];
 
 pub const SLICE_SCHEMA: &str = "ce.eval-lang-slice/1.0.0";
 pub const SAMPLE_SCHEMA: &str = "ce.eval-lang-sample/1.0.0";

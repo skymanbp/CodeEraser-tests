@@ -3,17 +3,21 @@
 //! and audited before any ladder" as CHECKED git facts — the legs of
 //! graph_provenance.rs re-run per exam, plus the pending state: while
 //! a language's audit is not committed, no commit may have touched its
-//! ladder and no precision doc may exist. The last leg holds each
-//! precision doc to the code that answered it (plan v2.30 step 5).
-//! Runs git; CI checks out with fetch-depth: 0 and a shallow clone
-//! refuses loudly.
+//! ladder and no precision doc may exist. The C family's exams came
+//! after their ladder (step 2 landed it before any exam existed) and
+//! say so (Exam::ladder_first): for them the gate checks the reversal
+//! as a fact and holds the ladder still through the blind window. The
+//! last leg holds each precision doc to the code that answered it
+//! (plan v2.30 step 5). Runs git; CI checks out with fetch-depth: 0
+//! and a shallow clone refuses loudly.
 
 use crate::eval_lang_parts::review::audited;
 use crate::eval_lang_parts::score::scored;
 use crate::eval_lang_parts::{AUDIT_TABLES, EXAMS, Exam, PRECISION_DOCS, SAMPLES};
 use crate::eval_support::{
-    assert_all_postdate, assert_docs_postdate_audits, assert_resolver_after_audits, git_in,
-    intro_commit, is_ancestor, require_full_history,
+    assert_all_postdate, assert_blind_window_clear, assert_docs_postdate_audits,
+    assert_resolver_after_audits, first_commit, intro_commit, is_ancestor, is_strict_ancestor,
+    require_full_history, touched_between,
 };
 
 /// The first commit of an exam's frozen sample, at its generation.
@@ -72,24 +76,59 @@ fn lang_sample_audit_scoring_ordered() {
 }
 
 /// With the audit pending, no commit may ever have touched the
-/// language's ladder pathspec; once it is in, the shared two-layer
-/// resolver tripwire runs with this language's sample and ladder.
+/// language's ladder pathspecs; once it is in, the shared two-layer
+/// resolver tripwire runs with this language's sample and ladder. An
+/// exam whose ladder came first is held to what it says instead
+/// (ladder_first).
 #[test]
 fn lang_audit_precedes_the_ladder() {
     require_full_history();
     for exam in &EXAMS {
         let sample = sampled(exam);
-        match audits(exam) {
-            Some(audits) => assert_resolver_after_audits(&sample, &audits, exam.ladder, exam.lang),
-            None => {
-                let ladder = git_in(Some(".."), &["log", "--format=%H", "--", exam.ladder]);
-                assert!(
-                    ladder.trim().is_empty(),
-                    "{}: a ladder landed while the audit is pending (G13)",
-                    exam.lang
-                );
-            }
+        let audits = audits(exam);
+        if let Some(why) = exam.ladder_first {
+            ladder_first(exam, &sample, audits.as_deref(), why);
+            continue;
         }
+        match audits {
+            Some(audits) => assert_resolver_after_audits(&sample, &audits, exam.ladder, exam.lang),
+            None => assert!(
+                first_commit(exam.ladder).is_none(),
+                "{}: a ladder landed while the audit is pending (G13)",
+                exam.lang
+            ),
+        }
+    }
+}
+
+/// The C family's reversal (booklet §14 item 14), checked as a fact:
+/// the ladder's first commit strictly precedes the sample freeze, and
+/// the ladder stood still from the sample to every audit table — to
+/// HEAD while the audit is pending — with the graph-code blind window
+/// (layer 2) held as for every exam once the audit is in.
+fn ladder_first(exam: &Exam, sample: &str, audits: Option<&[String]>, why: &str) {
+    let first = first_commit(exam.ladder).unwrap_or_else(|| {
+        panic!(
+            "{}: no ladder, yet the exam says one came first ({why})",
+            exam.lang
+        )
+    });
+    assert!(
+        is_strict_ancestor(&first, sample),
+        "{}: the ladder does not precede the sample, yet the exam says it does ({why})",
+        exam.lang
+    );
+    let head = [String::from("HEAD")];
+    for end in audits.unwrap_or(&head) {
+        let touched = touched_between(sample, end, exam.ladder);
+        assert!(
+            touched.trim().is_empty(),
+            "{}: the ladder moved inside the sample→audit blind window (G13):\n{touched}",
+            exam.lang
+        );
+    }
+    if let Some(audits) = audits {
+        assert_blind_window_clear(sample, audits, exam.lang);
     }
 }
 
@@ -119,7 +158,7 @@ const ANSWERED_BY: [&str; 9] = [
 fn lang_docs_answer_the_code_they_name() {
     require_full_history();
     for exam in EXAMS.iter().filter(|e| scored(e)) {
-        let mut paths = vec![exam.ladder];
+        let mut paths = exam.ladder.to_vec();
         paths.extend(ANSWERED_BY);
         for (corpus, _) in exam.corpora {
             let from = &PRECISION_DOCS.load(exam, corpus)["generated_from"];
@@ -133,10 +172,7 @@ fn lang_docs_answer_the_code_they_name() {
                 is_ancestor(commit, "HEAD"),
                 "{corpus}: generated at {commit}, outside this history"
             );
-            let range = format!("{commit}..HEAD");
-            let mut args = vec!["log", "--format=%h %<(72,trunc)%s", range.as_str(), "--"];
-            args.extend(&paths);
-            let since = git_in(Some(".."), &args);
+            let since = touched_between(commit, "HEAD", &paths);
             assert!(
                 since.trim().is_empty(),
                 "{corpus}: the code its answers come from moved after {commit} - regenerate it (eval_lang_parts/generate.rs):\n{since}"

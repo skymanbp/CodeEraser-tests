@@ -15,11 +15,24 @@ pub fn require_full_history() {
 
 /// First commit that introduced `path` (repo-relative).
 pub fn intro_commit(path: &str) -> String {
-    let log = git_in(Some(".."), &["log", "--reverse", "--format=%H", "--", path]);
-    log.lines()
-        .next()
-        .unwrap_or_else(|| panic!("{path}: never committed"))
-        .to_string()
+    first_commit(&[path]).unwrap_or_else(|| panic!("{path}: never committed"))
+}
+
+/// The first commit that touched any of `paths` (pathspecs), or None
+/// while none has.
+pub fn first_commit(paths: &[&str]) -> Option<String> {
+    let mut args = vec!["log", "--reverse", "--format=%H", "--"];
+    args.extend(paths);
+    git_in(Some(".."), &args).lines().next().map(str::to_string)
+}
+
+/// The commits after `from` up to `to` that touched any of `paths`,
+/// one `hash subject` line each — empty when the paths stood still.
+pub fn touched_between(from: &str, to: &str, paths: &[&str]) -> String {
+    let range = format!("{from}..{to}");
+    let mut args = vec!["log", "--format=%h %<(72,trunc)%s", range.as_str(), "--"];
+    args.extend(paths);
+    git_in(Some(".."), &args)
 }
 
 /// merge-base --is-ancestor: the exit code IS the answer, so this one
@@ -107,24 +120,27 @@ pub fn assert_audit_scoring_legs(
 
 /// The resolver tripwire, two layers (graph_provenance.rs review F7;
 /// the v2.30 language exams run it per language): layer 1, the first
-/// commit that touched the `ladder` pathspec strictly descends from
-/// every audit table; layer 2, every cli/src/graph file either
-/// predates the sample freeze (detector era, in place at the draw) or
-/// descends from every audit — nothing graph-shaped may land inside
-/// the blind window between sampling and audit, wherever it landed.
-pub fn assert_resolver_after_audits(sample: &str, audits: &[String], ladder: &str, tag: &str) {
-    let first = git_in(
-        Some(".."),
-        &["log", "--reverse", "--format=%H", "--", ladder],
-    );
-    if let Some(first) = first.lines().next() {
+/// commit that touched the `ladder` pathspecs strictly descends from
+/// every audit table; layer 2 (assert_blind_window_clear), nothing
+/// graph-shaped landed inside the blind window between sampling and
+/// audit.
+pub fn assert_resolver_after_audits(sample: &str, audits: &[String], ladder: &[&str], tag: &str) {
+    if let Some(first) = first_commit(ladder) {
         for audit in audits {
             assert!(
-                is_strict_ancestor(audit, first),
+                is_strict_ancestor(audit, &first),
                 "{tag}: a ladder file landed before the audit froze (G13)"
             );
         }
     }
+    assert_blind_window_clear(sample, audits, tag);
+}
+
+/// Layer 2 of the tripwire: every cli/src/graph file either predates
+/// the sample freeze (detector era, in place at the draw) or descends
+/// from every audit — nothing graph-shaped may land inside the blind
+/// window between sampling and audit, wherever it landed.
+pub fn assert_blind_window_clear(sample: &str, audits: &[String], tag: &str) {
     let tree = git_in(Some(".."), &["ls-files", "--", "cli/src/graph"]);
     for path in tree.lines().filter(|p| !p.is_empty()) {
         let intro = intro_commit(path);

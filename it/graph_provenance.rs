@@ -43,7 +43,7 @@ fn audit_precedes_any_resolver() {
     eval_support::assert_resolver_after_audits(
         &sample,
         &audit_intros(),
-        "cli/src/graph/ladder",
+        &["cli/src/graph/ladder"],
         "graph",
     );
 }
