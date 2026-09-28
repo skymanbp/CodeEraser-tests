@@ -16,8 +16,8 @@ use crate::eval_lang_parts::score::scored;
 use crate::eval_lang_parts::{AUDIT_TABLES, EXAMS, Exam, PRECISION_DOCS, SAMPLES};
 use crate::eval_support::{
     assert_all_postdate, assert_blind_window_clear, assert_docs_postdate_audits,
-    assert_resolver_after_audits, first_commit, intro_commit, is_ancestor, is_strict_ancestor,
-    require_full_history, touched_between,
+    assert_resolver_after_audits, first_commit, git_in, intro_commit, is_ancestor,
+    is_strict_ancestor, require_full_history, touched_between,
 };
 
 /// The first commit of an exam's frozen sample, at its generation.
@@ -150,6 +150,16 @@ const ANSWERED_BY: [&str; 9] = [
     "cli/Cargo.lock",
 ];
 
+/// The working tree's uncommitted moves of `paths` - staged or not,
+/// untracked included: what touched_between cannot see until the
+/// commit lands (step 7's lesson: a read-only face added to lang.rs
+/// passed every local leg and CI refused the commit).
+fn uncommitted(paths: &[&str]) -> String {
+    let mut args = vec!["status", "--porcelain", "--untracked-files=all", "--"];
+    args.extend(paths);
+    git_in(Some(".."), &args)
+}
+
 /// Every scored doc answers the code it names (the generator's rule,
 /// eval_lang_parts/generate.rs): generated on a clean tree, at a
 /// commit of this history, and no commit since has touched its ladder
@@ -160,6 +170,12 @@ fn lang_docs_answer_the_code_they_name() {
     for exam in EXAMS.iter().filter(|e| scored(e)) {
         let mut paths = exam.ladder.to_vec();
         paths.extend(ANSWERED_BY);
+        let pending = uncommitted(&paths);
+        assert!(
+            pending.trim().is_empty(),
+            "{}: the code its docs' answers come from moved in the working tree - regenerate them on a clean tree before committing:\n{pending}",
+            exam.lang
+        );
         for (corpus, _) in exam.corpora {
             let from = &PRECISION_DOCS.load(exam, corpus)["generated_from"];
             let commit = from["commit"].as_str().expect("commit");
