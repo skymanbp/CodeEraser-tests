@@ -9,7 +9,9 @@
 //! framework directory, a response file, a quoted argument keeping a
 //! directory's space, a forced include seeding the closure, and `compile_flags.txt` covering the
 //! files whose nearest database directory holds it — a nearer JSON
-//! database with no entry wins over it. The database sits where clangd
+//! database with no entry wins over it; and the step 6 `include` rung
+//! asked for a file no chain reaches while a file the database compiles
+//! stands on what its chain finds. The database sits where clangd
 //! probes, never in `Scope::configs`.
 
 use codeeraser::graph::deadcode;
@@ -85,6 +87,11 @@ inc
 #include "f.h"
 ==== c/flags/json/compile_commands.json
 []
+==== c/conv/app.c
+#include "k.h"
+==== c/conv/free.c
+#include "k.h"
+==== c/conv/include/k.h
 ==== @compdb
 c/src/main.c @@ cc -I ../c/third/vendor -I ../c/inc1 -c ../c/src/main.c
 c/src/other.c @@ cc -I ../c/alt -iquote ../c/include -I ../c/inc2 -c ../c/src/other.c
@@ -95,6 +102,7 @@ c/fw/app.c @@ cc -F ../c/fw/Frameworks -c ../c/fw/app.c
 c/rsp/r.c @@ cc @../c/rsp/flags.rsp -c ../c/rsp/r.c
 c/quoted/s.c @@ cc "-I../c/sp ace" -c ../c/quoted/s.c
 c/pre/unit.c @@ cc -include ../c/pre/prefix.h -I ../c/pre/inc -c ../c/pre/unit.c
+c/conv/app.c @@ cc -I ../c/conv/none -c ../c/conv/app.c
 ==== @cases
 include @@ c/src/main.c @@ shared.h @@ ok c/src/shared.h 1
 include @@ c/src/main.c @@ v.h @@ ok c/third/vendor/v.h 3
@@ -115,6 +123,8 @@ include @@ c/pre/loose.h @@ cfg.h @@ no out_of_scope
 include @@ c/flags/x.c @@ f.h @@ ok c/flags/inc/f.h 3
 include @@ c/flags/sub/y.c @@ f.h @@ ok c/flags/inc/f.h 3
 include @@ c/flags/json/z.c @@ f.h @@ no out_of_scope
+include @@ c/conv/app.c @@ k.h @@ no out_of_scope
+include @@ c/conv/free.c @@ k.h @@ ok c/conv/include/k.h 4
 ==== @rooted c/inc2
 include @@ c/src/shared.h @@ deep.h @@ ok c/inc2/deep.h 2
 "#;

@@ -20,14 +20,16 @@ const RUST: &str = "--- it/main.rs\nmod helper;\nuse crate::helper::h;\nfn main(
                     --- it/helper.rs\npub fn h() {}\n";
 const RUST_DECLARED: &str = "--- ce.toml\n[graph]\ncrate_roots = [\"it/main.rs\"]\n";
 
-/// `main.c` includes `lib.h`, which lives under `include/`: the
-/// including file's own directory holds no such file, so the include
-/// resolves only through a declared root. The unit role keeps
-/// `main.c` either way (register D18); the header is kept by the
-/// include edge or by nothing.
-const C: &str =
-    "--- src/main.c\n#include \"lib.h\"\nint main(void) { return 0; }\n--- include/lib.h\n\n";
-const C_DECLARED: &str = "--- ce.toml\n[graph.search_roots]\nc = [\"include\"]\n";
+/// `main.c` includes `lib.h`, which lives under `third_party/include/`:
+/// the including file's own directory holds no such file, and that
+/// `include` sits off the includer's ancestry, where the step 6
+/// convention rung reads none (an `include` beside `src` or at the root
+/// would resolve undeclared), so the include resolves only through a
+/// declared root. The unit role keeps `main.c` either way (register
+/// D18); the header is kept by the include edge or by nothing.
+const C: &str = "--- src/main.c\n#include \"lib.h\"\nint main(void) { return 0; }\n\
+                 --- third_party/include/lib.h\n\n";
+const C_DECLARED: &str = "--- ce.toml\n[graph.search_roots]\nc = [\"third_party/include\"]\n";
 
 /// (declared tree, its undeclared control, the one file that dies
 /// undeclared) — the declared tree keeps everything and resolves at
@@ -35,7 +37,7 @@ const C_DECLARED: &str = "--- ce.toml\n[graph.search_roots]\nc = [\"include\"]\n
 /// resolves nothing.
 const PAIRS: [(&str, &str, &str, &str); 2] = [
     ("crate-roots", RUST, RUST_DECLARED, "it/helper.rs"),
-    ("search-roots", C, C_DECLARED, "include/lib.h"),
+    ("search-roots", C, C_DECLARED, "third_party/include/lib.h"),
 ];
 
 fn judged(tag: &str, doc: &str) -> deadcode::Report {
