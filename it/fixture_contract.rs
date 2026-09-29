@@ -10,14 +10,18 @@
 //! consumer, or a reply line left at an old version fails by name
 //! instead of waiting for a human to recount.
 
-use crate::common::repo_root;
+use crate::common::{core_session, repo_root};
 use crate::facts::ver::ANCHOR;
 use codeeraser::corelink::PROTO;
 use std::path::PathBuf;
 
+/// The handshake golden: its request line follows the server (§3),
+/// so the regenerator moves it to PROTO before asking.
+const HELLO: &str = "handshake/hello-ok.ndjson";
+
 /// The wire golden files both consumers read, in Spec.hs's order.
-pub const GOLDEN_FILES: [&str; 14] = [
-    "handshake/hello-ok.ndjson",
+pub const GOLDEN_FILES: [&str; 15] = [
+    HELLO,
     "handshake/wire-errors.ndjson",
     "fourclass/golden.ndjson",
     "graph/golden.ndjson",
@@ -31,6 +35,7 @@ pub const GOLDEN_FILES: [&str; 14] = [
     "audit/golden.ndjson",
     "tombstone/golden.ndjson",
     "similar/golden.ndjson",
+    "query/golden.ndjson",
 ];
 
 fn fixture(rel: &str) -> PathBuf {
@@ -46,6 +51,16 @@ fn lines(rel: &str) -> Vec<String> {
         .collect()
 }
 
+/// The file's (request, reply) pairs in order — the round trip
+/// (core_wire.rs) and the regenerator read the files through this.
+pub fn golden_pairs(rel: &str) -> Vec<(String, String)> {
+    let rows = lines(rel);
+    assert_eq!(rows.len() % 2, 0, "{rel}: request/reply pairs");
+    rows.chunks(2)
+        .map(|c| (c[0].clone(), c[1].clone()))
+        .collect()
+}
+
 fn proto_of(line: &str) -> Option<String> {
     serde_json::from_str::<serde_json::Value>(line)
         .ok()?
@@ -58,16 +73,18 @@ fn proto_of(line: &str) -> Option<String> {
 fn tally() -> (usize, Vec<String>) {
     let (mut anchored, mut stale) = (0, Vec::new());
     for rel in GOLDEN_FILES {
-        let rows = lines(rel);
-        assert_eq!(rows.len() % 2, 0, "{rel}: request/reply pairs");
-        for (i, line) in rows.iter().enumerate() {
-            let proto = proto_of(line);
-            if i % 2 == 1 {
-                if proto.as_deref() != Some(PROTO) {
-                    stale.push(format!("{rel} pair {}: {proto:?}", i / 2 + 1));
-                }
-            } else if rel.ends_with("/golden.ndjson") {
-                assert_eq!(proto.as_deref(), Some(ANCHOR), "{rel} pair {}", i / 2 + 1);
+        for (n, (request, reply)) in golden_pairs(rel).into_iter().enumerate() {
+            let proto = proto_of(&reply);
+            if proto.as_deref() != Some(PROTO) {
+                stale.push(format!("{rel} pair {}: {proto:?}", n + 1));
+            }
+            if rel.ends_with("/golden.ndjson") {
+                assert_eq!(
+                    proto_of(&request).as_deref(),
+                    Some(ANCHOR),
+                    "{rel} pair {}",
+                    n + 1
+                );
                 anchored += 1;
             }
         }
@@ -75,11 +92,56 @@ fn tally() -> (usize, Vec<String>) {
     (anchored, stale)
 }
 
+/// The line with its `proto` value at PROTO.
+fn at_proto(line: &str) -> String {
+    let (head, rest) = line.split_once("\"proto\":\"").expect("a proto field");
+    let (_, tail) = rest.split_once('"').expect("a closed proto value");
+    format!("{head}\"proto\":\"{PROTO}\"{tail}")
+}
+
+/// The regenerator (plan v2.31 step 1; through 7.2.0 it lived in a
+/// session scratchpad): one core at CE_CORE_BIN answers every request
+/// line in Spec.hs's order and the reply lines are rewritten from its
+/// answers, the handshake request moved to PROTO first. `CE_BLESS=1`
+/// writes the files; without it the leg is the dry run and fails
+/// naming every pair that would move. `--ignored`: it runs on
+/// purpose, at a proto bump, never by accident under a bless.
+#[test]
+#[ignore]
+fn regen() {
+    let mut core = core_session();
+    let mut moved = Vec::new();
+    for rel in GOLDEN_FILES {
+        let mut body = String::new();
+        for (n, (filed, reply)) in golden_pairs(rel).into_iter().enumerate() {
+            let request = if rel == HELLO {
+                at_proto(&filed)
+            } else {
+                filed.clone()
+            };
+            let answer = core.ask_line(&request);
+            if request != filed || answer != reply {
+                moved.push(format!("{rel} pair {}", n + 1));
+            }
+            body.push_str(&format!("{request}\n{answer}\n"));
+        }
+        if crate::facts::blessing() {
+            std::fs::write(fixture(rel), body).expect(rel);
+        }
+    }
+    let status = core.finish();
+    assert!(status.success(), "core exit: {status}");
+    assert!(
+        crate::facts::blessing() || moved.is_empty(),
+        "golden pairs behind the core (CE_BLESS=1 rewrites them): {moved:?}"
+    );
+}
+
 #[test]
 fn every_reply_answers_the_current_proto_and_the_handshake_follows_it() {
     let (_, stale) = tally();
     assert!(stale.is_empty(), "reply lines behind {PROTO}: {stale:?}");
-    let hello = lines("handshake/hello-ok.ndjson");
+    let hello = lines(HELLO);
     assert_eq!(
         proto_of(&hello[0]).as_deref(),
         Some(PROTO),

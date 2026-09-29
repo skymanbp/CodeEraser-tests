@@ -9,14 +9,8 @@
 //! identical report.
 
 use crate::common;
+use crate::common::gates::core_bin;
 use codeeraser::graph::deadcode;
-
-fn core_bin() -> String {
-    std::env::var("CE_CORE_BIN").expect(
-        "CE_CORE_BIN is unset — build the core and export it:\n  \
-         cd core && cabal build all && export CE_CORE_BIN=$(cabal list-bin ce-core)",
-    )
-}
 
 fn dead_set(r: &deadcode::Report) -> Vec<(String, &'static str)> {
     r.dead.iter().map(|d| (d.path.clone(), d.verdict)).collect()

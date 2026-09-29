@@ -8,67 +8,22 @@
 //! Requires a built ce-core: the gate must not silently skip, so a
 //! missing CE_CORE_BIN is a loud failure, not an ignore.
 
-use std::io::{BufRead, BufReader, Write};
-use std::process::{Command, Stdio};
-
-fn core_bin() -> String {
-    std::env::var("CE_CORE_BIN").expect(
-        "CE_CORE_BIN is unset — build the core and export it:\n  \
-         cd core && cabal build all && export CE_CORE_BIN=$(cabal list-bin ce-core)",
-    )
-}
-
-fn fixture_pairs(path: &str) -> Vec<(String, String)> {
-    let raw = std::fs::read_to_string(path).expect(path);
-    let lines: Vec<&str> = raw.lines().filter(|l| !l.is_empty()).collect();
-    assert_eq!(
-        lines.len() % 2,
-        0,
-        "{path}: fixtures are request/reply pairs"
-    );
-    lines
-        .chunks(2)
-        .map(|c| (c[0].to_string(), c[1].to_string()))
-        .collect()
-}
+use crate::common::{core_bin, core_session};
+use crate::fixture_contract::{GOLDEN_FILES, golden_pairs};
 
 /// One core process answers every fixture pair in order — this also
-/// exercises the persistent-link shape (N requests, one child).
+/// exercises the persistent-link shape (N requests, one child). The
+/// files are fixture_contract's list, in Spec.hs's order; its
+/// regenerator writes what this leg reads back.
 #[test]
 fn wire_goldens_roundtrip() {
-    let mut child = Command::new(core_bin())
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("spawn ce-core");
-    let mut stdin = child.stdin.take().expect("stdin");
-    let mut out = BufReader::new(child.stdout.take().expect("stdout"));
-    for file in [
-        "../contracts/fixtures/handshake/hello-ok.ndjson",
-        "../contracts/fixtures/handshake/wire-errors.ndjson",
-        "../contracts/fixtures/fourclass/golden.ndjson",
-        "../contracts/fixtures/graph/golden.ndjson",
-        "../contracts/fixtures/clone/golden.ndjson",
-        "../contracts/fixtures/docdup/golden.ndjson",
-        "../contracts/fixtures/verdict/golden.ndjson",
-        "../contracts/fixtures/scan/golden.ndjson",
-        "../contracts/fixtures/structure/golden.ndjson",
-        "../contracts/fixtures/trend/golden.ndjson",
-        "../contracts/fixtures/erase/golden.ndjson",
-        "../contracts/fixtures/audit/golden.ndjson",
-        "../contracts/fixtures/tombstone/golden.ndjson",
-        "../contracts/fixtures/similar/golden.ndjson",
-    ] {
-        for (n, (request, expected)) in fixture_pairs(file).into_iter().enumerate() {
-            writeln!(stdin, "{request}").expect("write");
-            stdin.flush().expect("flush");
-            let mut reply = String::new();
-            out.read_line(&mut reply).expect("read");
-            assert_eq!(reply.trim_end(), expected, "{file} pair {}", n + 1);
+    let mut core = core_session();
+    for rel in GOLDEN_FILES {
+        for (n, (request, expected)) in golden_pairs(rel).into_iter().enumerate() {
+            assert_eq!(core.ask_line(&request), expected, "{rel} pair {}", n + 1);
         }
     }
-    drop(stdin); // EOF => core exits
-    let status = child.wait().expect("wait");
+    let status = core.finish();
     assert!(status.success(), "core exit: {status}");
 }
 
@@ -92,8 +47,10 @@ fn corelink_open_and_desync() {
     // every declared family, one loop (fourclass/2 = M5-1c anchor
     // shape; graph/1 = M5-2a; clone/docdup/verdict = M5-3a; scan/1
     // = ADR-008 P3; structure/1 = M6 S2; trend/1 = M7.5b (trend/2
-    // at 2.31.0: the robust estimator); erase/1 =
-    // M9 batch 3) — the assert ladder tripped the ratchet at row 8
+    // at 2.31.0: the robust estimator); erase/1 = M9 batch 3;
+    // audit/1 = M9 batch 7; tombstone/1 = 6.6.0; similar/1 = 6.7.0;
+    // query/1 = 7.3.0, plan v2.31 step 1) — the assert ladder
+    // tripped the ratchet at row 8
     for cap in [
         "hello",
         "fourclass/2",
@@ -106,6 +63,9 @@ fn corelink_open_and_desync() {
         "trend/2",
         "erase/1",
         "audit/1",
+        "tombstone/1",
+        "similar/1",
+        "query/1",
     ] {
         assert!(link.has(cap), "capability {cap} declared");
     }

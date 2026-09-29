@@ -22,13 +22,14 @@ pub mod ladder;
 pub mod ledger;
 pub mod mcp;
 pub mod metric;
+pub mod session;
 pub mod stats;
 // One brace, not five `pub use` lines: the per-line form made this
 // index a byte-shaped twin of eval_support/mod.rs the moment a fifth
 // entry joined, and a module index is not something to clone.
 pub use {
     audit::*, daemon::*, fixtures::*, gates::*, gitio::*, history::*, hooks::*, ladder::*, mcp::*,
-    metric::*,
+    metric::*, session::*,
 };
 
 use std::path::{Path, PathBuf};
