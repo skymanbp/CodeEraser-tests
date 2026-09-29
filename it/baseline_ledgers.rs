@@ -15,8 +15,43 @@
 /// regeneration dropping members arrives with no entry here); real
 /// cleanups are this tool's whole point and retire BY NAME, never
 /// silently. A listed id back in the baseline = a stale entry,
-/// refused — the ledger can only ever describe the present.
-pub const RETIRED: [(u64, &str); 24] = [
+/// refused — the ledger can only ever describe the present. A row
+/// names the key the member carried on the day it dissolved: the
+/// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
+/// both readers in baseline_bridge.rs share `seated_or_retired`.
+pub const RETIRED: [(u64, &str); 32] = [
+    (
+        5552311341795790881,
+        "v2.30 step 7b (3): Scan.hs's `reply` took an Echo record and its fenced / conditions helpers, so its head no longer rhymes with Audit.hs's `reply` (51 tokens) — the Audit.hs <-> Scan.hs member dissolved",
+    ),
+    (
+        1389266726151744718,
+        "v2.30 step 7b (3): it/sonar_whitepaper.rs's six per-language tables retired with the Rust walkers and the file became the whitepaper register's reader, so its head and tail no longer rhyme with it/metrics.rs's top level — that member dissolved",
+    ),
+    (
+        3619811066347535954,
+        "v2.30 step 7b (3): the same retirement — the old sonar_whitepaper.rs CASES table rhymed with itself across two of its language tables, and the register is one NDJSON fixture; the self-member dissolved",
+    ),
+    (
+        12885443608603086983,
+        "v2.30 step 7b (3): the same retirement — the old sonar_whitepaper.rs CASES table rhymed with it/coc_haskell.rs's CASES; that member dissolved",
+    ),
+    (
+        12977226742982971547,
+        "v2.30 step 7b (3): the same retirement — the old sonar_whitepaper.rs head and tail rhymed with it/divergence_stances.rs's top level; that member dissolved",
+    ),
+    (
+        15830877975425264319,
+        "v2.30 step 7b (3): the same retirement — the old sonar_whitepaper.rs CASES table rhymed with it/divergence_stances.rs's CASES; that member dissolved",
+    ),
+    (
+        16666268405563905379,
+        "v2.30 step 7b (3): the same retirement — the old sonar_whitepaper.rs head rhymed with it/coc_haskell.rs's top level; that member dissolved",
+    ),
+    (
+        17178382221569181982,
+        "v2.30 step 7b (3): the same retirement — the old sonar_whitepaper.rs CASES table rhymed with it/metrics.rs's CASES; that member dissolved",
+    ),
     (
         6725743369576513159,
         "v2.30 step 7b: Erase.hs took the closure's helpers into its import list and the target battery into its knobless cascade, so its head no longer rhymes with Audit.hs's (94 tokens) — the Audit.hs <-> Erase.hs member dissolved",

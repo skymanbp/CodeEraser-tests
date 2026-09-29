@@ -3,7 +3,8 @@
 //! row per stance the Java table records (spec_java.rs, the register
 //! in contracts/fixtures/crosscheck/DIVERGENCES.md) — each why cites
 //! the whitepaper page or the register entry. The whitepaper's own
-//! Java examples are sonar_whitepaper_java.rs; this table holds what
+//! Java examples are the java lines of the whitepaper register
+//! (contracts/fixtures/scan/whitepaper.ndjson); this table holds what
 //! they do not show: the shapes Java spells its own way. A bare method
 //! is a whole Java source file to tree-sitter-java, so no row needs a
 //! class around it. The table's last block, a `units=` row, pins what

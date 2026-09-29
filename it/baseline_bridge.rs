@@ -13,6 +13,7 @@ use crate::baseline_reanchored::{present, reanchored, reanchored_rows, relocated
 use crate::common;
 use crate::common::check_opts as opts;
 use codeeraser::score;
+use std::collections::HashSet;
 use std::path::Path;
 
 /// Conservation on the self repo, every leg independently sourced:
@@ -42,7 +43,7 @@ fn bridge_conserves_blocks_into_members_and_gates_agree() {
 }
 
 /// The `discrete` member ids of one committed baseline.
-fn discrete_members(path: &str) -> std::collections::HashSet<u64> {
+fn discrete_members(path: &str) -> HashSet<u64> {
     let baseline: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(path).expect("committed baseline"))
             .expect("baseline json");
@@ -52,6 +53,23 @@ fn discrete_members(path: &str) -> std::collections::HashSet<u64> {
         .iter()
         .map(|v| v.as_u64().expect("member id"))
         .collect()
+}
+
+/// One key's exit from the generation gate: seated in its baseline, or
+/// retired BY NAME under that same key — never both, since a retired
+/// key back in a baseline is a stale RETIRED entry. Both readers below
+/// share it, so a member retired after 7.0.0 is named once, under the
+/// key it carried on the day (its anchored, relocated one) — the frozen
+/// 6.x key names only a retirement made before the re-hash, the form
+/// RETIRED's elder rows have.
+fn seated_or_retired(home: &HashSet<u64>, key: u64, missing: &str) {
+    match RETIRED.iter().find(|(id, _)| *id == key) {
+        Some((_, why)) => assert!(
+            !home.contains(&key),
+            "retired member {key} is back in the baseline — stale RETIRED entry ({why})"
+        ),
+        None => assert!(home.contains(&key), "{missing}"),
+    }
 }
 
 /// The 3k corpus-generation gate (RM14, pre-registered): the frozen
@@ -84,53 +102,69 @@ fn pre_haskell_members_survive_every_generation() {
         .map(|v| v.as_u64().expect("member id"))
         .collect();
     assert_eq!(old.len(), 40, "the frozen set is the 3j-close 40");
-    let suite_ledger = suite_pairs();
-    // 7.0.0: every surviving key is looked up under its container-anchor
-    // successor (REANCHORED) as any later move re-keyed it (RELOCATED);
-    // a key the migration ledger never saw is a named failure, not a
-    // silent miss
-    let anchored = |id: &u64| -> u64 {
-        present(
-            reanchored(*id).unwrap_or_else(|| panic!("member {id} has no REANCHORED successor")),
-        )
-    };
-    for m in &old {
-        if let Some((_, why)) = RETIRED.iter().find(|(id, _)| id == m) {
+    for m in old {
+        survives(m, &now, &suite);
+    }
+}
+
+/// A 6.x key's seat today: its container-anchor successor (REANCHORED)
+/// followed through any later move (RELOCATED) — a key the migration
+/// ledger never saw is a named failure, not a silent miss.
+fn anchored(id: u64) -> u64 {
+    present(reanchored(id).unwrap_or_else(|| panic!("member {id} has no REANCHORED successor")))
+}
+
+/// One frozen member followed to the present. A retirement made before
+/// 7.0.0 exits under the frozen key itself; every other key is looked
+/// up under `anchored` and is seated there or retired by that name; a
+/// moved member's replaced keys must be gone from both baselines.
+fn survives(m: u64, now: &HashSet<u64>, suite: &HashSet<u64>) {
+    if let Some((_, why)) = RETIRED.iter().find(|(id, _)| *id == m) {
+        assert!(
+            !now.contains(&m),
+            "retired member {m} is back in the baseline — stale RETIRED entry ({why})"
+        );
+        return;
+    }
+    let rekeyed = rekeyed_pairs()
+        .into_iter()
+        .find(|(id, _)| *id == m)
+        .map(|(_, n)| n);
+    assert!(
+        rekeyed.is_none() || !now.contains(&m),
+        "re-keyed member {m} is back under its pre-move key — stale REKEYED entry"
+    );
+    let moved = rekeyed.and_then(|n| suite_pairs().into_iter().find(|(id, _)| *id == n));
+    let (home, key, missing) = match (rekeyed, moved) {
+        (None, _) => (
+            now,
+            anchored(m),
+            format!(
+                "pre-Haskell member {m} vanished from the committed baseline without a named retirement — corpus growth must never rewrite the pre-generation set"
+            ),
+        ),
+        (Some(new), None) => (
+            now,
+            anchored(new),
+            format!(
+                "re-keyed member {m}'s successor {new} is missing — the rename ledger promised the duplication survived the move"
+            ),
+        ),
+        (Some(new), Some((_, sk))) => {
             assert!(
-                !now.contains(m),
-                "retired member {m} is back in the baseline — stale RETIRED entry ({why})"
-            );
-            continue;
-        }
-        if let Some((_, new)) = rekeyed_pairs().iter().find(|(id, _)| id == m) {
-            assert!(
-                !now.contains(m),
-                "re-keyed member {m} is back under its pre-move key — stale REKEYED entry"
-            );
-            let Some((_, sk)) = suite_ledger.iter().find(|(id, _)| id == new) else {
-                assert!(
-                    now.contains(&anchored(new)),
-                    "re-keyed member {m}'s successor {new} is missing — the rename ledger \
-                     promised the duplication survived the move"
-                );
-                continue;
-            };
-            assert!(
-                !now.contains(new),
+                !now.contains(&new),
                 "member {new} moved to the suite yet is back in the superproject's baseline — stale REKEYED_SUITE entry"
             );
-            assert!(
-                suite.contains(&anchored(sk)),
-                "member {new}'s suite key {sk} is missing from the suite's baseline — the second-generation ledger promised the duplication survived the move"
-            );
-            continue;
+            (
+                suite,
+                anchored(sk),
+                format!(
+                    "member {new}'s suite key {sk} is missing from the suite's baseline — the second-generation ledger promised the duplication survived the move"
+                ),
+            )
         }
-        assert!(
-            now.contains(&anchored(m)),
-            "pre-Haskell member {m} vanished from the committed baseline without a \
-             named retirement — corpus growth must never rewrite the pre-generation set"
-        );
-    }
+    };
+    seated_or_retired(home, key, &missing);
 }
 
 /// The anchored-space documents can only describe the present: no key
@@ -152,9 +186,12 @@ fn reanchored_ledgers_describe_the_present() {
             !now.contains(&old) && !suite.contains(&old),
             "replaced key {old} is back in a baseline — stale REANCHORED / RELOCATED entry"
         );
-        assert!(
-            home.contains(&new) || RETIRED.iter().any(|(id, _)| *id == new),
-            "successor {new} is missing from the {name} baseline and no RETIRED entry names it"
+        seated_or_retired(
+            home,
+            new,
+            &format!(
+                "successor {new} is missing from the {name} baseline and no RETIRED entry names it"
+            ),
         );
     }
 }

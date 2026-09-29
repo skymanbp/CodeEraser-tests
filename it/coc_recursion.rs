@@ -1,22 +1,22 @@
 //! The recursion increment (S3776 p.8 and Appendix B1, plan v2.23),
-//! measured through the ONE road a settled cognitive value takes.
-//! `common::measure_units` deliberately answers the PRE-cycle number —
-//! the cycle is the core's judgment — so a battery built on it could
-//! not see this rule at all; these legs go through `scan::settle`.
+//! measured through the ONE road a settled cognitive value takes:
+//! every reading here goes through `scan::settle`, where the core
+//! charges the cycle it finds in the call table.
 //!
-//! The whitepaper scores no recursive example: its six worked examples
-//! (sonar_whitepaper.rs) contain no recursive call, so the anchor here
-//! is DERIVED, and derived two-sided so the derivation is checkable.
-//! Its base is sumOfPrimes, whose 7 is read from the p.10 margin and
-//! already asserted against that margin next door. Adding a self-call
-//! adds no structural increment — a call is not one — so the pre-cycle
-//! reading of the very same source must still be 7 while the settled
-//! reading becomes 8. The +1 is the rule under test; the two readings
-//! of one source are what pin it to that rule and nothing else.
+//! The whitepaper scores no recursive example: its worked examples
+//! (the register contracts/fixtures/scan/whitepaper.ndjson) contain
+//! no recursive call, so the anchor here is DERIVED, and derived
+//! two-sided so the derivation is checkable. Its base is sumOfPrimes,
+//! whose 7 is read from the p.10 margin and asserted against that
+//! margin in the register. Adding a self-call adds no structural
+//! increment — a call is not one — so the anchor is a register line
+//! of its own, folded to 7 with no call table (ScanEventsProps.hs
+//! replays it), while the settled reading of the same bytes is 8.
+//! The +1 is the rule under test; the two readings of one source are
+//! what pin it to that rule and nothing else.
 
 use crate::common;
 use codeeraser::scan;
-use codeeraser::scan::lang::Lang;
 use std::collections::BTreeMap;
 
 /// Every function of a materialized tree with the cognitive value the
@@ -70,12 +70,17 @@ OUT:
 
 #[test]
 fn the_anchor_reads_seven_before_the_cycle_and_eight_after() {
-    let pre = common::measure_units(Lang::Go, ANCHOR);
-    assert_eq!(pre.len(), 1);
+    let pre = common::whitepaper_register()
+        .into_iter()
+        .find(|line| line.src == ANCHOR)
+        .expect("the anchor is a register line, byte for byte");
     assert_eq!(
-        pre[0].coc, 7,
+        (pre.coc, pre.cc, pre.settled_coc),
+        (7, None, Some(8)),
         "p.10 margin: for +1, for +2, if +3, continue OUT +1 — a call \
-         adds nothing, so the scored example's own number survives it"
+         adds nothing, so the scored example's own number survives it \
+         wherever no call table is folded in; the line states the \
+         settled 8 beside it"
     );
     let got = settled("coc-recursion-anchor", &format!("--- sum.go\n{ANCHOR}"));
     expect(

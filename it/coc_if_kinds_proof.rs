@@ -1,5 +1,7 @@
-//! The equivalence proof for cognitive.rs's two generalisations (plan
-//! v2.30 step 6; the booklet's §11 "mechanism extension (d)"): the
+//! The equivalence proof for the walker's two generalisations (plan
+//! v2.30 step 6 — cognitive.rs's then, the emitter's alternative
+//! class and the core's else rule since step 7b ③; the booklet's §11
+//! "mechanism extension (d)"): the
 //! else bonus off an if's `alternative` FIELD was `alternative.kind ==
 //! "block"` and became "anything there but the next if or a flat
 //! branch node", and the walker knew an if by `kind.starts_with("if")`

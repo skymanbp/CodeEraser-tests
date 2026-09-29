@@ -40,6 +40,16 @@ entry_globs = ["gui/", "unit/"]
 # here as unit/ — with them came exactly one clone row the superproject
 # measured until then (its unit tests of dedup/t3 and docdup/judge,
 # 65 -> 64 in its ledger the same commit): a row moving between two
-# ledgers, not new duplication. Ratchet DOWN with every cleanup.
+# ledgers, not new duplication. 119 -> 91 (plan v2.30 step 7b (3),
+# 2026-09-29): the metric batteries' MetricCase tables -- the
+# whitepaper's per-language tables in sonar_whitepaper.rs, which rhymed
+# with coc_haskell.rs, divergence_stances.rs, metrics.rs and themselves
+# -- retired with the walkers they pinned: the register
+# contracts/fixtures/scan/whitepaper.ndjson is one literal both halves
+# replay, so the 28 documentary-table rows are gone with the tables
+# and none are new (the two rows the step first landed, the chunk
+# battery's twin arc/event legs and its head against wire_tests.rs's
+# derived leg, were merged and reshaped before the count was read).
+# Measured on the formatted tree. Ratchet DOWN with every cleanup.
 [dedup]
-budget = 119
+budget = 91

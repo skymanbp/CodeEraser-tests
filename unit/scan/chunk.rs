@@ -5,13 +5,14 @@ use super::*;
 use crate::scan::wire::ScanRequest;
 use serde_json::Value;
 
-/// Only the four streams the split walks; the rest of a request
+/// Only the five streams the split walks; the rest of a request
 /// never reaches it.
 fn plan_req<'a>(
     rows: &'a [[u64; 2]],
     naming: &'a [[i64; 5]],
     blocks: &'a [usize],
     calls: &'a [[u64; 2]],
+    events: &'a [Vec<i64>],
 ) -> ScanRequest<'a> {
     ScanRequest {
         rows,
@@ -22,21 +23,22 @@ fn plan_req<'a>(
         fence: Value::Null,
         blocks,
         calls,
+        events,
     }
 }
 
 /// The chunk budget pays 1 per row + 1 per riding naming fact + 1
-/// per arc, so chunk + grades always fits the core's cap: with
-/// budget 3 and one file per pair, [plain, code-6][plain, code-6]
-/// splits between the files (1+2 each), each facts slice follows its
-/// own rows, and the row span the class column is sliced by follows
-/// the same cut.
+/// per arc + 1 per event, so chunk + grades always fits the core's
+/// cap: with budget 3 and one file per pair, [plain, code-6][plain,
+/// code-6] splits between the files (1+2 each), each facts slice
+/// follows its own rows, and the row span the class column is sliced
+/// by follows the same cut.
 #[test]
 fn chunk_plan_counts_every_request_dimension() {
     let rows = [[0u64, 1], [6, 0], [0, 2], [6, 0]];
     let naming = [[4i64, 2, 0, 1, 1], [1, 2, 0, 1, 1]];
     let blocks = [2usize, 2];
-    let cuts = plan(&plan_req(&rows, &naming, &blocks, &[]), 3).expect("each file fits");
+    let cuts = plan(&plan_req(&rows, &naming, &blocks, &[], &[]), 3).expect("each file fits");
     let shape: Vec<_> = cuts
         .iter()
         .map(|c| (c.rows, c.naming, c.span.clone()))
@@ -49,7 +51,7 @@ fn chunk_plan_counts_every_request_dimension() {
         ]
     );
     // an empty scan still sends ONE (empty, legal) request
-    let empty = plan(&plan_req(&[], &[], &[], &[]), 3).expect("empty fits");
+    let empty = plan(&plan_req(&[], &[], &[], &[], &[]), 3).expect("empty fits");
     assert_eq!(empty.len(), 1);
     assert!(empty[0].rows.is_empty() && empty[0].span == (0..0));
 }
@@ -64,13 +66,13 @@ fn a_class_column_costs_a_row_its_own_seat() {
     let rows = [[0u64, 1]; 4];
     let blocks = [2usize, 2];
     let classes = [0u64; 4];
-    let bare = plan_req(&rows, &[], &blocks, &[]);
+    let bare = plan_req(&rows, &[], &blocks, &[], &[]);
     assert_eq!(
         plan(&bare, 4).expect("unclassed fits").len(),
         1,
         "4 rows, budget 4: one chunk"
     );
-    let mut classed = plan_req(&rows, &[], &blocks, &[]);
+    let mut classed = plan_req(&rows, &[], &blocks, &[], &[]);
     classed.row_classes = Some(&classes);
     let cuts = plan(&classed, 4).expect("each file still fits");
     assert_eq!(
@@ -81,7 +83,7 @@ fn a_class_column_costs_a_row_its_own_seat() {
     // and a single file whose classed weight passes the budget is
     // refused by name rather than sent to be degraded
     let one = {
-        let mut r = plan_req(&rows, &[], &[4], &[]);
+        let mut r = plan_req(&rows, &[], &[4], &[], &[]);
         r.row_classes = Some(&classes);
         r
     };
@@ -100,7 +102,7 @@ fn every_chunk_boundary_is_a_file_boundary() {
     let rows = [[0u64, 1]; 6];
     let blocks = [2usize, 2, 2];
     for budget in [2, 3, 4, 5, 6] {
-        let cuts = plan(&plan_req(&rows, &[], &blocks, &[]), budget).expect("fits");
+        let cuts = plan(&plan_req(&rows, &[], &blocks, &[], &[]), budget).expect("fits");
         let seams: Vec<usize> = cuts.iter().map(|c| c.span.start).collect();
         assert!(
             seams.iter().all(|s| [0, 2, 4].contains(s)),
@@ -109,25 +111,37 @@ fn every_chunk_boundary_is_a_file_boundary() {
     }
 }
 
-/// And so every arc survives the split whole, rebased onto the rows
-/// of the chunk that carries it.
+/// And so every arc and every event survives the split whole, rebased
+/// onto the rows of the chunk that carries it. An event weighs one
+/// seat like an arc (7.2.0), so a file travels with the events of
+/// every unit it holds or is refused by name, and the unit-local
+/// columns ride as sent.
 #[test]
-fn no_call_edge_crosses_a_chunk() {
-    let rows = [[0u64, 1], [4, 9], [1, 3], [0, 1], [4, 9], [1, 3]];
+fn no_arc_or_event_crosses_a_chunk() {
+    let rows = [[0u64, 1], [4, 0], [1, 3], [0, 1], [4, 0], [1, 3]];
     let blocks = [3usize, 3];
     let calls = [[1u64, 1], [4, 4]];
-    let cuts = plan(&plan_req(&rows, &[], &blocks, &calls), 4).expect("each file fits");
-    assert_eq!(cuts.len(), 2, "one file per chunk at budget 4");
+    let events = [
+        vec![1i64, 0, -1, 0, 1, 0],
+        vec![4, 0, -1, 0, 1, 0],
+        vec![4, 1, 0, 1, 32, 2],
+    ];
+    let req = plan_req(&rows, &[], &blocks, &calls, &events);
+    let err = plan(&req, 5)
+        .err()
+        .expect("the second file weighs 3 rows, 1 arc and 2 events");
+    assert!(err.to_string().contains("rows, arcs and events"), "{err}");
+    let cuts = plan(&req, 6).expect("each file fits");
+    assert_eq!(cuts.len(), 2, "5 + 6 seats do not share a chunk of 6");
     for chunk in &cuts {
         assert_eq!(chunk.calls, vec![[1, 1]], "rebased onto its own rows");
-        assert!(
-            chunk
-                .calls
-                .iter()
-                .all(|a| a.iter().all(|&e| (e as usize) < chunk.rows.len())),
-            "an endpoint left its chunk"
-        );
     }
+    assert_eq!(cuts[0].events, vec![vec![1, 0, -1, 0, 1, 0]]);
+    assert_eq!(
+        cuts[1].events,
+        vec![vec![1, 0, -1, 0, 1, 0], vec![1, 1, 0, 1, 32, 2]],
+        "row 4 is row 1 of the second chunk; seq, parent, pos, flags and aux ride as sent"
+    );
 }
 
 /// A file that cannot fit a chunk on its own is refused by name.
@@ -136,7 +150,7 @@ fn no_call_edge_crosses_a_chunk() {
 #[test]
 fn a_file_past_the_budget_is_refused_by_name() {
     let rows = [[0u64, 1]; 5];
-    let err = plan(&plan_req(&rows, &[], &[5], &[]), 3)
+    let err = plan(&plan_req(&rows, &[], &[5], &[], &[]), 3)
         .err()
         .expect("one file, no room");
     let said = err.to_string();
