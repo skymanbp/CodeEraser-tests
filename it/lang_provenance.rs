@@ -16,8 +16,8 @@ use crate::eval_lang_parts::score::scored;
 use crate::eval_lang_parts::{AUDIT_TABLES, EXAMS, Exam, PRECISION_DOCS, SAMPLES};
 use crate::eval_support::{
     assert_all_postdate, assert_blind_window_clear, assert_docs_postdate_audits,
-    assert_resolver_after_audits, first_commit, git_in, intro_commit, is_ancestor,
-    is_strict_ancestor, require_full_history, touched_between,
+    assert_resolver_after_audits, blob_at, first_commit, git_in, intro_commit, is_ancestor,
+    is_strict_ancestor, lock_pins, require_full_history, touched_between,
 };
 
 /// The first commit of an exam's frozen sample, at its generation.
@@ -137,7 +137,9 @@ fn ladder_first(exam: &Exam, sample: &str, audits: Option<&[String]>, why: &str)
 /// site detector, the resolver-config names, the walk that picks the
 /// universe, the language registry and the pinned grammars. A change
 /// anywhere else that moves an answer is the release replay's to find
-/// (eval_lang_parts/replay.rs).
+/// (eval_lang_parts/replay.rs). The lockfile is here for its pins and
+/// is read as content (LOCK, eval_support::lock_pins); the rest as
+/// history.
 const ANSWERED_BY: [&str; 9] = [
     "cli/src/graph/ladder/mod.rs",
     "cli/src/graph/ladder/paths.rs",
@@ -149,6 +151,27 @@ const ANSWERED_BY: [&str; 9] = [
     "cli/src/scan/lang.rs",
     "cli/Cargo.lock",
 ];
+
+/// The one ANSWERED_BY path read by content: cli/Cargo.lock's pins.
+const LOCK: &str = "cli/Cargo.lock";
+
+/// An exam's answer paths that are read as history: its ladder and
+/// ANSWERED_BY without the lockfile.
+fn history_paths(exam: &Exam) -> Vec<&'static str> {
+    let mut paths = exam.ladder.to_vec();
+    paths.extend(ANSWERED_BY.iter().filter(|p| **p != LOCK));
+    paths
+}
+
+/// Whether the lockfile's pins moved from the commit `from` to the
+/// commit `to` - or to the working tree when `to` is None.
+fn pins_moved(from: &str, to: Option<&str>) -> bool {
+    let now = match to {
+        Some(rev) => blob_at(rev, LOCK),
+        None => std::fs::read_to_string(crate::common::repo_root().join(LOCK)).expect(LOCK),
+    };
+    lock_pins(&blob_at(from, LOCK)) != lock_pins(&now)
+}
 
 /// The working tree's uncommitted moves of `paths` - staged or not,
 /// untracked included: what touched_between cannot see until the
@@ -163,17 +186,22 @@ fn uncommitted(paths: &[&str]) -> String {
 /// Every scored doc answers the code it names (the generator's rule,
 /// eval_lang_parts/generate.rs): generated on a clean tree, at a
 /// commit of this history, and no commit since has touched its ladder
-/// or ANSWERED_BY — a ladder change leaves the doc to be regenerated.
+/// or ANSWERED_BY — a ladder change leaves the doc to be regenerated;
+/// the lockfile counts by its pins (pins_moved), not by its history.
 #[test]
 fn lang_docs_answer_the_code_they_name() {
     require_full_history();
     for exam in EXAMS.iter().filter(|e| scored(e)) {
-        let mut paths = exam.ladder.to_vec();
-        paths.extend(ANSWERED_BY);
+        let paths = history_paths(exam);
         let pending = uncommitted(&paths);
         assert!(
             pending.trim().is_empty(),
             "{}: the code its docs' answers come from moved in the working tree - regenerate them on a clean tree before committing:\n{pending}",
+            exam.lang
+        );
+        assert!(
+            !pins_moved("HEAD", None),
+            "{}: {LOCK}'s pins moved in the working tree - regenerate the docs on a clean tree before committing",
             exam.lang
         );
         for (corpus, _) in exam.corpora {
@@ -193,6 +221,37 @@ fn lang_docs_answer_the_code_they_name() {
                 since.trim().is_empty(),
                 "{corpus}: the code its answers come from moved after {commit} - regenerate it (eval_lang_parts/generate.rs):\n{since}"
             );
+            assert!(
+                !pins_moved(commit, Some("HEAD")),
+                "{corpus}: {LOCK}'s pins moved after {commit} - regenerate it (eval_lang_parts/generate.rs)"
+            );
         }
     }
+}
+
+/// The lockfile answers through its pins: the crate's own version
+/// line is the one line dropped, a dependency's version moving is
+/// still a move, and the block's other lines stay.
+#[test]
+fn the_lockfile_answers_through_its_pins() {
+    let lock = |own: &str, grammar: &str| {
+        format!(
+            "[[package]]\nname = \"codeeraser\"\nversion = \"{own}\"\ndependencies = [\n \"tree-sitter-c\",\n]\n\n[[package]]\nname = \"tree-sitter-c\"\nversion = \"{grammar}\"\n"
+        )
+    };
+    let pinned = lock_pins(&lock("1.7.4", "0.24.2"));
+    assert_eq!(
+        pinned,
+        lock_pins(&lock("1.8.0", "0.24.2")),
+        "a release bump is not a move"
+    );
+    assert_ne!(
+        pinned,
+        lock_pins(&lock("1.7.4", "0.24.3")),
+        "a grammar pin moving is a move"
+    );
+    assert!(
+        !pinned.contains("1.7.4") && pinned.contains("dependencies = ["),
+        "only the own version line goes"
+    );
 }

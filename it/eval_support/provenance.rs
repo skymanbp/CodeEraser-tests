@@ -186,6 +186,32 @@ pub fn generated_from() -> serde_json::Value {
     })
 }
 
+/// `git show rev:path` — a repo-relative path's blob at a commit.
+pub fn blob_at(rev: &str, path: &str) -> String {
+    git_in(Some(".."), &["show", &format!("{rev}:{path}")])
+}
+
+/// cli/Cargo.lock read as an answers input: the crate's own `version`
+/// line dropped, every other line kept. The lockfile sits on the
+/// precision docs' ANSWERED_BY for its dependency pins (the grammars
+/// above all); the release train moves the crate's own version line
+/// on every bump and that line answers nothing, so a doc is held to
+/// the pins and a bump alone never retires it (v1.8.0's lesson).
+pub fn lock_pins(lock: &str) -> String {
+    let mut out = String::with_capacity(lock.len());
+    let mut lines = lock.lines().peekable();
+    while let Some(line) = lines.next() {
+        out.push_str(line);
+        out.push('\n');
+        if line == "name = \"codeeraser\""
+            && lines.peek().is_some_and(|n| n.starts_with("version = "))
+        {
+            lines.next();
+        }
+    }
+    out
+}
+
 /// Run git in `repo` (None = the enclosing repository), success AND
 /// empty stderr asserted — a git warning on the success path is a
 /// silently degraded result (the retired slice generators' lesson).
