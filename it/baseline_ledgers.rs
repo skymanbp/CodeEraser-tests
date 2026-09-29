@@ -16,7 +16,31 @@
 /// cleanups are this tool's whole point and retire BY NAME, never
 /// silently. A listed id back in the baseline = a stale entry,
 /// refused — the ledger can only ever describe the present.
-pub const RETIRED: [(u64, &str); 18] = [
+pub const RETIRED: [(u64, &str); 24] = [
+    (
+        6725743369576513159,
+        "v2.30 step 7b: Erase.hs took the closure's helpers into its import list and the target battery into its knobless cascade, so its head no longer rhymes with Audit.hs's (94 tokens) — the Audit.hs <-> Erase.hs member dissolved",
+    ),
+    (
+        10781421503533844466,
+        "v2.30 step 7b: the structure request record moved to Structure/Request.hs beside the shape road, so Structure.hs no longer rhymes with Verdict/Wire.hs's request record (56 tokens) — the Structure.hs <-> Verdict/Wire.hs member dissolved",
+    ),
+    (
+        16825186465806316591,
+        "v2.30 step 7b: EraseProps' (name, probe) battery table became WireHarness.runLegs' two parallel lists when the closure legs joined it, and the EraseProps <-> TrendProps battery member dissolved",
+    ),
+    (
+        9206266380669934656,
+        "v2.30 step 7b: StructureProps' (name, probe) battery table became WireHarness.runLegs' two parallel lists when the shape-road legs joined it, and its three battery members — against AuditProps, SplitProps and TrendProps — dissolved together",
+    ),
+    (
+        14337367506821926604,
+        "v2.30 step 7b: StructureProps' (name, probe) battery table became WireHarness.runLegs' two parallel lists when the shape-road legs joined it, and its three battery members — against AuditProps, SplitProps and TrendProps — dissolved together",
+    ),
+    (
+        16008063474913422179,
+        "v2.30 step 7b: StructureProps' (name, probe) battery table became WireHarness.runLegs' two parallel lists when the shape-road legs joined it, and its three battery members — against AuditProps, SplitProps and TrendProps — dissolved together",
+    ),
     (
         13445979226203383951,
         "v2.30 step 5b-9: score::measure and the join's judge_pairs each spelled the same path -> row map and the first lines of the clone-row seating after it; the seating is one function both roads read, score::clone_rows, and the map another, score::row_index, so the join/verdicts.rs <-> score/mod.rs member dissolved",

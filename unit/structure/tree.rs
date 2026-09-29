@@ -1,29 +1,31 @@
 use super::*;
 
-/// The classifier's vocabulary, one probe per PATTERNS row plus
-/// the refusal cases — codes are frozen wire positions.
+/// The producer's half of the S1 vocabulary: the seven stem facts as
+/// shape bits, one probe per stem the core's battery classifies
+/// (StructureProps.shapeVocabulary pins these same ten stems' bits to
+/// their frozen codes) — bit positions are frozen wire positions.
 #[test]
-fn pattern_codes_cover_the_vocabulary() {
+fn shape_bits_cover_the_vocabulary() {
     let cases: [(&str, u8); 10] = [
-        ("parse_result", 0),
-        ("mod", 0),
-        ("my-file", 1),
-        ("parseResult", 2),
-        ("ParseResult", 3),
-        ("README", 4),
-        ("MAX_LIMIT", 4),
-        ("2026-08-17-notes", 5),
-        ("mixed-and_under", 6),
-        ("名字", 6),
+        ("parse_result", 5),
+        ("mod", 4),
+        ("my-file", 6),
+        ("parseResult", 12),
+        ("ParseResult", 44),
+        ("README", 40),
+        ("MAX_LIMIT", 41),
+        ("2026-08-17-notes", 22),
+        ("mixed-and_under", 7),
+        ("名字", 64),
     ];
     for (s, want) in cases {
-        assert_eq!(pattern_code(s), want, "{s}");
+        assert_eq!(shape_bits(s), want, "{s}");
     }
 }
 
 /// One small tree, every aggregate hand-checked: dense ids in
 /// sorted discovery order, parent/depth chains, fanouts, the
-/// pattern distribution and both convention bits.
+/// shape distribution and both convention bits.
 #[test]
 fn build_aggregates_a_small_tree_by_hand() {
     let paths: Vec<String> = [
@@ -47,8 +49,16 @@ fn build_aggregates_a_small_tree_by_hand() {
     assert_eq!((docs.parent, docs.depth, docs.files), (0, 1, 1));
     assert_eq!((src.parent, src.subdirs, src.files), (0, 1, 1));
     assert_eq!((deep.parent, deep.depth, deep.files), (2, 2, 2));
-    assert_eq!(deep.patterns[0], 1, "one.rs is lower_snake");
-    assert_eq!(deep.patterns[1], 1, "two-b.rs is lower_kebab");
-    assert_eq!(docs.patterns[3], 1, "Guide.md is pascal");
+    assert_eq!(deep.shapes.get(&4), Some(&1), "one.rs is lowercase only");
+    assert_eq!(
+        deep.shapes.get(&6),
+        Some(&1),
+        "two-b.rs is lowercase + dash"
+    );
+    assert_eq!(
+        docs.shapes.get(&44),
+        Some(&1),
+        "Guide.md is both cases, first upper"
+    );
     assert_eq!(docs.conventions, 0, "no README, no config in docs/");
 }

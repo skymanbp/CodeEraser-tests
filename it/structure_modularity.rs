@@ -80,7 +80,7 @@ const CASES: &[Case] = &[
 fn request(c: &Case) -> wire::Request {
     wire::Request {
         nodes: c.nodes.to_vec(),
-        patterns: Vec::new(),
+        shapes: Vec::new(),
         conventions: Vec::new(),
         file_refs: c.refs.to_vec(),
         declared: Vec::new(),
