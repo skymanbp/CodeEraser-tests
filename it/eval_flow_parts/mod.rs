@@ -197,6 +197,25 @@ pub fn assert_keys(what: &str, doc: &Value, want: &Value) {
     }
 }
 
+/// Every exam's per-language doc of a family is on disk exactly when
+/// its stage has reached `at` (the review docs at Audited, the
+/// precision docs at Scored); `check` runs on each filed one.
+pub fn each_filed(docs: &Docs, at: Stage, check: impl Fn(&FlowExam, &str)) {
+    for exam in EXAMS.iter() {
+        let path = docs.file(exam, exam.lang);
+        let filed = std::path::Path::new(&path).exists();
+        let reached = exam.stage >= at;
+        assert_eq!(
+            filed, reached,
+            "{path}: on disk = {filed}, stage {:?}",
+            exam.stage
+        );
+        if filed {
+            check(exam, &path);
+        }
+    }
+}
+
 /// One sample `sources` row: which frozen universe a pool came from.
 pub fn source_row(name: &str, slice: &Value) -> Value {
     json!({

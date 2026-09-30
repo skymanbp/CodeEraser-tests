@@ -15,9 +15,9 @@ use crate::eval_lang_parts::review::audited;
 use crate::eval_lang_parts::score::scored;
 use crate::eval_lang_parts::{AUDIT_TABLES, EXAMS, Exam, PRECISION_DOCS, SAMPLES};
 use crate::eval_support::{
-    assert_all_postdate, assert_blind_window_clear, assert_docs_postdate_audits,
-    assert_resolver_after_audits, blob_at, first_commit, git_in, intro_commit, is_ancestor,
-    is_strict_ancestor, lock_pins, require_full_history, touched_between,
+    LOCK, assert_all_postdate, assert_blind_window_clear, assert_doc_answers,
+    assert_docs_postdate_audits, assert_resolver_after_audits, assert_tree_holds, first_commit,
+    intro_commit, is_strict_ancestor, lock_pins, require_full_history, touched_between,
 };
 
 /// The first commit of an exam's frozen sample, at its generation.
@@ -152,9 +152,6 @@ const ANSWERED_BY: [&str; 9] = [
     "cli/Cargo.lock",
 ];
 
-/// The one ANSWERED_BY path read by content: cli/Cargo.lock's pins.
-const LOCK: &str = "cli/Cargo.lock";
-
 /// An exam's answer paths that are read as history: its ladder and
 /// ANSWERED_BY without the lockfile.
 fn history_paths(exam: &Exam) -> Vec<&'static str> {
@@ -163,68 +160,21 @@ fn history_paths(exam: &Exam) -> Vec<&'static str> {
     paths
 }
 
-/// Whether the lockfile's pins moved from the commit `from` to the
-/// commit `to` - or to the working tree when `to` is None.
-fn pins_moved(from: &str, to: Option<&str>) -> bool {
-    let now = match to {
-        Some(rev) => blob_at(rev, LOCK),
-        None => std::fs::read_to_string(crate::common::repo_root().join(LOCK)).expect(LOCK),
-    };
-    lock_pins(&blob_at(from, LOCK)) != lock_pins(&now)
-}
-
-/// The working tree's uncommitted moves of `paths` - staged or not,
-/// untracked included: what touched_between cannot see until the
-/// commit lands (step 7's lesson: a read-only face added to lang.rs
-/// passed every local leg and CI refused the commit).
-fn uncommitted(paths: &[&str]) -> String {
-    let mut args = vec!["status", "--porcelain", "--untracked-files=all", "--"];
-    args.extend(paths);
-    git_in(Some(".."), &args)
-}
-
 /// Every scored doc answers the code it names (the generator's rule,
 /// eval_lang_parts/generate.rs): generated on a clean tree, at a
 /// commit of this history, and no commit since has touched its ladder
 /// or ANSWERED_BY — a ladder change leaves the doc to be regenerated;
-/// the lockfile counts by its pins (pins_moved), not by its history.
+/// the lockfile counts by its pins (eval_support::pins_moved), not by
+/// its history.
 #[test]
 fn lang_docs_answer_the_code_they_name() {
     require_full_history();
     for exam in EXAMS.iter().filter(|e| scored(e)) {
         let paths = history_paths(exam);
-        let pending = uncommitted(&paths);
-        assert!(
-            pending.trim().is_empty(),
-            "{}: the code its docs' answers come from moved in the working tree - regenerate them on a clean tree before committing:\n{pending}",
-            exam.lang
-        );
-        assert!(
-            !pins_moved("HEAD", None),
-            "{}: {LOCK}'s pins moved in the working tree - regenerate the docs on a clean tree before committing",
-            exam.lang
-        );
+        assert_tree_holds(exam.lang, &paths);
         for (corpus, _) in exam.corpora {
             let from = &PRECISION_DOCS.load(exam, corpus)["generated_from"];
-            let commit = from["commit"].as_str().expect("commit");
-            assert_eq!(
-                from["dirty"],
-                serde_json::json!(false),
-                "{corpus}: generated on a dirty tree, so {commit} is not the code that answered"
-            );
-            assert!(
-                is_ancestor(commit, "HEAD"),
-                "{corpus}: generated at {commit}, outside this history"
-            );
-            let since = touched_between(commit, "HEAD", &paths);
-            assert!(
-                since.trim().is_empty(),
-                "{corpus}: the code its answers come from moved after {commit} - regenerate it (eval_lang_parts/generate.rs):\n{since}"
-            );
-            assert!(
-                !pins_moved(commit, Some("HEAD")),
-                "{corpus}: {LOCK}'s pins moved after {commit} - regenerate it (eval_lang_parts/generate.rs)"
-            );
+            assert_doc_answers(corpus, from, &paths, "eval_lang_parts/generate.rs");
         }
     }
 }

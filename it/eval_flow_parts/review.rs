@@ -28,7 +28,7 @@ pub const IDENTITY: &str =
     "rank audit corpus commit path unit unit_name unit_lines kind stratum line nth name";
 
 /// The exam's corpora as the review names them.
-fn corpora(exam: &FlowExam) -> Value {
+pub fn corpora(exam: &FlowExam) -> Value {
     let rows: Vec<Value> = exam
         .corpora
         .iter()
@@ -157,7 +157,7 @@ fn check_envelope(exam: &FlowExam, doc: &Value) {
     );
 }
 
-fn row_list(doc: &Value) -> &Vec<Value> {
+pub fn row_list(doc: &Value) -> &Vec<Value> {
     doc["rows"].as_array().expect("rows")
 }
 

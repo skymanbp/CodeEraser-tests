@@ -4,19 +4,25 @@
 //! question's anchor — the line, the nth same-shaped anchor on it (a
 //! statement in column order, a write of the name, a declaration of
 //! the name) and the variable name — which is what an auditor reads a
-//! question by, and what a precision doc maps a finding back to.
+//! question by — and the statement and variable it stands for, which is
+//! how a precision doc maps a finding back to it (precision.rs reads
+//! the item, never a second derivation of the anchor).
 
 use super::cell;
 use codeeraser::flow::lower::Unit;
 use std::collections::BTreeMap;
 
-/// One pool item: a question before it is sampled.
+/// One pool item: a question before it is sampled, with the rows it
+/// stands for — `seq` the statement (kind 0: the question; kind 1: the
+/// write; kinds 2 / 3: −1) and `v` the variable (kind 0: −1).
 pub struct Item {
     pub kind: u64,
     pub stratum: char,
     pub line: u32,
     pub nth: u64,
     pub name: String,
+    pub seq: i64,
+    pub v: i64,
 }
 
 /// The terminal leaves: return, throw, break, continue, goto,
@@ -82,6 +88,8 @@ fn unreachable(u: &Unit) -> Vec<Item> {
                 line,
                 nth,
                 name: String::new(),
+                seq,
+                v: -1,
             });
         }
     }
@@ -171,6 +179,8 @@ fn dead_stores(u: &Unit) -> Vec<Item> {
                 line,
                 nth,
                 name: u.legend.var_name[v as usize].clone(),
+                seq,
+                v,
             });
         }
     }
@@ -195,6 +205,8 @@ fn unused(u: &Unit, params: bool) -> Vec<Item> {
             line: u.legend.var_at[v as usize].0,
             nth: nth_on_line(&u.legend.var_at, v as usize, same),
             name: name.clone(),
+            seq: -1,
+            v,
         });
     }
     out

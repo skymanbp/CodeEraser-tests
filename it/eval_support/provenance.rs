@@ -212,6 +212,70 @@ pub fn lock_pins(lock: &str) -> String {
     out
 }
 
+/// The one answers input read by content: cli/Cargo.lock's pins
+/// (lock_pins), for every precision family that names it.
+pub const LOCK: &str = "cli/Cargo.lock";
+
+/// Whether the lockfile's pins moved from the commit `from` to the
+/// commit `to` - or to the working tree when `to` is None.
+pub fn pins_moved(from: &str, to: Option<&str>) -> bool {
+    let now = match to {
+        Some(rev) => blob_at(rev, LOCK),
+        None => std::fs::read_to_string(crate::common::repo_root().join(LOCK)).expect(LOCK),
+    };
+    lock_pins(&blob_at(from, LOCK)) != lock_pins(&now)
+}
+
+/// The working tree's uncommitted moves of `paths` - staged or not,
+/// untracked included: what touched_between cannot see until the
+/// commit lands (v2.30 step 7's lesson: a read-only face added to
+/// lang.rs passed every local leg and CI refused the commit).
+pub fn uncommitted(paths: &[&str]) -> String {
+    let mut args = vec!["status", "--porcelain", "--untracked-files=all", "--"];
+    args.extend(paths);
+    git_in(Some(".."), &args)
+}
+
+/// The working-tree half of "a scored doc answers the code it names"
+/// (the language exams' and the flow exams' one reading): no
+/// uncommitted move of the history paths, the lockfile's pins still.
+pub fn assert_tree_holds(what: &str, paths: &[&str]) {
+    let pending = uncommitted(paths);
+    assert!(
+        pending.trim().is_empty(),
+        "{what}: the code its docs' answers come from moved in the working tree - regenerate them on a clean tree before committing:\n{pending}"
+    );
+    assert!(
+        !pins_moved("HEAD", None),
+        "{what}: {LOCK}'s pins moved in the working tree - regenerate the docs on a clean tree before committing"
+    );
+}
+
+/// One doc's half: generated on a clean tree at a commit of this
+/// history, and neither the history paths nor the lockfile's pins
+/// moved since; `regen` names the generator that re-answers it.
+pub fn assert_doc_answers(what: &str, from: &serde_json::Value, paths: &[&str], regen: &str) {
+    let commit = from["commit"].as_str().expect("commit");
+    assert_eq!(
+        from["dirty"],
+        serde_json::json!(false),
+        "{what}: generated on a dirty tree, so {commit} is not the code that answered"
+    );
+    assert!(
+        is_ancestor(commit, "HEAD"),
+        "{what}: generated at {commit}, outside this history"
+    );
+    let since = touched_between(commit, "HEAD", paths);
+    assert!(
+        since.trim().is_empty(),
+        "{what}: the code its answers come from moved after {commit} - regenerate it ({regen}):\n{since}"
+    );
+    assert!(
+        !pins_moved(commit, Some("HEAD")),
+        "{what}: {LOCK}'s pins moved after {commit} - regenerate it ({regen})"
+    );
+}
+
 /// Run git in `repo` (None = the enclosing repository), success AND
 /// empty stderr asserted — a git warning on the success path is a
 /// silently degraded result (the retired slice generators' lesson).

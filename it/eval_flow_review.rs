@@ -10,7 +10,7 @@
 
 use crate::eval_flow_parts::batches::{self, BATCH_MAX, CANNOT_TELL, answer_file, plan, render};
 use crate::eval_flow_parts::review::{Filed, REVIEWS, assemble, verify_review};
-use crate::eval_flow_parts::{EXAMS, FlowExam, Stage, exam, tamper};
+use crate::eval_flow_parts::{EXAMS, FlowExam, Stage, each_filed, exam, tamper};
 use crate::eval_support::load;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -209,21 +209,11 @@ fn flow_review_assembly_names_every_refusal() {
 /// Sampled; a filed one verifies and refuses the tamper battery.
 #[test]
 fn flow_reviews_filed_by_stage() {
-    for exam in EXAMS.iter() {
-        let path = REVIEWS.file(exam, exam.lang);
-        let filed = std::path::Path::new(&path).exists();
-        let audited = exam.stage >= Stage::Audited;
-        assert_eq!(
-            filed, audited,
-            "{path}: on disk = {filed}, stage {:?}",
-            exam.stage
-        );
-        if filed {
-            let (sample, doc) = (exam.sample(), load(&path));
-            verify_review(exam, &sample, &doc);
-            tamper::assert_flow_review_tampering(exam, &sample, &doc);
-        }
-    }
+    each_filed(&REVIEWS, Stage::Audited, |exam, path| {
+        let (sample, doc) = (exam.sample(), load(path));
+        verify_review(exam, &sample, &doc);
+        tamper::assert_flow_review_tampering(exam, &sample, &doc);
+    });
 }
 
 /// The battery on synthetic reviews of a one-corpus and the two-corpus
