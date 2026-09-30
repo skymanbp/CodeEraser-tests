@@ -50,6 +50,13 @@ fn manifest(exam: &FlowExam, sample: &Value) -> Value {
     serde_json::from_str(text).expect("manifest json")
 }
 
+/// The gate's synthetic review of an exam's sample: every question
+/// answered by `answers` and assembled — the review the precision
+/// battery reads for an exam whose generation has none filed yet.
+pub(crate) fn synthetic_review(exam: &FlowExam, sample: &Value) -> Value {
+    assembled(exam, sample, &answers(exam, sample)).expect("synthetic")
+}
+
 /// Assemble a synthetic answer set.
 fn assembled(exam: &FlowExam, sample: &Value, set: &Set) -> Result<Value, Vec<String>> {
     let file = |n: u64| set.get(&n).map(|l| l.join("\n") + "\n");
@@ -64,7 +71,8 @@ fn assembled(exam: &FlowExam, sample: &Value, set: &Set) -> Result<Value, Vec<St
 
 /// Two renderings are byte-identical; the plan cuts every sampled row
 /// into exactly one batch of one corpus, numbered 1.., at most
-/// BATCH_MAX each; a batch never shows a rank.
+/// BATCH_MAX each; a batch never shows a rank; the language readings
+/// are in a batch exactly from the second generation on.
 #[test]
 fn flow_batches_render_purely() {
     for exam in EXAMS.iter() {
@@ -85,36 +93,27 @@ fn flow_batches_render_purely() {
             exam.lang
         );
         for (i, b) in batches.iter().enumerate() {
-            let (_, text) = &once[i];
-            assert!(
-                b.n == i as u64 + 1 && b.rows.len() <= BATCH_MAX,
-                "{}: batch {}",
-                exam.lang,
-                b.n
-            );
-            for r in &b.rows {
-                assert_eq!(
-                    r["corpus"],
-                    json!(b.corpus),
-                    "{}: batch {} mixes corpora",
-                    exam.lang,
-                    b.n
-                );
-                let rank = r["rank"].as_str().expect("rank");
-                assert!(
-                    !text.contains(rank),
-                    "{}: batch {} shows a rank",
-                    exam.lang,
-                    b.n
-                );
-            }
-            assert!(
-                text.contains(&answer_file(AT.1, exam.lang, b.n)),
-                "{}: answer file",
-                exam.lang
-            );
+            batch_holds(exam, i, b, &once[i].1);
         }
     }
+}
+
+/// Batch i of an exam's plan, as rendered: numbered i + 1, at most
+/// BATCH_MAX rows of its one corpus, no rank shown, its answer file
+/// named, the language readings in it exactly from the second
+/// generation on.
+fn batch_holds(exam: &FlowExam, i: usize, b: &batches::Batch, text: &str) {
+    let at = format!("{}: batch {}", exam.lang, b.n);
+    assert!(b.n == i as u64 + 1 && b.rows.len() <= BATCH_MAX, "{at}");
+    for r in &b.rows {
+        assert_eq!(r["corpus"], json!(b.corpus), "{at} mixes corpora");
+        let rank = r["rank"].as_str().expect("rank");
+        assert!(!text.contains(rank), "{at} shows a rank");
+    }
+    let answers = answer_file(AT.1, exam.lang, b.n);
+    assert!(text.contains(&answers), "{at}: answer file");
+    let read = text.contains(batches::READINGS_TEXT);
+    assert_eq!(read, exam.generation >= 2, "{at}: readings");
 }
 
 /// A complete synthetic answer set assembles for every exam and the
@@ -223,7 +222,7 @@ fn a_tampered_flow_review_is_refused() {
     for lang in ["python", "rust"] {
         let exam = exam(lang);
         let sample = exam.sample();
-        let doc = assembled(exam, &sample, &answers(exam, &sample)).expect("synthetic");
+        let doc = synthetic_review(exam, &sample);
         tamper::assert_flow_review_tampering(exam, &sample, &doc);
     }
 }

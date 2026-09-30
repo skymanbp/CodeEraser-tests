@@ -2,7 +2,7 @@
 //! language's frozen sample cut into batches an independent auditor
 //! reads — one corpus per batch (one clone to read), at most BATCH_MAX
 //! questions, in the sample's audit order — each rendered from the
-//! prompt below with its questions. A question names the file, the
+//! prompt (prompt.rs) with its questions. A question names the file, the
 //! function and its line range, and the anchor (statement, write,
 //! declaration or parameter); never the stratum, the rank or any
 //! product answer. The plan is one pure function of the sample, read by
@@ -11,6 +11,8 @@
 //!   CE_FLOW_LANG=python CE_FLOW_BATCH_DIR=<dir> [CE_FLOW_CLONE_ROOT=<corpora>] cargo test --test it -- --ignored eval_flow_parts::batches::flow_batches --nocapture
 
 use super::draw::text;
+pub use super::prompt::READINGS_TEXT;
+use super::prompt::{PROMPT, readings};
 use super::{FlowExam, exam};
 use crate::eval_lang_parts::generate::env;
 use crate::eval_support::pinned_at;
@@ -119,10 +121,15 @@ pub fn render(exam: &FlowExam, sample: &Value, base: &str, dir: &str) -> Vec<(St
     let lang = exam.lang;
     let mut files = Vec::new();
     let mut manifest = Vec::new();
+    let readings_section = match readings(exam) {
+        Some(_) => format!("{READINGS_TEXT}\n"),
+        None => String::new(),
+    };
     for b in plan(exam, sample) {
         let questions: Vec<String> = b.rows.iter().map(|r| question(r)).collect();
         let ids: Vec<&str> = b.rows.iter().map(|r| text(r, "audit")).collect();
         let body = PROMPT
+            .replace("{READINGS}", &readings_section)
             .replace("{BATCH_ID}", &format!("{lang}-{}", b.n))
             .replace("{LANG}", lang)
             .replace("{CLONE_ROOT}", &clone_root(base, b.corpus))
@@ -133,7 +140,10 @@ pub fn render(exam: &FlowExam, sample: &Value, base: &str, dir: &str) -> Vec<(St
             "n": b.n, "corpus": b.corpus, "clone_root": clone_root(base, b.corpus), "ids": ids,
         }));
     }
-    let doc = json!({"lang": lang, "generation": exam.generation, "batches": manifest});
+    let mut doc = json!({"lang": lang, "generation": exam.generation, "batches": manifest});
+    if let Some(r) = readings(exam) {
+        doc["readings"] = json!(r);
+    }
     let text = serde_json::to_string_pretty(&doc).expect("json") + "\n";
     files.push(("manifest.json".to_string(), text));
     files
@@ -177,73 +187,3 @@ fn flow_batches() {
         println!("{}/{name}: {questions} questions", out.display());
     }
 }
-
-/// The audit prompt, verbatim; the five `{…}` placeholders are filled
-/// per batch.
-pub const PROMPT: &str = r##"# Blind audit — flow questions (batch {BATCH_ID}, language {LANG})
-
-You are an independent reader of source code. You answer questions about
-one function at a time by reading the pinned source tree below. Nobody
-has told you what any tool answered; there is no tool answer in this
-batch. Answer from the source alone.
-
-Source tree (read-only, already checked out at the pinned commit):
-{CLONE_ROOT}
-Do not run git, do not modify files, do not read anything outside this tree.
-
-## The four kinds of question
-
-Every question names a file, a function (its name and its line range),
-and a place inside that function. Read the whole function before
-answering; read the file's imports / includes when a name's meaning
-depends on them (for example whether `exit` is the standard one).
-
-kind 0 — reachability. "The statement starting on line L (the N-th
-statement that starts on that line, counting from 0 left to right)."
-Answer `unreachable` if no execution path from the function's entry can
-reach that statement; `reachable` if some path can. Paths follow the
-language's own control flow: return / throw / raise / break / continue /
-goto, loops whose condition is a constant true, `switch` fallthrough,
-try / catch / finally, and calls to functions that never return
-(process exit, abort, panic, an infinite loop). A call that *may* throw
-does not end a path. A statement inside a branch whose condition is
-merely unlikely is reachable.
-
-kind 1 — dead store. "The write to variable X on line L (the N-th write
-to X on that line, from 0)." Answer `dead` if on every path from that
-write, X is written again or the function ends before X is read; `live`
-if some path reads X after that write. A read is any use of X's value:
-in an expression, as a call argument, in a condition, in a string
-interpolation, `x += 1` (reads then writes), a member / index / deref
-access `x.f` / `x[i]` / `*x` (reads x), a nested function or closure
-that mentions X (reads it), `&x` / a reference bound to x (treat as a
-read). A write to a member `x.f = 1` reads x, it does not write x.
-
-kind 2 — unused local. "Local variable X declared on line L (the N-th
-declaration of X on that line, from 0)." Answer `unread` if X's value
-is never read anywhere in the function (by the reads listed under kind
-1, nested closures included); `read` otherwise. Being written again is
-not a read.
-
-kind 3 — unused parameter. "Parameter X of the function." Same reading
-as kind 2: `unread` / `read`.
-
-If the source truly does not let you decide (a macro that hides the
-statement, a truncated file), answer `cannot_tell` and say why. Use it
-rarely; "hard" is not "cannot".
-
-## Answer format
-
-Write one JSON object per line to {ANSWER_FILE}, in the order given,
-one line per question, nothing else in the file:
-
-{"id": "<the question's id, copied exactly>", "truth": "<one of the two words for the kind, or cannot_tell>", "reason": "<one sentence, at most 200 characters, quoting the decisive source line(s)>"}
-
-The id, the truth and the reason are all required. Do not add fields.
-Do not answer for a question you did not read. When you finish, reply
-with the count of lines written and nothing else about the answers.
-
-## Questions
-
-{QUESTIONS}
-"##;

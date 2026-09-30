@@ -4,13 +4,16 @@
 //! frozen doc and refuses to overwrite it: a re-freeze is a new
 //! generation and a named entry in docs/EVAL-SET-FLOW.md.
 //!   CE_FLOW_LANG=python CE_FLOW_CORPUS=requests [CE_FLOW_OUT=<dir>] cargo test --test it -- --ignored eval_flow_parts::generate::flow_slice --nocapture
-//!   CE_FLOW_LANG=python cargo test --test it -- --ignored eval_flow_parts::generate::flow_sample --nocapture
+//!   CE_FLOW_LANG=python [CE_FLOW_OUT=<dir>] cargo test --test it -- --ignored eval_flow_parts::generate::flow_sample --nocapture
+//! With CE_FLOW_OUT set the sample reads its slices from that directory
+//! too, so a generation's universes and samples are all written beside
+//! the tree and filed together (the second generation, commit F).
 
 use super::{FlowExam, SAMPLES, SCHEMAS, SLICES, draw, exam, pools, slice_summary, source_row};
 use crate::eval_lang_parts::Generated;
 use crate::eval_lang_parts::freezing::{frozen, walked};
 use crate::eval_lang_parts::generate::{blob, corpus_repo, env, freeze};
-use crate::eval_support::content_sha;
+use crate::eval_support::{content_sha, load};
 use codeeraser::flow::lower::{Lowered, Unit, lower_file};
 use codeeraser::scan::lang::Lang;
 use serde_json::{Value, json};
@@ -78,9 +81,10 @@ fn flow_slice() {
     freeze(&out_file(&SLICES.file(exam, &exam.key(&name))), &doc);
 }
 
-/// Where a generator writes: CE_FLOW_OUT when set (a directory: a
-/// universe or precision doc read beside the filed one, the
-/// generation's drift measured), else the doc's home under
+/// Where a generator writes, and a sample reads its slices: CE_FLOW_OUT
+/// when set (a directory: a universe, sample or precision doc read
+/// beside the filed one, a generation's drift measured, a new
+/// generation filed in one copy), else the doc's home under
 /// contracts/eval.
 pub fn out_file(home: &str) -> String {
     match std::env::var("CE_FLOW_OUT") {
@@ -135,7 +139,7 @@ fn flow_sample() {
     let exam = exam(&env("CE_FLOW_LANG"));
     let (mut pool, mut sources) = (Vec::new(), Vec::new());
     for (name, tip) in &exam.corpora {
-        let slice = SLICES.load(exam, &exam.key(name));
+        let slice = load(&out_file(&SLICES.file(exam, &exam.key(name))));
         pool.extend(corpus_pool(exam, name, tip, &slice));
         sources.push(source_row(name, &slice));
     }
@@ -153,5 +157,5 @@ fn flow_sample() {
         "rows": rows,
     });
     let doc = frozen(SCHEMAS.1, SAMPLE_METHOD, super::sample_constants(), doc);
-    freeze(&SAMPLES.file(exam, exam.lang), &doc);
+    freeze(&out_file(&SAMPLES.file(exam, exam.lang)), &doc);
 }

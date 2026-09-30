@@ -5,18 +5,40 @@
 //! g the exam's generation, both committed after the lowering they
 //! draw from (the `ladder_first` ordering, flow_provenance.rs at commit
 //! C) and before the blind audit. Each exam adds one row to
-//! eval_flow_parts::EXAMS. No git, no corpus clone.
+//! eval_flow_parts::EXAMS. An earlier generation's docs stay on disk as
+//! the record of that generation and are read as nothing else. No git,
+//! no corpus clone.
 
 use crate::eval_flow_parts::{self as parts, EXAMS, FlowExam, Stage, verify::verify_sample};
-use crate::eval_lang::named;
 use crate::eval_lang_parts::Docs;
-use crate::eval_support::{MIN_WHY, UniverseFamily, assert_corpus_set, assert_envelope_core, load};
+use crate::eval_support::{
+    MIN_WHY, UniverseFamily, assert_envelope_core, doc_suffix, frozen_docs, load,
+};
 use serde_json::{Value, json};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-/// The frozen set of a family is exactly `keys` (G10).
-fn frozen_set(family: &Docs, keys: BTreeSet<String>) {
-    assert_corpus_set(family.0, &named(keys.into_iter().collect()));
+/// The frozen set of a family at the exams' generations is exactly the
+/// keys of `current` (G10), each key mapped to its exam's generation; a
+/// doc of an earlier generation of a key is that generation's record,
+/// and a doc of any other generation, or of no exam's key, is refused.
+fn frozen_set(family: &Docs, current: BTreeMap<String, u32>) {
+    let mut filed = BTreeSet::new();
+    for path in frozen_docs(family.0) {
+        let key = doc_suffix(&path, family.0).unwrap_or_default();
+        let g = path
+            .rsplit_once("-v")
+            .and_then(|(_, t)| t.strip_suffix(".json"));
+        let g: u32 = g.and_then(|g| g.parse().ok()).expect("a generation");
+        let exam = *current
+            .get(&key)
+            .unwrap_or_else(|| panic!("{path}: no exam key"));
+        assert!(g <= exam, "{path}: past the exam's generation {exam}");
+        if g == exam {
+            filed.insert(key);
+        }
+    }
+    let want: BTreeSet<String> = current.into_keys().collect();
+    assert_eq!(filed, want, "frozen {} set drifted (G10)", family.0);
 }
 
 /// The slice family of one language, as the shared envelope core reads

@@ -17,6 +17,7 @@ pub mod draw;
 pub mod exams;
 pub mod generate;
 pub mod pools;
+pub mod prompt;
 pub mod review;
 pub mod tamper;
 pub mod verify;

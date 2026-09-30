@@ -101,13 +101,24 @@ fn the_flow_gate_reads_four_states() {
     }
 }
 
+/// The exam's filed review, or the review gate's synthetic one while
+/// its generation has none filed (rust, the one two-corpus exam, is
+/// at its second generation from commit F on).
+fn review_of(exam: &FlowExam, sample: &Value) -> Value {
+    match exam.stage >= Stage::Audited {
+        true => REVIEWS.load(exam, exam.lang),
+        false => crate::eval_flow_review::synthetic_review(exam, sample),
+    }
+}
+
 /// The battery on synthetic docs over the python review (kind 0
 /// vacuous, 1 pass, 2 silent) and the two-corpus rust review.
 #[test]
 fn a_tampered_flow_precision_is_refused() {
     for lang in ["python", "rust"] {
         let exam = exam(lang);
-        let (sample, review) = (exam.sample(), REVIEWS.load(exam, exam.lang));
+        let sample = exam.sample();
+        let review = review_of(exam, &sample);
         let doc = synthetic(exam, &review);
         verify_precision(exam, &sample, &review, &doc);
         assert_flow_precision_tampering(exam, &sample, &review, &doc);

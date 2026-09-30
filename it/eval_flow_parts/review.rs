@@ -12,6 +12,7 @@
 use super::answers::{self, reason_fits};
 use super::batches::{CANNOT_TELL, answer_file, legal, plan, words};
 use super::draw::text;
+use super::prompt::readings;
 use super::{FlowExam, exam};
 use crate::eval_lang_parts::Docs;
 use crate::eval_lang_parts::generate::{env, freeze};
@@ -51,8 +52,9 @@ pub fn summary(rows: &[Value]) -> Value {
     json!(out)
 }
 
-/// The manifest must be this sample's plan: language, generation and
-/// every batch's number, corpus and ids.
+/// The manifest must be this sample's plan: language, generation, the
+/// readings its batches were rendered under (absent at the first
+/// generation) and every batch's number, corpus and ids.
 fn manifest_agrees(exam: &FlowExam, sample: &Value, manifest: &Value) -> bool {
     let batches: Vec<Value> = plan(exam, sample)
         .iter()
@@ -71,6 +73,7 @@ fn manifest_agrees(exam: &FlowExam, sample: &Value, manifest: &Value) -> bool {
         .unwrap_or_default();
     manifest["lang"] == json!(exam.lang)
         && manifest["generation"] == json!(exam.generation)
+        && manifest["readings"] == json!(readings(exam))
         && theirs == batches
 }
 
@@ -114,11 +117,15 @@ pub fn assemble(
         .iter()
         .map(|s| review_row(s, &judged[text(s, "audit")]))
         .collect();
-    Ok(json!({
+    let mut doc = json!({
         "schema": REVIEW_SCHEMA, "lang": exam.lang, "generation": exam.generation,
         "corpora": corpora(exam), "auditor": auditor, "summary": summary(&rows),
         "rows": rows, "notes": [], "generated_from": stamp,
-    }))
+    });
+    if let Some(r) = readings(exam) {
+        doc["readings"] = json!(r);
+    }
+    Ok(doc)
 }
 
 /// A sample row's identity with the answer's three fields.
@@ -136,7 +143,10 @@ fn review_row(sampled: &Value, answer: &Value) -> Value {
 }
 
 /// The envelope: schema, language, generation, the exam's corpora at
-/// their tips, an auditor sentence, notes as sentences, a stamp.
+/// their tips, the readings its questions were judged under (2 from
+/// the second generation on; absent or 1 at the first, whose prompt
+/// had no readings section), an auditor sentence, notes as sentences,
+/// a stamp.
 fn check_envelope(exam: &FlowExam, doc: &Value) {
     let lang = exam.lang;
     let want = json!({
@@ -144,6 +154,12 @@ fn check_envelope(exam: &FlowExam, doc: &Value) {
         "corpora": corpora(exam),
     });
     super::assert_keys(lang, doc, &want);
+    let read = &doc["readings"];
+    let fits = match readings(exam) {
+        Some(r) => *read == json!(r),
+        None => read.is_null() || *read == json!(1),
+    };
+    assert!(fits, "{lang}: readings {read} is not the generation's");
     let auditor = doc["auditor"].as_str().map_or(0, |a| a.chars().count());
     assert!(auditor >= MIN_WHY, "{lang}: no auditor sentence");
     let notes = doc["notes"].as_array().expect("notes");

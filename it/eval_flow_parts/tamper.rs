@@ -115,8 +115,8 @@ pub fn assert_flow_sample_tampering() {
 /// The review's tamper battery: the pristine doc passes; a foreign
 /// rank, an empty why and a dropped row refuse through the shared
 /// field-mutation frame; a flipped truth (the summary no longer
-/// agrees), a swapped pair and a forged batch through the forgery
-/// frame.
+/// agrees), a swapped pair, a forged batch and readings no
+/// generation's prompt had through the forgery frame.
 pub fn assert_flow_review_tampering(exam: &FlowExam, sample: &Value, pristine: &Value) {
     let check = |doc: &Value| verify_review(exam, sample, doc);
     let mutations = [
@@ -124,8 +124,9 @@ pub fn assert_flow_review_tampering(exam: &FlowExam, sample: &Value, pristine: &
         ("why", "", "an empty why"),
     ];
     assert_tampering_refused(pristine, &mutations, &check);
-    let forgeries: [Forgery; 3] = [
+    let forgeries: [Forgery; 4] = [
         (&flip_truth, "a flipped truth"),
+        (&|d| d["readings"] = json!(3), "forged readings"),
         (&|d| rows(d).swap(0, 1), "a swapped pair"),
         (
             &|d| d["rows"][0]["batch"] = json!(d["rows"][0]["batch"].as_u64().unwrap_or(0) + 1),
