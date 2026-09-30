@@ -10,6 +10,7 @@
 //! the tree and filed together (the second generation, commit F).
 
 use super::{FlowExam, SAMPLES, SCHEMAS, SLICES, draw, exam, pools, slice_summary, source_row};
+use crate::common::ledger::out_file;
 use crate::eval_lang_parts::Generated;
 use crate::eval_lang_parts::freezing::{frozen, walked};
 use crate::eval_lang_parts::generate::{blob, corpus_repo, env, freeze};
@@ -78,22 +79,14 @@ fn flow_slice() {
         "files": files,
     });
     let doc = frozen(SCHEMAS.0, SLICE_METHOD, super::slice_constants(), doc);
-    freeze(&out_file(&SLICES.file(exam, &exam.key(&name))), &doc);
+    filed(&SLICES.file(exam, &exam.key(&name)), &doc);
 }
 
-/// Where a generator writes, and a sample reads its slices: CE_FLOW_OUT
-/// when set (a directory: a universe, sample or precision doc read
-/// beside the filed one, a generation's drift measured, a new
-/// generation filed in one copy), else the doc's home under
-/// contracts/eval.
-pub fn out_file(home: &str) -> String {
-    match std::env::var("CE_FLOW_OUT") {
-        Ok(dir) => {
-            let name = std::path::Path::new(home).file_name().expect("name");
-            format!("{dir}/{}", name.to_string_lossy())
-        }
-        Err(_) => home.to_string(),
-    }
+/// A generated doc frozen at its home under contracts/eval, or under
+/// CE_FLOW_OUT's directory when set (common::ledger::out_file: a
+/// generation written beside the tree and filed in one copy).
+pub fn filed(home: &str, doc: &Value) {
+    freeze(&out_file("CE_FLOW_OUT", home), doc);
 }
 
 /// Every pool item of one frozen universe, re-lowered at the pinned
@@ -139,7 +132,10 @@ fn flow_sample() {
     let exam = exam(&env("CE_FLOW_LANG"));
     let (mut pool, mut sources) = (Vec::new(), Vec::new());
     for (name, tip) in &exam.corpora {
-        let slice = load(&out_file(&SLICES.file(exam, &exam.key(name))));
+        let slice = load(&out_file(
+            "CE_FLOW_OUT",
+            &SLICES.file(exam, &exam.key(name)),
+        ));
         pool.extend(corpus_pool(exam, name, tip, &slice));
         sources.push(source_row(name, &slice));
     }
@@ -157,5 +153,5 @@ fn flow_sample() {
         "rows": rows,
     });
     let doc = frozen(SCHEMAS.1, SAMPLE_METHOD, super::sample_constants(), doc);
-    freeze(&out_file(&SAMPLES.file(exam, exam.lang)), &doc);
+    filed(&SAMPLES.file(exam, exam.lang), &doc);
 }

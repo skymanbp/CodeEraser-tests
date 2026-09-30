@@ -22,10 +22,10 @@ use crate::eval_flow_parts::assert_keys;
 use crate::eval_flow_parts::batches::CANNOT_TELL;
 use crate::eval_flow_parts::draw::text;
 use crate::eval_flow_parts::exam;
-use crate::eval_flow_parts::generate::out_file;
+use crate::eval_flow_parts::generate::filed;
 use crate::eval_flow_parts::review::{REVIEWS, corpora, row_list, verify_review};
 use crate::eval_lang_parts::Docs;
-use crate::eval_lang_parts::generate::{env, freeze};
+use crate::eval_lang_parts::generate::env;
 use crate::eval_support::generated_from;
 use codeeraser::corelink::Link;
 use serde_json::{Map, Value, json};
@@ -267,5 +267,5 @@ fn flow_precision() {
         return;
     }
     verify_precision(exam, &sample, &review, &doc);
-    freeze(&out_file(&PRECISIONS.file(exam, exam.lang)), &doc);
+    filed(&PRECISIONS.file(exam, exam.lang), &doc);
 }

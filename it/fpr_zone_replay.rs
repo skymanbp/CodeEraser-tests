@@ -27,7 +27,9 @@
 //! as they do for fpr_replay, so the two ledgers share a denominator;
 //! CE_FPR_CORPUS names the row (default `self`). CE_BLESS=1 merges
 //! the measured row into contracts/eval/fpr-zone-v1.json, replacing
-//! the row of the same name and leaving the other corpus alone.
+//! the row of the same name and leaving the other corpus alone. With
+//! CE_FPR_OUT naming a directory the doc is read and written there
+//! instead (common::ledger::out_file), so the measured tree stays clean.
 
 use crate::common::{blob, chain, changed, git_lines, repo_root, tmp};
 use crate::fpr_zone_replay_parts::{Corpus, LEDGER, Landed, table};

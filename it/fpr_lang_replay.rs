@@ -16,7 +16,9 @@
 //!
 //! CE_BLESS=1 merges the measured row into
 //! contracts/eval/fpr-lang-v1.json, replacing the row of the same name
-//! and keeping the other five as their own runs left them.
+//! and keeping the other five as their own runs left them. With
+//! CE_FPR_OUT naming a directory the doc is read and written there
+//! instead (common::ledger::out_file), so the measured tree stays clean.
 //!
 //! The reading (docs/FPR-REPLAY.md, the per-language section):
 //! WINDOW commits; an event is one changed file of the language in one

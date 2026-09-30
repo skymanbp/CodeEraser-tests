@@ -17,6 +17,9 @@
 //! read, never written. CE_BLESS=1 merges the measured row into
 //! contracts/eval/fpr-flow-v1.json, replacing the row of the same
 //! language and keeping the other nine as their own runs left them.
+//! With CE_FPR_OUT naming a directory the doc is read and written
+//! there instead (common::ledger::out_file), so the ten runs leave the
+//! measured tree clean and the doc is copied in once all ten are in.
 
 use crate::bench_support::today;
 use crate::common::ledger::WINDOW;

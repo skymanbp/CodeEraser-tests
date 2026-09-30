@@ -18,6 +18,24 @@ use std::path::{Path, PathBuf};
 /// (fpr_lang_replay) and the flow one (fpr_flow_replay).
 pub const WINDOW: usize = 400;
 
+/// Where a frozen doc is read and written: the directory `var` names
+/// when it is set (the doc under its file name there), else `home`.
+/// Two readers: CE_FLOW_OUT for the flow exams' universe, sample and
+/// precision docs, CE_FPR_OUT for the three FPR ledgers' frozen docs
+/// (fpr-lang, fpr-zone, fpr-flow). A measurement run thus leaves the
+/// tree clean — generated_from() reads `git status --porcelain`, so a
+/// doc written into the tree marks every later run dirty — and the
+/// docs are copied in together once all are measured.
+pub fn out_file(var: &str, home: &str) -> String {
+    match std::env::var(var) {
+        Ok(dir) => {
+            let name = Path::new(home).file_name().expect("name");
+            format!("{dir}/{}", name.to_string_lossy())
+        }
+        Err(_) => home.to_string(),
+    }
+}
+
 /// A frozen ledger doc: where it lives, its schema, its writer, the
 /// row field that names a row, and the admission line it records
 /// (None for a ledger recorded beside a gate that reads another doc:
@@ -75,7 +93,9 @@ impl Ledger {
     /// The measured row into the frozen doc: the row of the same name
     /// replaced, every other row kept as its own run left it, `extra`
     /// header fields written beside the standing ones, rows in `rank`
-    /// order.
+    /// order. The doc is read and written at one path: CE_FPR_OUT's
+    /// directory when set (out_file), so successive blesses accumulate
+    /// outside the tree.
     pub fn merge(
         &self,
         root: &Path,
@@ -83,7 +103,8 @@ impl Ledger {
         extra: &[(&str, Value)],
         rank: impl Fn(&Value) -> (usize, String),
     ) {
-        let path = root.join(self.rel);
+        let home = root.join(self.rel);
+        let path = out_file("CE_FPR_OUT", &home.to_string_lossy());
         let mut doc: Value = std::fs::read_to_string(&path)
             .ok()
             .and_then(|t| serde_json::from_str(&t).ok())
