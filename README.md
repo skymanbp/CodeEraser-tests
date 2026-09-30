@@ -32,7 +32,7 @@ submodule pointer. In the superproject this tree is a **reader** — its
 references feed the graph and the advisory's mention universe — and
 never a measured part (user ruling 2026-08-28, plan v2.18 step #12):
 what measures it is its own `ce.toml` and `ce-baseline.json` here, the
-same six gates the superproject's CI runs on itself, rooted in this
+same seven gates the superproject's CI runs on itself, rooted in this
 directory (`ce <cmd> cli/tests`).
 
 ## Licence

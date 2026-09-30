@@ -59,6 +59,7 @@ fn class_knob_rows_shadow_the_ceiling_codes_in_order() {
             class(None, Some(900), Some(20)),
             class(Some(0), None, None),
         ],
+        file: None,
     };
     assert_eq!(
         class_knob_rows(&rules),

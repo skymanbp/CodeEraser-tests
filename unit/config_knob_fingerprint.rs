@@ -12,6 +12,7 @@ fn with_class(name: &str, globs: &[&str], tol: Option<usize>) -> Config {
                     ..ClassKnobs::default()
                 },
             }],
+            file: None,
         },
         ..Config::default()
     }
@@ -22,6 +23,18 @@ fn with_score(score: ScoreCfg) -> Config {
         score,
         ..Config::default()
     }
+}
+
+/// Rule 7: the rules file is a path the query family reads, never a
+/// knob — naming one leaves the fingerprint byte for byte (plan
+/// v2.31 step 2).
+#[test]
+fn the_rules_file_is_not_a_knob() {
+    let mut named = with_class("vendored", &["vendor/**"], Some(0));
+    let bare = named.knobs_digest();
+    named.rules.file = Some("arch.rules".into());
+    assert_eq!(named.knobs_digest(), bare);
+    assert!(canonical(&named)["rules"].get("file").is_none());
 }
 
 /// A repo that declares nothing has no fingerprint. Absence is the
@@ -89,6 +102,7 @@ fn the_rulepack_still_moves_it_in_every_part() {
                     knobs: ClassKnobs::default(),
                 })
                 .collect(),
+            file: None,
         },
         ..Config::default()
     };
@@ -234,6 +248,7 @@ fn the_tree_holds_declarations_only() {
                     ..ClassKnobs::default()
                 },
             }],
+            file: None,
         },
         ..Config::default()
     };

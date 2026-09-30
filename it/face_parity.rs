@@ -37,6 +37,7 @@ tree-scale structure (split pricing) | 树尺度结构（拆分定价） | struc
 score trajectory | 分数轨迹 | trend | tab:trend, trend_report | mcp:trend | |
 score, ratchet and floor | 分数、棘轮与地板 | check | tab:score, check_report | mcp:check | |
 same-role advisor (similar units, associative view) | 同角色顾问（相似单元、联想视图） | similar | tab:similar, similar_report | mcp:similar_units | |
+code query and architecture rules | 代码查询与架构规则 | query, rules | tab:query, query_report, rules_report | mcp:query, mcp:rules | |
 baseline writes | 基线写入 | baseline | | | CLI only: a machine surface never writes a baseline | 只在 CLI：机器面永不写基线
 erase plan | 擦除计划 | erase | tab:erase, erase_preview | mcp:erase, skill:erase | |
 erase apply | 擦除执行 | erase --apply | tab:erase, erase_apply | | no MCP face: applying is a human act | 无 MCP 面：执行是人类动作
@@ -109,11 +110,15 @@ pub(crate) fn cli_subcommands() -> BTreeSet<String> {
         .collect()
 }
 
+/// Every command the handler list registers, whichever `commands*`
+/// module it lives in (the query family's two sit in commands_query.rs
+/// because commands.rs stands at the 300-line line).
 fn gui_commands() -> BTreeSet<String> {
     read(&repo_root(), "gui/src-tauri/src/main.rs")
         .lines()
-        .filter_map(|l| l.trim().strip_prefix("commands::"))
-        .map(|l| l.trim_end_matches(',').to_string())
+        .filter_map(|l| l.trim().strip_prefix("commands"))
+        .filter_map(|l| l.split_once("::"))
+        .map(|(_, name)| name.trim_end_matches(',').to_string())
         .collect()
 }
 

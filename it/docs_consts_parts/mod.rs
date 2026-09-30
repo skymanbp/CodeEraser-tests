@@ -6,6 +6,8 @@
 //! value through one hop of aliasing. The leaf owns the shape; the
 //! parent references downward.
 
+pub mod page;
+
 use crate::common::files_with_ext;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};

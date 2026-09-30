@@ -1,0 +1,13 @@
+# The test suite's own architecture rules (plan v2.31 step 2): the
+# superproject's CI judges this tree with `ce rules tests` as its
+# seventh gate, rooted here like the other six. Each assertion ran
+# green on the day it entered.
+
+# No dead file: the prelude's `dead` mirrors `ce deadcode`'s file tier.
+assert dead_file(F) :- dead(F).
+
+# The integration tree and the unit tree (mounted into cli/src by
+# `#[path]`) never read each other: a helper both need lives in the
+# superproject, not in a sibling test.
+assert it_reads_unit(F, G) :- in(F, "it/**"), ref(F, G, _, _), in(G, "unit/**").
+assert unit_reads_it(F, G) :- in(F, "unit/**"), ref(F, G, _, _), in(G, "it/**").

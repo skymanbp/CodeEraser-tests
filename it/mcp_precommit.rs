@@ -48,6 +48,8 @@ fn mcp_initialize_and_list() {
             "doctor",
             "trend",
             "similar_units",
+            "query",
+            "rules",
             "update_check",
         ]
     );

@@ -157,6 +157,8 @@ mod packaging;
 mod pin_release;
 mod probe_gate;
 mod progress_face;
+mod query_face;
+mod query_golden;
 mod refusal_text;
 mod release_roster;
 mod release_roster_parts;

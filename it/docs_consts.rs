@@ -1,104 +1,18 @@
 //! The how-page constant chips (`<ul class="consts">` per numbered
-//! family on site/how ×2): the two languages carry the same families
+//! family on site/how and, from family 16, site/how/analysis, in
+//! both languages): the two languages carry the same families
 //! and values, and every chip not on the allowlist resolves to exactly
-//! one source constant with the same number. The source harvest lives
-//! in docs_consts_parts; this half parses the pages and judges.
+//! one source constant with the same number. The source harvest and
+//! the page parser live in docs_consts_parts; this half binds and judges.
 
 use crate::common::repo_root;
+use crate::docs_consts_parts::page::{Families, families};
 use crate::docs_consts_parts::{
     Def, default_impls_in, defs_in, first_number, haskell_line, normalize, numbers, rust_line,
     value_for,
 };
-use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
+use std::collections::BTreeSet;
 use std::path::Path;
-
-#[derive(Debug, Clone)]
-struct Chip {
-    name: String,
-    value: String,
-}
-
-type Families = BTreeMap<String, Vec<Chip>>;
-
-fn page(root: &Path, rel: &str) -> String {
-    fs::read_to_string(root.join(rel)).unwrap_or_else(|e| panic!("read {rel}: {e}"))
-}
-
-fn between<'a>(text: &'a str, start: usize, end: usize, what: &str) -> &'a str {
-    text.get(start..end)
-        .unwrap_or_else(|| panic!("consts parser: invalid {what} range"))
-}
-
-/// Find `pat` at or after `from`, or panic naming the surface — the
-/// ONE owner of the find-or-refuse idiom both parsers lean on.
-fn seek(text: &str, from: usize, pat: &str, what: &str) -> usize {
-    text[from..]
-        .find(pat)
-        .map(|i| from + i)
-        .unwrap_or_else(|| panic!("{what} has no {pat}"))
-}
-
-fn parse_chips(body: &str, label: &str, family: &str) -> Vec<Chip> {
-    let mut chips = Vec::new();
-    let mut item = 0;
-    let ctx = format!("{label} family {family}: chip");
-    while let Some(rel) = body[item..].find("<li><b>") {
-        let name_start = item + rel + "<li><b>".len();
-        let name_end = seek(body, name_start, "</b>", &ctx);
-        let value_start = name_end + "</b>".len();
-        let value_end = seek(body, value_start, "</li>", &ctx);
-        chips.push(Chip {
-            name: between(body, name_start, name_end, "chip name").to_string(),
-            value: between(body, value_start, value_end, "chip value")
-                .trim()
-                .to_string(),
-        });
-        item = value_end + "</li>".len();
-    }
-    chips
-}
-
-fn parse_page(text: &str, label: &str) -> Families {
-    let mut families = BTreeMap::new();
-    let mut cursor = 0;
-    while let Some(rel) = text[cursor..].find(r#"<ul class="consts">"#) {
-        let ul = cursor + rel;
-        let end = seek(text, ul, "</ul>", &format!("{label}: consts block"));
-        let before = &text[..ul];
-        // the number span, not the <h3> around it: the heading carries
-        // an id (`<h3 id="fNN">`) so the page's jump list can reach it
-        let heading = before
-            .rfind(r#"<span class="n">"#)
-            .unwrap_or_else(|| panic!("{label}: consts block with no preceding numbered heading"));
-        let n_start = heading + r#"<span class="n">"#.len();
-        let n_end = seek(
-            text,
-            n_start,
-            "</span>",
-            &format!("{label}: numbered heading"),
-        );
-        let family = between(text, n_start, n_end, "family number").to_string();
-        assert!(
-            !family.is_empty() && family.bytes().all(|b| b.is_ascii_digit()),
-            "{label}: consts block heading is not numbered"
-        );
-        let body = between(
-            text,
-            ul + r#"<ul class="consts">"#.len(),
-            end,
-            "consts body",
-        );
-        assert!(
-            families
-                .insert(family.clone(), parse_chips(body, label, &family))
-                .is_none(),
-            "{label}: duplicate family {family}"
-        );
-        cursor = end + "</ul>".len();
-    }
-    families
-}
 
 /// Chips the gate cannot bind, each for a reason that is a PROPERTY
 /// of the chip and not of the parser (v2.24 emptied the label cases —
@@ -170,6 +84,7 @@ fn collision<'a>(family: &str, name: &'a str) -> (Option<&'static str>, &'a str)
         ("02", "schema") => (Some("cli/src/dedup/t3/mod.rs"), "SCHEMA_ID"),
         ("07", "schema") => (Some("cli/src/join/mod.rs"), "SCHEMA_ID"),
         ("10", "schema") => (Some("cli/src/trend/report.rs"), "SCHEMA_ID"),
+        ("16", "schema") => (Some("cli/src/query/face.rs"), "SCHEMA_ID"),
         _ => (None, name),
     }
 }
@@ -261,8 +176,8 @@ fn the_unmentioned_soft_cap_is_one_number_on_both_sides() {
 #[test]
 fn how_page_constant_chips_are_locked_and_resolvable() {
     let root = repo_root();
-    let en = parse_page(&page(&root, "site/how/index.html"), "EN");
-    let zh = parse_page(&page(&root, "site/zh/how/index.html"), "ZH");
+    let en = families(&root, false);
+    let zh = families(&root, true);
     assert_eq!(
         en.keys().collect::<BTreeSet<_>>(),
         zh.keys().collect::<BTreeSet<_>>()

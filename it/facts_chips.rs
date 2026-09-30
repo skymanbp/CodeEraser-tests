@@ -21,7 +21,7 @@ const SURFACES: &[(&str, usize, bool)] = &[
     ("plugin/README.md", 7, ZH),
     ("contracts/DAEMON.md", 2, ZH),
     ("contracts/VERSIONING.md", 10, ZH),
-    ("docs/RELEASE.md", 13, ZH),
+    ("docs/RELEASE.md", 14, ZH),
     ("docs/reference/gui.md", 4, EN),
     ("site/index.html", 5, EN),
     ("site/zh/index.html", 5, ZH),

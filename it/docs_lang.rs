@@ -25,10 +25,12 @@ pub const SURFACES: &[(&str, bool)] = &[
     ("README.zh.md", true),
     ("site/index.html", false),
     ("site/how/index.html", false),
+    ("site/how/analysis/index.html", false),
     ("site/stack/index.html", false),
     ("site/bench/index.html", false),
     ("site/zh/index.html", true),
     ("site/zh/how/index.html", true),
+    ("site/zh/how/analysis/index.html", true),
     ("site/zh/stack/index.html", true),
     ("site/zh/bench/index.html", true),
 ];
