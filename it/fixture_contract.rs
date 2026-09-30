@@ -62,6 +62,55 @@ pub fn golden_pairs(rel: &str) -> Vec<(String, String)> {
         .collect()
 }
 
+/// A generated golden (query_golden.rs, flow_golden.rs): its first
+/// request lines are a generator's output and `kept` hand-written pairs
+/// follow them as filed. Fails naming every generated line the file
+/// disagrees with, and the leg that rewrites them.
+pub fn assert_generated(rel: &str, generated: &[String], kept: usize, leg: &str) {
+    let filed = golden_pairs(rel);
+    let moved: Vec<usize> = generated
+        .iter()
+        .enumerate()
+        .filter(|(i, g)| filed.get(*i).map(|(req, _)| req) != Some(*g))
+        .map(|(i, _)| i + 1)
+        .collect();
+    assert!(
+        moved.is_empty() && filed.len() == generated.len() + kept,
+        "{rel}: request lines behind their generator: {moved:?} of {} filed / {} generated + \
+         {kept} kept — run `{leg}::regen` then `fixture_contract::regen` under CE_BLESS=1",
+        filed.len(),
+        generated.len()
+    );
+}
+
+/// A generated golden rewritten: each generated request line beside the
+/// reply filed at its place (`{}` where it is new — `regen` below answers
+/// it next), then the last `kept` filed pairs as filed. `CE_BLESS=1`
+/// writes the file; without it the dry run fails if the file would move.
+pub fn rewrite_generated(rel: &str, generated: &[String], kept: usize) {
+    let filed = golden_pairs(rel);
+    let (made, tail) = filed.split_at(filed.len().saturating_sub(kept));
+    let replies = made
+        .iter()
+        .map(|(_, r)| r.as_str())
+        .chain(std::iter::repeat("{}"));
+    let mut body: String = generated
+        .iter()
+        .zip(replies)
+        .map(|(req, reply)| format!("{req}\n{reply}\n"))
+        .collect();
+    body.extend(tail.iter().map(|(req, reply)| format!("{req}\n{reply}\n")));
+    if crate::facts::blessing() {
+        std::fs::write(fixture(rel), body).expect(rel);
+    } else {
+        let current = std::fs::read_to_string(fixture(rel)).expect(rel);
+        assert_eq!(
+            current, body,
+            "{rel}: CE_BLESS=1 rewrites the request lines"
+        );
+    }
+}
+
 fn proto_of(line: &str) -> Option<String> {
     serde_json::from_str::<serde_json::Value>(line)
         .ok()?

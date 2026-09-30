@@ -102,6 +102,8 @@ mod facts_registry;
 mod fence_wire;
 mod fixture_contract;
 mod fixtures_why;
+mod flow_core;
+mod flow_golden;
 mod foreign_readers;
 mod fourclass_decls;
 mod fpr_fourclass;

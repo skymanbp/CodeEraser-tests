@@ -10,7 +10,6 @@
 //! for what the programs MEAN as well — the goldens are a contract of
 //! the core's behaviour on the prelude, not only a byte replay.
 
-use crate::common;
 use codeeraser::query::{PRELUDE, legend, program::Program};
 use serde_json::{Value, json};
 
@@ -110,22 +109,9 @@ fn reply(id: usize) -> Value {
 
 #[test]
 fn every_request_line_is_the_prelude_then_its_program_through_the_lexer() {
-    let (filed, expected) = (filed(), regenerated());
-    let moved: Vec<usize> = expected
-        .iter()
-        .enumerate()
-        .filter(|(i, exp)| filed.get(*i).map(|(req, _)| req) != Some(*exp))
-        .map(|(i, _)| i + 1)
-        .collect();
-    assert!(
-        moved.is_empty() && filed.len() == expected.len(),
-        "request lines behind the lexer: {moved:?} of {} filed / {} programs — run \
-         `query_golden::regen` then `fixture_contract::regen` under CE_BLESS=1",
-        filed.len(),
-        expected.len()
-    );
+    crate::fixture_contract::assert_generated(REL, &regenerated(), 0, "query_golden");
     let prelude = Program::lex(PRELUDE, None, None).expect("the prelude lexes");
-    for (req, _) in &filed {
+    for (req, _) in &filed() {
         let d: Value = serde_json::from_str(req).expect("a request line");
         let tokens = d["program"].as_array().expect("tokens");
         assert_eq!(d["prelude"], prelude.prelude_clauses);
@@ -139,22 +125,7 @@ fn every_request_line_is_the_prelude_then_its_program_through_the_lexer() {
 #[test]
 #[ignore]
 fn regen() {
-    let (filed, expected) = (filed(), regenerated());
-    let body: String = expected
-        .iter()
-        .enumerate()
-        .map(|(i, req)| {
-            let reply = filed.get(i).map_or("{}", |(_, r)| r.as_str());
-            format!("{req}\n{reply}\n")
-        })
-        .collect();
-    let path = common::repo_root().join("contracts/fixtures").join(REL);
-    if crate::facts::blessing() {
-        std::fs::write(&path, body).expect(REL);
-    } else {
-        let current = std::fs::read_to_string(&path).expect(REL);
-        assert_eq!(current, body, "CE_BLESS=1 rewrites the request lines");
-    }
+    crate::fixture_contract::rewrite_generated(REL, &regenerated(), 0);
 }
 
 /// What the eight programs mean, read off the filed replies.
