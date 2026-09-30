@@ -50,6 +50,7 @@ fn mcp_initialize_and_list() {
             "similar_units",
             "query",
             "rules",
+            "flow",
             "update_check",
         ]
     );

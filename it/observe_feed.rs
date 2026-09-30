@@ -1,10 +1,11 @@
-//! Observe-feed contract (ce.observe/0.11.0): the NDJSON feed is the
+//! Observe-feed contract (ce.observe/0.12.0): the NDJSON feed is the
 //! M4 evaluation-set raw material, so its line shape is pinned by a
 //! golden. One deterministic run of every producer — probe, budget
 //! (§4.2 step 2), zone unarmed AND armed (plan v2.6 §A / v2.7 ①), the
 //! armed map's `ask` and the PostToolUse leg's settlement of it (0.11.0),
 //! tombstone (plan v2.26, the per-edit leg; the Stop and precommit
-//! lines carry its object), stop audit (whose `similar` object, 0.10.0,
+//! lines carry its object), flow (0.12.0, the per-edit leg ahead of its
+//! probe line; the audit lines carry its object), stop audit (whose `similar` object, 0.10.0,
 //! is ABSENT here by design: the staged twin shares one name word and
 //! the core's role bit wants two — similar_face.rs seeds the pair that
 //! earns it), precommit, commitmsg — volatile fields
@@ -63,8 +64,8 @@ fn asked_write_settles(dir: &Path) {
     common::run_hook(dir, &["settle", "--hook"], &ran);
 }
 
-/// Entry 13: the stop audit (staged b.rs = one touched duplicate);
-/// entry 14: precommit (observe mode reports but exits 0); entry 15:
+/// Entry 15: the stop audit (staged b.rs = one touched duplicate);
+/// entry 16: precommit (observe mode reports but exits 0); entry 17:
 /// commitmsg — the staged set now erases a.rs's `work_1` and the
 /// message argues it away: precommit's line shape under its own event,
 /// the message's own site, session null.
@@ -127,7 +128,12 @@ fn feed_shape_matches_golden() {
     // absence logs the 0.8.0 tombstone line after its own probe
     let tomb = common::pretooluse_envelope_at(&dir, "a.rs", "Write", TOMB);
     common::run_hook(&dir, &["probe", "--hook"], &tomb);
-    // entries 13-15: the stop audit and the two git-hook faces
+    // entries 13+14 (0.12.0): a new file bringing an unreachable
+    // statement logs the flow line ahead of its own probe line
+    let dead = "fn gone() -> i32 {\n    return 1;\n    let _late = 2;\n}\n";
+    let flow = common::pretooluse_envelope_at(&dir, "c.rs", "Write", dead);
+    common::run_hook(&dir, &["probe", "--hook"], &flow);
+    // entries 15-17: the stop audit and the two git-hook faces
     stop_and_git_faces(&dir);
     common::assert_matches_golden(
         &normalized_feed(&dir),

@@ -7,7 +7,7 @@
 //! here, which is the walk to this file's fixture discipline.
 
 use crate::common;
-use codeeraser::daemon::proto::{Request, Response};
+use codeeraser::daemon::proto::{FlowTables, Request, Response};
 use serde_json::json;
 
 fn requests() -> Vec<Request> {
@@ -45,6 +45,12 @@ fn requests() -> Vec<Request> {
             rows: vec![[0, 0, 1], [2, 1, 1]],
             budget: Some(3),
         },
+        Request::Flow(FlowTables {
+            units: vec![vec![0, 5, 0]],
+            stmts: vec![vec![0, 0, -1, 1, 0, 0], vec![0, 1, -1, 0, 0, 0]],
+            vars: vec![],
+            uses: vec![],
+        }),
         Request::Shutdown,
     ]
 }
@@ -71,6 +77,9 @@ fn replies() -> Vec<Response> {
         Response::TombstoneReport {
             reply: json!({"sites": [0], "counts": {"label": 1, "prose": 0, "rows": 2}, "over": false}),
         },
+        Response::FlowReport {
+            reply: json!({"findings": [[0, 0, 1, -1, 1]], "counts": {"units": 1, "findings": 1}}),
+        },
         Response::Error {
             message: "bad request: expected value".into(),
         },
@@ -86,6 +95,7 @@ fn req_tag(r: &Request) -> &'static str {
         Request::Probe { .. } => "probe",
         Request::FourClass { .. } => "four_class",
         Request::Tombstone { .. } => "tombstone",
+        Request::Flow(_) => "flow",
         Request::Shutdown => "shutdown",
     }
 }
@@ -99,6 +109,7 @@ fn resp_tag(r: &Response) -> &'static str {
         Response::ProbeReport { .. } => "probe_report",
         Response::FourClassReport { .. } => "four_class_report",
         Response::TombstoneReport { .. } => "tombstone_report",
+        Response::FlowReport { .. } => "flow_report",
         Response::Error { .. } => "error",
         Response::Bye => "bye",
     }
@@ -145,15 +156,15 @@ fn wire_shapes_are_frozen() {
     // breaks req_tag/resp_tag at COMPILE time, and these two lines
     // are where the walk ends — bump each count WITH its fixture
     // line, or the "every variant is frozen" claim silently rots
-    // (clearance review). requests() carries 9 items over 7 variants
+    // (clearance review). requests() carries 10 items over 8 variants
     // (Dedup appears twice to pin the null-optional shape, Hello twice
     // for the tokenless line).
     assert_eq!(
         requests().len(),
-        9,
-        "request battery: 7 variants + the None-Dedup and tokenless-hello shapes"
+        10,
+        "request battery: 8 variants + the None-Dedup and tokenless-hello shapes"
     );
-    assert_eq!(replies().len(), 9, "reply battery covers all 9 variants");
+    assert_eq!(replies().len(), 10, "reply battery covers all 10 variants");
     freeze(requests(), req_tag, "daemon/requests.ndjson");
     freeze(replies(), resp_tag, "daemon/replies.ndjson");
 }

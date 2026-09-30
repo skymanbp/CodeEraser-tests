@@ -15,7 +15,7 @@
 use std::path::Path;
 
 use crate::common;
-use crate::common::pretooluse_envelope as envelope;
+use crate::common::pretooluse_envelope_at as envelope_at;
 use crate::common::{rust_fn, seed_project, tmp};
 
 /// Ask one write twice — the default road and `CE_LANG=zh` — and
@@ -54,6 +54,9 @@ fn both_languages(dir: &Path, envelope: &str, want: &str, en: &str, zh: &str) ->
 /// own T2 normalization, and its dedup gate said so.
 struct Scene {
     tag: &'static str,
+    /// The file the write lands in: b.rs unless the scene needs a
+    /// language of its own.
+    at: &'static str,
     indexed: bool,
     declare: Vec<(&'static str, String)>,
     write: String,
@@ -70,6 +73,7 @@ struct Scene {
 fn scene(tag: &'static str, want: &'static str, en: &'static str, zh: &'static str) -> Scene {
     Scene {
         tag,
+        at: "b.rs",
         indexed: false,
         declare: Vec::new(),
         write: String::new(),
@@ -89,7 +93,7 @@ fn scene(tag: &'static str, want: &'static str, en: &'static str, zh: &'static s
 fn scenes() -> Vec<Scene> {
     let toml = |t: &str| vec![("ce.toml", t.to_string())];
     let filler = |n: usize| "// filler\n".repeat(n);
-    vec![
+    let mut all = vec![
         Scene {
             indexed: true,
             write: rust_fn(1),
@@ -145,7 +149,36 @@ fn scenes() -> Vec<Scene> {
                 "提交在库的基线不可读",
             )
         },
+    ];
+    all.extend(flow_scenes());
+    all
+}
+
+/// The flow class (plan v2.31 step 5) speaks only for a language the
+/// precision gate admitted (`flow::judged_mask`): its two tiers that
+/// speak, asked on a Python write while Python is in the mask; outside
+/// it the leg is silent, which flow_guard.rs asserts.
+fn flow_scenes() -> Vec<Scene> {
+    if !codeeraser::flow_report::lang_judged(codeeraser::scan::lang::Lang::Python) {
+        return Vec::new();
+    }
+    let unreachable = "def gone():\n    return 1\n    print(\"never\")\n";
+    [
+        ("guard-say-flow-warn", "warn", "allow"),
+        ("guard-say-flow-deny", "deny", "deny"),
     ]
+    .map(|(tag, tier, want)| Scene {
+        at: "b.py",
+        declare: vec![("ce.toml", format!("[flow]\ntier = \"{tier}\"\n"))],
+        write: unreachable.to_string(),
+        ..scene(
+            tag,
+            want,
+            "new dead-code finding(s)",
+            "条新的函数内死代码发现",
+        )
+    })
+    .into()
 }
 
 /// The whole set, asked in both languages (guard/say.rs) — why this
@@ -161,7 +194,13 @@ fn every_sentence_the_guard_speaks_answers_in_both_languages() {
         for (name, text) in &s.declare {
             std::fs::write(dir.join(name), text).expect(name);
         }
-        let chinese = both_languages(&dir, &envelope(&dir, "Write", &s.write), s.want, s.en, s.zh);
+        let chinese = both_languages(
+            &dir,
+            &envelope_at(&dir, s.at, "Write", &s.write),
+            s.want,
+            s.en,
+            s.zh,
+        );
         if let Some(tail) = s.tail {
             assert!(chinese.ends_with(tail), "{}: {chinese}", s.tag);
         }

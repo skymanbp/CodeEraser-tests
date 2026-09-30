@@ -23,6 +23,7 @@ const LINKED: &[(&str, &str)] = &[
     // the trail READER's document (O50) — named for the trail because
     // this table keys by family name and `erase-log` is the record's
     ("erase-trail", codeeraser::erase::log::REPORT_SCHEMA),
+    ("flow", codeeraser::flow_report::face::SCHEMA_ID),
     ("graph-canvas", codeeraser::graph::canvas::SCHEMA_ID),
     ("graph-screen", codeeraser::graph::canvas::SCREEN_SCHEMA_ID),
     ("join", codeeraser::join::SCHEMA_ID),
