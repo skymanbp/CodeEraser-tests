@@ -2,7 +2,7 @@
 //! as a reader would — the one road that prints the per-language
 //! census, which no other leg exercised (L round review): the JSON
 //! field names pinned (serde renames nothing, so a renamed counter
-//! would change the `ce.mentions-report/0.2.0` payload while the
+//! would change the `ce.mentions-report/0.3.0` payload while the
 //! empty-`rates` unit test stayed green), the fold channel witnessed
 //! on a fixture (the census unit test counts `fold: 0`; the self
 //! corpus measures 23), and the console line's nine holes filled in
@@ -59,7 +59,7 @@ fn keys(v: &Value) -> Vec<&str> {
 fn the_json_face_names_every_counter_and_witnesses_the_fold() {
     let root = tree("json");
     let doc: Value = serde_json::from_str(&run(&root, &["--format", "json"], false)).expect("json");
-    assert_eq!(doc["schema"], "ce.mentions-report/0.2.0");
+    assert_eq!(doc["schema"], "ce.mentions-report/0.3.0");
     let rust = &doc["rates"]["rust"];
     assert_eq!(keys(rust), ["declared", "unmentioned", "vetoed"]);
     assert_eq!(keys(&rust["declared"]), ["all", "exported"]);

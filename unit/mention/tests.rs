@@ -144,15 +144,16 @@ fn fold_filters_the_three_separators_and_the_gate_is_literal_length() {
 
 /// The caps are explicit numbers of the pass and the face carries its
 /// schema id — the two facts the operator's window states. 0.2.0
-/// added the per-language `rates` census (K23) beside the header.
+/// added the per-language `rates` census (K23) beside the header,
+/// 0.3.0 the `skipped.signed` counter (the product's signature rule).
 #[test]
 fn caps_and_face_identity_are_stated() {
     assert_eq!(super::FILE_TOKEN_CAP, 65_536);
     assert_eq!(super::TABLE_ROW_CAP, 4_194_304);
     let doc = super::face::report_json(&super::Stats::default(), &Default::default());
     for needle in [
-        "\"schema\":\"ce.mentions-report/0.2.0\"",
-        "\"mention_rev\":3",
+        "\"schema\":\"ce.mentions-report/0.3.0\"",
+        "\"mention_rev\":4",
         "\"rates\":{}",
     ] {
         assert!(doc.contains(needle), "{needle} in {doc}");

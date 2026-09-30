@@ -9,7 +9,7 @@
 
 use super::score::{PRECISION_SCHEMA, answer, judged, ledger, summary};
 use super::walk::{Walk, universe_files, walk_record};
-use super::{AUDIT_TABLES, EXAMS, Exam, SLICES};
+use super::{AUDIT_TABLES, EXAMS, Exam, Generated, SLICES};
 use crate::eval_support::{
     TRUTH_KEYWORDS, assert_tampering_refused, doc_refused, of_corpus, sum_obj_into,
 };

@@ -16,13 +16,13 @@ use crate::eval_lang_parts::tree::{TREES, verify_tree};
 use crate::eval_lang_parts::verify::verify_sample;
 use crate::eval_lang_parts::{self as parts, EXAMS, Reach, Stage};
 use crate::eval_support::{
-    assert_corpus_set, assert_envelope_core, doc_refused, lang_of, load, site_row,
-    sites_within_windows,
+    Forgery, assert_corpus_set, assert_envelope_core, assert_forgeries_refused, doc_refused,
+    lang_of, load, site_row, sites_within_windows,
 };
 use codeeraser::scan::lang::Lang;
 use serde_json::{Value, json};
 
-fn named(names: Vec<String>) -> Vec<Option<String>> {
+pub(crate) fn named(names: Vec<String>) -> Vec<Option<String>> {
     names.into_iter().map(Some).collect()
 }
 
@@ -155,7 +155,6 @@ fn a_tampered_tree_is_refused() {
     fn paths(doc: &mut Value) -> &mut Vec<Value> {
         doc["paths"].as_array_mut().expect("paths")
     }
-    type Forgery<'a> = (&'a dyn Fn(&mut Value), &'a str);
     let forgeries: [Forgery; 5] = [
         (
             &|d| paths(d).retain(|p| *p != page),
@@ -172,11 +171,7 @@ fn a_tampered_tree_is_refused() {
         ),
         (&|d| d["corpus"]["tip"] = json!("0000"), "another tip"),
     ];
-    for (forge, what) in forgeries {
-        let mut forged = pristine.clone();
-        forge(&mut forged);
-        assert!(doc_refused(&forged, &check), "{what} must refuse");
-    }
+    assert_forgeries_refused(&pristine, &forgeries, &check);
 }
 
 /// The detector and the frozen universes must not drift apart

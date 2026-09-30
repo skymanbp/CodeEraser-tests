@@ -15,6 +15,7 @@
 //! come from), and replay.rs re-scores every doc before a release, for
 //! a change anywhere else that moves an answer.
 
+use super::freezing::{frozen, walked};
 use super::review::verify_review;
 use super::walk::in_scope;
 use super::{
@@ -29,20 +30,20 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-pub(super) fn env(key: &str) -> String {
+pub(crate) fn env(key: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| panic!("{key} names what to freeze"))
 }
 
-pub(super) fn corpus_repo(name: &str, tip: &str) -> String {
+pub(crate) fn corpus_repo(name: &str, tip: &str) -> String {
     pinned_root(name, tip).to_string_lossy().into_owned()
 }
 
-pub(super) fn blob(repo: &str, tip: &str, path: &str) -> String {
+pub(crate) fn blob(repo: &str, tip: &str, path: &str) -> String {
     git_in(Some(repo), &["show", &format!("{tip}:{path}")])
 }
 
 /// Write a frozen doc once, at its file (Docs::file).
-pub(super) fn freeze(file: &str, doc: &Value) {
+pub(crate) fn freeze(file: &str, doc: &Value) {
     assert!(
         !std::path::Path::new(file).exists(),
         "{file} is frozen: a re-freeze is a new generation and a named ledger entry"
@@ -55,7 +56,7 @@ pub(super) fn freeze(file: &str, doc: &Value) {
 /// The pinned tree's paths. -z: unquoted non-ASCII paths;
 /// --full-tree: root-relative paths whatever the cwd (the M5-2
 /// walker's two lessons).
-pub(super) fn tree_paths(repo: &str, tip: &str) -> Vec<String> {
+pub(crate) fn tree_paths(repo: &str, tip: &str) -> Vec<String> {
     let listing = git_in(
         Some(repo),
         &["ls-tree", "-r", "--full-tree", "--name-only", "-z", tip],
@@ -71,7 +72,7 @@ pub(super) fn tree_paths(repo: &str, tip: &str) -> Vec<String> {
 /// checkout, the tree's ce.toml excludes read the product's way — the
 /// tree's ignore files, the built-in excludes (vendored code, a build
 /// tool's output beside its project file), the hidden rule.
-fn product_walk(repo: &str) -> Scope {
+pub(crate) fn product_walk(repo: &str) -> Scope {
     let root = Path::new(repo);
     let excludes = codeeraser::config::Config::load(root)
         .expect("ce.toml")
@@ -86,21 +87,8 @@ fn product_walk(repo: &str) -> Scope {
 /// fenced out of every walk by a `snippets/` pattern; a pinned
 /// boilerplate's built `dist/` pages sit beside its `package.json`).
 fn walk(exam: &Exam, repo: &str, tip: &str) -> (Vec<Value>, BTreeMap<&'static str, u64>) {
-    let mut scope = product_walk(repo);
-    let (mut files, mut excluded) = (Vec::new(), BTreeMap::new());
-    for path in tree_paths(repo, tip) {
-        let tally = if !in_scope(exam, &path) {
-            "other_extension"
-        } else if !scope.contains(Path::new(&path)) {
-            "walk_refused"
-        } else {
-            files.push(site_row(&path, exam.lang, &blob(repo, tip, &path)));
-            continue;
-        };
-        *excluded.entry(tally).or_insert(0) += 1;
-    }
-    files.sort_by(|a: &Value, b: &Value| a["path"].as_str().cmp(&b["path"].as_str()));
-    (files, excluded)
+    let row = |path: &str, text: &str| site_row(path, exam.lang, text);
+    walked(repo, tip, &|path| in_scope(exam, path), &row)
 }
 
 const SLICE_METHOD: &str = "site universe of one pinned corpus for one v2.30 language: every \
@@ -117,20 +105,15 @@ fn lang_slice() {
     let name = env("CE_LANG_CORPUS");
     let (exam, tip) = super::exam_of_corpus(&name);
     let (files, excluded) = walk(exam, &corpus_repo(&name, tip), tip);
-    freeze(
-        &SLICES.file(exam, &name),
-        &json!({
-            "schema": SLICE_SCHEMA,
-            "corpus": {"name": name, "tip": tip, "lang": exam.lang},
-            "scope": super::scope(exam),
-            "constants": super::slice_constants(),
-            "generated_from": generated_from(),
-            "method": SLICE_METHOD,
-            "summary": site_summary(&files),
-            "excluded": excluded,
-            "files": files,
-        }),
-    );
+    let doc = json!({
+        "corpus": {"name": name, "tip": tip, "lang": exam.lang},
+        "scope": super::scope(exam),
+        "summary": site_summary(&files),
+        "excluded": excluded,
+        "files": files,
+    });
+    let doc = frozen(SLICE_SCHEMA, SLICE_METHOD, super::slice_constants(), doc);
+    freeze(&SLICES.file(exam, &name), &doc);
 }
 
 /// Every file of one frozen universe with its text at the pinned tip,
@@ -192,20 +175,15 @@ fn lang_sample() {
         sources.push(super::source_row(name, &slice));
     }
     let draw = super::draw::draw(&pool);
-    freeze(
-        &SAMPLES.file(exam, exam.lang),
-        &json!({
-            "schema": SAMPLE_SCHEMA,
-            "lang": exam.lang,
-            "constants": super::sample_constants(),
-            "generated_from": generated_from(),
-            "method": SAMPLE_METHOD,
-            "sources": sources,
-            "allocation": draw.allocation,
-            "rows": draw.primary,
-            "backups": draw.backups,
-        }),
-    );
+    let doc = json!({
+        "lang": exam.lang,
+        "sources": sources,
+        "allocation": draw.allocation,
+        "rows": draw.primary,
+        "backups": draw.backups,
+    });
+    let doc = frozen(SAMPLE_SCHEMA, SAMPLE_METHOD, super::sample_constants(), doc);
+    freeze(&SAMPLES.file(exam, exam.lang), &doc);
 }
 
 const PRECISION_METHOD: &str = "the frozen sample rows of one corpus, resolved by the shipped \

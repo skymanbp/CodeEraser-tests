@@ -117,6 +117,27 @@ pub fn largest_remainder(weights: &BTreeMap<String, u64>, seats: u64) -> BTreeMa
     out
 }
 
+/// A ranked row's two hashes re-derived from its own fields, and its
+/// rank not yet seen — the prologue every sample verifier runs per row
+/// (the language exams, the flow exams). `domains` = (site, audit).
+/// Returns the rank.
+pub fn assert_ranked<'a>(
+    row: &'a Value,
+    domains: (&str, &str),
+    fields: &[&str],
+    seen: &mut std::collections::BTreeSet<String>,
+) -> &'a str {
+    let rank = row["rank"].as_str().expect("rank");
+    assert_eq!(rank, identity_hash(domains.0, row, fields), "rank forged");
+    assert_eq!(
+        row["audit"].as_str().expect("audit"),
+        identity_hash(domains.1, row, fields),
+        "{rank}: audit hash forged"
+    );
+    assert!(seen.insert(rank.to_string()), "{rank}: sampled twice");
+    rank
+}
+
 /// Domain-separated identity hash: sha256("domain|f1|f2|…") over the
 /// row's named fields in order, strings verbatim and integers in
 /// decimal — the ONE derivation every sample generator and every

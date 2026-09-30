@@ -3,8 +3,8 @@
 //! forged copies, so it lives apart from the tests that own the
 //! verdicts): a sample re-derived from its frozen slices, row by row.
 
-use crate::eval_lang_parts::{self as parts, Exam};
-use crate::eval_support::identity_hash;
+use crate::eval_lang_parts::{self as parts, Exam, Generated};
+use crate::eval_support::assert_ranked;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -46,18 +46,8 @@ fn check_row(
     seen: &mut BTreeSet<String>,
     bound: &mut BTreeMap<(String, String, String), u64>,
 ) {
-    let rank = row["rank"].as_str().expect("rank");
-    assert_eq!(
-        rank,
-        identity_hash(parts::SITE_DOMAIN, row, &parts::FIELDS),
-        "rank forged"
-    );
-    assert_eq!(
-        row["audit"].as_str().expect("audit"),
-        identity_hash(parts::AUDIT_DOMAIN, row, &parts::FIELDS),
-        "{rank}: audit hash forged"
-    );
-    assert!(seen.insert(rank.to_string()), "{rank}: sampled twice");
+    let domains = (parts::SITE_DOMAIN, parts::AUDIT_DOMAIN);
+    let rank = assert_ranked(row, domains, &parts::FIELDS, seen);
     assert_eq!(row["lang"], json!(exam.lang), "{rank}: language");
     let corpus = row["corpus"].as_str().expect("corpus");
     let tip = exam

@@ -36,9 +36,15 @@ pub fn quotas(pool: &BTreeMap<String, u64>) -> BTreeMap<String, u64> {
 
 /// One sample row: the pool row plus both domain hashes.
 pub fn ranked(site: &Value) -> Value {
+    ranked_by(site, (SITE_DOMAIN, AUDIT_DOMAIN), &FIELDS)
+}
+
+/// The same for any exam family's domains and payload (the flow exams
+/// draw through it): `domains` = (site, audit).
+pub fn ranked_by(site: &Value, domains: (&str, &str), fields: &[&str]) -> Value {
     let mut row = site.clone();
-    row["rank"] = json!(identity_hash(SITE_DOMAIN, site, &FIELDS));
-    row["audit"] = json!(identity_hash(AUDIT_DOMAIN, site, &FIELDS));
+    row["rank"] = json!(identity_hash(domains.0, site, fields));
+    row["audit"] = json!(identity_hash(domains.1, site, fields));
     row
 }
 

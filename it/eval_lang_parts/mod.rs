@@ -11,6 +11,7 @@
 
 pub mod draw;
 pub mod exams;
+pub mod freezing;
 pub mod generate;
 pub mod precision;
 pub mod replay;
@@ -74,15 +75,6 @@ pub enum Reach {
 }
 
 impl Exam {
-    /// A corpus's pinned tip, or None when the exam holds no such corpus —
-    /// the one lookup the table, the sample and the audit verifiers read.
-    pub fn tip(&self, corpus: &str) -> Option<&'static str> {
-        self.corpora
-            .iter()
-            .find(|(c, _)| *c == corpus)
-            .map(|(_, t)| *t)
-    }
-
     /// Whether one per-corpus doc family is filed, by the exam's stage —
     /// and the disk must agree corpus by corpus: a doc that vanished, or
     /// one filed ahead of its stage, is named here, never read as
@@ -125,16 +117,44 @@ impl Exam {
 /// (eval_doc_v) for both.
 pub struct Docs(pub &'static str);
 
+/// What a doc family needs of an exam: its generation and its pinned
+/// corpora. The flow exams (eval_flow_parts) file their docs through
+/// the same family type and read their tips through the same lookup.
+pub trait Generated {
+    fn generation(&self) -> u32;
+    fn corpora(&self) -> &[(&'static str, &'static str)];
+
+    /// A corpus's pinned tip, or None when the exam holds no such
+    /// corpus — the one lookup the table, the sample and the audit
+    /// verifiers read.
+    fn tip(&self, corpus: &str) -> Option<&'static str> {
+        self.corpora()
+            .iter()
+            .find(|(c, _)| *c == corpus)
+            .map(|(_, t)| *t)
+    }
+}
+
+impl Generated for Exam {
+    fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    fn corpora(&self) -> &[(&'static str, &'static str)] {
+        self.corpora
+    }
+}
+
 impl Docs {
-    pub fn path(&self, exam: &Exam, key: &str) -> String {
-        eval_doc_path(&self.stem(key), exam.generation)
+    pub fn path(&self, exam: &impl Generated, key: &str) -> String {
+        eval_doc_path(&self.stem(key), exam.generation())
     }
 
-    pub fn file(&self, exam: &Exam, key: &str) -> String {
-        eval_doc_v(&self.stem(key), exam.generation)
+    pub fn file(&self, exam: &impl Generated, key: &str) -> String {
+        eval_doc_v(&self.stem(key), exam.generation())
     }
 
-    pub fn load(&self, exam: &Exam, key: &str) -> Value {
+    pub fn load(&self, exam: &impl Generated, key: &str) -> Value {
         load(&self.file(exam, key))
     }
 

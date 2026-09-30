@@ -201,6 +201,20 @@ pub fn assert_tampering_refused(
     assert!(doc_refused(&missing, check), "missing row must refuse");
 }
 
+/// One forgery of a doc: the edit and what it is.
+pub type Forgery<'a> = (&'a dyn Fn(&mut Value), &'a str);
+
+/// Every forgery applied to a copy of the pristine doc refuses — the
+/// bespoke half of a tamper battery (the language trees, the flow
+/// samples), beside the field-mutation half above.
+pub fn assert_forgeries_refused(pristine: &Value, forgeries: &[Forgery], check: &dyn Fn(&Value)) {
+    for (forge, what) in forgeries {
+        let mut forged = pristine.clone();
+        forge(&mut forged);
+        assert!(doc_refused(&forged, check), "{what} must refuse");
+    }
+}
+
 /// The per-corpus audited↔sampled bijection walk (G3/G4/G7): count
 /// equality, then every audited row resolved against its sampled row
 /// and deduped; row CONTENT stays with the calling family.

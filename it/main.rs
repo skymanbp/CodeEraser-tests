@@ -73,6 +73,8 @@ mod eval_commit_review;
 mod eval_dedup_distinct;
 mod eval_docdup_precision;
 mod eval_docdup_universe;
+mod eval_flow;
+mod eval_flow_parts;
 mod eval_graph;
 mod eval_graph_precision;
 mod eval_graph_precision_parts;

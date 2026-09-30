@@ -9,9 +9,10 @@
 //! and `core.excludesFile` off (walk.rs) and one machine's own exclude
 //! file must not move U — minus what the walk's published rules leave
 //! out, one term per rule. Nothing here re-reads those rules —
-//! `mention::cut`, `mention::excluded`, `mention::FILE_CAP` and
-//! `mention::decode` ARE the rules — so a walk that drifted from its
-//! ledger would disagree with git and the leg would say so, naming the
+//! `mention::cut`, `mention::excluded`, `mention::FILE_CAP`,
+//! `mention::decode` and `mention::signed` ARE the rules — so a walk
+//! that drifted from its ledger would disagree with git and the leg
+//! would say so, naming the
 //! term. The index lives in a scratch directory: this leg writes
 //! nothing into the repository. `formula` is shared with the corpus
 //! instrument (eval_mention.rs), which pins the same identity on the
@@ -19,9 +20,10 @@
 //! `listed − Σ terms = U` closes inside the printed line.
 
 use crate::common;
+use codeeraser::dedup::tokens::fnv1a;
 use codeeraser::dedup::{Params, index::Index};
 use codeeraser::gitmodules;
-use codeeraser::mention::{FILE_CAP, Stats, cut, decode, excluded};
+use codeeraser::mention::{FILE_CAP, Stats, cut, decode, excluded, signed, store};
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
@@ -61,6 +63,8 @@ pub struct Terms {
     pub oversize: usize,
     /// the early-NUL binary rule
     pub binary: usize,
+    /// the product's signature, read after the binary rule
+    pub signed: usize,
 }
 
 impl Terms {
@@ -72,6 +76,7 @@ impl Terms {
             + self.absent
             + self.oversize
             + self.binary
+            + self.signed
     }
 }
 
@@ -84,9 +89,10 @@ impl Formula {
     /// counted subtractions and in |U| (the other terms are subtracted
     /// before the walk ever counts).
     pub fn assert_matches(&self, stats: &Stats) {
+        let (s, t) = (&stats.skipped, &self.terms);
         assert_eq!(
-            (stats.universe, stats.skipped.binary, stats.skipped.oversize),
-            (self.universe(), self.terms.binary, self.terms.oversize),
+            (stats.universe, s.binary, s.oversize, s.signed),
+            (self.universe(), t.binary, t.oversize, t.signed),
             "U = {} listed − {:?} (universe {}, skipped {:?})",
             self.listed,
             self.terms,
@@ -113,8 +119,11 @@ impl Formula {
             match std::fs::metadata(&path).ok().filter(|m| m.is_file()) {
                 None => t.absent += 1,
                 Some(m) if m.len() > FILE_CAP => t.oversize += 1,
-                Some(_) if decode(&std::fs::read(&path).expect(rel)).is_none() => t.binary += 1,
-                Some(_) => self.files.push(rel.to_string()),
+                Some(_) => match decode(&std::fs::read(&path).expect(rel)) {
+                    None => t.binary += 1,
+                    Some(text) if signed(&text) => t.signed += 1,
+                    Some(_) => self.files.push(rel.to_string()),
+                },
             }
         }
     }
@@ -183,18 +192,19 @@ fn git_z(root: &Path, args: &[&str]) -> Vec<String> {
         .collect()
 }
 
-/// The mention pass over `root` into a scratch index named `tag`:
-/// nothing is written into the tree under test.
-fn pass(root: &Path, tag: &str) -> Stats {
-    let scratch = common::tmp(tag);
-    let idx = Index::open(&scratch.join("index.db"), Params::default()).expect("scratch index");
-    codeeraser::mention::refresh(root, &idx).expect("mention pass")
+/// The mention pass over `root` into a scratch index named `tag`
+/// (returned beside the header): nothing is written into the tree.
+fn pass(root: &Path, tag: &str) -> (Stats, std::path::PathBuf) {
+    let db = common::tmp(tag).join("index.db");
+    let idx = Index::open(&db, Params::default()).expect("scratch index");
+    let stats = codeeraser::mention::refresh(root, &idx).expect("mention pass");
+    (stats, db)
 }
 
 #[test]
 fn the_self_universe_is_gits_listing_minus_the_walks_own_rules() {
     let root = common::repo_root();
-    let stats = pass(&root, "mention-universe-self");
+    let (stats, _) = pass(&root, "mention-universe-self");
     formula(&root).assert_matches(&stats);
     assert!(stats.universe > 500, "the repository itself is the corpus");
 }
@@ -203,8 +213,10 @@ fn the_self_universe_is_gits_listing_minus_the_walks_own_rules() {
 /// where each shape exists once, and the walk's own count agreeing
 /// with the formula on that tree: a nested repository (git's `sub/`
 /// entry), a tracked file under a `.gitignore` pattern, a tracked file
-/// deleted unstaged, an untracked `.ce/`, and a `$GIT_DIR/info/exclude`
-/// entry the walk must NOT read (its file stays in U).
+/// deleted unstaged, an untracked `.ce/`, a `$GIT_DIR/info/exclude`
+/// entry the walk must NOT read (its file stays in U), and the
+/// product's two signatures beside two JSON documents it did not sign
+/// (in U, and their mention of `one` read).
 #[test]
 fn the_formula_names_every_rule_the_walk_has() {
     let root = common::tmp("mention-universe-shapes");
@@ -218,7 +230,11 @@ fn the_formula_names_every_rule_the_walk_has() {
          --- sub/keep.txt\nin a repository of its own\n\
          --- .ce/index.db\nproduct state\n\
          --- scratch.txt\nexcluded by info/exclude, in U\n\
-         --- .git/info/exclude\nscratch.txt\n",
+         --- .git/info/exclude\nscratch.txt\n\
+         --- signed.json\n{\"schema\": \"ce.eval-x/1.0.0\", \"units\": [\"one\"]}\n\
+         --- stamped.json\n{\"generated_from\": {\"ce\": \"1.8.0\"}, \"names\": [\"one\"]}\n\
+         --- schema.json\n{\"schema\": \"json-schema.org\", \"names\": [\"one\"]}\n\
+         --- plain.json\n{\"a\": 1, \"b\": \"one\"}\n",
     );
     common::git(
         &root,
@@ -231,17 +247,24 @@ fn the_formula_names_every_rule_the_walk_has() {
     let t = &f.terms;
     assert_eq!(
         (f.listed, t.named_cut, t.nested, t.pattern_ignored, t.absent),
-        (7, 1, 1, 1, 1),
+        (11, 1, 1, 1, 1),
         "{f:?}"
     );
     let members: BTreeSet<&str> = f.files.iter().map(String::as_str).collect();
     assert_eq!(
-        members,
-        BTreeSet::from([".gitignore", "a.rs", "scratch.txt"])
+        Vec::from_iter(members).join(" "),
+        ".gitignore a.rs plain.json schema.json scratch.txt"
     );
-    let stats = pass(&root, "mention-universe-shapes-db");
+    let (stats, db) = pass(&root, "mention-universe-shapes-db");
     f.assert_matches(&stats);
-    assert_eq!(stats.universe, 3);
+    assert_eq!((stats.universe, stats.skipped.signed), (5, 2));
+    let conn = rusqlite::Connection::open(db).expect("scratch index");
+    let one = fnv1a(b"one") as i64;
+    let by: BTreeSet<String> = store::mentioners(&conn, one, "a.rs")
+        .expect("mentioners")
+        .into_iter()
+        .collect();
+    assert_eq!(by, ["plain.json", "schema.json"].map(String::from).into());
 }
 
 /// A nested repository (a REAL git anchor, root.rs) is cut whole; the

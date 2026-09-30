@@ -8,7 +8,7 @@
 //! the gates like verify.rs: the tamper gate runs it on forged copies.
 
 use super::tree::{targets, universe};
-use crate::eval_lang_parts::{AUDIT_TABLES, Exam, Reach, SLICES, Stage};
+use crate::eval_lang_parts::{AUDIT_TABLES, Exam, Generated, Reach, SLICES, Stage};
 use crate::eval_support::{MIN_WHY, TRUTH_KEYWORDS};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};

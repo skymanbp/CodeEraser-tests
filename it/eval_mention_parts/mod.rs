@@ -54,6 +54,7 @@ fn universe_cell(f: &Formula) -> String {
         (t.absent, "absent"),
         (t.oversize, "oversize"),
         (t.binary, "early-NUL"),
+        (t.signed, "signed"),
     ]
     .iter()
     .filter(|(n, _)| *n > 0)
