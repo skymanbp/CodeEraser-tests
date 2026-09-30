@@ -22,6 +22,7 @@ use crate::eval_flow_parts::assert_keys;
 use crate::eval_flow_parts::batches::CANNOT_TELL;
 use crate::eval_flow_parts::draw::text;
 use crate::eval_flow_parts::exam;
+use crate::eval_flow_parts::generate::out_file;
 use crate::eval_flow_parts::review::{REVIEWS, corpora, row_list, verify_review};
 use crate::eval_lang_parts::Docs;
 use crate::eval_lang_parts::generate::{env, freeze};
@@ -244,19 +245,6 @@ pub fn verify_precision(exam: &FlowExam, sample: &Value, review: &Value, doc: &V
     );
 }
 
-/// Where the generator writes: CE_FLOW_OUT when set (a directory),
-/// else the doc's place under contracts/eval.
-fn out_file(exam: &FlowExam) -> String {
-    let home = PRECISIONS.file(exam, exam.lang);
-    match std::env::var("CE_FLOW_OUT") {
-        Ok(dir) => {
-            let name = std::path::Path::new(&home).file_name().expect("name");
-            format!("{dir}/{}", name.to_string_lossy())
-        }
-        Err(_) => home,
-    }
-}
-
 #[test]
 #[ignore = "reads the pinned corpus clones and asks the real core"]
 fn flow_precision() {
@@ -271,9 +259,13 @@ fn flow_precision() {
         exam.lang, doc["per_kind"], doc["gate"], doc["judged"], doc["unjudged_reasons"]
     );
     if std::env::var_os("CE_FLOW_PRECISION_DRY").is_some() {
+        let missed = row_list(&doc)
+            .iter()
+            .filter(|r| matches!(text(r, "verdict"), "fp" | "fn"));
+        missed.for_each(|r| println!("{} {r}", text(r, "verdict")));
         println!("dry run: nothing written");
         return;
     }
     verify_precision(exam, &sample, &review, &doc);
-    freeze(&out_file(exam), &doc);
+    freeze(&out_file(&PRECISIONS.file(exam, exam.lang)), &doc);
 }

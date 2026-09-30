@@ -43,25 +43,25 @@ const ALL: [Lang; 22] = {
 /// position: its fields and kinds), `mark` (a token, or `@kind`) or
 /// `skip` — one per element of a tuple; `rows` for a row or row list.
 const CATEGORIES: &str = "
-kind: branch_binders interpolated_strings prototype_kinds block_kinds splice_kinds wrapper_kinds empty_kinds elif_kinds return_kinds throw_kinds break_kinds continue_kinds yield_kinds fallthrough_kinds int_kinds dynamic_kinds pattern_kinds pattern_idents dotted_patterns nonlocal_kinds local_only_scopes ident_kinds shorthand_kinds member_write_bases capture_kinds ref_binding_kinds kind pair strings
+kind: branch_binders interpolated_strings prototype_kinds prototype_reads type_reads head_reads block_kinds splice_kinds wrapper_kinds empty_kinds elif_kinds return_kinds throw_kinds break_kinds continue_kinds yield_kinds fallthrough_kinds int_kinds dynamic_kinds pattern_kinds pattern_idents dotted_patterns nonlocal_kinds local_only_scopes ident_kinds shorthand_kinds member_write_bases capture_kinds ref_binding_kinds kind pair strings
 token: lasting_storage token op
-name: noreturn return_calls dynamic_names receiver_names discard_names
+name: noreturn return_calls dynamic_names receiver_names discard_names dispatch_calls
 pos: results self_label header body cond init update target iter else then subject arms binder pattern value guard param resources item items storage alternative left right name args missing
 kind pos: else_kinds finally_kinds gotos call_forms params binder_paths pattern_binders name_positions update_kinds default_arg_fields
 kind pos pos: cond_wrappers labels
 kind token: const_true const_false
 kind name: noreturn_attrs
-kind mark: address_ops
+kind mark: address_ops field_params
 kind pos token: conditional_ctx
 pos token: holds
 token skip: marker
-skip: scoping first_write_declares upper_pattern_paths default fallthrough mode scope body_first until always_default empty_noreturn passes_break redeclare
+skip: scoping first_write_declares forward_captures upper_pattern_paths default fallthrough mode scope body_first until always_default empty_noreturn passes_break redeclare
 rows: if loops switches cases tries catches withs decls assigns macros
 ";
 
 /// The strings FAMILY names that only C++ spells, as `what text…`.
 const CPP_ONLY: &str = "
-kind condition_clause init_statement for_range_loop try_statement catch_clause throw_statement lambda_expression qualified_identifier reference_declarator structured_binding_declarator optional_parameter_declaration
+kind condition_clause init_statement field_initializer_list for_range_loop try_statement catch_clause throw_statement lambda_expression qualified_identifier reference_declarator structured_binding_declarator optional_parameter_declaration
 field default_value
 token and or
 ";

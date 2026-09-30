@@ -26,6 +26,7 @@ fn unit(nth: usize, stmts: usize, vars: &[(i64, i64)], dynamic: bool) -> Unit {
         uses: (0..vars.len() as i64).map(|v| [0, v, 0]).collect(),
         legend: Legend {
             stmt_at: Vec::new(),
+            stmt_end: Vec::new(),
             stmt_text: Vec::new(),
             var_name: Vec::new(),
             var_at: Vec::new(),
@@ -191,20 +192,10 @@ fn a_refusal_reads_back_to_its_table_row_and_reason() {
     assert_eq!(refusal("flow: Error in $: not an object"), None);
 }
 
-/// The seven languages whose precision docs read judged (plan v2.31
-/// step 4 commit C2), bit by bit at their `Lang` codes.
+/// No language is judged while no precision doc is filed: commit E
+/// retired the first generation's (plan v2.31 step 4), and each
+/// language's bit returns with its doc on the fixed lowering.
 #[test]
-fn the_judged_mask_holds_the_seven_judged_languages() {
-    let want = [
-        Lang::Python,
-        Lang::Tsx,
-        Lang::Go,
-        Lang::C,
-        Lang::Java,
-        Lang::Lua,
-        Lang::R,
-    ]
-    .iter()
-    .fold(0i64, |m, &l| m | 1 << l as i64);
-    assert_eq!(crate::flow::judged_mask(), want);
+fn the_judged_mask_is_empty_until_a_precision_doc_passes() {
+    assert_eq!(crate::flow::judged_mask(), 0);
 }

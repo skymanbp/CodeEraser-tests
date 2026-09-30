@@ -3,7 +3,7 @@
 //! tip; corpus::pinned_root refuses any other tree). Each writes one
 //! frozen doc and refuses to overwrite it: a re-freeze is a new
 //! generation and a named entry in docs/EVAL-SET-FLOW.md.
-//!   CE_FLOW_LANG=python CE_FLOW_CORPUS=requests cargo test --test it -- --ignored eval_flow_parts::generate::flow_slice --nocapture
+//!   CE_FLOW_LANG=python CE_FLOW_CORPUS=requests [CE_FLOW_OUT=<dir>] cargo test --test it -- --ignored eval_flow_parts::generate::flow_slice --nocapture
 //!   CE_FLOW_LANG=python cargo test --test it -- --ignored eval_flow_parts::generate::flow_sample --nocapture
 
 use super::{FlowExam, SAMPLES, SCHEMAS, SLICES, draw, exam, pools, slice_summary, source_row};
@@ -75,7 +75,21 @@ fn flow_slice() {
         "files": files,
     });
     let doc = frozen(SCHEMAS.0, SLICE_METHOD, super::slice_constants(), doc);
-    freeze(&SLICES.file(exam, &exam.key(&name)), &doc);
+    freeze(&out_file(&SLICES.file(exam, &exam.key(&name))), &doc);
+}
+
+/// Where a generator writes: CE_FLOW_OUT when set (a directory: a
+/// universe or precision doc read beside the filed one, the
+/// generation's drift measured), else the doc's home under
+/// contracts/eval.
+pub fn out_file(home: &str) -> String {
+    match std::env::var("CE_FLOW_OUT") {
+        Ok(dir) => {
+            let name = std::path::Path::new(home).file_name().expect("name");
+            format!("{dir}/{}", name.to_string_lossy())
+        }
+        Err(_) => home.to_string(),
+    }
 }
 
 /// Every pool item of one frozen universe, re-lowered at the pinned

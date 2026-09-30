@@ -16,7 +16,7 @@ use crate::eval_flow_parts::pools::{self, Item};
 use crate::eval_lang_parts::Generated;
 use crate::eval_lang_parts::generate::{blob, corpus_repo};
 use codeeraser::corelink::Link;
-use codeeraser::flow::lower::Lowered;
+use codeeraser::flow::lower::{Lowered, Unit};
 use codeeraser::flow::wire::{self, Finding};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -69,11 +69,48 @@ fn hit(item: &Item, findings: &[Finding]) -> bool {
 
 /// Whether a review row names this pool item.
 fn names(row: &Value, item: &Item) -> bool {
+    anchors(row, item) && text(row, "stratum") == item.stratum.to_string()
+}
+
+/// Whether a review row's anchor — kind, line, nth, name — is this
+/// item's, whatever its stratum.
+fn anchors(row: &Value, item: &Item) -> bool {
     row["kind"].as_u64() == Some(item.kind)
-        && text(row, "stratum") == item.stratum.to_string()
         && row["line"].as_u64() == Some(u64::from(item.line))
         && row["nth"].as_u64() == Some(item.nth)
         && text(row, "name") == item.name
+}
+
+/// A dry run over a lowering later than the sample's (a lowering fix
+/// read before its next generation): a question whose item moved
+/// stratum, or whose variable the fix made exempt, is answered by its
+/// anchor, and named — the core never flags an exempt variable, so the
+/// answer is the product's. A doc is never written from such a run.
+fn re_anchored(row: &Value, unit: &Unit, at: &str) -> Item {
+    assert!(
+        std::env::var_os("CE_FLOW_PRECISION_DRY").is_some(),
+        "{at}: no pool item of unit {} is this question",
+        unit.nth
+    );
+    let item = pools::every_item(unit)
+        .into_iter()
+        .find(|i| anchors(row, i));
+    let item =
+        item.unwrap_or_else(|| panic!("{at}: no pool item of unit {} is this question", unit.nth));
+    let flags = if item.v < 0 {
+        0
+    } else {
+        unit.vars[item.v as usize][2]
+    };
+    println!(
+        "re-anchored {at}:{} kind {} `{}`: stratum {} -> {}, var flags {flags}",
+        item.line,
+        item.kind,
+        item.name,
+        text(row, "stratum"),
+        item.stratum
+    );
+    item
 }
 
 /// One row's answer, or why its unit answered nothing. The row's unit
@@ -97,13 +134,11 @@ fn answer(row: &Value, file: &Judged, at: &str) -> Result<bool, String> {
     if unit.dynamic {
         return Err("dynamic: the core judges none of it".to_string());
     }
-    let items = pools::items(unit);
-    let item = items.iter().find(|i| names(row, i));
-    let item = item.unwrap_or_else(|| panic!("{at}: no pool item of unit {nth} is this question"));
-    Ok(hit(
-        item,
-        file.findings.get(&nth).map_or(&[], Vec::as_slice),
-    ))
+    let found = file.findings.get(&nth).map_or(&[][..], Vec::as_slice);
+    match pools::items(unit).into_iter().find(|i| names(row, i)) {
+        Some(item) => Ok(hit(&item, found)),
+        None => Ok(hit(&re_anchored(row, unit, at), found)),
+    }
 }
 
 /// Every review row answered by the product at the exam's pinned tips.

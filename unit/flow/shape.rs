@@ -124,7 +124,7 @@ fn tables(u: &Unit) -> Result<(), String> {
     }
     let params = u.vars.iter().filter(|r| r[2] & 1 == 1).count() as u32;
     let l = &u.legend;
-    let stmts = [l.stmt_at.len(), l.stmt_text.len()]
+    let stmts = [l.stmt_at.len(), l.stmt_end.len(), l.stmt_text.len()]
         .iter()
         .all(|x| *x as i64 == n);
     let vars = [l.var_name.len(), l.var_at.len()]

@@ -128,6 +128,7 @@ fn illegal() -> Unit {
         uses: Vec::new(),
         legend: Legend {
             stmt_at: vec![(1, 1), (1, 1)],
+            stmt_end: vec![1, 1],
             stmt_text: vec![String::new(); 2],
             var_name: Vec::new(),
             var_at: Vec::new(),

@@ -41,13 +41,24 @@ const PARAM: i64 = 1;
 /// the core judges none of it, so each of its questions could only
 /// be answered unjudged (booklet §13 item 22).
 pub fn items(u: &Unit) -> Vec<Item> {
+    items_under(u, EXEMPT)
+}
+
+/// Every item as items() gives it, the exempt variables' too: what a
+/// dry precision run re-anchors a question by once a later lowering
+/// has made its variable exempt (flow_precision/flagged.rs).
+pub fn every_item(u: &Unit) -> Vec<Item> {
+    items_under(u, 0)
+}
+
+fn items_under(u: &Unit, exempt: i64) -> Vec<Item> {
     if u.dynamic {
         return Vec::new();
     }
     let mut out = unreachable(u);
-    out.extend(dead_stores(u));
-    out.extend(unused(u, false));
-    out.extend(unused(u, true));
+    out.extend(dead_stores(u, exempt));
+    out.extend(unused(u, false, exempt));
+    out.extend(unused(u, true, exempt));
     out
 }
 
@@ -143,10 +154,10 @@ fn nth_on_line(places: &[(u32, u32)], at: usize, counts: impl Fn(usize) -> bool)
 /// Kind 1: each write (mode 1 / 2) of a non-exempt variable that is
 /// read somewhere — its next access a pure write (A: mode 1; a
 /// readwrite reads the store first), none (B), a read or readwrite (C).
-fn dead_stores(u: &Unit) -> Vec<Item> {
+fn dead_stores(u: &Unit, exempt: i64) -> Vec<Item> {
     let mut out = Vec::new();
     for &[v, _, flags] in &u.vars {
-        if flags & EXEMPT != 0 {
+        if flags & exempt != 0 {
             continue;
         }
         let acc: Vec<(i64, i64)> = u
@@ -190,10 +201,10 @@ fn dead_stores(u: &Unit) -> Vec<Item> {
 /// Kinds 2 / 3: each non-exempt local (or parameter) with no read
 /// (A) or some read (B), anchored at its declaration — the nth
 /// declaration of that name on its line, in (column, v) order.
-fn unused(u: &Unit, params: bool) -> Vec<Item> {
+fn unused(u: &Unit, params: bool, exempt: i64) -> Vec<Item> {
     let mut out = Vec::new();
     for &[v, _, flags] in &u.vars {
-        if (flags & PARAM == PARAM) != params || flags & EXEMPT != 0 {
+        if (flags & PARAM == PARAM) != params || flags & exempt != 0 {
             continue;
         }
         let read = u.uses.iter().any(|r| r[1] == v && r[2] != 1);
