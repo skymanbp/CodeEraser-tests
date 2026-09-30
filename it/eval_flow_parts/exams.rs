@@ -15,16 +15,16 @@ use std::sync::LazyLock;
 /// landed in (a clone of its own, apart from the HTML exam's) as
 /// Rust's second corpus (booklet §5.5).
 const TABLE: &str = "\
-python     | requests=8068356288978c4f54661ae6f95afe0e0831885e | py | audited
-typescript | zod=912f0f51b0ced654d0069741e7160834dca742ee | ts mts cts | audited
-tsx        | zod=912f0f51b0ced654d0069741e7160834dca742ee | tsx | audited
-rust       | ripgrep=3fce3b5bb0236da2df6d99672afb8a719642eca7 codeeraser-flow=5278e747f65687f8afa457395b82594f5f2978d1 | rs | audited
-go         | cobra=adbc8813901bba65827259daa8e22ff94ec1f30e | go | audited
-c          | lua=0b29f408433e92953cc72b1d3e06c7ac8139e439 | c | audited
-cpp        | fmt=6d71f74624be5daa548073ff8e4e0c8aa5476010 | cpp cc cxx hpp hh hxx h inl | audited
-java       | gson=854c8255b625cf1e13c701a83ea9ccb4caaa576a | java | audited
-lua        | luarocks=2d2cc8eff2f03c23d142f8059146fb241dcf56b5 | lua | audited
-r          | stringr=ae054b1d28f630fee22ddb3cb7525396e62af4fe | R r | audited";
+python     | requests=8068356288978c4f54661ae6f95afe0e0831885e | py | scored
+typescript | zod=912f0f51b0ced654d0069741e7160834dca742ee | ts mts cts | scored
+tsx        | zod=912f0f51b0ced654d0069741e7160834dca742ee | tsx | scored
+rust       | ripgrep=3fce3b5bb0236da2df6d99672afb8a719642eca7 codeeraser-flow=5278e747f65687f8afa457395b82594f5f2978d1 | rs | scored
+go         | cobra=adbc8813901bba65827259daa8e22ff94ec1f30e | go | scored
+c          | lua=0b29f408433e92953cc72b1d3e06c7ac8139e439 | c | scored
+cpp        | fmt=6d71f74624be5daa548073ff8e4e0c8aa5476010 | cpp cc cxx hpp hh hxx h inl | scored
+java       | gson=854c8255b625cf1e13c701a83ea9ccb4caaa576a | java | scored
+lua        | luarocks=2d2cc8eff2f03c23d142f8059146fb241dcf56b5 | lua | scored
+r          | stringr=ae054b1d28f630fee22ddb3cb7525396e62af4fe | R r | scored";
 
 /// Every exam, all at their first generation. The stage column is the
 /// one the audit and the scoring commits flip, a word per row
