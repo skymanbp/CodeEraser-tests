@@ -101,12 +101,7 @@ impl Corpus {
 }
 
 /// The zone ledger's frozen doc.
-pub const LEDGER: Ledger = Ledger {
-    rel: DOC,
-    schema: SCHEMA,
-    generated_from: "cli/tests/it/fpr_zone_replay.rs",
-    gate_ppm: GATE_PPM,
-};
+pub const LEDGER: Ledger = Ledger::gated(DOC, SCHEMA, "cli/tests/it/fpr_zone_replay.rs", GATE_PPM);
 
 /// The ledger table docs/FPR-REPLAY.md carries — one row per corpus,
 /// printed by the instrument for the maintainer to paste.

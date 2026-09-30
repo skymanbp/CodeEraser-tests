@@ -13,16 +13,41 @@ use super::{commit_all, init_and_commit, repo_root, tmp, write_all};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
-/// A frozen ledger doc: where it lives, its schema, its writer and
-/// the admission line it records.
+/// The newest first-parent commits each per-language ledger reads a
+/// corpus over — one window for the duplicate-write ledger
+/// (fpr_lang_replay) and the flow one (fpr_flow_replay).
+pub const WINDOW: usize = 400;
+
+/// A frozen ledger doc: where it lives, its schema, its writer, the
+/// row field that names a row, and the admission line it records
+/// (None for a ledger recorded beside a gate that reads another doc:
+/// the flow ledger, whose admission is the precision docs').
 pub struct Ledger {
     pub rel: &'static str,
     pub schema: &'static str,
     pub generated_from: &'static str,
-    pub gate_ppm: u64,
+    pub key: &'static str,
+    pub gate_ppm: Option<u64>,
 }
 
 impl Ledger {
+    /// A ledger keyed by corpus name with an admission line — the
+    /// graded zone's and the per-language duplicate-write one's.
+    pub const fn gated(
+        rel: &'static str,
+        schema: &'static str,
+        generated_from: &'static str,
+        gate_ppm: u64,
+    ) -> Ledger {
+        Ledger {
+            rel,
+            schema,
+            generated_from,
+            key: "name",
+            gate_ppm: Some(gate_ppm),
+        }
+    }
+
     /// The doc's rows, loaded from the repository with the header
     /// checked.
     pub fn corpora(&self) -> Vec<Value> {
@@ -31,7 +56,7 @@ impl Ledger {
         assert_eq!(doc["schema"], self.schema, "{}: schema", self.rel);
         assert_eq!(
             doc["gate_ppm"].as_u64(),
-            Some(self.gate_ppm),
+            self.gate_ppm,
             "{}: gate_ppm",
             self.rel
         );
@@ -42,7 +67,7 @@ impl Ledger {
     /// corpus once, none missing, none extra.
     pub fn rows(&self, names: &[&str]) -> Vec<Value> {
         let rows = self.corpora();
-        let found: Vec<&str> = rows.iter().filter_map(|c| c["name"].as_str()).collect();
+        let found: Vec<&str> = rows.iter().filter_map(|c| c[self.key].as_str()).collect();
         assert_eq!(found, names, "{}: one row per corpus, in order", self.rel);
         rows
     }
@@ -65,12 +90,15 @@ impl Ledger {
             .unwrap_or_else(|| json!({ "corpora": [] }));
         doc["schema"] = json!(self.schema);
         doc["generated_from"] = json!(self.generated_from);
-        doc["gate_ppm"] = json!(self.gate_ppm);
+        match self.gate_ppm {
+            Some(ppm) => doc["gate_ppm"] = json!(ppm),
+            None => _ = doc.as_object_mut().map(|o| o.remove("gate_ppm")),
+        }
         for (k, v) in extra {
             doc[*k] = v.clone();
         }
         let corpora = doc["corpora"].as_array_mut().expect("a corpora array");
-        corpora.retain(|c| c["name"] != row["name"]);
+        corpora.retain(|c| c[self.key] != row[self.key]);
         corpora.push(row);
         corpora.sort_by_key(|c| rank(c));
         let text = serde_json::to_string_pretty(&doc).expect("the frozen doc");
@@ -90,10 +118,11 @@ impl Ledger {
     }
 }
 
-/// A row's count under `k`, the row named when it is absent.
+/// A row's count under `k`, the row named when it is absent (by its
+/// `name`, or its `lang` in a ledger keyed by language).
 pub fn count(c: &Value, k: &str) -> u64 {
-    c[k].as_u64()
-        .unwrap_or_else(|| panic!("{}: no {k}", c["name"]))
+    let row = c.get("name").unwrap_or(&c["lang"]);
+    c[k].as_u64().unwrap_or_else(|| panic!("{row}: no {k}"))
 }
 
 /// A row's frozen intercept rows.

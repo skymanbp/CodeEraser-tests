@@ -49,10 +49,11 @@ use std::collections::BTreeMap;
 
 pub const DOC: &str = "contracts/eval/fpr-lang-v1.json";
 pub const SCHEMA: &str = "ce.eval-fpr-lang/1.0.0";
+/// The newest first-parent commits each corpus is read over — the
+/// window the flow ledger shares (common/ledger.rs).
+pub use crate::common::ledger::WINDOW;
 /// The §4.2 line is one line: the graded zone's.
 pub use crate::fpr_zone_replay_parts::GATE_PPM;
-/// The newest first-parent commits each corpus is read over.
-pub const WINDOW: usize = 400;
 
 /// The six languages and the corpus each is read over — the first
 /// exam corpus of each (eval_lang_parts::EXAMS), `<lang>=<corpus>` in
@@ -80,12 +81,7 @@ pub fn language_of(corpus: &str) -> (&'static str, usize) {
         .unwrap_or_else(|| panic!("{corpus}: no ledger corpus (fpr_lang_replay::CORPORA)"))
 }
 
-pub const LEDGER: Ledger = Ledger {
-    rel: DOC,
-    schema: SCHEMA,
-    generated_from: "cli/tests/it/fpr_lang_replay.rs",
-    gate_ppm: GATE_PPM,
-};
+pub const LEDGER: Ledger = Ledger::gated(DOC, SCHEMA, "cli/tests/it/fpr_lang_replay.rs", GATE_PPM);
 
 /// One row's event arithmetic, read alike by the instrument and its
 /// gate — one owner, so the frozen row and the gate's recomputation

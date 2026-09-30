@@ -14,7 +14,7 @@
 //! A module of its own beside eval_flow_parts, not inside it: nothing
 //! there reads it back, so it joins no import cycle (check axis 6).
 
-mod flagged;
+pub(crate) mod flagged;
 
 use crate::common::core_bin;
 use crate::eval_flow_parts::FlowExam;

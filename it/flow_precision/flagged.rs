@@ -29,14 +29,15 @@ pub struct Answers {
 }
 
 /// One judged file: its lowering, the core's findings by unit nth and
-/// the units it refused, with the reason.
-struct Judged {
-    done: Lowered,
-    findings: BTreeMap<usize, Vec<Finding>>,
-    refused: BTreeMap<usize, String>,
+/// the units it refused, with the reason — read alike by the flow
+/// replay ledger (fpr_flow_replay_parts/side.rs).
+pub(crate) struct Judged {
+    pub(crate) done: Lowered,
+    pub(crate) findings: BTreeMap<usize, Vec<Finding>>,
+    pub(crate) refused: BTreeMap<usize, String>,
 }
 
-fn judge_file(link: &mut Link, done: Lowered, at: &str) -> Judged {
+pub(crate) fn judge_file(link: &mut Link, done: Lowered, at: &str) -> Judged {
     let verdict = wire::judge(link, std::slice::from_ref(&done))
         .unwrap_or_else(|e| panic!("{at}: the core answered nothing: {e}"));
     let mut findings: BTreeMap<usize, Vec<Finding>> = BTreeMap::new();
