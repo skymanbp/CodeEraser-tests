@@ -6,9 +6,12 @@
 //! edit, so the refusal is the semantic check's, not the hash's. A row
 //! moved onto a dynamic unit of the C universe refuses by that reason
 //! (the unit's empty pool would refuse it too; the message tells which
-//! check spoke).
+//! check spoke). The review battery sits beside it
+//! (assert_flow_review_tampering).
 
-use super::{SLICES, draw, exam, verify::verify_sample};
+use super::batches::words;
+use super::review::verify_review;
+use super::{FlowExam, SLICES, draw, exam, verify::verify_sample};
 use crate::eval_support::{Forgery, assert_forgeries_refused, assert_tampering_refused};
 use serde_json::{Value, json};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -107,4 +110,35 @@ pub fn assert_flow_sample_tampering() {
         (&past_pool, "a row past its pool"),
     ];
     assert_forgeries_refused(&pristine, &forgeries, &check);
+}
+
+/// The review's tamper battery: the pristine doc passes; a foreign
+/// rank, an empty why and a dropped row refuse through the shared
+/// field-mutation frame; a flipped truth (the summary no longer
+/// agrees), a swapped pair and a forged batch through the forgery
+/// frame.
+pub fn assert_flow_review_tampering(exam: &FlowExam, sample: &Value, pristine: &Value) {
+    let check = |doc: &Value| verify_review(exam, sample, doc);
+    let mutations = [
+        ("rank", "0000", "a foreign rank"),
+        ("why", "", "an empty why"),
+    ];
+    assert_tampering_refused(pristine, &mutations, &check);
+    let forgeries: [Forgery; 3] = [
+        (&flip_truth, "a flipped truth"),
+        (&|d| rows(d).swap(0, 1), "a swapped pair"),
+        (
+            &|d| d["rows"][0]["batch"] = json!(d["rows"][0]["batch"].as_u64().unwrap_or(0) + 1),
+            "a forged batch",
+        ),
+    ];
+    assert_forgeries_refused(pristine, &forgeries, &check);
+}
+
+/// Row 0's truth replaced by its kind's other word.
+fn flip_truth(doc: &mut Value) {
+    let row = &mut doc["rows"][0];
+    let [a, b] = words(row["kind"].as_u64().expect("kind"));
+    let now = row["truth"].as_str().expect("truth");
+    row["truth"] = json!(if now == a { b } else { a });
 }

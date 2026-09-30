@@ -20,9 +20,17 @@ pub const PINNED_CORPORA: [(&str, &str); 4] = [
 /// One pinned corpus's checkout, its tip verified — the prologue of
 /// every external-corpus leg.
 pub fn pinned_root(name: &str, tip: &str) -> std::path::PathBuf {
-    let root = crate::common::repo_root()
-        .join(".ce-eval/corpora")
-        .join(name);
+    pinned_at(
+        &crate::common::repo_root().join(".ce-eval/corpora"),
+        name,
+        tip,
+    )
+}
+
+/// The same under another clone base (a worktree lane reads the main
+/// checkout's clones: the flow batches' CE_FLOW_CLONE_ROOT).
+pub fn pinned_at(base: &std::path::Path, name: &str, tip: &str) -> std::path::PathBuf {
+    let root = base.join(name);
     assert!(
         root.is_dir(),
         "{}: clone the corpus at {tip}",

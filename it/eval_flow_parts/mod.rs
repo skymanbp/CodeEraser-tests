@@ -11,10 +11,13 @@
 //! one unit, classified by kind and stratum from the lowering's own
 //! rows, never from the core's verdict.
 
+pub mod answers;
+pub mod batches;
 pub mod draw;
 pub mod exams;
 pub mod generate;
 pub mod pools;
+pub mod review;
 pub mod tamper;
 pub mod verify;
 
