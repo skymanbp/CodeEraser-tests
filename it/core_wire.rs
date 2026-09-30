@@ -49,7 +49,8 @@ fn corelink_open_and_desync() {
     // = ADR-008 P3; structure/1 = M6 S2; trend/1 = M7.5b (trend/2
     // at 2.31.0: the robust estimator); erase/1 = M9 batch 3;
     // audit/1 = M9 batch 7; tombstone/1 = 6.6.0; similar/1 = 6.7.0;
-    // query/1 = 7.3.0, plan v2.31 step 1) — the assert ladder
+    // query/1 = 7.3.0, plan v2.31 step 1; flow/1 = 7.4.0, step 3) —
+    // the assert ladder
     // tripped the ratchet at row 8
     for cap in [
         "hello",
@@ -66,6 +67,7 @@ fn corelink_open_and_desync() {
         "tombstone/1",
         "similar/1",
         "query/1",
+        "flow/1",
     ] {
         assert!(link.has(cap), "capability {cap} declared");
     }
