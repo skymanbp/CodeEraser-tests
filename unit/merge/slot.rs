@@ -30,6 +30,11 @@ fn probe(lang: Lang) -> String {
     std::fs::read_to_string(&at).unwrap_or_else(|e| panic!("{}: {e}", at.display()))
 }
 
+/// The languages the package gives a slot table.
+fn slotted() -> impl Iterator<Item = Lang> {
+    Lang::ALL.into_iter().filter(|&l| slot_spec(l).is_some())
+}
+
 fn kind_sets(s: &SlotSpec) -> [(&'static str, &Vec<String>); 4] {
     [
         ("expr", &s.expr_kinds),
@@ -51,7 +56,7 @@ fn pair_sets(s: &SlotSpec) -> [(&'static str, &Vec<(String, String)>); 3] {
 /// Leg 1: every kind (named) and field of every table is its grammar's.
 #[test]
 fn every_kind_and_field_is_in_the_grammar() {
-    for (lang, _) in TABLES {
+    for lang in slotted() {
         let s = slot_spec(lang).expect("a slot table");
         let g = lang.grammar().expect("a grammar");
         for (what, kinds) in kind_sets(s) {
@@ -103,7 +108,7 @@ fn every_kind_and_field_is_in_the_grammar() {
 #[test]
 fn every_other_answer_on_the_probe_is_named_other() {
     let mut missing = BTreeSet::new();
-    for (lang, _) in TABLES {
+    for lang in slotted() {
         let (s, c) = (slot_spec(lang).unwrap(), classes(lang).unwrap());
         let text = probe(lang);
         let tree = crate::scan::ast::parse_lang(&text, lang).expect("parses");
@@ -140,7 +145,7 @@ fn explained(s: &SlotSpec, c: &Classes, n: Node) -> bool {
 /// are the table's own exactly when no flow table gives them.
 #[test]
 fn the_sets_are_disjoint() {
-    for (lang, _) in TABLES {
+    for lang in slotted() {
         let s = slot_spec(lang).unwrap();
         let c = classes(lang).unwrap();
         let empty = s.stmt_kinds.is_empty() && s.container_kinds.is_empty();
@@ -173,7 +178,7 @@ fn the_sets_are_disjoint() {
 /// language, a head alone where the body is indented (Python, Haskell).
 #[test]
 fn every_table_carries_its_helper_lines() {
-    for (lang, _) in TABLES {
+    for lang in slotted() {
         let want = if matches!(lang, Lang::Python | Lang::Haskell) {
             1
         } else {
@@ -205,9 +210,7 @@ fn the_moved_classes_answer_on_their_probes() {
     let mut wrong = Vec::new();
     for row in MOVED.lines() {
         let cols: Vec<&str> = row.split(" | ").collect();
-        let lang = TABLES
-            .iter()
-            .map(|(l, _)| *l)
+        let lang = slotted()
             .find(|l| l.name() == cols[0])
             .unwrap_or_else(|| panic!("{}: no table", cols[0]));
         let src = cols[1].replace("\\n", "\n");

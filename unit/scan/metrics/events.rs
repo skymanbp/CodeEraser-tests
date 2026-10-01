@@ -181,7 +181,8 @@ fn every_shape_states_the_bits_the_rules_read() {
 
 /// The emitter never descends a unit node, so a nest-only kind that
 /// is also a unit kind could never fire — the dead-entry rule the
-/// launch tables state (spec_launch.rs), held for every grammar.
+/// launch tables state (CE.Lang.Python, .TypeScript, .Rust, .Go),
+/// held for every grammar.
 #[test]
 fn no_nest_only_kind_is_a_unit_kind() {
     for lang in Lang::with_grammar() {

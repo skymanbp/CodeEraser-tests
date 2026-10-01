@@ -5,7 +5,7 @@
 
 use super::Exam;
 use super::Reach::{Tree, Universe};
-use super::Stage::Scored;
+use super::Stage::Audited;
 
 /// The C family's rungs and the compilation-database readers they
 /// consult: one ladder for both exams, since a C++ include resolves
@@ -41,7 +41,7 @@ const fn exam(
         reach: Universe,
         ladder,
         ladder_first: None,
-        stage: Scored,
+        stage: Audited,
         generation,
     }
 }
@@ -56,7 +56,7 @@ const fn exam(
 /// directory of its own — a `r*` pathspec would hold the Rust rungs.
 /// Lua's exam is at its second generation: the first was frozen before
 /// the detector read a load under protection (`pcall(require, "x")`,
-/// graph/spec.rs LUA_PROTECTED).
+/// the core's CE.Lang.Lua `protected` table).
 /// HTML (step 5, the document language the user upgraded to a judged
 /// one) takes this repository's own pages — `site/`, the GUI page and
 /// the demo scoreboards at the tip that closed step 4 (booklet §11:

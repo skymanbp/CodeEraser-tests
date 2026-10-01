@@ -182,7 +182,7 @@ fn the_legacy_request_is_untouched_by_the_advisory_road() {
     assert_eq!(
         legacy["judgedMask"],
         serde_json::json!(codeeraser::scan::lang::Lang::judged_mask()),
-        "the mask is the LANGS table's own summary"
+        "the mask is the language rows' own summary"
     );
     let mut advised = request_body(&wire(&dir, Advisory::Yes), &[]);
     assert_eq!(

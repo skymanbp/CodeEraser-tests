@@ -1,6 +1,7 @@
 use super::*;
 
-/// The LANGS table is total (row() cannot panic), the wire positions
+/// The language rows (the package's `languages.rows`) are total (row()
+/// cannot panic), the wire positions
 /// are frozen (RM15), and the boundary splits where the plan says:
 /// the seven launch codes 0..6 (Markdown grammar-less but judged),
 /// the sentinel 7, the v2.5 size-only arm 8..14, and the plan v2.30
@@ -14,13 +15,19 @@ use super::*;
 /// and every size surface.
 #[test]
 fn langs_table_is_total_and_the_boundary_holds() {
-    assert_eq!(LANGS.len(), 22, "one row per variant");
+    assert_eq!(Lang::ALL.len(), 22, "one row per variant");
+    assert_eq!(
+        crate::tables::get().languages.rows.len(),
+        22,
+        "one package row per variant"
+    );
     assert_eq!(Lang::LangUnknown as i64, 7, "frozen sentinel");
     assert_eq!(Lang::JavaScript as i64, 8, "arm appends after it");
     assert_eq!(Lang::C as i64, 15, "plan v2.30 codes append after the arm");
     assert_eq!(Lang::R as i64, 20, "… through R");
     assert_eq!(Lang::Text as i64, 21, "the prose-only arm after R");
-    for &(l, exts, ..) in LANGS {
+    for l in Lang::ALL {
+        let exts = l.extensions();
         assert!(!l.name().is_empty()); // row() is total
         let code = l as i64;
         let reserved = l == Lang::Ruby;
@@ -62,9 +69,8 @@ fn langs_table_is_total_and_the_boundary_holds() {
 #[test]
 fn with_grammar_reads_the_grammar_table_out() {
     let parsing: Vec<Lang> = Lang::with_grammar().collect();
-    let expected: Vec<Lang> = LANGS
-        .iter()
-        .map(|&(l, ..)| l)
+    let expected: Vec<Lang> = Lang::ALL
+        .into_iter()
         .filter(|l| l.grammar().is_some())
         .collect();
     assert_eq!(

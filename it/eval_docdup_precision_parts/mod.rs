@@ -86,7 +86,8 @@ pub fn oracle_join(corpus: &str) -> OracleMap {
 
 /// Does the report rule fire at `floor`/100 on these exact numbers?
 pub fn reported_at(floor: u64, inter: u64, union: u64, verbatim: u64) -> bool {
-    inter * 100 >= floor * union || verbatim >= codeeraser::docdup::spec::VERBATIM_FLOOR as u64
+    inter * 100 >= floor * union
+        || verbatim >= codeeraser::docdup::spec::table().verbatim_floor as u64
 }
 
 /// One frozen row's full check (D2/D5/D6 row half): truth echoed

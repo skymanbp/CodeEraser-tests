@@ -1,6 +1,6 @@
 //! Plan v2.30 step 4 R metric battery: the launch-language rows of
 //! metrics.rs re-spelled in R where the construct exists, plus one row
-//! per stance the R table records (scan/spec_r.rs, the booklet's
+//! per stance the R table records (CE.Lang.R, the booklet's
 //! register D0 / D8 / D9) — R has no cognitive oracle (D0), and
 //! lizard's R reader, which checks CC, reads the D8 and D9 stances the
 //! other way (contracts/fixtures/crosscheck/DIVERGENCES.md), so this

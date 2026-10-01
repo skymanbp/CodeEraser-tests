@@ -2,8 +2,10 @@
 //! (split out of docs_consts.rs at the 300-line dogfood wall, plan
 //! v2.21 S9): every `const NAME = value` in cli/src, every array
 //! arity `const NAME: [T; N]` as `NAME.len`, every top-level Haskell
-//! binding `name = value` in core/app, and the numeric reading of a
-//! value through one hop of aliasing. The leaf owns the shape; the
+//! binding `name = value` in core/app, every integer key of the
+//! definition package's tables (plan v2.32 step 2: the measuring
+//! side's numbers moved there), and the numeric reading of a value
+//! through one hop of aliasing. The leaf owns the shape; the
 //! parent references downward.
 
 pub mod page;
@@ -155,6 +157,27 @@ pub fn default_impls_in(root: &Path, dir: &str) -> Vec<Def> {
             }
             if depth <= 0 {
                 ty = None;
+            }
+        }
+    }
+    out
+}
+
+/// The definition package's numbers (`tables/1`, read from the core
+/// at CE_CORE_BIN through the product's own reader): each integer key
+/// directly under a table, by its bare key — the docdup floors and the
+/// tombstone name floors live there since plan v2.32 step 2.
+pub fn package_defs() -> Vec<Def> {
+    let reply = crate::common::stub_core::real_tables();
+    let mut out = Vec::new();
+    for (table, body) in reply.as_object().into_iter().flatten() {
+        for (key, value) in body.as_object().into_iter().flatten() {
+            if let Some(n) = value.as_u64() {
+                out.push(Def {
+                    file: PathBuf::from(format!("tables/1 {table}")),
+                    name: key.clone(),
+                    value: n.to_string(),
+                });
             }
         }
     }

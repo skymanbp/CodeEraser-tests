@@ -194,8 +194,10 @@ fn a_refusal_reads_back_to_its_table_row_and_reason() {
 
 /// The ten languages whose precision docs read judged (plan v2.31
 /// step 4 commit G: the docs regenerated on the lowering commit E
-/// fixed), bit by bit at their `Lang` codes; eval_flow_precision.rs
-/// pins each bit to its doc on disk.
+/// fixed), bit by bit at their `Lang` codes, read through the
+/// package's `flow_judged` column (plan v2.32 step 2) and pinned to the
+/// number the core's battery pins; eval_flow_precision.rs pins each bit
+/// to its doc on disk.
 #[test]
 fn the_judged_mask_holds_the_ten_judged_languages() {
     use crate::scan::lang::Lang;
@@ -213,5 +215,5 @@ fn the_judged_mask_holds_the_ten_judged_languages() {
     ]
     .iter()
     .fold(0i64, |m, &l| m | 1 << l as i64);
-    assert_eq!(crate::flow::judged_mask(), want);
+    assert_eq!((crate::flow::judged_mask(), want), (1540127, 1540127));
 }

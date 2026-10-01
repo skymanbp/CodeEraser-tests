@@ -66,14 +66,32 @@ fn mounts_in(file: &Path, text: &str, stray: &mut Vec<String>) -> Vec<PathBuf> {
     out
 }
 
+/// The child modules a mounted unit file declares (`mod x;`, one per
+/// line): a `#[path]`-mounted file reads its children as a mod-rs file
+/// does, from its own directory (unit/flow/lang.rs holds the
+/// per-language lowering legs, plan v2.32 step 2).
+fn children(unit: &Path) -> Vec<PathBuf> {
+    let text = std::fs::read_to_string(unit).unwrap_or_default();
+    let dir = unit.parent().expect("a file has a directory");
+    text.lines()
+        .filter_map(|l| l.strip_prefix("mod ")?.strip_suffix(';'))
+        .filter(|n| n.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
+        .map(|n| dir.join(format!("{n}.rs")))
+        .collect()
+}
+
 fn declared(root: &Path) -> BTreeSet<String> {
     let mut files = Vec::new();
     common::files_with_ext(&root.join("cli/src"), "rs", &mut files);
     let (mut out, mut stray) = (BTreeSet::new(), Vec::new());
+    let mut queue = Vec::new();
     for f in &files {
         let text = std::fs::read_to_string(f).expect("source file");
-        for m in mounts_in(f, &text, &mut stray) {
-            out.insert(rel(root, &m));
+        queue.extend(mounts_in(f, &text, &mut stray));
+    }
+    while let Some(m) = queue.pop() {
+        if out.insert(rel(root, &m)) {
+            queue.extend(children(&m));
         }
     }
     assert!(

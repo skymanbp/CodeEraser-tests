@@ -8,8 +8,8 @@
 use crate::common::repo_root;
 use crate::docs_consts_parts::page::{Families, families};
 use crate::docs_consts_parts::{
-    Def, default_impls_in, defs_in, first_number, haskell_line, normalize, numbers, rust_line,
-    value_for,
+    Def, default_impls_in, defs_in, first_number, haskell_line, normalize, numbers, package_defs,
+    rust_line, value_for,
 };
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -116,6 +116,7 @@ fn assert_sources(root: &Path, families: &Families) {
     let mut defs = defs_in(root, "cli/src", "rs", rust_line);
     defs.extend(defs_in(root, "core/app", "hs", haskell_line));
     defs.extend(default_impls_in(root, "cli/src"));
+    defs.extend(package_defs());
     let allow = allowlist();
     for (family, chips) in families {
         for chip in chips {

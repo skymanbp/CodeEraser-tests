@@ -19,7 +19,7 @@
 /// names the key the member carried on the day it dissolved: the
 /// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
 /// both readers in baseline_bridge.rs share `seated_or_retired`.
-pub const RETIRED: [(u64, &str); 32] = [
+pub const RETIRED: [(u64, &str); 40] = [
     (
         5552311341795790881,
         "v2.30 step 7b (3): Scan.hs's `reply` took an Echo record and its fenced / conditions helpers, so its head no longer rhymes with Audit.hs's `reply` (51 tokens) — the Audit.hs <-> Scan.hs member dissolved",
@@ -151,6 +151,38 @@ pub const RETIRED: [(u64, &str); 32] = [
     (
         18165864476337164842,
         "v2.30 step 5b-7 2026-09-27: the PostToolUse leg restated the PreToolUse hook's prelude and the gate named it twice, so both write hooks now read one gate (guard::write_event) — the audit/guard prelude pair this member rode left with the restatement",
+    ),
+    (
+        6298325535801379451,
+        "v2.32 step 2 2026-10-01: docdup/spec.rs's const table of numbers and markers moved into the core (CE.Docdup.Cost, CE.Lang.Common.Prose) and the file kept only its readers, so it no longer rhymes with graph/wire.rs's const table",
+    ),
+    (
+        12441163793521289489,
+        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
+    ),
+    (
+        14066198317823549133,
+        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
+    ),
+    (
+        15283346326385119323,
+        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
+    ),
+    (
+        16409031450442344353,
+        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
+    ),
+    (
+        17679470848269995785,
+        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
+    ),
+    (
+        18074344538836094835,
+        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
+    ),
+    (
+        18190675168993883734,
+        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
     ),
 ];
 

@@ -44,5 +44,5 @@ fn shingle_set_is_order_free_and_seq_is_not() {
     let mut s1 = shingle_set(&w1);
     s1.sort_unstable();
     assert_eq!(shingle_set(&w1), s1, "already sorted deduped");
-    assert_eq!(shingle_seq(&w1).len(), 8 - DOC_SHINGLE + 1);
+    assert_eq!(shingle_seq(&w1).len(), 8 - table().doc_shingle + 1);
 }

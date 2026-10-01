@@ -19,7 +19,7 @@ fn the_vocabulary_is_every_table_and_every_mark_word() {
 }
 use std::collections::BTreeSet;
 
-fn table(t: &'static str) -> Vec<&'static str> {
+fn table(t: &'static [&'static str]) -> Vec<&'static str> {
     entries(t).collect()
 }
 
@@ -29,7 +29,15 @@ fn unique(t: &[&str]) -> bool {
 
 #[test]
 fn ascii_tables_are_lower_case_and_unique() {
-    for t in [NEGATIONS, KEYWORDS, EN_PREFIX, EN_SUFFIX, MARKS_EN].map(table) {
+    for t in [
+        v().negations,
+        v().keywords,
+        v().en_prefix,
+        v().en_suffix,
+        v().marks_en,
+    ]
+    .map(table)
+    {
         assert!(unique(&t), "{t:?}");
         let clean = t
             .iter()
@@ -40,7 +48,7 @@ fn ascii_tables_are_lower_case_and_unique() {
 
 #[test]
 fn wide_tables_carry_no_ascii() {
-    for t in [ZH_PREFIX, ZH_SUFFIX, MARKS_ZH].map(table) {
+    for t in [v().zh_prefix, v().zh_suffix, v().marks_zh].map(table) {
         assert!(unique(&t), "{t:?}");
         let wide = t
             .iter()
@@ -51,7 +59,7 @@ fn wide_tables_carry_no_ascii() {
 
 #[test]
 fn keywords_are_sorted_single_words() {
-    let k = table(KEYWORDS);
+    let k = table(v().keywords);
     assert!(
         k.windows(2).all(|p| p[0] < p[1]),
         "sorted, so a reader can find a word"
@@ -64,20 +72,20 @@ fn keywords_are_sorted_single_words() {
 /// loanwords is an absence word.
 #[test]
 fn absence_words_and_reserved_words_are_disjoint() {
-    assert!(entries(NEGATIONS).all(|n| !has(KEYWORDS, n)));
-    assert!(entries(EN_PREFIX).all(|p| has(NEGATIONS, p) || matches!(p, "sans" | "minus")));
+    assert!(entries(v().negations).all(|n| !has(v().keywords, n)));
+    assert!(entries(v().en_prefix).all(|p| has(v().negations, p) || matches!(p, "sans" | "minus")));
 }
 
 #[test]
 fn a_table_holds_a_word_exactly_and_the_floors_nest() {
-    assert!(has(EN_SUFFIX, "free") && !has(EN_SUFFIX, "fre") && !has(EN_SUFFIX, "freed"));
-    assert_eq!(OPEN.len(), CLOSE.len());
-    const {
-        assert!(
-            JOIN_MAX >= 2,
-            "a two-word name like dongpo_pork must fit one window"
-        )
-    };
-    const { assert!(MIN_WIDE_NAME < MIN_ASCII_NAME) };
+    assert!(
+        has(v().en_suffix, "free") && !has(v().en_suffix, "fre") && !has(v().en_suffix, "freed")
+    );
+    assert_eq!(v().open.len(), v().close.len());
+    assert!(
+        v().join_max >= 2,
+        "a two-word name like dongpo_pork must fit one window"
+    );
+    assert!(v().min_wide_name < v().min_ascii_name);
     assert_eq!(TOMBSTONE_REV, 1);
 }

@@ -1,6 +1,6 @@
 //! Plan v2.30 step 4 Lua metric battery: the launch-language rows of
 //! metrics.rs re-spelled in Lua where the construct exists, plus one
-//! row per stance the Lua table records (scan/spec_lua.rs, the booklet's
+//! row per stance the Lua table records (CE.Lang.Lua, the booklet's
 //! register D3 / D5 / D8) — each why cites the whitepaper page or the
 //! register entry — and a `units=` block pinning what the table makes a
 //! unit, how a binding names it (scan/binding.rs) and what it reads as

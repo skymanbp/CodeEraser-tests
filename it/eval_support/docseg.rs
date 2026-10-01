@@ -21,13 +21,14 @@ pub fn docdup_review_doc(corpus: &str) -> Value {
 }
 
 pub fn docdup_constants() -> Value {
+    let t = spec::table();
     json!({
-        "min_doc_tokens": spec::MIN_DOC_TOKENS,
-        "doc_shingle": spec::DOC_SHINGLE,
-        "verbatim_floor": spec::VERBATIM_FLOOR,
-        "license_head_lines": spec::LICENSE_HEAD_LINES,
-        "doc_line_cap": spec::DOC_LINE_CAP,
-        "kinds": spec::KIND_NAMES,
+        "min_doc_tokens": t.min_doc_tokens,
+        "doc_shingle": t.doc_shingle,
+        "verbatim_floor": t.verbatim_floor,
+        "license_head_lines": t.license_head_lines,
+        "doc_line_cap": t.doc_line_cap,
+        "kinds": t.kind_names,
         "exempt": exempt::EXEMPT_NAMES,
         "docdup_rev": docdup::DOCDUP_REV,
         // the exemption routes with structurally-zero counts state
@@ -50,7 +51,7 @@ pub fn docdup_row(path: &str, code: &str, text: &str) -> Value {
     let mut live = 0u64;
     for s in &facts.segs {
         *segs_by
-            .entry(spec::KIND_NAMES[s.kind as usize])
+            .entry(spec::table().kind_names[s.kind as usize])
             .or_insert(0) += 1;
         if s.exempt == exempt::EXEMPT_LIVE {
             live += 1;

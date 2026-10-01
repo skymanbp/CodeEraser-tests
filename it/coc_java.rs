@@ -1,6 +1,6 @@
 //! Plan v2.30 step 3 Java metric battery: the launch-language rows of
 //! metrics.rs re-spelled in Java where the construct exists, plus one
-//! row per stance the Java table records (spec_java.rs, the register
+//! row per stance the Java table records (CE.Lang.Java, the register
 //! in contracts/fixtures/crosscheck/DIVERGENCES.md) — each why cites
 //! the whitepaper page or the register entry. The whitepaper's own
 //! Java examples are the java lines of the whitepaper register

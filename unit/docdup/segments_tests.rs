@@ -121,7 +121,7 @@ fn rust_doc_comment_runs_merge_like_plain_runs() {
 /// sponsor-table / badge-strip block (every line HTML markup — the
 /// audited zod FP shape) yields ZERO segments and a nonzero
 /// html_line count, while a single LONG line of genuine md prose
-/// (past DOC_LINE_CAP) survives untouched — the false-kill guard.
+/// (past `doc_line_cap`) survives untouched — the false-kill guard.
 #[test]
 fn html_markup_lines_shed_but_long_md_prose_survives() {
     let table = "<table align=\"center\">\n  <tr>\n    <td align=\"center\">\n      \
@@ -130,7 +130,7 @@ fn html_markup_lines_shed_but_long_md_prose_survives() {
     assert!(segs.is_empty(), "HTML block must form no md_para");
     assert_eq!(shed.html, 7, "every markup line ledgered");
     let prose = format!("{}\n", "word ".repeat(60).trim());
-    assert!(prose.len() > crate::docdup::spec::DOC_LINE_CAP);
+    assert!(prose.len() > crate::docdup::spec::table().doc_line_cap);
     let (segs, shed) = extract(&prose, Lang::Markdown);
     assert_eq!(segs.len(), 1, "unwrapped md prose is content");
     assert_eq!(shed.html, 0);

@@ -39,12 +39,12 @@ fn admission_floor_and_conservation_hold() {
 
 /// Plan v2.30 step 5b-8: a plain-text paragraph past the admission
 /// floor is one live text_para — nothing strips (the line is longer
-/// than DOC_LINE_CAP, which masks a comment line and never prose),
+/// than `doc_line_cap`, which masks a comment line and never prose),
 /// nothing exempts, and the ledger stays empty.
 #[test]
 fn plain_text_prose_admits_as_one_live_paragraph() {
     let txt = format!("{}\n", "alpha beta gamma delta ".repeat(15).trim());
-    assert!(txt.len() > spec::DOC_LINE_CAP);
+    assert!(txt.len() > spec::table().doc_line_cap);
     let facts = doc_facts(&txt, Lang::Text);
     assert_eq!(facts.segs.len(), 1, "one paragraph, admitted");
     let s = &facts.segs[0];

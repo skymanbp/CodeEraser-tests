@@ -221,7 +221,8 @@ fn plain(name: &str) -> bool {
 }
 
 /// Leg 3: the judged languages less Markdown, Haskell and HTML have a
-/// table and nothing else does; TypeScript and TSX read one; C and C++
+/// table and nothing else does; TypeScript and TSX read one (equal
+/// tables: the package states each language's own); C and C++
 /// part on the noreturn names alone.
 #[test]
 fn the_dispatch_answers_the_judged_code_languages() {
@@ -232,10 +233,7 @@ fn the_dispatch_answers_the_judged_code_languages() {
         assert_eq!(spec(lang).is_some(), judged && !outside, "{lang:?}");
     }
     let ts = spec(Lang::TypeScript).unwrap();
-    assert!(
-        std::ptr::eq(ts, spec(Lang::Tsx).unwrap()),
-        "one TypeScript table"
-    );
+    assert_eq!(ts, spec(Lang::Tsx).unwrap(), "one TypeScript table");
     let (c, cpp) = (spec(Lang::C).unwrap(), spec(Lang::Cpp).unwrap());
     assert_ne!(c.noreturn, cpp.noreturn);
     let mut same = cpp.clone();

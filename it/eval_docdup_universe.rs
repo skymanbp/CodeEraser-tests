@@ -13,7 +13,7 @@
 //!   rm -rf cli/tests/eval_docdup_universe.rs cli/tests/eval_support   # untracked in both repositories: a plain rm, never an index write below the gitlink
 
 use crate::eval_support::*;
-use codeeraser::docdup::spec::{KIND_HTML_TEXT, KIND_NAMES, KIND_TEXT_PARA};
+use codeeraser::docdup::spec::{KIND_HTML_TEXT, KIND_TEXT_PARA, table};
 use std::collections::BTreeMap;
 
 const FAMILY: UniverseFamily = UniverseFamily {
@@ -43,8 +43,9 @@ fn docdup_segments_consistent() {
     // html_text (plan v2.30 step 5) and text_para (step 5b-8) joined
     // after the five universes were frozen over the launch extensions,
     // so no frozen row can hold either; their liveness legs follow
-    let later = [KIND_HTML_TEXT, KIND_TEXT_PARA].map(|k| KIND_NAMES[k as usize]);
-    let frozen_kinds = KIND_NAMES.iter().copied().filter(|k| !later.contains(k));
+    let names = table().kind_names;
+    let later = [KIND_HTML_TEXT, KIND_TEXT_PARA].map(|k| names[k as usize]);
+    let frozen_kinds = names.iter().copied().filter(|k| !later.contains(k));
     assert_covered(&totals, frozen_kinds, "segments");
     let notes = docdup_constants()["route_notes"].clone();
     for route in ["license_header", "inline_allow", "skeleton_line"] {

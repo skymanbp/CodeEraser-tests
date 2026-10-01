@@ -1,7 +1,7 @@
 //! scan/outputs.rs: a build-output name is an output beside one of its
 //! own row's project files, and nowhere else.
 
-use super::{OUTPUTS, is_output};
+use super::is_output;
 use crate::testutil::{scratch, write_tree};
 
 /// Every row, each of its project files alone beside the directory:
@@ -11,11 +11,9 @@ use crate::testutil::{scratch, write_tree};
 #[test]
 fn each_project_file_makes_its_row_an_output() {
     let root = scratch("outputs-rows");
-    for row in OUTPUTS.lines() {
-        let mut words = row.split_ascii_whitespace();
-        let name = words.next().expect("a directory name");
+    for &(name, files) in crate::tables::get().outputs {
         let dir = root.join(name);
-        for file in words.map(|w| w.replace('*', "pkg")) {
+        for file in files.iter().map(|w| w.replace('*', "pkg")) {
             assert!(!is_output(&dir), "{name} with nothing beside it");
             write_tree(&root, &[(&file, "")]);
             assert!(is_output(&dir), "{name} beside {file}, not yet created");
