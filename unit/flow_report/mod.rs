@@ -31,13 +31,16 @@ fn the_kind_names_are_the_core_codes_in_order() {
     );
 }
 
-/// An unused parameter is advisory in every language; the others are
-/// judged exactly when the precision gate admitted the language.
+/// An unused parameter (kind 3, as observed) is advisory in every
+/// language by the package's catalogue; the others are judged exactly
+/// when the precision gate admitted the language.
 #[test]
 fn the_advisory_kind_is_never_judged_and_the_mask_decides_the_rest() {
     let py = Lang::Python;
-    assert!(!judged(py, ADVISORY));
-    for kind in 0..ADVISORY {
+    let marked: Vec<u8> = (0..5).filter(|k| advisory(*k)).collect();
+    assert_eq!(marked, [3]);
+    assert!(!judged(py, 3));
+    for kind in 0..3 {
         assert_eq!(judged(py, kind), lang_judged(py), "kind {kind}");
     }
     let admitted = crate::flow::judged_mask() & (1 << py as i64) != 0;
@@ -60,7 +63,7 @@ fn a_finding_is_placed_through_its_units_legend() {
         (run.unit.as_str(), run.line, run.line_end, run.var),
         ("gone", 3, 3, None)
     );
-    let param = place(&file, 2, &finding(ADVISORY, -1, 0)).expect("a parameter of ignores");
+    let param = place(&file, 2, &finding(3, -1, 0)).expect("a parameter of ignores");
     assert_eq!((param.line, param.var.as_deref()), (12, Some("a")));
     assert!(place(&file, 7, &finding(0, 0, -1)).is_none(), "no unit 7");
 }

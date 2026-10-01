@@ -38,8 +38,16 @@ fn the_catalogue_is_the_frozen_one() {
         .collect();
     assert_eq!(named, ["arch", "flow", "merge", "query", "rules"]);
     let flow = &catalogue()["flow"];
-    let kinds = ["unreachable", "dead_store", "unused_local", "unused_param"];
-    assert_eq!(flow["kinds"], json!(kinds), "kinds, as observed");
+    let kinds = json!([
+        ["unreachable", false],
+        ["dead_store", false],
+        ["unused_local", false],
+        ["unused_param", true]
+    ]);
+    assert_eq!(
+        flow["kinds"], kinds,
+        "kinds and their advisory role, as observed"
+    );
     let mask = codeeraser::flow::judged_mask();
     let judged: Vec<i64> = (0..64).filter(|l| mask >> l & 1 == 1).collect();
     assert_eq!(flow["judged"], json!(judged), "judged languages");
@@ -67,10 +75,11 @@ fn every_bound_document_carries_its_catalogue_schema() {
         let doc = doc.unwrap_or_else(|e| panic!("{family}: {e:#}"));
         assert_eq!(doc["schema"], catalogue()[family]["schema"], "{family}");
         if family == "flow" {
-            let listed = catalogue()["flow"]["kinds"].as_array().expect("kinds");
+            let rows = catalogue()["flow"]["kinds"].as_array().expect("kinds");
+            let listed: Vec<&Value> = rows.iter().map(|r| &r[0]).collect();
             let found = doc["findings"].as_array().expect("findings");
             assert!(!found.is_empty(), "the seed has an unreachable run");
-            assert!(found.iter().all(|f| listed.contains(&f["kind"])));
+            assert!(found.iter().all(|f| listed.contains(&&f["kind"])));
         }
     }
 }
