@@ -160,6 +160,7 @@ mod guard_novelty;
 mod guard_say;
 mod health_plugin;
 mod history_recipes;
+mod hooks_inert;
 mod index_epoch;
 mod join_e2e;
 mod join_t3;

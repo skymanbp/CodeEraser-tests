@@ -2,8 +2,8 @@
 //! design booklet §5.4): every changed file's after side lowered and
 //! judged once over the audit's core link, the feed line's `flow`
 //! object counting what the core found — never a block at any tier,
-//! and never the sites (those are `ce flow`'s). The feed is
-//! ce.observe/0.12.0. The fixture is Python, a judged language while
+//! and never the sites (those are `ce flow`'s); the object is in the
+//! feed since ce.observe/0.12.0. The fixture is Python, a judged language while
 //! the mask reads it so: a finding the class would refuse at write
 //! time still never stops a Stop.
 
@@ -46,7 +46,7 @@ fn expected_flow() -> serde_json::Value {
 fn the_stop_line_carries_the_flow_counts_and_never_blocks() {
     let dir = changed("flow-audit-stop");
     let line = common::stop_observe(&dir);
-    assert_eq!(line["schema"], "ce.observe/0.12.0");
+    assert_eq!(line["schema"], codeeraser::hookio::OBSERVE_SCHEMA);
     assert_eq!(line["flow"], expected_flow(), "{line}");
 }
 

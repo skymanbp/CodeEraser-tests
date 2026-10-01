@@ -248,17 +248,7 @@ fn no_release_index_is_unknown_never_current() {
 }
 
 fn health(dir: &Path, env: &[(&str, &str)]) -> String {
-    let envelope = serde_json::json!({
-        "session_id": "t", "transcript_path": "t",
-        "cwd": slashes(dir), "hook_event_name": "SessionStart"
-    })
-    .to_string();
-    let out = common::run_hook_env(dir, &["health", "--hook"], &envelope, env);
-    let v: Value = serde_json::from_str(out.trim()).expect("hook json");
-    v["hookSpecificOutput"]["additionalContext"]
-        .as_str()
-        .expect("additionalContext")
-        .to_string()
+    common::session_start_line_env(dir, env).1
 }
 
 #[test]

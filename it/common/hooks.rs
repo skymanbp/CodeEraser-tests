@@ -126,13 +126,19 @@ pub fn seed_project(dir: &Path, mode: &str) {
 /// reads that line (health_plugin's mode / index / daemon words,
 /// ui_lang's project-language pin).
 pub fn session_start_line(dir: &Path) -> (serde_json::Value, String) {
+    session_start_line_env(dir, &[])
+}
+
+/// The same line under named environment (update_e2e's notice legs,
+/// hooks_inert's missing core).
+pub fn session_start_line_env(dir: &Path, env: &[(&str, &str)]) -> (serde_json::Value, String) {
     let envelope = serde_json::json!({
         "session_id": "t", "transcript_path": "t",
         "cwd": dir.display().to_string().replace('\\', "/"),
         "hook_event_name": "SessionStart"
     })
     .to_string();
-    let out = run_hook(dir, &["health", "--hook"], &envelope);
+    let out = run_hook_env(dir, &["health", "--hook"], &envelope, env);
     let v: serde_json::Value = serde_json::from_str(out.trim()).expect("json");
     let ctx = v["hookSpecificOutput"]["additionalContext"]
         .as_str()
