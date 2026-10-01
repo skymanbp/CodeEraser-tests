@@ -21,6 +21,7 @@ fn member() -> Member {
             leaf: vec![5, 6, 0],
             slot: vec![1, 1, 4],
             spans: vec![(2, 7), (9, 13), (0, 14)],
+            ..UnitTree::default()
         },
     }
 }

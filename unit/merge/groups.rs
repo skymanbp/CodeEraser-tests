@@ -60,6 +60,7 @@ fn tree(lab: &[u64], lld: &[i64], leaf: &[u64]) -> UnitTree {
         leaf: leaf.to_vec(),
         slot: vec![1; lab.len()],
         spans: vec![(0, 0); lab.len()],
+        ..UnitTree::default()
     }
 }
 
@@ -112,6 +113,7 @@ fn frags_of(a: &UnitTree, b: &UnitTree) -> Frags {
         let top = Top {
             tree: t.clone(),
             lines: (s, e),
+            stream: Vec::new(),
         };
         (("m.py".to_string(), s, e), Some(vec![top]))
     };

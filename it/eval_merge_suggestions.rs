@@ -1,5 +1,5 @@
 //! The clone-merge family's frozen suggestion set (plan v2.31 step 7,
-//! design booklet §6.5): `contracts/eval/merge-suggestions-v1.json`
+//! design booklet §6.5): `contracts/eval/merge-suggestions-v<n>.json`
 //! holds, per corpus, the counts, the groups not sent and one row per
 //! suggestion — its members (`at` a unit or a fragment's
 //! `path:start-end`, `run` the lines the core priced),
@@ -8,10 +8,13 @@
 //! every row; `regenerate` (`CE_BLESS=1`, `--ignored`) re-measures the
 //! five corpora — the external four need their pinned checkouts under
 //! `.ce-eval/corpora` — and redraws the blind sample from the new set.
+//! Both write the exam generation's docs (merge generation 2, booklet
+//! §13 item 50); a record generation's set is never re-measured.
 
 use crate::eval_merge_parts::sample::{SAMPLE, SAMPLE_SCHEMA, audit_row, draw};
 use crate::eval_merge_parts::{
-    DOC, SCHEMA, SELF, corpora, frozen, load, measure, section, self_tree, write, write_lined,
+    DOC, GENERATIONS, SCHEMA, SELF, corpora, frozen, load, measure, section, self_tree, write,
+    write_lined,
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -40,13 +43,19 @@ fn the_self_tree_answers_its_frozen_rows() {
 }
 
 /// One member set, one suggestion (a T1/T2 group covers a T3 group
-/// over the same members): within each corpus no two rows share their
-/// members' `at` identities, so the sample's `id` is unique by
-/// construction.
+/// over the same members): in every generation, within each corpus no
+/// two rows share their members' `at` identities, so the sample's `id`
+/// is unique by construction.
 #[test]
 fn every_member_set_is_suggested_once() {
-    let doc = load(DOC).unwrap_or_else(|| panic!("{DOC}: the frozen set is missing"));
-    for c in doc["corpora"].as_array().expect("corpora") {
+    let sets = GENERATIONS.iter().map(|g| (g.set, load(g.set)));
+    let docs: Vec<_> = sets
+        .map(|(p, d)| d.unwrap_or_else(|| panic!("{p}: missing")))
+        .collect();
+    for c in docs
+        .iter()
+        .flat_map(|d| d["corpora"].as_array().expect("corpora"))
+    {
         let mut seen: BTreeMap<Vec<String>, usize> = BTreeMap::new();
         for (i, row) in c["rows"].as_array().expect("rows").iter().enumerate() {
             let members = row["members"].as_array().into_iter().flatten();

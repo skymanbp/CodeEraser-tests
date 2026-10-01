@@ -12,7 +12,10 @@
 //! and the core's parameterisation (`param_texts`, which the judge may
 //! reject); never the feasibility, the reason, the savings or the member
 //! kept. The plan is one pure function of the sample, so the manifest
-//! written beside the batches is a convenience, not a source.
+//! written beside the batches is a convenience, not a source. The
+//! batches are the exam generation's (merge generation 2): its own hash
+//! domain, and the prompt's reading rules, whose generation the
+//! manifest names (`readings`).
 //!   CE_MERGE_BATCH_DIR=<dir> cargo test --test it -- --ignored eval_merge_batches::merge_batches --nocapture
 
 mod prompt;
@@ -22,12 +25,18 @@ use crate::eval_lang_parts::generate::env;
 use crate::eval_merge_parts::load;
 use crate::eval_merge_parts::sample::SAMPLE;
 use crate::eval_support::identity_hash;
-use prompt::{PROMPT_ANSWER, PROMPT_HEAD};
+use prompt::{PROMPT_ANSWER, PROMPT_HEAD, PROMPT_RULES};
 use serde_json::{Value, json};
 use std::path::Path;
 
-/// The batches' own hash domain (the order a judge reads in).
-const DOMAIN: &str = "merge-batches-v1";
+/// The batches' own hash domain (the order a judge reads in), the exam
+/// generation's: the first generation's batches read under
+/// `merge-batches-v1`.
+const DOMAIN: &str = "merge-batches-v2";
+
+/// The generation of reading rules the prompt carries (the first
+/// generation's prompt had none; booklet §13 item 50).
+pub const READINGS: u32 = 2;
 
 /// Four judges, twenty-five questions each.
 pub const BATCHES: usize = 4;
@@ -127,11 +136,14 @@ pub fn render(sample: &Value, dir: &str) -> Vec<(String, String)> {
         let answer = PROMPT_ANSWER
             .replace("{ANSWER_FILE}", &answer_file(dir, n))
             .replace("{QUESTIONS}", &questions.join("\n\n"));
-        files.push((format!("batch-{n}.md"), format!("{head}\n{answer}")));
+        files.push((
+            format!("batch-{n}.md"),
+            format!("{head}\n{PROMPT_RULES}\n{answer}"),
+        ));
         let ids: Vec<&Value> = rows.iter().map(|r| &r["id"]).collect();
         manifest.push(json!({"n": n, "ids": ids, "answers": answer_file(dir, n)}));
     }
-    let doc = json!({"sample": SAMPLE, "batches": manifest});
+    let doc = json!({"sample": SAMPLE, "readings": READINGS, "batches": manifest});
     let text = serde_json::to_string_pretty(&doc).expect("json") + "\n";
     files.push(("manifest.json".to_string(), text));
     files

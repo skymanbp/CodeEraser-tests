@@ -20,7 +20,10 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 pub const SAMPLE_SCHEMA: &str = "ce.eval-merge-sample/1.0.0";
-pub const SAMPLE: &str = "contracts/eval/merge-sample-v1.json";
+pub const SAMPLE: &str = super::EXAM.sample;
+/// The ids' hash domain, the first generation's in every generation: a
+/// question is its id, so a member set sampled by two generations is
+/// one question and the two samples compare by id.
 pub const DOMAIN: &str = "merge-sample-v1";
 pub const HALF: u64 = 50;
 const TEXT_LINES: usize = 120;

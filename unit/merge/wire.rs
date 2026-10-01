@@ -23,6 +23,8 @@ fn group(members: usize, nodes: usize) -> Group {
                     leaf: vec![0; nodes],
                     slot: vec![1; nodes],
                     spans: vec![(0, 0); nodes],
+                    own: vec![0; nodes],
+                    text: vec![3; nodes],
                 },
             })
             .collect(),
@@ -38,16 +40,34 @@ fn healthy() -> Value {
         "suggestions":[[0,1,1,9,1,0]]})
 }
 
-/// The body: groups, members with their lines and in-degree, one tree
-/// per member with dense labels and the two added columns.
+/// The body: groups with their family and helper lines, members with
+/// their lines and in-degree, one tree per member with dense labels and
+/// the four added columns (merge generation 2, ruling R1).
 #[test]
 fn the_body_carries_every_table() {
     let g = group(2, 3);
     let body = body(&[&g], |p| if p == "m1.py" { 4 } else { 0 });
-    assert_eq!(body["groups"], json!([[0, 0]]));
+    assert_eq!(body["groups"], json!([[0, 0, 0]]));
     assert_eq!(body["members"], json!([[0, 0, 0, 6, 0], [0, 1, 1, 6, 4]]));
-    let tree = json!({"lab": [0, 0, 0], "lld": [0, 0, 0], "leaf": [0, 0, 0], "slot": [1, 1, 1]});
+    let tree = json!({"lab": [0, 0, 0], "lld": [0, 0, 0], "leaf": [0, 0, 0], "slot": [1, 1, 1],
+        "own": [0, 0, 0], "text": [3, 3, 3]});
     assert_eq!(body["trees"], json!([tree, tree]));
+}
+
+/// Ruling R6: a fragment group carries its language's helper lines
+/// (Python 1, a brace language 2), a whole-unit group none.
+#[test]
+fn a_fragment_group_carries_its_helper_lines() {
+    let mut py = group(2, 3);
+    py.fragment = true;
+    let mut rs = group(2, 3);
+    rs.fragment = true;
+    for m in &mut rs.members {
+        m.path = m.path.replace(".py", ".rs");
+    }
+    let whole = group(2, 3);
+    let body = body(&[&py, &rs, &whole], |_| 0);
+    assert_eq!(body["groups"], json!([[0, 0, 1], [1, 0, 2], [2, 0, 0]]));
 }
 
 #[test]

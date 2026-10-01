@@ -1,13 +1,14 @@
 //! The clone-merge audit's review doc (plan v2.31 step 7, design
 //! booklet §13 item 36): the four judges' answer files read against the
 //! batch plan (eval_merge_batches.rs) and assembled, in the sample's
-//! order, into `merge-review-v1.json`; and the verifier the gate and
+//! order, into the exam generation's `merge-review-v<n>.json`; and the
+//! verifier the gate and
 //! the tamper battery run on the filed doc. One row check serves both,
 //! so an answer line refused while assembling is the row the verifier
 //! refuses once filed. Every refusal is named by batch and line and none
 //! stops the read: a batch is re-dispatched once, not once per defect.
 
-use crate::eval_merge_batches::{BATCHES, plan};
+use crate::eval_merge_batches::{BATCHES, READINGS, plan};
 use crate::eval_merge_parts::sample::SAMPLE;
 use crate::eval_support::MIN_WHY;
 use serde_json::{Value, json};
@@ -131,7 +132,9 @@ pub fn assemble(
         .collect();
     let shown: Vec<Value> = listed.iter().map(|b| b["ids"].clone()).collect();
     let want: Vec<Value> = batches.iter().map(|b| json!(b)).collect();
-    if manifest["sample"] != json!(SAMPLE) || shown != want {
+    let head = json!({"sample": SAMPLE, "readings": READINGS});
+    let given = json!({"sample": manifest["sample"], "readings": manifest["readings"]});
+    if given != head || shown != want {
         errs.push("manifest: not the sample's batch plan".to_string());
     }
     if auditor.chars().count() < MIN_WHY {

@@ -6,6 +6,9 @@
 //! the gates (eval_merge_suggestions.rs, eval_merge_review.rs) and the
 //! `#[ignore]` generators. No RNG, no clock: ranks are the shared
 //! domain-separated identity hash, seats the shared largest remainder.
+//! The docs come in generations (merge generation 2, booklet §13 item
+//! 50): the gates read the newest, `EXAM`; an earlier generation's
+//! docs stay on disk as the record and are read only as that.
 
 pub mod member;
 pub mod sample;
@@ -19,7 +22,41 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 pub const SCHEMA: &str = "ce.eval-merge-suggestions/1.0.0";
-pub const DOC: &str = "contracts/eval/merge-suggestions-v1.json";
+
+/// One generation's four docs: the frozen set, its sample, the blind
+/// review and the precision doc the three read.
+#[derive(Clone, Copy)]
+pub struct Generation {
+    pub n: u32,
+    pub set: &'static str,
+    pub sample: &'static str,
+    pub review: &'static str,
+    pub precision: &'static str,
+}
+
+/// Every generation, oldest first. The first is the record of the
+/// first audit (core and slot tables before the nine rulings of merge
+/// generation 2); the second re-measures the five corpora under them.
+pub const GENERATIONS: [Generation; 2] = [
+    Generation {
+        n: 1,
+        set: "contracts/eval/merge-suggestions-v1.json",
+        sample: "contracts/eval/merge-sample-v1.json",
+        review: "contracts/eval/merge-review-v1.json",
+        precision: "contracts/eval/merge-precision-v1.json",
+    },
+    Generation {
+        n: 2,
+        set: "contracts/eval/merge-suggestions-v2.json",
+        sample: "contracts/eval/merge-sample-v2.json",
+        review: "contracts/eval/merge-review-v2.json",
+        precision: "contracts/eval/merge-precision-v2.json",
+    },
+];
+
+/// The generation the gates read: the newest.
+pub const EXAM: Generation = GENERATIONS[GENERATIONS.len() - 1];
+pub const DOC: &str = EXAM.set;
 
 /// This repository as the self corpus: its name, the commit whose tree
 /// is measured, and the form the tree takes (A9's `arch-self` reading).
