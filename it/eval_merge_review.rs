@@ -3,25 +3,34 @@
 //! the audit is blind to the verdict — feasibility, reason, savings and
 //! the member kept are withheld — and sees the core's parameterisation,
 //! which it may reject. The audit table (`merge-review-v1.json`, filled
-//! by independent agents who read the sample alone) answers each
-//! sampled row with `{id, feasible, reason, params, note}`, `reason` one
-//! of the six names; the precision doc reads, per corpus and overall,
-//! how often the core's feasibility and reason agree with the audit's,
-//! and `params_agree` — how often the count the audit gives after
-//! seeing the core's parameterisation equals the core's. The audit and
-//! its precision doc land after the step's code — each gate reads a doc
-//! only once it is filed, and says so while it is not.
+//! by independent agents who read the sample alone and assembled from
+//! their answer files by `assemble`, answers.rs) answers each sampled
+//! row with `{id, feasible, reason, params, note}`, `reason` one of the
+//! six names; the precision doc reads, per corpus and overall, how often
+//! the core's feasibility and reason agree with the audit's, and
+//! `params_agree` — how often the count the audit gives after seeing the
+//! core's parameterisation equals the core's. The precision doc is a
+//! pure function of the three frozen docs (set, sample, review) and
+//! lands with the review (design booklet §13 item 36); each gate reads a
+//! doc only once it is filed, and says so while it is not.
+//!   CE_BLESS=1 CE_MERGE_BATCH_DIR=<dir> CE_MERGE_AUDITOR="<one sentence>" cargo test --test it -- --ignored eval_merge_review::assemble --nocapture
+//!   CE_BLESS=1 cargo test --test it -- --ignored eval_merge_review::regenerate --nocapture
 
+mod answers;
+
+use crate::eval_lang_parts::generate::env;
+use crate::eval_merge_batches::answer_file;
 use crate::eval_merge_parts::sample::{SAMPLE, draw, id_of};
-use crate::eval_merge_parts::{DOC, load, write};
+use crate::eval_merge_parts::{DOC, load, repo_file, write};
+use crate::eval_support::{Forgery, assert_forgeries_refused, assert_tampering_refused};
+use crate::eval_support::{generated_from, load as load_path};
+use answers::{NOTE_MAX, REASONS, verify_review};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 const REVIEW: &str = "contracts/eval/merge-review-v1.json";
 const PRECISION: &str = "contracts/eval/merge-precision-v1.json";
 const PRECISION_SCHEMA: &str = "ce.eval-merge-precision/1.0.0";
-/// The six reason names an audited row answers (merge/face.rs).
-const REASONS: [&str; 6] = codeeraser::merge::face::REASONS;
 
 fn rows(doc: &Value) -> &Vec<Value> {
     doc["rows"].as_array().expect("rows")
@@ -94,8 +103,9 @@ fn readings(set: &Value, sample: &Value, review: &Value) -> Value {
     json!({"schema": PRECISION_SCHEMA, "from": [DOC, SAMPLE, REVIEW], "readings": shown})
 }
 
-/// The audit, once filed, answers every sampled row; the precision doc,
-/// once filed, is what the three docs read.
+/// The audit, once filed, is a review of the sample (answers.rs) and
+/// answers every sampled row; the precision doc, once filed, is what
+/// the three docs read.
 #[test]
 fn the_review_scores_when_filed() {
     let Some(review) = load(REVIEW) else {
@@ -103,16 +113,81 @@ fn the_review_scores_when_filed() {
         return;
     };
     let (set, sample) = (load(DOC).expect("set"), load(SAMPLE).expect("sample"));
-    assert_eq!(
-        rows(&review).len(),
-        rows(&sample).len(),
-        "one audited row per sampled row"
-    );
+    verify_review(&sample, &review);
     let read = readings(&set, &sample, &review);
     match load(PRECISION) {
         Some(doc) => assert_eq!(doc, read, "{PRECISION} reads what the docs read"),
         None => println!("eval_merge_review: {PRECISION} not filed yet — skipped"),
     }
+}
+
+fn rows_mut(doc: &mut Value) -> &mut Vec<Value> {
+    doc["rows"].as_array_mut().expect("rows")
+}
+
+/// Row 0 answered a second time, at the end.
+fn duplicate_first(doc: &mut Value) {
+    let row = doc["rows"][0].clone();
+    rows_mut(doc).push(row);
+}
+
+/// Row 0's feasibility flipped against its reason.
+fn flip_feasible(doc: &mut Value) {
+    let row = &mut doc["rows"][0];
+    row["feasible"] = json!(row["feasible"] != json!(true));
+}
+
+/// The review's tamper battery: the pristine doc passes; a reason
+/// outside the six, a parameter count that is no integer, a note past
+/// NOTE_MAX and a dropped row refuse through the shared field-mutation
+/// frame; an extra row, a swapped pair, a feasibility against its
+/// reason, a forged batch count and an empty auditor through the
+/// forgery frame. Every edit is on a copy: the filed doc is read again
+/// after the battery and must be byte for byte what it was.
+#[test]
+fn the_review_refuses_tampering() {
+    let Some(pristine) = load(REVIEW) else {
+        println!("eval_merge_review: {REVIEW} not filed yet — skipped");
+        return;
+    };
+    let before = std::fs::read(repo_file(REVIEW)).expect("the filed review");
+    let sample = load(SAMPLE).expect("sample");
+    let check = |doc: &Value| verify_review(&sample, doc);
+    let long = "x".repeat(NOTE_MAX + 1);
+    let mutations = [
+        ("reason", "maybe", "a reason outside the six"),
+        ("params", "3", "a parameter count that is no integer"),
+        ("note", long.as_str(), "a note past its bound"),
+    ];
+    assert_tampering_refused(&pristine, &mutations, &check);
+    let forgeries: [Forgery; 5] = [
+        (&duplicate_first, "an extra row"),
+        (&|d| rows_mut(d).swap(0, 1), "a swapped pair"),
+        (&flip_feasible, "a feasibility against its reason"),
+        (&|d| d["batches"] = json!(3), "a forged batch count"),
+        (&|d| d["auditor"] = json!(""), "an empty auditor"),
+    ];
+    assert_forgeries_refused(&pristine, &forgeries, &check);
+    let after = std::fs::read(repo_file(REVIEW)).expect("the filed review");
+    assert!(
+        after == before,
+        "{REVIEW}: the battery left it byte for byte"
+    );
+}
+
+#[test]
+#[ignore = "reads the audit batches' answer files"]
+fn assemble() {
+    assert!(crate::facts::blessing(), "CE_BLESS=1 files the review");
+    let (dir, auditor) = (env("CE_MERGE_BATCH_DIR"), env("CE_MERGE_AUDITOR"));
+    let sample = load(SAMPLE).unwrap_or_else(|| panic!("{SAMPLE}: not filed"));
+    let manifest = load_path(&format!("{dir}/manifest.json"));
+    let file = |n: usize| std::fs::read_to_string(answer_file(&dir, n)).ok();
+    let doc = answers::assemble(&sample, &manifest, &file, &auditor, generated_from())
+        .unwrap_or_else(|errs| panic!("{} refusals:\n{}", errs.len(), errs.join("\n")));
+    verify_review(&sample, &doc);
+    write(REVIEW, &doc);
+    println!("{REVIEW}: {} rows", rows(&doc).len());
 }
 
 #[test]
