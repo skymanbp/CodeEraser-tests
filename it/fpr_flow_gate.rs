@@ -10,7 +10,7 @@
 //! (eval_flow_precision.rs, the mask leg; booklet §13 item 6); this leg
 //! only holds the ledger whole — every judged language has its row.
 //! The three legs that read the doc are staged by `FLOW_LEDGER`
-//! (commit D1 Pending, D2 Frozen); the synthetic e2e is not.
+//! (Pending at commit D1, Frozen since D2 filed the ten rows); the synthetic e2e is not.
 //! Plus one e2e over a synthetic three-commit, two-language history,
 //! so the counting rule itself is tested and not only its record.
 
@@ -116,21 +116,34 @@ enum Stage {
     Frozen,
 }
 
-const FLOW_LEDGER: Stage = Stage::Pending;
+const FLOW_LEDGER: Stage = Stage::Frozen;
 
-/// Whether the ledger legs read rows: `Frozen` reads them; `Pending`
-/// asserts the frozen doc is absent, by its path, and reads nothing.
-fn filed() -> bool {
-    let on_disk = repo_root().join(LEDGER.rel).exists();
-    if FLOW_LEDGER == Stage::Frozen {
+/// Whether the ledger legs read rows at `stage`: `Frozen` reads them;
+/// `Pending` asserts the frozen doc is absent, by its path, and reads
+/// nothing.
+fn filed_at(stage: Stage) -> bool {
+    if stage == Stage::Frozen {
         return true;
     }
     assert!(
-        !on_disk,
+        !repo_root().join(LEDGER.rel).exists(),
         "{}: on disk while FLOW_LEDGER is Pending; flip it to Frozen with the doc",
         LEDGER.rel
     );
     false
+}
+
+fn filed() -> bool {
+    filed_at(FLOW_LEDGER)
+}
+
+/// What a leg that must refuse said, as text.
+fn refusal<R: std::fmt::Debug>(
+    leg: impl FnOnce() -> R + std::panic::UnwindSafe,
+    why: &str,
+) -> String {
+    let said = std::panic::catch_unwind(leg).expect_err(why);
+    said.downcast_ref::<String>().cloned().unwrap_or_default()
 }
 
 /// Every row coherent, in the exam table's order.
@@ -192,12 +205,22 @@ fn a_moved_frozen_count_is_refused_by_name() {
     let mut forged = rows.clone();
     let tp = count(&forged[0]["strict"], "resolved_tp");
     forged[0]["strict"]["resolved_tp"] = json!(tp + 1);
-    let said = std::panic::catch_unwind(|| check(&forged)).expect_err("a moved count must refuse");
-    let said = said.downcast_ref::<String>().cloned().unwrap_or_default();
+    let said = refusal(|| check(&forged), "a moved count must refuse");
     let row = format!("{}: ", EXAMS[0].lang);
     assert!(
         said.contains(&row),
         "refused without naming the row: {said}"
+    );
+}
+
+/// The stage before the doc was filed, kept standing: with the doc on
+/// disk, `Pending` refuses by the doc's path (commit D1's reverse probe).
+#[test]
+fn a_pending_stage_refuses_the_filed_doc_by_path() {
+    let said = refusal(|| filed_at(Stage::Pending), "Pending must refuse");
+    assert!(
+        said.contains(LEDGER.rel),
+        "refused without the path: {said}"
     );
 }
 
