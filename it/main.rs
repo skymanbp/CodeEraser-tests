@@ -210,6 +210,7 @@ mod structure_knobs;
 mod structure_modularity;
 mod symbol_visibility;
 mod t3_cache;
+mod tables_equivalence;
 mod tombstone_audit;
 mod tombstone_commitmsg;
 mod tombstone_guard;
