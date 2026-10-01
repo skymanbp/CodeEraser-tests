@@ -192,10 +192,26 @@ fn a_refusal_reads_back_to_its_table_row_and_reason() {
     assert_eq!(refusal("flow: Error in $: not an object"), None);
 }
 
-/// No language is judged while no precision doc is filed: commit E
-/// retired the first generation's (plan v2.31 step 4), and each
-/// language's bit returns with its doc on the fixed lowering.
+/// The ten languages whose precision docs read judged (plan v2.31
+/// step 4 commit G: the docs regenerated on the lowering commit E
+/// fixed), bit by bit at their `Lang` codes; eval_flow_precision.rs
+/// pins each bit to its doc on disk.
 #[test]
-fn the_judged_mask_is_empty_until_a_precision_doc_passes() {
-    assert_eq!(crate::flow::judged_mask(), 0);
+fn the_judged_mask_holds_the_ten_judged_languages() {
+    use crate::scan::lang::Lang;
+    let want = [
+        Lang::Python,
+        Lang::TypeScript,
+        Lang::Tsx,
+        Lang::Rust,
+        Lang::Go,
+        Lang::C,
+        Lang::Cpp,
+        Lang::Java,
+        Lang::Lua,
+        Lang::R,
+    ]
+    .iter()
+    .fold(0i64, |m, &l| m | 1 << l as i64);
+    assert_eq!(crate::flow::judged_mask(), want);
 }
