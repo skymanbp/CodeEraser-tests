@@ -13,7 +13,7 @@ use std::time::{Duration, SystemTime};
 
 /// A one-file git tree: enough for `ce scan` to read a language row,
 /// a scan table and a judgment.
-fn seeded(name: &str) -> PathBuf {
+pub(crate) fn seeded(name: &str) -> PathBuf {
     let dir = common::tmp(name);
     std::fs::write(dir.join("a.py"), "def f(x):\n    return x + 1\n").expect("a.py");
     dir

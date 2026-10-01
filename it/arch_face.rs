@@ -239,18 +239,20 @@ fn the_mcp_tool_relays_the_face_and_refuses_a_path_list_that_is_not_one() {
 /// Two cores that cannot judge, one document shape: a stub that
 /// shakes hands without the family (named absent, never read as an
 /// empty architecture) and a path where no core exists (named, not an
-/// error). Exit 2, the reason carried, every table empty, every count 0.
+/// error; the library face's document, since the CLI naming that path
+/// as its `--core` is refused before any judgment). Exit 2, the reason
+/// carried, every table empty, every count 0.
 #[test]
 fn a_core_without_the_family_is_a_named_degraded_document() {
     let dir = seeded("arch-degraded");
+    let stub = common::stub_core::hello_only();
     let missing = common::tmp("arch-no-core").join("no-such-core.exe");
-    let cores = [
-        (common::stub_core::hello_only(), "core offers no arch/1"),
-        (missing.to_string_lossy().into_owned(), ""),
-    ];
-    for (core, reason) in &cores {
-        let (code, d) = doc(&dir, core, &[]);
-        assert_eq!(code, Some(2), "{d}");
+    let missing = missing.to_string_lossy().into_owned();
+    common::refused_for_its_core(&dir, &["arch", ".", "--core", &missing], &missing);
+    let (code, by_cli) = doc(&dir, &stub, &[]);
+    assert_eq!(code, Some(2), "{by_cli}");
+    let by_face = codeeraser::faces::arch(&dir, &missing, &[]).expect("face");
+    for (d, reason) in [(&by_cli, "core offers no arch/1"), (&by_face, "")] {
         let why = d["degraded"].as_str().unwrap_or_default();
         assert!(!why.is_empty() && why.contains(reason), "{d}");
         for table in "layers cuts clusters misplaced impact metrics".split(' ') {
@@ -260,8 +262,9 @@ fn a_core_without_the_family_is_a_named_degraded_document() {
             d["counts"].as_object().unwrap().values().all(|n| n == 0),
             "{d}"
         );
-        let (code, text, _) = arch(&dir, core, false, &[]);
-        assert_eq!(code, Some(2));
-        assert_eq!(text, format!("arch: degraded — {why}\n"));
     }
+    let (code, text, _) = arch(&dir, &stub, false, &[]);
+    assert_eq!(code, Some(2));
+    let why = by_cli["degraded"].as_str().unwrap_or_default();
+    assert_eq!(text, format!("arch: degraded — {why}\n"));
 }

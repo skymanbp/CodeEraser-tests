@@ -22,7 +22,9 @@ fn falls_back(cmd: &clap::Command, m: &HashMap<&'static str, &'static str>, id: 
 fn zh_lookup_is_complete_and_alive() {
     let cmd = crate::main_cli::Cli::command();
     let m = zh_map();
-    assert!(m.contains_key("ce") && m.contains_key("ce.lang"));
+    for k in ["ce", "ce.lang", "ce.core"] {
+        assert!(m.contains_key(k), "root key {k} has no zh entry");
+    }
     for sc in cmd.get_subcommands() {
         let name = sc.get_name();
         if name == "help" {
@@ -31,7 +33,7 @@ fn zh_lookup_is_complete_and_alive() {
         assert!(m.contains_key(name), "subcommand {name} has no zh about");
         for a in sc.get_arguments() {
             let id = a.get_id().as_str();
-            if matches!(id, "help" | "version" | "lang") || a.get_help().is_none() {
+            if matches!(id, "help" | "version" | "lang" | "core") || a.get_help().is_none() {
                 continue; // format carries no help by design
             }
             assert!(
@@ -49,7 +51,7 @@ fn zh_lookup_is_complete_and_alive() {
         );
     }
     for k in m.keys() {
-        if matches!(*k, "ce" | "ce.lang") {
+        if matches!(*k, "ce" | "ce.lang" | "ce.core") {
             continue;
         }
         match k.split_once('.') {
@@ -71,4 +73,4 @@ fn zh_lookup_is_complete_and_alive() {
 }
 
 /// The shared-arg keys, in the fallback's own resolution order.
-const SHARED_ARGS: [&str; 3] = ["root", "core", "db"];
+const SHARED_ARGS: [&str; 2] = ["root", "db"];

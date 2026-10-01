@@ -18,6 +18,18 @@ pub fn core_bin() -> String {
     )
 }
 
+/// A run whose `--core` names a path where no core exists. The flag
+/// names the core of the whole process (plan v2.32 step 2 follow-up),
+/// the definition package's included, so the run is refused before
+/// any judgment: exit 2, nothing on stdout, the path named back. The
+/// degraded document for an unreachable core is the library face's —
+/// what the MCP tool and the GUI read.
+pub fn refused_for_its_core(dir: &Path, args: &[&str], missing: &str) {
+    let (code, out, err) = super::ce_triple(dir, args, &[]);
+    assert_eq!((code, out.as_str()), (Some(2), ""), "{err}");
+    assert!(err.contains(missing) && err.contains("tables/1"), "{err}");
+}
+
 /// Run `ce` expecting success; the stdout text comes back for content
 /// assertions — the run/assert/read stanza lives once (the P2 census
 /// caught sibling copies growing across eject/doctor/mcp tests).
