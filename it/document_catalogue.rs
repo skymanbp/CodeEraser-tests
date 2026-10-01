@@ -25,7 +25,7 @@ fn frozen() -> Value {
     reply["document"].clone()
 }
 
-/// The core's catalogue is the frozen one, five families, and flow's
+/// The core's catalogue is the frozen one, twelve families, and flow's
 /// kind names and judged languages are the package's own.
 #[test]
 fn the_catalogue_is_the_frozen_one() {
@@ -36,7 +36,23 @@ fn the_catalogue_is_the_frozen_one() {
         .keys()
         .map(String::as_str)
         .collect();
-    assert_eq!(named, ["arch", "flow", "merge", "query", "rules"]);
+    assert_eq!(
+        named,
+        [
+            "arch",
+            "check",
+            "deadcode",
+            "flow",
+            "graphscreen",
+            "join",
+            "mentions",
+            "merge",
+            "query",
+            "rules",
+            "sites",
+            "structure"
+        ]
+    );
     let flow = &catalogue()["flow"];
     let kinds = json!([
         ["unreachable", false],
