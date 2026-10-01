@@ -35,6 +35,17 @@ impl McpSession {
         got["result"].clone()
     }
 
+    /// One `tools/call` that must succeed — its text, for comparing
+    /// with the document the library face prints.
+    pub fn relayed(&mut self, id: u64, name: &str, args: serde_json::Value) -> String {
+        let got = self.call(id, name, args);
+        assert_eq!(got["isError"], false, "{name}: {got}");
+        got["content"][0]["text"]
+            .as_str()
+            .expect("text")
+            .to_string()
+    }
+
     pub fn finish(self) {
         self.0.finish(); // EOF ends serve()
     }

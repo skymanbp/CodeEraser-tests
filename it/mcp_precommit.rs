@@ -52,6 +52,7 @@ fn mcp_initialize_and_list() {
             "rules",
             "flow",
             "merge_suggestions",
+            "architecture",
             "update_check",
         ]
     );

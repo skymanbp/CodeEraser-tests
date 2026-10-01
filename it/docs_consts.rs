@@ -68,9 +68,31 @@ fn label_binding(name: &str) -> Vec<&str> {
     }
 }
 
+/// Every family's `schema` chip is its own report's SCHEMA_ID; the
+/// name is shared across the tree, so the file decides — one row per
+/// family, `<family> <file>` (a table, not a match arm per family: the
+/// arms had taken `collision` past the cyclomatic line).
+const SCHEMA_FILES: &str = "\
+01 cli/src/dedup/mod.rs
+02 cli/src/dedup/t3/mod.rs
+07 cli/src/join/mod.rs
+10 cli/src/trend/report.rs
+16 cli/src/query/face.rs
+17 cli/src/flow_report/face.rs
+18 cli/src/merge/face.rs
+19 cli/src/arch/face.rs";
+
 /// Collision routing: (owning file, source binding) for the chip
 /// names that resolve differently per family; None file = global.
 fn collision<'a>(family: &str, name: &'a str) -> (Option<&'static str>, &'a str) {
+    if name == "schema" {
+        let file = SCHEMA_FILES
+            .lines()
+            .find_map(|row| row.strip_prefix(family)?.strip_prefix(' '));
+        if file.is_some() {
+            return (file, "SCHEMA_ID");
+        }
+    }
     match (family, name) {
         ("04", "violCost") => (Some("core/app/CE/Structure/Cost.hs"), "structViolCost"),
         ("05", "violCost") => (Some("core/app/CE/Verdict/Cost.hs"), name),
@@ -78,15 +100,6 @@ fn collision<'a>(family: &str, name: &'a str) -> (Option<&'static str>, &'a str)
         ("06" | "07", "entryMask") => (Some("core/app/CE/Graph/Cost.hs"), name),
         ("12", "classes") => (Some("cli/src/erase/model.rs"), "CLASS_NAMES.len"),
         ("12", "reason codes") => (Some("cli/src/erase/model.rs"), "REASON_NAMES.len"),
-        // every family's `schema` chip is its own report's SCHEMA_ID;
-        // the name is shared across the tree, so the file decides
-        ("01", "schema") => (Some("cli/src/dedup/mod.rs"), "SCHEMA_ID"),
-        ("02", "schema") => (Some("cli/src/dedup/t3/mod.rs"), "SCHEMA_ID"),
-        ("07", "schema") => (Some("cli/src/join/mod.rs"), "SCHEMA_ID"),
-        ("10", "schema") => (Some("cli/src/trend/report.rs"), "SCHEMA_ID"),
-        ("16", "schema") => (Some("cli/src/query/face.rs"), "SCHEMA_ID"),
-        ("17", "schema") => (Some("cli/src/flow_report/face.rs"), "SCHEMA_ID"),
-        ("18", "schema") => (Some("cli/src/merge/face.rs"), "SCHEMA_ID"),
         _ => (None, name),
     }
 }

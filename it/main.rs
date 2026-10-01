@@ -10,6 +10,7 @@
 //! daemon_conn_deadline.rs asserts wall-clock deadline behavior that
 //! this crate's co-scheduling stretches past its own budget (its
 //! header carries the loop-failure record).
+mod arch_face;
 mod audit_bypass;
 mod audit_stop;
 mod baseline_bridge;
@@ -70,6 +71,7 @@ mod docs_nav;
 mod doctor_face;
 mod eject_e2e;
 mod erase_e2e;
+mod eval_arch_self;
 mod eval_commit_review;
 mod eval_dedup_distinct;
 mod eval_docdup_precision;

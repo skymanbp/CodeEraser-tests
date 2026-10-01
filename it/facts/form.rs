@@ -6,7 +6,7 @@
 /// integer that NAMES rather than counts — a Rust edition — rendered
 /// bare, because grouping a name breaks it (`2,024` is not an edition
 /// and matches nothing a reader greps for) · `#schemaver`
-/// a report id `ce.<name>/<ver>` · `#word` a count 1..=20 rendered as
+/// a report id `ce.<name>/<ver>` · `#word` a count 1..=30 rendered as
 /// the surface language's number word · `#Word` the same, capitalized
 /// at a sentence start (Chinese has no case: identical) · `#lead` /
 /// `#paren` a table cell's integer as the table spells it (restate.rs;
@@ -51,7 +51,7 @@ impl Form {
             Form::Cell | Form::Name => c.is_ascii_digit(),
             Form::SchemaVer => c.is_ascii_alphanumeric() || matches!(c, '.' | '/' | '-'),
             Form::Word | Form::WordCap if zh => "〇一两二三四五六七八九十".contains(c),
-            Form::Word | Form::WordCap => c.is_ascii_alphabetic(),
+            Form::Word | Form::WordCap => c.is_ascii_alphabetic() || c == '-',
         }
     }
 
@@ -73,7 +73,7 @@ impl Form {
                         && (dotted(ver, 1) || dotted(ver, 3))
                 }),
             Form::Word | Form::WordCap => {
-                value.parse::<usize>().is_ok_and(|n| (1..=20).contains(&n))
+                value.parse::<usize>().is_ok_and(|n| (1..=30).contains(&n))
             }
         }
     }
@@ -117,17 +117,19 @@ fn grouped(digits: &str) -> String {
     out
 }
 
-/// The number word for 1..=20. Chinese 2 is 两 — every chipped count
+/// The number word for 1..=30. Chinese 2 is 两 — every chipped count
 /// stands before a measure word (两个 / 两条), where 二 is wrong.
 fn word(value: &str, zh: bool) -> &'static str {
     const EN: &str = "one two three four five six seven eight nine ten eleven twelve \
-                      thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty";
-    const ZH: &str =
-        "一 两 三 四 五 六 七 八 九 十 十一 十二 十三 十四 十五 十六 十七 十八 十九 二十";
-    let n: usize = value.parse().expect("a #word value is 1..=20");
+                      thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty \
+                      twenty-one twenty-two twenty-three twenty-four twenty-five twenty-six \
+                      twenty-seven twenty-eight twenty-nine thirty";
+    const ZH: &str = "一 两 三 四 五 六 七 八 九 十 十一 十二 十三 十四 十五 十六 十七 十八 十九 二十 \
+                      二十一 二十二 二十三 二十四 二十五 二十六 二十七 二十八 二十九 三十";
+    let n: usize = value.parse().expect("a #word value is 1..=30");
     let table = if zh { ZH } else { EN };
     table
         .split_whitespace()
         .nth(n - 1)
-        .expect("twenty words per language")
+        .expect("thirty words per language")
 }

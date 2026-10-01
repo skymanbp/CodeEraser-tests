@@ -40,6 +40,7 @@ same-role advisor (similar units, associative view) | 同角色顾问（相似�
 code query and architecture rules | 代码查询与架构规则 | query, rules | tab:query, query_report, rules_report | mcp:query, mcp:rules | |
 intra-function dead code (unreachable, dead stores, unused locals and parameters) | 函数内死代码（不可达、死存储、未用局部量与形参） | flow, flow --check | tab:reports, flow_report | mcp:flow | |
 clone merge suggestions (anti-unification) | 克隆合并建议（反统一） | merge | tab:reports, merge_report | mcp:merge_suggestions | |
+architecture analysis (layers, cuts, clusters, impact) | 架构分析（分层、拆环、簇、影响面） | arch | tab:reports, arch_report | mcp:architecture | |
 baseline writes | 基线写入 | baseline | | | CLI only: a machine surface never writes a baseline | 只在 CLI：机器面永不写基线
 erase plan | 擦除计划 | erase | tab:erase, erase_preview | mcp:erase, skill:erase | |
 erase apply | 擦除执行 | erase --apply | tab:erase, erase_apply | | no MCP face: applying is a human act | 无 MCP 面：执行是人类动作

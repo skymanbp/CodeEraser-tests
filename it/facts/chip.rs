@@ -98,7 +98,7 @@ pub fn render(
         );
         let have = &body[runs[0].clone()];
         assert!(
-            !have.starts_with(['.', ',']) && !have.ends_with(['.', ',']),
+            !have.starts_with(['.', ',', '-']) && !have.ends_with(['.', ',', '-']),
             "{label}: chip {} span {body:?} holds a malformed token {have:?}",
             chip.id
         );

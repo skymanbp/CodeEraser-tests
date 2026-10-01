@@ -9,6 +9,13 @@
 // sees; the leg drives the REAL gui/ui/reports.js under DOM stubs and
 // reads the rendered header cells.
 //
+// A family whose document nests (ce.arch-report, plan v2.31 step 9)
+// registers its own renderer from its own file (gui/ui/hub_arch.js);
+// the last leg drives reports.js and hub_arch.js together and holds
+// that such a family still leads with its counts as chips, that the
+// hub dispatches to the renderer, and that the path list it asks for
+// reaches the invoke as the named argument.
+//
 // Usage: node cli/tests/gui/hub_projection.js   (exit 1 = a lost column)
 "use strict";
 const fs = require("fs");
@@ -116,4 +123,62 @@ const cells = els["hub-tables"].innerHTML;
 say(cells.includes("<code>alpha</code>") && cells.includes("<code>beta</code>"), "a parameter row holds every member's text");
 say(cells.includes("6–8") && !cells.includes("1–3 ("), "a trimmed member shows the run it sent, a whole one its lines alone");
 
-process.exit(problems.length === 0 ? 0 : 1);
+// The custom-renderer road: every element records what it is given.
+const archEls = {};
+const el = (id) =>
+  (archEls[id] ??= { id, value: "", innerHTML: "", hidden: false, children: [], addEventListener() {}, appendChild(c) { this.children.push(c); } });
+const calls = [];
+const hub = {
+  Object,
+  Array,
+  String,
+  Number,
+  Map,
+  document: { getElementById: el, createElement: () => ({}) },
+  $: el,
+  i18nRefreshers: [],
+  tr: (k, ...a) => `${k}(${a.join(",")})`,
+  esc: (s) => String(s),
+  posInt: (v) => v,
+  invoke: async (cmd, args) => {
+    calls.push([cmd, args]);
+    return archDoc;
+  },
+  setStatus() {},
+};
+const archDoc = {
+  schema: "ce.arch-report/0.1.0",
+  counts: { files: 3, dirs: 4, edges: 3, pkgEdges: 0, focus: 1, cuts: 1, clusters: 1, misplaced: 0, impact: 3 },
+  layers: [{ dir: "", level: 0 }, { dir: "a", level: 2 }, { dir: "b", level: 1 }, { dir: "c", level: 0 }],
+  cuts: [{ from: "c", to: "a", refs: 1, exact: true, files: [{ from: "c/z.py", to: "a/x.py", refs: 1 }] }],
+  clusters: [{ cluster: 0, majority: "a", files: ["a/x.py", "b/y.py", "c/z.py"] }],
+  misplaced: [],
+  impact: [{ path: "a/x.py", depth: 0 }, { path: "b/y.py", depth: 2 }, { path: "c/z.py", depth: 1 }],
+  metrics: [{ dir: "", fanIn: 0, fanOut: 0, instability: null }, { dir: "a", fanIn: 1, fanOut: 1, instability: 500 }],
+  degraded: null,
+};
+vm.createContext(hub);
+for (const f of ["reports.js", "hub_arch.js"]) {
+  vm.runInContext(fs.readFileSync(path.join(root, "gui/ui", f), "utf8"), hub);
+}
+const spec = vm.runInContext("HUB.arch", hub);
+say(
+  spec && spec.cmd === "arch_report" && spec.paths === "impact" && typeof spec.render === "function",
+  "hub_arch.js registers arch with its command, its path argument and its renderer"
+);
+say(el("hub-family").children.some((o) => o.value === "arch"), "the family joins the hub's picker");
+el("hub-family").value = "arch";
+el("hub-paths").value = " a/x.py , ,b/y.py";
+(async () => {
+  await vm.runInContext("loadHub()", hub);
+  const [cmd, args] = calls[0] ?? [];
+  say(
+    cmd === "arch_report" && JSON.stringify(args.impact) === '["a/x.py","b/y.py"]',
+    `the path list reaches the invoke as impact (${JSON.stringify(args)})`
+  );
+  say(el("hub-chips").innerHTML.startsWith("<span>counts.files <b>3</b>"), "a custom renderer still leads with the counts as chips");
+  const tables = el("hub-tables").innerHTML;
+  say(tables.includes("c/z.py → a/x.py") && tables.includes("archExact()"), "a cut carries its file reference and its exact flag");
+  say(tables.includes("archImpact()") && tables.includes(">-<"), "the impact table rides a focus, a null instability reads -");
+  process.exit(problems.length === 0 ? 0 : 1);
+})();

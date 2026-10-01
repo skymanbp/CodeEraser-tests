@@ -20,9 +20,10 @@ pub const WINDOW: usize = 400;
 
 /// Where a frozen doc is read and written: the directory `var` names
 /// when it is set (the doc under its file name there), else `home`.
-/// Two readers: CE_FLOW_OUT for the flow exams' universe, sample and
+/// Three readers: CE_FLOW_OUT for the flow exams' universe, sample and
 /// precision docs, CE_FPR_OUT for the three FPR ledgers' frozen docs
-/// (fpr-lang, fpr-zone, fpr-flow). A measurement run thus leaves the
+/// (fpr-lang, fpr-zone, fpr-flow), CE_ARCH_OUT for the frozen arch
+/// self reading (eval_arch_self). A measurement run thus leaves the
 /// tree clean — generated_from() reads `git status --porcelain`, so a
 /// doc written into the tree marks every later run dirty — and the
 /// docs are copied in together once all are measured.
