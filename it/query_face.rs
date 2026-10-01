@@ -51,17 +51,7 @@ fn clean() -> &'static str {
 }
 
 fn seeded(name: &str) -> PathBuf {
-    let dir = common::tmp(name);
-    for block in FIXTURE.split("--- ").filter(|b| !b.is_empty()) {
-        let (path, text) = block.split_once('\n').expect("a fixture file");
-        let at = dir.join(path);
-        std::fs::create_dir_all(at.parent().expect("a parent")).expect(path);
-        std::fs::write(at, text).expect(path);
-    }
-    common::init_and_commit(&dir, "seed");
-    // warm once so every face reads the same index state
-    codeeraser::dedup::analyze(&dir, None, None, None).expect("warm");
-    dir
+    common::seeded_tree(name, FIXTURE)
 }
 
 /// `ce <args…> . --core <core>` (+ `--format json`): (exit, stdout, stderr).

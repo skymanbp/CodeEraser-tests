@@ -51,6 +51,7 @@ fn mcp_initialize_and_list() {
             "query",
             "rules",
             "flow",
+            "merge_suggestions",
             "update_check",
         ]
     );

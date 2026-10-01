@@ -181,6 +181,22 @@ pub fn seed_clone_pair(dir: &Path) {
     std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("b.rs (T2 clone)");
 }
 
+/// A tree from one text of `--- path` blocks (a block's first line is
+/// its path, the rest its text), committed and warmed once so every
+/// face a test compares reads the same index state.
+pub fn seeded_tree(name: &str, fixture: &str) -> PathBuf {
+    let dir = tmp(name);
+    for block in fixture.split("--- ").filter(|b| !b.is_empty()) {
+        let (path, text) = block.split_once('\n').expect("a fixture file");
+        let at = dir.join(path);
+        std::fs::create_dir_all(at.parent().expect("a parent")).expect(path);
+        std::fs::write(at, text).expect(path);
+    }
+    init_and_commit(&dir, "seed");
+    codeeraser::dedup::analyze(&dir, None, None, None).expect("warm");
+    dir
+}
+
 /// `git init` + the first commit of everything present — the one
 /// repo-birth stanza (trend_rebuild and trend_submodule each grew it
 /// beside their seeds until the ratchet paired them).

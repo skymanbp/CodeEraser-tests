@@ -8,6 +8,7 @@ fn tree(lab: &[u64], lld: &[i64]) -> UnitTree {
     UnitTree {
         lab: lab.to_vec(),
         lld: lld.to_vec(),
+        ..Default::default()
     }
 }
 

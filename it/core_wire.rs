@@ -68,6 +68,7 @@ fn corelink_open_and_desync() {
         "similar/1",
         "query/1",
         "flow/1",
+        "merge/1",
     ] {
         assert!(link.has(cap), "capability {cap} declared");
     }

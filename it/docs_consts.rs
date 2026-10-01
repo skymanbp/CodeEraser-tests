@@ -86,6 +86,7 @@ fn collision<'a>(family: &str, name: &'a str) -> (Option<&'static str>, &'a str)
         ("10", "schema") => (Some("cli/src/trend/report.rs"), "SCHEMA_ID"),
         ("16", "schema") => (Some("cli/src/query/face.rs"), "SCHEMA_ID"),
         ("17", "schema") => (Some("cli/src/flow_report/face.rs"), "SCHEMA_ID"),
+        ("18", "schema") => (Some("cli/src/merge/face.rs"), "SCHEMA_ID"),
         _ => (None, name),
     }
 }

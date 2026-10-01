@@ -19,19 +19,19 @@ const vm = require("vm");
 const root = path.join(__dirname, "..", "..", "..");
 
 // Just enough DOM for the module's boot IIFE (a select it fills, two
-// listeners) — every sink is a no-op, hubTable is called directly.
-const stubEl = () => ({
-  addEventListener() {},
-  set innerHTML(_) {},
-  set hidden(_) {},
-  set disabled(_) {},
-});
+// listeners) and for a family that registers its own renderer (an
+// option appended, the chips and tables written) — one element per id,
+// keeping what was written so a custom renderer's output can be read;
+// hubTable is called directly.
+const els = {};
+const stubEl = (id) =>
+  (els[id] ??= { addEventListener() {}, appendChild() {}, innerHTML: "", hidden: false, disabled: false, value: "" });
 const sandbox = {
   Object,
   Array,
   String,
   Number,
-  document: { getElementById: stubEl },
+  document: { getElementById: stubEl, createElement: () => ({}) },
   $: stubEl,
   i18nRefreshers: [],
   tr: (k, ...a) => `${k}(${a.join(",")})`,
@@ -42,6 +42,7 @@ const sandbox = {
 };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(path.join(root, "gui/ui/reports.js"), "utf8"), sandbox);
+vm.runInContext(fs.readFileSync(path.join(root, "gui/ui/hub_merge.js"), "utf8"), sandbox);
 
 const problems = [];
 const say = (ok, what) => {
@@ -88,5 +89,31 @@ say(
   headers(sandbox.hubTable(["candidates", [candidate]])).join(",") === "at,key,nth,role,score",
   "a similar candidate projects to at,key,nth,role,score"
 );
+
+// A family whose document nests registers its own renderer (plan
+// v2.31 step 7, ce.merge-report/0.1.0): the hub dispatches to it, and
+// it still leads with the counts as chips — then a card per group
+// whose parameter table holds every member's text at the parameter.
+const mergeDoc = {
+  schema: "ce.merge-report/0.1.0",
+  counts: { groups: 1, members: 2, nodes: 10, suggestions: 1, holes: 2, feasible: 1 },
+  unsendable: { not_isomorphic: 0, no_slot_table: 0, unbuilt: 0, over_cap: 0 },
+  groups: [
+    {
+      group: 0, family: "t1t2", fragment: false, params: 1, kept: 0, savings: 4, feasible: true, reason: "ok",
+      members: [{ path: "a.py", unit: "a.py:f/1#0", lines: [1, 3], run: [1, 3] }, { path: "a.py", unit: null, lines: [5, 8], run: [6, 8] }],
+      holes: [{ param: 0, values: [{ member: 0, text: "alpha" }, { member: 1, text: "beta" }] }],
+    },
+  ],
+  degraded: null,
+};
+say(typeof vm.runInContext("HUB.merge && HUB.merge.render", sandbox) === "function", "the merge family registers its own renderer");
+els["hub-family"].value = "merge";
+sandbox.mergeDoc = mergeDoc;
+vm.runInContext("hubDoc = mergeDoc; renderHub();", sandbox);
+say(els["hub-chips"].innerHTML.startsWith("<span>counts.groups <b>1</b>"), "the merge card leads with the counts as chips");
+const cells = els["hub-tables"].innerHTML;
+say(cells.includes("<code>alpha</code>") && cells.includes("<code>beta</code>"), "a parameter row holds every member's text");
+say(cells.includes("6–8") && !cells.includes("1–3 ("), "a trimmed member shows the run it sent, a whole one its lines alone");
 
 process.exit(problems.length === 0 ? 0 : 1);

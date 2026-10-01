@@ -28,6 +28,7 @@ const LINKED: &[(&str, &str)] = &[
     ("graph-screen", codeeraser::graph::canvas::SCREEN_SCHEMA_ID),
     ("join", codeeraser::join::SCHEMA_ID),
     ("mentions", codeeraser::mention::face::SCHEMA_ID),
+    ("merge", codeeraser::merge::face::SCHEMA_ID),
     ("observe", codeeraser::hookio::OBSERVE_SCHEMA),
     ("query", codeeraser::query::face::SCHEMA_ID),
     ("rules", codeeraser::query::face::RULES_SCHEMA_ID),

@@ -159,7 +159,7 @@ pub fn clone_base() -> String {
 
 /// Write one file, or find it already there byte for byte: a batch an
 /// auditor may be reading is never rewritten under them.
-fn put(path: &Path, text: &str) {
+pub(crate) fn put(path: &Path, text: &str) {
     match std::fs::read_to_string(path) {
         Ok(have) => assert_eq!(
             have,

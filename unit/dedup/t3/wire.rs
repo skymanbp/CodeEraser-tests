@@ -11,10 +11,12 @@ fn dense_labels_are_request_scoped_and_knobs_pin() {
     let a = UnitTree {
         lab: vec![900, 700, 900],
         lld: vec![0, 1, 0],
+        ..Default::default()
     };
     let b = UnitTree {
         lab: vec![700, 800],
         lld: vec![0, 0],
+        ..Default::default()
     };
     let body = request_body(&[&a, &b], &[[0, 1]]);
     assert_eq!(body["trees"][0]["lab"], json!([0, 1, 0]));
