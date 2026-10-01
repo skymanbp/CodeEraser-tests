@@ -50,7 +50,7 @@ fn corelink_open_and_desync() {
     // at 2.31.0: the robust estimator); erase/1 = M9 batch 3;
     // audit/1 = M9 batch 7; tombstone/1 = 6.6.0; similar/1 = 6.7.0;
     // query/1 = 7.3.0, plan v2.31 step 1; flow/1 = 7.4.0, step 3;
-    // tables/1 = 7.7.0, plan v2.32 step 1) —
+    // tables/1 = 7.7.0, plan v2.32 step 1; document/1 = 7.8.0, step 3) —
     // the assert ladder
     // tripped the ratchet at row 8
     for cap in [
@@ -72,6 +72,7 @@ fn corelink_open_and_desync() {
         "merge/1",
         "arch/1",
         "tables/1",
+        "document/1",
     ] {
         assert!(link.has(cap), "capability {cap} declared");
     }

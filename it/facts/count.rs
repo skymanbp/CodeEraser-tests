@@ -114,12 +114,15 @@ fn tree(root: &Path) -> Vec<Fact> {
         linked(
             "count:families#word",
             // the judgment families: not the handshake, not the
-            // definition package tables/1 (plan v2.32 step 1)
+            // definition package tables/1 (plan v2.32 step 1), not the
+            // report documents document/1 (step 3)
             capabilities
                 .iter()
-                .filter(|c| c != &"hello" && c != &"tables/1")
+                .filter(|c| {
+                    !["hello", "tables/1", "document/1"].contains(&c.as_str().unwrap_or(""))
+                })
                 .count(),
-            "contracts/fixtures/handshake/hello-ok.ndjson::capabilities (minus hello and tables/1)",
+            "contracts/fixtures/handshake/hello-ok.ndjson::capabilities (minus hello, tables/1 and document/1)",
         ),
         linked(
             "count:golden_requests#digits",
