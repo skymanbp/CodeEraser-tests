@@ -208,11 +208,11 @@ fn one_group_prints_alone_and_the_clone_report_is_unmoved() {
     assert_eq!(hits, want);
 }
 
-/// The MCP tool relays the face; a core that cannot be reached is a
-/// named degraded document (the library face's: the CLI naming that
-/// path as its `--core` is refused before any judgment) and exit 2.
+/// The MCP tool relays the face; a core that cannot be reached is
+/// refused by name, no document (the CLI naming that path as its
+/// `--core` is refused before any judgment).
 #[test]
-fn the_mcp_tool_relays_the_face_and_an_absent_core_degrades() {
+fn the_mcp_tool_relays_the_face_and_an_absent_core_is_refused() {
     let dir = seeded("merge-mcp");
     let core = common::core_bin();
     let mut s = common::McpSession::over(&dir);
@@ -228,7 +228,6 @@ fn the_mcp_tool_relays_the_face_and_an_absent_core_degrades() {
     let absent = dir.join("no-such-core.exe");
     let absent = absent.to_str().expect("utf-8");
     common::refused_for_its_core(&dir, &["merge", ".", "--core", absent], absent);
-    let doc = codeeraser::faces::merge(&dir, absent).expect("face");
-    assert!(doc["degraded"].is_string(), "{doc}");
-    assert_eq!(doc["groups"], serde_json::json!([]));
+    let err = codeeraser::faces::merge(&dir, absent).expect_err("no core");
+    assert!(err.to_string().contains("merge document:"), "{err:#}");
 }

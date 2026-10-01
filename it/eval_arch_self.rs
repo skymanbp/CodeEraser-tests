@@ -66,7 +66,9 @@ fn exported() -> PathBuf {
 
 /// The fields the doc freezes, off one run of the family's face.
 fn reading(root: &Path) -> Value {
-    let r = codeeraser::arch::face::run(root, None, &common::core_bin(), &[]).expect("arch");
+    let doc = codeeraser::arch::face::run(root, None, &common::core_bin(), &[]).expect("arch");
+    let r = <codeeraser::arch::report::Report as serde::Deserialize>::deserialize(&doc)
+        .expect("an arch document");
     assert_eq!(r.degraded, None, "the self reading needs a judging core");
     let layers: Map<String, Value> = r
         .layers

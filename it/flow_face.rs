@@ -142,18 +142,14 @@ fn the_mcp_tool_relays_the_same_document() {
     s.finish();
 }
 
-/// A core that cannot judge is named in the document (the library
-/// face's: the CLI naming that path as its `--core` is refused before
-/// any judgment), and the CLI exits 2.
+/// No core to lay the document out: the CLI naming that path as its
+/// `--core` is refused before any judgment, the library face by name —
+/// no document either way.
 #[test]
-fn no_core_is_a_degraded_document_and_exit_2() {
+fn no_core_is_a_named_refusal_and_exit_2() {
     let dir = seeded("flow-face-degraded");
     let missing = dir.join("no-such-core").display().to_string();
     common::refused_for_its_core(&dir, &["flow", ".", "--core", &missing], &missing);
-    let doc = codeeraser::faces::flow(&dir, &missing, &[]).expect("face");
-    assert!(doc["degraded"].is_string(), "{doc}");
-    assert_eq!(
-        (&doc["findings"], &doc["counts"]["units"]),
-        (&json!([]), &json!(3))
-    );
+    let err = codeeraser::faces::flow(&dir, &missing, &[]).expect_err("no core");
+    assert!(err.to_string().contains("flow document:"), "{err:#}");
 }

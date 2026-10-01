@@ -69,6 +69,7 @@ mod docs_lang;
 mod docs_lang_generated;
 mod docs_nav;
 mod doctor_face;
+mod document_catalogue;
 mod eject_e2e;
 mod erase_e2e;
 mod eval_arch_self;

@@ -7,8 +7,9 @@ use crate::common::files_with_ext;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// Report ids reachable through a `pub` path, by family name.
-const LINKED: &[(&str, &str)] = &[
+/// Report ids reachable through a `pub` path, by family name (read
+/// by it/document_catalogue.rs as well).
+pub const LINKED: &[(&str, &str)] = &[
     ("arch", codeeraser::arch::face::SCHEMA_ID),
     ("baseline", codeeraser::score::baseline::SCHEMA_ID),
     ("check", codeeraser::score::model::SCHEMA_ID),

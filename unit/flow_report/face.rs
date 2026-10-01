@@ -1,6 +1,11 @@
+// The flow document over a verdict (plan v2.32 step 3: the request this
+// side sends, laid out by the real core and bound back): placement,
+// order, counts, the `--kind` filter and the degraded road.
 use super::*;
 use crate::flow::wire::Finding;
+use crate::flow_report::report::Report;
 use crate::scan::lang::Lang;
+use serde::Deserialize;
 
 const PY: &str = "def gone():\n    return 1\n    print(\"never\")\n\n\ndef overwritten():\n    x = 1\n    x = 2\n    return x\n\n\ndef ignores(a):\n    return 3\n";
 
@@ -35,10 +40,30 @@ fn judged_pair() -> (Vec<String>, Vec<Lowered>, Verdict) {
     (paths, files, verdict)
 }
 
-fn keys(r: &Report) -> Vec<(String, String, &'static str, u32)> {
+/// The request laid out by the core this test process measures with,
+/// bound and read.
+fn laid_out(
+    paths: &[String],
+    files: &[Lowered],
+    judgment: Result<Verdict, String>,
+    shown: Option<&BTreeSet<u8>>,
+) -> (Value, Report) {
+    let mut names = Names {
+        paths,
+        files,
+        why: crate::document::Why::default(),
+    };
+    let req = request(&mut names, judgment, shown);
+    let core = crate::daemon::judge::core_bin().expect("a core");
+    let doc = document::assemble(&core, req, &names).expect("laid out");
+    let r = Report::deserialize(&doc).expect("read");
+    (doc, r)
+}
+
+fn keys(r: &Report) -> Vec<(&str, &str, &str, u32)> {
     r.findings
         .iter()
-        .map(|f| (f.path.clone(), f.unit.clone(), f.kind, f.line))
+        .map(|f| (f.path.as_str(), f.unit.as_str(), f.kind.as_str(), f.line))
         .collect()
 }
 
@@ -48,14 +73,14 @@ fn keys(r: &Report) -> Vec<(String, String, &'static str, u32)> {
 #[test]
 fn findings_are_placed_and_ordered_by_path_unit_kind_line() {
     let (paths, files, v) = judged_pair();
-    let r = assemble(&paths, &files, Ok(v), None);
+    let (_, r) = laid_out(&paths, &files, Ok(v), None);
     assert_eq!(
         keys(&r),
         [
-            ("a.py".into(), "gone".into(), "unreachable", 3),
-            ("a.py".into(), "overwritten".into(), "dead_store", 7),
-            ("b.py".into(), "gone".into(), "unreachable", 3),
-            ("b.py".into(), "ignores".into(), "unused_param", 12),
+            ("a.py", "gone", "unreachable", 3),
+            ("a.py", "overwritten", "dead_store", 7),
+            ("b.py", "gone", "unreachable", 3),
+            ("b.py", "ignores", "unused_param", 12),
         ]
     );
     assert_eq!(
@@ -82,7 +107,7 @@ fn findings_are_placed_and_ordered_by_path_unit_kind_line() {
 fn the_kind_filter_shapes_the_listing_and_not_the_counts() {
     let (paths, files, v) = judged_pair();
     let shown = shown_kinds(&["unreachable".into()]).expect("a kind");
-    let r = assemble(&paths, &files, Ok(v), shown.as_ref());
+    let (_, r) = laid_out(&paths, &files, Ok(v), shown.as_ref());
     assert_eq!(r.findings.len(), 2);
     assert!(r.findings.iter().all(|f| f.kind == "unreachable"));
     assert_eq!((r.counts["findings"], r.counts["shown"]), (4, 2));
@@ -100,10 +125,9 @@ fn the_kind_filter_shapes_the_listing_and_not_the_counts() {
 #[test]
 fn a_degraded_judgment_names_its_reason_and_finds_nothing() {
     let (paths, files, _) = judged_pair();
-    let r = assemble(&paths, &files, Err("core offers no flow/1".into()), None);
+    let (doc, r) = laid_out(&paths, &files, Err("core offers no flow/1".into()), None);
     assert_eq!(r.degraded.as_deref(), Some("core offers no flow/1"));
     assert_eq!((r.counts["units"], r.counts["findings"]), (6, 0));
-    let doc = report_json(&r);
     assert_eq!(doc["schema"], SCHEMA_ID);
     assert_eq!(doc["findings"], serde_json::json!([]));
 }
