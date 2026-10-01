@@ -15,14 +15,17 @@ fn catalogue() -> &'static Value {
 
 /// The catalogue the frozen `tables/golden.ndjson` reply carries.
 fn frozen() -> Value {
+    frozen_package()["document"].clone()
+}
+
+/// The frozen `tables/golden.ndjson` reply.
+fn frozen_package() -> Value {
     let path = common::repo_root().join("contracts/fixtures/tables/golden.ndjson");
     let text = std::fs::read_to_string(&path).expect("tables golden");
-    let reply = text
-        .lines()
+    text.lines()
         .map(|l| serde_json::from_str::<Value>(l).expect("a json line"))
         .find(|v| v["type"] == "tables.result")
-        .expect("a tables.result line");
-    reply["document"].clone()
+        .expect("a tables.result line")
 }
 
 /// The core's catalogue is the frozen one, twelve families, and flow's
@@ -98,4 +101,21 @@ fn every_bound_document_carries_its_catalogue_schema() {
             assert!(found.iter().all(|f| listed.contains(&&f["kind"])));
         }
     }
+}
+
+/// The sites document names each site's kind from the package's
+/// `store` table (plan v2.32 step 4A rulings, booklet §13 item 29): the
+/// frozen one, twenty-three kinds, none twice.
+#[test]
+fn the_site_kinds_are_the_frozen_store_table() {
+    let kinds = &stub_core::real_tables()["store"]["site_kinds"];
+    assert_eq!(kinds, &frozen_package()["store"]["site_kinds"]);
+    let names: Vec<&str> = kinds
+        .as_array()
+        .expect("a list")
+        .iter()
+        .map(|k| k.as_str().expect("a name"))
+        .collect();
+    let distinct: std::collections::BTreeSet<&str> = names.iter().copied().collect();
+    assert_eq!((names.len(), distinct.len()), (23, 23));
 }
