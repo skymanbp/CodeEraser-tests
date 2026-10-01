@@ -71,7 +71,13 @@ pub const PROMPT_RULES: &str = r##"## Reading rules
   assignment, where the difference is `position`.
 - An argument, an element, a clause or a statement one member has and
   the other lacks is a structural difference: `spans_statements` when
-  it holds a statement, else `position`.
+  it holds a statement, else `position`. The one exception: a part one
+  member has and the other lacks directly inside an expression that is
+  otherwise the same place on both (an escape sequence inside a string
+  literal, `b""` vs `b"\n"`) is read as that expression's difference —
+  one value parameter whose values are the two expressions. An argument
+  list is not an expression: an argument one member lacks stays
+  structural.
 - Parameters: one per distinct combination of the members' texts at a
   place, whitespace ignored; the same text in two places of different
   kinds is still one parameter.
