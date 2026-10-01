@@ -122,7 +122,7 @@ fn the_cli_prints_the_library_face_and_every_group_shape_is_judged() {
     assert_eq!(code, Some(0), "{err}");
     let doc: Value = serde_json::from_str(&out).expect("json");
     assert_eq!(doc, codeeraser::faces::merge(&dir, &core).expect("face"));
-    assert_eq!(doc["schema"], codeeraser::merge::face::SCHEMA_ID);
+    assert_eq!(doc["schema"], "ce.merge-report/0.1.0");
     assert!(doc["degraded"].is_null(), "{doc}");
     let whole = group(&doc, "t1t2", false);
     assert_eq!(

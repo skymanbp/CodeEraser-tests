@@ -46,7 +46,7 @@ fn laid_out(
     paths: &[String],
     files: &[Lowered],
     judgment: Result<Verdict, String>,
-    shown: Option<&BTreeSet<u8>>,
+    shown: Option<&[(String, i64)]>,
 ) -> (Value, Report) {
     let mut names = Names {
         paths,
@@ -101,23 +101,43 @@ fn findings_are_placed_and_ordered_by_path_unit_kind_line() {
     assert!(r.degraded.is_none());
 }
 
-/// `--kind` narrows the listing and never the counts; an unknown name
-/// is refused by name.
+/// `--kind` narrows the listing and never the counts; the names are
+/// read against the package's catalogue, each once, in the order given.
 #[test]
 fn the_kind_filter_shapes_the_listing_and_not_the_counts() {
     let (paths, files, v) = judged_pair();
-    let shown = shown_kinds(&["unreachable".into()]).expect("a kind");
-    let (_, r) = laid_out(&paths, &files, Ok(v), shown.as_ref());
+    let shown = shown_kinds(&["unreachable".into()]);
+    assert_eq!(shown, Some(vec![("unreachable".to_string(), 0)]));
+    let (_, r) = laid_out(&paths, &files, Ok(v), shown.as_deref());
     assert_eq!(r.findings.len(), 2);
     assert!(r.findings.iter().all(|f| f.kind == "unreachable"));
     assert_eq!((r.counts["findings"], r.counts["shown"]), (4, 2));
-    let both = shown_kinds(&["dead_store,unused_local".into()]).expect("two kinds");
-    assert_eq!(both, Some([1u8, 2].into_iter().collect()));
-    assert_eq!(shown_kinds(&[]).expect("none"), None);
-    let err = shown_kinds(&["dead".into()])
-        .expect_err("unknown")
-        .to_string();
-    assert!(err.contains("unknown kind \"dead\""), "{err}");
+    let both = shown_kinds(&["unused_local,dead_store".into(), "unused_local".into()]);
+    let codes: Vec<i64> = both.expect("two kinds").iter().map(|(_, c)| *c).collect();
+    assert_eq!(codes, [2, 1]);
+    assert_eq!(shown_kinds(&[]), None);
+}
+
+/// A name the catalogue does not list goes as −1 and the core refuses
+/// it, the refusal named by the kind as given and the core's list.
+#[test]
+fn an_unknown_kind_is_the_cores_refusal_named_by_the_name_given() {
+    let (paths, files, v) = judged_pair();
+    let shown = shown_kinds(&["unreachable,dead".into()]);
+    let codes: Vec<i64> = shown.iter().flatten().map(|(_, c)| *c).collect();
+    assert_eq!(codes, [0, -1]);
+    let mut names = Names {
+        paths: &paths,
+        files: &files,
+        why: crate::document::Why::default(),
+    };
+    let req = request(&mut names, Ok(v), shown.as_deref());
+    let core = crate::daemon::judge::core_bin().expect("a core");
+    let err = document::assemble(&core, req, &names).expect_err("refused");
+    assert_eq!(
+        named_kind(err, shown.as_deref()).to_string(),
+        "flow document: unknown kind \"dead\"; the catalogue lists unreachable, dead_store, unused_local, unused_param"
+    );
 }
 
 /// A degraded judgment carries its reason and no finding; the tables'
@@ -128,6 +148,6 @@ fn a_degraded_judgment_names_its_reason_and_finds_nothing() {
     let (doc, r) = laid_out(&paths, &files, Err("core offers no flow/1".into()), None);
     assert_eq!(r.degraded.as_deref(), Some("core offers no flow/1"));
     assert_eq!((r.counts["units"], r.counts["findings"]), (6, 0));
-    assert_eq!(doc["schema"], SCHEMA_ID);
+    assert_eq!(doc["schema"], "ce.flow-report/0.1.0");
     assert_eq!(doc["findings"], serde_json::json!([]));
 }

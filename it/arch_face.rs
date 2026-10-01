@@ -8,10 +8,12 @@
 //! importing a sibling package — the one package reference.
 
 use crate::common;
-use codeeraser::arch::face::SCHEMA_ID;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+
+/// The schema id the core's arch document carries, as observed.
+const SCHEMA_ID: &str = "ce.arch-report/0.1.0";
 
 /// The ring past CE.Arch.Cost.exactVertexCap (14).
 const RING: usize = 15;

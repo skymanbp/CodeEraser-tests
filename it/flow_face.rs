@@ -8,10 +8,12 @@
 //! parameter (advisory in every language).
 
 use crate::common;
-use codeeraser::flow_report::face::SCHEMA_ID;
 use codeeraser::scan::lang::Lang;
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
+
+/// The schema id the core's flow document carries, as observed.
+const SCHEMA_ID: &str = "ce.flow-report/0.1.0";
 
 const PY: &str = "\
 def gone():
@@ -100,7 +102,11 @@ fn the_cli_prints_the_library_face_and_kind_narrows_only_the_listing() {
         (&one["counts"]["findings"], &one["counts"]["shown"]),
         (&json!(3), &json!(1))
     );
-    refused(&dir, &["flow", ".", "--kind", "dead"], "unknown kind");
+    refused(
+        &dir,
+        &["flow", ".", "--kind", "unreachable,dead"],
+        "flow document: unknown kind \"dead\"; the catalogue lists unreachable, dead_store, unused_local, unused_param",
+    );
 }
 
 /// `--check` reads `[flow] tier` and the judged count: deny with a

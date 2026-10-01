@@ -68,29 +68,32 @@ fn label_binding(name: &str) -> Vec<&str> {
     }
 }
 
-/// Every family's `schema` chip is its own report's SCHEMA_ID; the
+/// Every family's `schema` chip is its own report's schema id; the
 /// name is shared across the tree, so the file decides — one row per
-/// family, `<family> <file>` (a table, not a match arm per family: the
-/// arms had taken `collision` past the cyclomatic line).
+/// family, `<family> <file> [binding]`, the binding SCHEMA_ID unless
+/// named (a table, not a match arm per family: the arms had taken
+/// `collision` past the cyclomatic line). The documents the core lays
+/// out (plan v2.32 step 3) bind theirs in the core.
 const SCHEMA_FILES: &str = "\
 01 cli/src/dedup/mod.rs
 02 cli/src/dedup/t3/mod.rs
 07 cli/src/join/mod.rs
 10 cli/src/trend/report.rs
-16 cli/src/query/face.rs
-17 cli/src/flow_report/face.rs
-18 cli/src/merge/face.rs
-19 cli/src/arch/face.rs";
+16 core/app/CE/Query/Document.hs querySchemaId
+17 core/app/CE/Flow/Document.hs schemaId
+18 core/app/CE/Merge/Document.hs schemaId
+19 core/app/CE/Arch/Document.hs schemaId";
 
 /// Collision routing: (owning file, source binding) for the chip
 /// names that resolve differently per family; None file = global.
 fn collision<'a>(family: &str, name: &'a str) -> (Option<&'static str>, &'a str) {
     if name == "schema" {
-        let file = SCHEMA_FILES
+        let row = SCHEMA_FILES
             .lines()
             .find_map(|row| row.strip_prefix(family)?.strip_prefix(' '));
-        if file.is_some() {
-            return (file, "SCHEMA_ID");
+        if let Some(row) = row {
+            let (file, binding) = row.split_once(' ').unwrap_or((row, "SCHEMA_ID"));
+            return (Some(file), binding);
         }
     }
     match (family, name) {

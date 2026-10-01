@@ -8,7 +8,6 @@
 
 use crate::common;
 use codeeraser::query::PRELUDE;
-use codeeraser::query::face::{RULES_SCHEMA_ID, SCHEMA_ID};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
@@ -90,7 +89,7 @@ fn the_cli_prints_the_library_face_and_dead_f_is_the_deadcode_verdict() {
     let (code, doc) = json_face(&dir, &["query", "dead(F)"]);
     assert_eq!(code, Some(0));
     assert_eq!(doc, query_face(&dir, "dead(F)", false));
-    assert_eq!(doc["schema"], SCHEMA_ID);
+    assert_eq!(doc["schema"], "ce.query-report/0.1.0");
     assert!(
         doc["degraded"].is_null() && doc["errors"] == json!([]),
         "{doc}"
@@ -185,7 +184,7 @@ fn rules_is_a_gate_on_the_documents_violations() {
         doc,
         codeeraser::faces::rules(&dir, &common::core_bin(), None, false).unwrap()
     );
-    assert_eq!(doc["schema"], RULES_SCHEMA_ID);
+    assert_eq!(doc["schema"], "ce.rules-report/0.1.0");
     assert!(
         doc["program"]["rules_file"]
             .as_str()

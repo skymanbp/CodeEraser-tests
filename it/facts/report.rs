@@ -1,16 +1,15 @@
 //! The report-id family: every value-shaped `"ce.<name>/<ver>"`
 //! literal under cli/src, closed both ways against the two tables
-//! below.
+//! below, and the ids of the documents the core lays out, read off
+//! the core's own constants.
 
-use super::{Fact, Form, linked, scraped};
+use super::{Fact, Form, linked, read, scraped};
 use crate::common::files_with_ext;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// Report ids reachable through a `pub` path, by family name (read
-/// by it/document_catalogue.rs as well).
-pub const LINKED: &[(&str, &str)] = &[
-    ("arch", codeeraser::arch::face::SCHEMA_ID),
+/// Report ids reachable through a `pub` path, by family name.
+const LINKED: &[(&str, &str)] = &[
     ("baseline", codeeraser::score::baseline::SCHEMA_ID),
     ("check", codeeraser::score::model::SCHEMA_ID),
     ("clone", codeeraser::dedup::t3::SCHEMA_ID),
@@ -25,15 +24,11 @@ pub const LINKED: &[(&str, &str)] = &[
     // the trail READER's document (O50) — named for the trail because
     // this table keys by family name and `erase-log` is the record's
     ("erase-trail", codeeraser::erase::log::REPORT_SCHEMA),
-    ("flow", codeeraser::flow_report::face::SCHEMA_ID),
     ("graph-canvas", codeeraser::graph::canvas::SCHEMA_ID),
     ("graph-screen", codeeraser::graph::canvas::SCREEN_SCHEMA_ID),
     ("join", codeeraser::join::SCHEMA_ID),
     ("mentions", codeeraser::mention::face::SCHEMA_ID),
-    ("merge", codeeraser::merge::face::SCHEMA_ID),
     ("observe", codeeraser::hookio::OBSERVE_SCHEMA),
-    ("query", codeeraser::query::face::SCHEMA_ID),
-    ("rules", codeeraser::query::face::RULES_SCHEMA_ID),
     ("scan", codeeraser::scan::report::SCHEMA),
     ("setup", codeeraser::setup::SCHEMA_ID),
     ("similar", codeeraser::similar::face::SCHEMA_ID),
@@ -59,34 +54,73 @@ const PRIVATE: &[(&str, &str)] = &[
     ),
 ];
 
+/// The documents the core lays out (plan v2.32 step 3, document/1):
+/// `<family> <core/app file> <constant>`. The product spells none of
+/// these ids under cli/src — a face reads `schema` off the document.
+const CORE: &str = "arch core/app/CE/Arch/Document.hs schemaId
+flow core/app/CE/Flow/Document.hs schemaId
+merge core/app/CE/Merge/Document.hs schemaId
+query core/app/CE/Query/Document.hs querySchemaId
+rules core/app/CE/Query/Document.hs rulesSchemaId";
+
 /// The report-id family: every value-shaped `"ce.<name>/<ver>"`
 /// literal under cli/src, keyed by name with a `-report` suffix
 /// dropped, closed BOTH ways against the two tables — a family reaches
 /// the docs only by being enrolled, and an enrolled family must still
-/// be spelled by the product.
+/// be spelled by the product — and the core's document ids beside them.
 pub fn facts(root: &Path) -> Vec<Fact> {
     let scanned = scan_report_ids(root);
+    let mut out = core_ids(root, &scanned);
     for (name, _) in LINKED.iter().chain(PRIVATE) {
         assert!(
             scanned.contains_key(*name),
             "{name}: enrolled, but no literal under cli/src spells it"
         );
     }
-    scanned
-        .iter()
-        .map(|(name, (value, file))| {
-            let id = format!("report:{name}#schemaver");
-            if let Some((_, typed)) = LINKED.iter().find(|(n, _)| n == name) {
-                assert_eq!(
-                    typed, value,
-                    "{file}: the scanned literal and the typed const disagree"
-                );
-                linked(&id, value, &format!("{file} (typed)"))
-            } else if let Some((_, debt)) = PRIVATE.iter().find(|(n, _)| n == name) {
-                scraped(&id, value, file, debt)
-            } else {
-                panic!("{file}: report id {name:?} is enrolled in neither table (facts/ver.rs)")
+    out.extend(scanned.iter().map(|(name, (value, file))| {
+        let id = format!("report:{name}#schemaver");
+        if let Some((_, typed)) = LINKED.iter().find(|(n, _)| n == name) {
+            assert_eq!(
+                typed, value,
+                "{file}: the scanned literal and the typed const disagree"
+            );
+            linked(&id, value, &format!("{file} (typed)"))
+        } else if let Some((_, debt)) = PRIVATE.iter().find(|(n, _)| n == name) {
+            scraped(&id, value, file, debt)
+        } else {
+            panic!("{file}: report id {name:?} is enrolled in neither table (facts/ver.rs)")
+        }
+    }));
+    out
+}
+
+/// The core's document ids, each read off its Haskell constant
+/// (`<name> = "<id>"` at the start of a line); one the product also
+/// spells under cli/src is a second spelling and refused.
+fn core_ids(root: &Path, scanned: &BTreeMap<String, (String, String)>) -> Vec<Fact> {
+    CORE.lines()
+        .map(|row| {
+            let [name, file, constant] = row.split(' ').collect::<Vec<_>>()[..] else {
+                panic!("CORE row {row:?}: want <family> <file> <constant>");
+            };
+            if let Some((_, at)) = scanned.get(name) {
+                panic!("{name}: the core owns this id, and {at} spells it too");
             }
+            let head = format!("{constant} = \"");
+            let text = read(root, file);
+            let value = text
+                .lines()
+                .find_map(|l| l.strip_prefix(&head)?.split('"').next())
+                .unwrap_or_else(|| panic!("{file}: no {constant} = \"…\" line"));
+            assert!(
+                Form::SchemaVer.admits(value),
+                "{file} {constant}: {value:?}"
+            );
+            linked(
+                &format!("report:{name}#schemaver"),
+                value,
+                &format!("{file} ({constant})"),
+            )
         })
         .collect()
 }

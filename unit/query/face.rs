@@ -96,7 +96,10 @@ fn a_lexical_fault_is_error_zero_at_its_place_and_no_judgment() {
     let rules_doc = run(Path::new("."), None, &core(), &rules).unwrap();
     assert_eq!(
         (&doc["schema"], &rules_doc["schema"]),
-        (&json!(SCHEMA_ID), &json!(RULES_SCHEMA_ID))
+        (
+            &json!("ce.query-report/0.1.0"),
+            &json!("ce.rules-report/0.1.0")
+        )
     );
     assert_eq!(
         (

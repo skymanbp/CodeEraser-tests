@@ -1,23 +1,35 @@
 //! The report documents' catalogue in the definition package (plan
 //! v2.32 step 3; design booklet docs/reference/authority-track.md §5,
-//! §13 items 17–19): the names this side still spells for its own
-//! readers — each face's schema id (the facts registry and the tests),
-//! the flow kind names (the hook legs' feeds) and the flow judged
-//! languages (the package's own `flow_judged` column) — are the ones
-//! the core's documents carry.
+//! §13 items 7 and 17–19). The product holds no copy of it: a face
+//! prints the `schema` its bound document carries, the hook legs' feeds
+//! read the flow kind names off the package, and `--kind` is the core's
+//! to refuse. So the catalogue is pinned here against the frozen tables
+//! golden, and every family's bound document against the catalogue.
 
-use crate::common::stub_core;
-use crate::facts::report::LINKED;
+use crate::common::{self, stub_core};
 use serde_json::{Value, json};
 
 fn catalogue() -> &'static Value {
     &stub_core::real_tables()["document"]
 }
 
-/// Each family the catalogue names: its schema id is the one the facts
-/// registry links for that family name (the face's `pub` constant).
+/// The catalogue the frozen `tables/golden.ndjson` reply carries.
+fn frozen() -> Value {
+    let path = common::repo_root().join("contracts/fixtures/tables/golden.ndjson");
+    let text = std::fs::read_to_string(&path).expect("tables golden");
+    let reply = text
+        .lines()
+        .map(|l| serde_json::from_str::<Value>(l).expect("a json line"))
+        .find(|v| v["type"] == "tables.result")
+        .expect("a tables.result line");
+    reply["document"].clone()
+}
+
+/// The core's catalogue is the frozen one, five families, and flow's
+/// kind names and judged languages are the package's own.
 #[test]
-fn the_faces_schema_ids_are_the_catalogues() {
+fn the_catalogue_is_the_frozen_one() {
+    assert_eq!(catalogue(), &frozen(), "the package against the golden");
     let named: Vec<&str> = catalogue()
         .as_object()
         .expect("families")
@@ -25,22 +37,40 @@ fn the_faces_schema_ids_are_the_catalogues() {
         .map(String::as_str)
         .collect();
     assert_eq!(named, ["arch", "flow", "merge", "query", "rules"]);
-    for family in named {
-        let linked = LINKED.iter().find(|(n, _)| *n == family);
-        let id = linked.unwrap_or_else(|| panic!("{family}: not linked")).1;
-        assert_eq!(catalogue()[family]["schema"], id, "{family}");
-    }
-}
-
-#[test]
-fn the_flow_names_are_the_catalogues() {
     let flow = &catalogue()["flow"];
-    assert_eq!(
-        flow["kinds"],
-        json!(codeeraser::flow_report::KINDS),
-        "kinds"
-    );
+    let kinds = ["unreachable", "dead_store", "unused_local", "unused_param"];
+    assert_eq!(flow["kinds"], json!(kinds), "kinds, as observed");
     let mask = codeeraser::flow::judged_mask();
     let judged: Vec<i64> = (0..64).filter(|l| mask >> l & 1 == 1).collect();
     assert_eq!(flow["judged"], json!(judged), "judged languages");
+}
+
+/// Each family's document, bound over a one-file tree, carries the
+/// catalogue's schema id; flow's findings name catalogue kinds.
+#[test]
+fn every_bound_document_carries_its_catalogue_schema() {
+    let dir = common::tmp("document-catalogue");
+    let seed = "def gone():\n    return 1\n    print(2)\n";
+    std::fs::write(dir.join("a.py"), seed).expect("seed");
+    let core = common::core_bin();
+    let docs = [
+        ("arch", codeeraser::faces::arch(&dir, &core, &[])),
+        ("flow", codeeraser::faces::flow(&dir, &core, &[])),
+        ("merge", codeeraser::faces::merge(&dir, &core)),
+        (
+            "query",
+            codeeraser::faces::query(&dir, &core, "dead(F)", false, None),
+        ),
+        ("rules", codeeraser::faces::rules(&dir, &core, None, false)),
+    ];
+    for (family, doc) in docs {
+        let doc = doc.unwrap_or_else(|e| panic!("{family}: {e:#}"));
+        assert_eq!(doc["schema"], catalogue()[family]["schema"], "{family}");
+        if family == "flow" {
+            let listed = catalogue()["flow"]["kinds"].as_array().expect("kinds");
+            let found = doc["findings"].as_array().expect("findings");
+            assert!(!found.is_empty(), "the seed has an unreachable run");
+            assert!(found.iter().all(|f| listed.contains(&f["kind"])));
+        }
+    }
 }
