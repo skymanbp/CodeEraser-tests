@@ -154,6 +154,7 @@ mod graph_ladder_ts_config;
 mod graph_mounts;
 mod graph_mounts_codes;
 mod graph_provenance;
+mod graph_screen_frozen;
 mod graph_wire;
 mod guard_budget_parity;
 mod guard_hook;

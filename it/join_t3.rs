@@ -25,7 +25,7 @@ fn assert_tier_f(r: &join::Report) {
     );
     assert!(cd.near_miss >= 1, "the T3 family does: {cd:?}");
     assert_eq!(
-        cd.verdict,
+        cd.verdict.as_deref(),
         Some("merge_candidate"),
         "sim + graph + both referenced + distinct SCCs: {cd:?}"
     );
@@ -69,7 +69,7 @@ fn assert_tier_u(r: &join::Report) {
 /// The document: 0.4.0, every unit row named by kind and carrying its
 /// own family's metric and nothing of the other's.
 fn assert_document(r: &join::Report) {
-    let doc = join::report_json(r);
+    let doc = &r.doc;
     assert_eq!(doc["schema"], "ce.join-report/0.4.0");
     let units = doc["units"].as_array().expect("units");
     let own_metric = |u: &serde_json::Value| match u["kind"].as_str() {

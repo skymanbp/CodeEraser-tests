@@ -9,7 +9,6 @@
 
 use crate::common;
 use codeeraser::graph::deadcode;
-use codeeraser::report::deadcode_json;
 
 /// (tag, tree): a declaring file with one spoken and one unspoken
 /// binding, and a second file spelling the spoken one.
@@ -40,7 +39,7 @@ fn a_widened_domain_declaration_reaches_the_advisory() {
     let core = common::gates::core_bin();
     for (tag, doc) in TREES {
         let dir = common::fixtures::doc_tree(&format!("declared-domain-{tag}"), doc);
-        let json = deadcode_json(&deadcode::run(&dir, None, &core).expect(tag));
+        let json = deadcode::run(&dir, None, &core).expect(tag).doc;
         let rows = json["unmentioned"]
             .as_array()
             .unwrap_or_else(|| panic!("{tag}: advisory rows in {json}"));

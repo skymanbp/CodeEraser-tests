@@ -106,9 +106,10 @@ fn mcp_report_faces_match_library() {
 /// built by one closure so the builder cannot re-grow parallel row
 /// stanzas (the census caught two builders doing exactly that). The
 /// split below is the repo's own seam, not an arbitrary halving:
-/// four families are MEASUREMENT-only and never open a core link
-/// (faces.rs says so where it takes the core argument and ignores
-/// it), the rest are judged. Splitting per ROW would recreate the
+/// four families are MEASUREMENT-only — no judgment; three never open
+/// a core link (faces.rs says so where it takes the core argument and
+/// ignores it) and the sites document is laid out by the core (plan
+/// v2.32 step 4) — the rest are judged. Splitting per ROW would recreate the
 /// twin-stanza clone this comment used to justify one long builder
 /// with; splitting along the seam does not.
 fn library_reports(dir: &std::path::Path) -> Vec<(&'static str, serde_json::Value, String)> {
@@ -123,7 +124,7 @@ fn no_args(name: &'static str, text: String) -> Row {
     (name, serde_json::json!({}), text)
 }
 
-/// The four faces that never open a core link.
+/// The four faces whose measurement no judgment reads.
 fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
     use codeeraser::{churn, dedup, graph, scan};
     let core = common::core_bin();
@@ -145,7 +146,9 @@ fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
         ),
         row(
             "graph_sites",
-            graph::sites_json(&graph::analyze(dir).expect("sites")),
+            graph::sites_document(&core, &graph::analyze(dir).expect("sites"))
+                .expect("the sites document")
+                .to_string(),
         ),
     ]
 }
@@ -154,12 +157,57 @@ fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
 /// it seeds the cache, so the MCP call reads the same warm rows (the
 /// Summary refresh-counter lesson, applied to the trend cache).
 fn judged_reports(dir: &std::path::Path) -> Vec<Row> {
-    use codeeraser::{dedup, docdup, graph, join, report, score, structure, trend};
     let core = common::core_bin();
+    let mut rows = graph_and_clone_reports(dir, &core);
+    rows.extend(gate_reports(dir, &core));
+    rows
+}
+
+/// The first half of `judged_reports`: deadcode, clone, docdup, join.
+fn graph_and_clone_reports(dir: &std::path::Path, core: &str) -> Vec<Row> {
+    use codeeraser::{dedup, docdup, graph, join, report};
+    let row = no_args;
+    vec![
+        row(
+            "deadcode",
+            graph::deadcode::run(dir, None, core)
+                .expect("dead")
+                .doc
+                .to_string(),
+        ),
+        row(
+            "clone",
+            report::envelope(
+                (dedup::t3::SCHEMA_ID, "clones"),
+                &dedup::t3::run(dir, None, core).expect("clone"),
+            )
+            .to_string(),
+        ),
+        row(
+            "docdup",
+            report::envelope(
+                (docdup::judge::SCHEMA_ID, "dups"),
+                &docdup::judge::run(dir, None, core).expect("docdup"),
+            )
+            .to_string(),
+        ),
+        row(
+            "join",
+            join::run(dir, None, core, 14)
+                .expect("join")
+                .doc
+                .to_string(),
+        ),
+    ]
+}
+
+/// The second half of `judged_reports`: structure, check, erase, trend.
+fn gate_reports(dir: &std::path::Path, core: &str) -> Vec<Row> {
+    use codeeraser::{score, structure, trend};
     let row = no_args;
     let opts = score::Opts {
         db: None,
-        core: core.clone(),
+        core: core.into(),
         days: None,
         floor: None,
         establish: false,
@@ -168,45 +216,23 @@ fn judged_reports(dir: &std::path::Path) -> Vec<Row> {
     };
     vec![
         row(
-            "deadcode",
-            report::deadcode_json(&graph::deadcode::run(dir, None, &core).expect("dead"))
+            "structure",
+            structure::judge::run(dir, None, core, (false, None, false))
+                .expect("structure")
+                .doc
                 .to_string(),
         ),
         row(
-            "clone",
-            report::envelope(
-                (dedup::t3::SCHEMA_ID, "clones"),
-                &dedup::t3::run(dir, None, &core).expect("clone"),
-            )
-            .to_string(),
-        ),
-        row(
-            "docdup",
-            report::envelope(
-                (docdup::judge::SCHEMA_ID, "dups"),
-                &docdup::judge::run(dir, None, &core).expect("docdup"),
-            )
-            .to_string(),
-        ),
-        row(
-            "join",
-            join::report_json(&join::run(dir, None, &core, 14).expect("join")).to_string(),
-        ),
-        row(
-            "structure",
-            structure::report::report_json(
-                &structure::judge::run(dir, None, &core, (false, None, false)).expect("structure"),
-            )
-            .to_string(),
-        ),
-        row(
             "check",
-            score::report_json(&score::run(dir, opts).expect("check")).to_string(),
+            score::document::document(core, &mut score::run(dir, opts).expect("check"))
+                .expect("the check document")
+                .doc
+                .to_string(),
         ),
         row(
             "erase",
             codeeraser::erase::render::report_json(
-                &codeeraser::erase::plan(dir, None, &core).expect("erase plan"),
+                &codeeraser::erase::plan(dir, None, core).expect("erase plan"),
             )
             .to_string(),
         ),
@@ -218,7 +244,7 @@ fn judged_reports(dir: &std::path::Path) -> Vec<Row> {
         row(
             "trend",
             // commits=10 mirrors the MCP adapter's default exactly
-            trend::report_json(&trend::run(dir, None, &core, 10, None).expect("trend")).to_string(),
+            trend::report_json(&trend::run(dir, None, core, 10, None).expect("trend")).to_string(),
         ),
     ]
 }

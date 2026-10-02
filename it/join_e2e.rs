@@ -78,16 +78,15 @@ fn three_legs_assemble_on_both_tiers() {
     assert_tier_u(&r);
     // the JSON form declares itself and never fabricates a unit-tier
     // graph leg: null plus the R6 caveat CODE on every unit row
-    // (plan v2.15 — the sentence stopped riding the machine face)
-    let doc = join::report_json(&r);
+    // (plan v2.15 — the sentence stopped riding the machine face; the
+    // code is the core's, CE.Join.Document importGranularity, since
+    // plan v2.32 step 4)
+    let doc = &r.doc;
     assert_eq!(doc["schema"], "ce.join-report/0.4.0");
     for row in doc["units"].as_array().expect("units") {
         assert!(row["graph"].is_null(), "unit graph leg is null: {row}");
         assert!(row["caveat"].is_null(), "the prose field is gone: {row}");
-        assert_eq!(
-            row["caveatCode"],
-            join::churn_unit::GRAPH_NULL_IMPORT_GRANULARITY
-        );
+        assert_eq!(row["caveatCode"], 1);
     }
     // the judgment road (2.33.0): every non-self file pair carries
     // the core's verdict with its severity rank and leg-agreement
@@ -97,7 +96,13 @@ fn three_legs_assemble_on_both_tiers() {
         if f.a == f.b {
             continue; // the wire's u < v contract: self-pairs carry no row
         }
-        assert_eq!(f.verdict, Some("merge_candidate"), "{} <-> {}", f.a, f.b);
+        assert_eq!(
+            f.verdict.as_deref(),
+            Some("merge_candidate"),
+            "{} <-> {}",
+            f.a,
+            f.b
+        );
         assert_eq!(f.severity, Some(2));
         assert!(
             f.confidence == Some(2) || f.confidence == Some(3),

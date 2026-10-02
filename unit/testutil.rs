@@ -91,6 +91,30 @@ pub fn node(path: &str, unit: &str, kind: i64) -> crate::graph::nodes::Node {
     }
 }
 
+/// The graph wire the canvas and deadcode-document tests share: two
+/// files, a section of a.rs and a package (node ids 0..3), over
+/// `edges`, seven unresolved sites, and none of the export surface or
+/// advisory tables — neither test reads them.
+pub fn four_node_wire(edges: &[[i64; 4]]) -> crate::graph::deadcode::GraphWire {
+    use crate::graph::wire::{GRAN_FILE, GRAN_PACKAGE, GRAN_SECTION};
+    crate::graph::deadcode::GraphWire {
+        nodes: vec![
+            node("a.rs", "", GRAN_FILE),
+            node("b.rs", "", GRAN_FILE),
+            node("a.rs", "Intro", GRAN_SECTION),
+            node("pkg", "", GRAN_PACKAGE),
+        ],
+        rows: vec![],
+        edges: edges.iter().copied().collect(),
+        unresolved_sites: 7,
+        unres: vec![],
+        symbols: Default::default(),
+        unmentioned: None,
+        mounts: None,
+        scc_floor: None,
+    }
+}
+
 /// One per-declaration word case as one line: the source, then
 /// ` ⇒`, then every unit `measure` must find, in source order, as
 /// `name:letters` with `bit_of` reading each letter (`-` = none); an

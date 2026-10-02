@@ -27,10 +27,11 @@ fn refusal(reply: &Value, n: &Unmentioned) -> String {
         .to_string()
 }
 
-/// The faces, and the refusals: the two K38 legs by their own
-/// messages (a key the wire never offered; an offered key with no
-/// names), and a judged reply with no advisory key at all. The
-/// producer's cut rides through to the face unchanged.
+/// The rows, and the refusals: the two K38 legs by their own messages
+/// (a key the wire never offered; an offered key with no names), and a
+/// judged reply with no advisory key at all. One row per name with the
+/// core's code as it came (the document names it, plan v2.32 step 4);
+/// the producer's cut rides through unchanged.
 #[test]
 fn rows_name_back_and_the_mirror_legs_refuse_skew() {
     let nodes = [node("a.rs", "", 0), node("b.rs", "", 0)];
@@ -43,34 +44,26 @@ fn rows_name_back_and_the_mirror_legs_refuse_skew() {
             Some(&n)
         )
         .unwrap(),
-        Some(UnmentionedFace::Dropped)
+        Some(Advised::Dropped)
     ));
     let reply = json!({"exportUnmentioned": [[0, 3, 0, 0], [1, 7, 0, 2]]});
-    let Some(UnmentionedFace::Rows { rows, cut }) = consume(&reply, &nodes, Some(&n)).unwrap()
-    else {
+    let Some(Advised::Rows { rows, cut }) = consume(&reply, &nodes, Some(&n)).unwrap() else {
         panic!("rows");
     };
     assert!(!cut);
-    let got: Vec<(&str, &str, i64, &str)> = rows
+    let got: Vec<(i64, &str, i64, i64)> = rows
         .iter()
-        .map(|r| (r.name.as_str(), r.symbol.as_str(), r.line, r.code))
+        .map(|r| (r.node, r.symbol.as_str(), r.line, r.code))
         .collect();
-    assert_eq!(
-        got,
-        [
-            ("a.rs", "a", 1, "public_unmentioned"),
-            ("a.rs", "b", 2, "public_unmentioned"),
-            ("b.rs", "c", 1, "restricted_unmentioned"),
-        ]
-    );
+    assert_eq!(got, [(0, "a", 1, 0), (0, "b", 2, 0), (1, "c", 1, 2)]);
     assert!(matches!(
         consume(&reply, &nodes, Some(&names(true))).unwrap(),
-        Some(UnmentionedFace::Rows { cut: true, .. })
+        Some(Advised::Rows { cut: true, .. })
     ));
     // degraded: no keys at all, an empty face
     assert!(matches!(
         consume(&json!({"degraded": true}), &nodes, Some(&n)).unwrap(),
-        Some(UnmentionedFace::Rows { rows, .. }) if rows.is_empty()
+        Some(Advised::Rows { rows, .. }) if rows.is_empty()
     ));
     let unoffered = json!({"exportUnmentioned": [[1, 3, 0, 0]]});
     assert!(refusal(&unoffered, &n).contains("outside the offered table"));

@@ -13,12 +13,14 @@ fn degraded_stamp_reaches_the_health_counter() {
     std::fs::remove_dir_all(&root).ok();
 }
 
-/// The 2.18.0 split consumed whole (batch-7 slice 4, the fixture
-/// the inventory found missing): reported rows label sections as
-/// path#unit, the core's fail bit is relayed, and an aggregate
-/// smuggled into the FAILING table refuses as wire skew — that
-/// table licenses erase's class-0 rows and must never carry a
-/// directory.
+/// The 2.18.0 split held at the boundary (batch-7 slice 4, the
+/// fixture the inventory found missing): the dead and reported rows
+/// keep the judgment's codes (the document names them, plan v2.32
+/// step 4 — the verdict names and the `path#unit` label are the
+/// document leg's, unit/graph/deadcode/document.rs), the core's fail
+/// bit and kept count are relayed, and an aggregate smuggled into the
+/// FAILING table refuses as wire skew — that table licenses erase's
+/// class-0 rows and must never carry a directory.
 #[test]
 fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
     let nodes = vec![
@@ -26,36 +28,23 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
         node("docs/x.md", "Intro", super::super::wire::GRAN_SECTION),
         node("pkg", "", super::super::wire::GRAN_PACKAGE),
     ];
-    // the confidence road: a 3-column dead row carries the
-    // trust column, a 2-column (legacy) row answers None below
+    // the confidence road: a 3-column dead row carries the trust
+    // column, a 2-column (legacy) row rides as it came
     let reply = json!({
         "dead": [[0, 1, 2]], "reported": [[1, 3], [2, 1]],
         "fail": true, "counts": {"kept": 7}
     });
-    let r = super::consume(&reply, &nodes, 0, None).expect("consume");
-    assert!(r.unmentioned.is_none(), "a road not asked has no face");
-    assert_eq!(r.dead.len(), 1);
-    let d = &r.dead[0];
-    assert_eq!(
-        (d.path.as_str(), d.verdict, d.why(), d.conf),
-        (
-            "a.rs",
-            "unref_private",
-            "no kept in-edge and no entry flag",
-            Some(2)
-        )
-    );
-    assert_eq!(
-        r.reported,
-        vec![
-            ("docs/x.md#Intro".into(), "unreach_private"),
-            ("pkg".into(), "unref_private"),
-        ]
-    );
-    assert!(r.fail && r.kept == 7);
+    let j = super::consume(&reply, &nodes, None).expect("consume");
+    assert!(j.advisory.is_none(), "a road not asked has no rows");
+    assert_eq!(j.dead, vec![vec![0, 1, 2]]);
+    assert_eq!(j.reported, vec![[1, 3], [2, 1]]);
+    assert!(j.fail && j.kept == Some(7) && j.degraded.is_none());
     let skew = json!({"dead": [[2, 1]], "counts": {}});
-    let err = super::consume(&skew, &nodes, 0, None).expect_err("aggregate in dead");
+    let err = super::consume(&skew, &nodes, None).expect_err("aggregate in dead");
     assert!(err.to_string().contains("wire skew"), "{err}");
+    let outside = json!({"dead": [[0, 5]], "reported": [], "fail": true});
+    let err = super::consume(&outside, &nodes, None).expect_err("verdict 5");
+    assert!(err.to_string().contains("verdict 5 out of range"), "{err}");
     // a reply without the 2.18.0 keys is wire skew, not an older
     // core to accommodate: no pre-2.18 core passes the handshake,
     // and the conjunction that used to stand in is retired (O62)
@@ -69,7 +58,7 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
             "reported",
         ),
     ] {
-        let err = super::consume(&reply, &nodes, 0, None).expect_err("absent key");
+        let err = super::consume(&reply, &nodes, None).expect_err("absent key");
         let text = format!("{err:#}");
         assert!(
             text.contains("wire skew") && text.contains(&format!("`{key}`")),
@@ -78,26 +67,25 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
     }
 }
 
-/// O23 (plan v2.25): the liveness reason is a CODE and every code has
-/// both words — the English the machine faces print and the Chinese
-/// the console prints under --lang zh. A row missing either half would
-/// ship one language blank, which is the leak this table exists to end.
+/// O23 (plan v2.25): the liveness reason is a CODE; the English word
+/// is the document's (CE.Graph.Document.whyCodes, plan v2.32 step 4)
+/// and every code has the Chinese the console prints under --lang zh
+/// here, until step 5. A code without its Chinese would ship the zh
+/// console one reason in English, the leak this table exists to end.
 #[test]
-fn every_liveness_reason_has_both_words() {
-    for (i, (en, zh)) in super::WHY_CODES.iter().enumerate() {
-        assert!(en.is_ascii() && !en.is_empty(), "code {i} en half: {en:?}");
+fn every_liveness_reason_has_its_chinese() {
+    for (i, zh) in super::WHY_ZH.iter().enumerate() {
         assert!(
             !zh.is_ascii() && !zh.is_empty(),
-            "code {i} zh half is not Chinese: {zh:?}"
+            "code {i} is not Chinese: {zh:?}"
         );
     }
-    let row = super::DeadRow {
-        path: "a.rs".into(),
-        verdict: "unreach_private",
-        why_code: 1,
-        conf: None,
-    };
-    assert_eq!(row.why(), super::WHY_CODES[1].0);
-    // the default language is English: the console word IS the machine word
-    assert_eq!(row.why_line(), row.why());
+    let row: super::DeadRow = serde_json::from_value(json!({
+        "name": "a.rs", "verdict": "unreach_private",
+        "why": "referenced only from dead code; no entry flag",
+        "whyCode": 1, "confidence": null
+    }))
+    .expect("a dead row");
+    // the default language is English: the console word IS the document's
+    assert_eq!(row.why_line(), row.why);
 }

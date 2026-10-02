@@ -19,7 +19,7 @@
 /// names the key the member carried on the day it dissolved: the
 /// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
 /// both readers in baseline_bridge.rs share `seated_or_retired`.
-pub const RETIRED: [(u64, &str); 40] = [
+pub const RETIRED: [(u64, &str); 41] = [
     (
         5552311341795790881,
         "v2.30 step 7b (3): Scan.hs's `reply` took an Echo record and its fenced / conditions helpers, so its head no longer rhymes with Audit.hs's `reply` (51 tokens) — the Audit.hs <-> Scan.hs member dissolved",
@@ -179,6 +179,10 @@ pub const RETIRED: [(u64, &str); 40] = [
     (
         18074344538836094835,
         "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
+    ),
+    (
+        18120040199708299305,
+        "v2.32 step 4B 2026-10-02: the join console moved onto the bound document (report::Bound) and join/report.rs no longer spells the file-row loop trend/report.rs rhymed with - the block left with it (ce.toml dedup budget 42 -> 41)",
     ),
     (
         18190675168993883734,

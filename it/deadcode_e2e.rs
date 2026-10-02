@@ -12,8 +12,11 @@ use crate::common;
 use crate::common::gates::core_bin;
 use codeeraser::graph::deadcode;
 
-fn dead_set(r: &deadcode::Report) -> Vec<(String, &'static str)> {
-    r.dead.iter().map(|d| (d.path.clone(), d.verdict)).collect()
+fn dead_set(r: &deadcode::Report) -> Vec<(String, &str)> {
+    r.dead
+        .iter()
+        .map(|d| (d.path.clone(), d.verdict.as_str()))
+        .collect()
 }
 
 #[test]
@@ -175,7 +178,7 @@ fn the_report_document_carries_the_advisory_only_when_asked() {
         1,
         "the orphan dies beside the advisory"
     );
-    let asked = codeeraser::report::deadcode_json(&report);
+    let asked = &report.doc;
     assert_eq!(asked["schema"], "ce.deadcode-report/0.4.0");
     assert_eq!(
         (&asked["unmentioned_dropped"], &asked["unmentioned_cut"]),
@@ -196,9 +199,7 @@ fn the_report_document_carries_the_advisory_only_when_asked() {
     );
     // the same tree judged off a wire built without the advisory
     let (_idx, w) = common::graph_wire(&dir, deadcode::Advisory::No);
-    let quiet = codeeraser::report::deadcode_json(
-        &deadcode::judge_report(&dir, &core, &w).expect("judged"),
-    );
+    let quiet = deadcode::judge_report(&dir, &core, &w).expect("judged").doc;
     assert_eq!(quiet["schema"], "ce.deadcode-report/0.4.0");
     assert!(
         ["unmentioned", "unmentioned_dropped", "unmentioned_cut"]

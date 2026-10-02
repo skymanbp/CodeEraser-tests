@@ -202,23 +202,26 @@ fn reanchored_ledgers_describe_the_present() {
 fn floor_and_ratchet_fail_independently() {
     let dir = common::tmp("bridge-both");
     common::seed_clone_pair(&dir);
-    let est = score::run(&dir, opts(&dir, None, None)).expect("establish");
+    let mut est = score::run(&dir, opts(&dir, None, None)).expect("establish");
     assert!(!est.reply.fail, "no baseline, no floor: nothing fails");
     score::baseline::write(&dir, &est.reply.new_baseline).expect("write");
 
     // direction 1: floor alone (the ratchet half is clean)
-    let floored = score::run(&dir, opts(&dir, None, Some(1000))).expect("floored");
+    let mut floored = score::run(&dir, opts(&dir, None, Some(1000))).expect("floored");
     assert!(floored.reply.fail, "the floor alone must fail");
     // and the report SAYS which floor it judged under — a pass with
     // none armed is a weaker claim than a pass with one, and the two
     // faces of this gate disagreed for exactly that reason (K round
     // step 6: CI armed 950, the GUI could arm nothing)
+    let floor = |o: &mut score::Outcome| {
+        score::document::document(&common::core_bin(), o)
+            .expect("the check document")
+            .doc["floor"]
+            .clone()
+    };
+    assert_eq!(floor(&mut floored), serde_json::json!(1000));
     assert_eq!(
-        codeeraser::score::report_json(&floored)["floor"],
-        serde_json::json!(1000)
-    );
-    assert_eq!(
-        codeeraser::score::report_json(&est)["floor"],
+        floor(&mut est),
         serde_json::Value::Null,
         "absent floor echoes null, never a fabricated 0"
     );

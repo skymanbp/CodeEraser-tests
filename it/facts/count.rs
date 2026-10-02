@@ -12,6 +12,7 @@ use std::path::Path;
 
 pub fn facts(root: &Path) -> Vec<Fact> {
     let mut out = typed();
+    out.extend(core_names(root));
     out.extend(tree(root));
     out.extend(roster());
     out.extend(scrapes(root));
@@ -19,7 +20,7 @@ pub fn facts(root: &Path) -> Vec<Fact> {
 }
 
 fn typed() -> Vec<Fact> {
-    use codeeraser::{erase, graph, join, scan, score};
+    use codeeraser::{erase, scan, score};
     vec![
         linked(
             "count:axes#word",
@@ -49,17 +50,33 @@ fn typed() -> Vec<Fact> {
                 .count(),
             "cli/src/erase/model.rs::CLASS_NAMES (live names)",
         ),
-        linked(
-            "count:join_codes#word",
-            join::verdicts::VERDICT_NAMES.len(),
-            "cli/src/join/verdicts.rs::VERDICT_NAMES",
-        ),
-        linked(
-            "count:deadcode_codes#word",
-            graph::deadcode::VERDICT_NAMES.len(),
-            "cli/src/graph/deadcode.rs::VERDICT_NAMES",
-        ),
     ]
+}
+
+/// The verdict names the core's documents spell (plan v2.32 step 4:
+/// the product keeps no copy), each counted off its Haskell constant
+/// `<name> = words "…"` — the same reading `report.rs` gives the
+/// core's document ids.
+fn core_names(root: &Path) -> Vec<Fact> {
+    [
+        ("join_codes", "core/app/CE/Join/Document.hs"),
+        ("deadcode_codes", "core/app/CE/Graph/Document.hs"),
+    ]
+    .into_iter()
+    .map(|(name, file)| {
+        let words = read(root, file)
+            .lines()
+            .find_map(|l| l.strip_prefix("verdictNames = words \"")?.split('"').next())
+            .unwrap_or_else(|| panic!("{file}: no verdictNames = words \"…\" line"))
+            .split_whitespace()
+            .count();
+        linked(
+            &format!("count:{name}#word"),
+            words,
+            &format!("{file} (verdictNames)"),
+        )
+    })
+    .collect()
 }
 
 fn json(root: &Path, rel: &str) -> serde_json::Value {

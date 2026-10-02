@@ -142,22 +142,31 @@ fn fold_filters_the_three_separators_and_the_gate_is_literal_length() {
     );
 }
 
-/// The caps are explicit numbers of the pass and the face carries its
-/// schema id — the two facts the operator's window states. 0.2.0
-/// added the per-language `rates` census (K23) beside the header,
-/// 0.3.0 the `skipped.signed` counter (the product's signature rule).
+/// The caps are explicit numbers of the pass, and the face sends its
+/// header with the index revision and a census row per language —
+/// the facts the operator's window states. The document's schema id
+/// is the core's (CE.Mention.Document, plan v2.32 step 4; pinned by
+/// it/document_catalogue.rs): 0.2.0 added the per-language `rates`
+/// census (K23) beside the header, 0.3.0 the `skipped.signed` counter
+/// (the product's signature rule).
 #[test]
 fn caps_and_face_identity_are_stated() {
     assert_eq!(super::FILE_TOKEN_CAP, 65_536);
     assert_eq!(super::TABLE_ROW_CAP, 4_194_304);
-    let doc = super::face::report_json(&super::Stats::default(), &Default::default());
-    for needle in [
-        "\"schema\":\"ce.mentions-report/0.3.0\"",
-        "\"mention_rev\":4",
-        "\"rates\":{}",
-    ] {
-        assert!(doc.contains(needle), "{needle} in {doc}");
-    }
+    let mut rates = std::collections::BTreeMap::new();
+    rates.insert("rust", super::LangRates::default());
+    let body = super::face::request(&super::Stats::default(), &rates)
+        .expect("request")
+        .body();
+    assert_eq!(body["family"], "mentions");
+    assert_eq!(body["facts"]["mention_rev"], 4);
+    assert_eq!(body["facts"]["skipped.signed"], 0);
+    assert_eq!(body["facts"].as_object().map(|o| o.len()), Some(19));
+    let rust = crate::scan::lang::Lang::Rust as i64;
+    assert_eq!(
+        body["rows"]["rates"],
+        serde_json::json!([[rust, 0, 0, 0, 0, 0, 0, 0, 0]])
+    );
 }
 
 /// The binary rule: BOMs decode, an early NUL is git's verdict, a NUL

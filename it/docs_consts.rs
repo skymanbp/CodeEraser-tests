@@ -73,12 +73,12 @@ fn label_binding(name: &str) -> Vec<&str> {
 /// family, `<family> <file> [binding]`, the binding SCHEMA_ID unless
 /// named (a table, not a match arm per family: the arms had taken
 /// `collision` past the cyclomatic line). The documents the core lays
-/// out (plan v2.32 step 3) bind theirs in the core.
+/// out (plan v2.32 steps 3 and 4) bind theirs in the core.
 const SCHEMA_FILES: &str = "\
 01 cli/src/dedup/mod.rs
 02 cli/src/dedup/t3/mod.rs
-07 cli/src/join/mod.rs
 10 cli/src/trend/report.rs
+07 core/app/CE/Join/Document.hs schemaId
 16 core/app/CE/Query/Document.hs querySchemaId
 17 core/app/CE/Flow/Document.hs schemaId
 18 core/app/CE/Merge/Document.hs schemaId

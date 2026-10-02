@@ -64,8 +64,7 @@ fn dead_paths(report: &deadcode::Report) -> Vec<String> {
 }
 
 fn advised_symbols(report: &deadcode::Report) -> Vec<String> {
-    let doc = codeeraser::report::deadcode_json(report);
-    doc["unmentioned"]
+    report.doc["unmentioned"]
         .as_array()
         .expect("advisory rows")
         .iter()
@@ -164,7 +163,7 @@ fn foreign_files_read_for_the_graph_and_the_advisory() {
         report
             .reported
             .iter()
-            .all(|(p, _)| !p.starts_with("suite/")),
+            .all(|r| !r.name.starts_with("suite/")),
         "no aggregate verdict on a reader: {:?}",
         report.reported
     );

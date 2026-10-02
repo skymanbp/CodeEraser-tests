@@ -11,7 +11,6 @@ use std::path::Path;
 /// Report ids reachable through a `pub` path, by family name.
 const LINKED: &[(&str, &str)] = &[
     ("baseline", codeeraser::score::baseline::SCHEMA_ID),
-    ("check", codeeraser::score::model::SCHEMA_ID),
     ("clone", codeeraser::dedup::t3::SCHEMA_ID),
     ("clone-units", codeeraser::dedup::unitcache::UNITS_SCHEMA_ID),
     ("dedup", codeeraser::dedup::SCHEMA_ID),
@@ -24,16 +23,10 @@ const LINKED: &[(&str, &str)] = &[
     // the trail READER's document (O50) — named for the trail because
     // this table keys by family name and `erase-log` is the record's
     ("erase-trail", codeeraser::erase::log::REPORT_SCHEMA),
-    ("graph-canvas", codeeraser::graph::canvas::SCHEMA_ID),
-    ("graph-screen", codeeraser::graph::canvas::SCREEN_SCHEMA_ID),
-    ("join", codeeraser::join::SCHEMA_ID),
-    ("mentions", codeeraser::mention::face::SCHEMA_ID),
     ("observe", codeeraser::hookio::OBSERVE_SCHEMA),
     ("scan", codeeraser::scan::report::SCHEMA),
     ("setup", codeeraser::setup::SCHEMA_ID),
     ("similar", codeeraser::similar::face::SCHEMA_ID),
-    ("sites", codeeraser::graph::SCHEMA_ID),
-    ("structure", codeeraser::structure::judge::SCHEMA_ID),
     ("update", codeeraser::update::SCHEMA_ID),
 ];
 
@@ -45,23 +38,28 @@ const PRIVATE: &[(&str, &str)] = &[
         "churn::report is private; promote = re-export SCHEMA beside Report",
     ),
     (
-        "deadcode",
-        "report::DEADCODE_SCHEMA is private; promote = pub const",
-    ),
-    (
         "trend",
         "trend::report is private; promote = re-export SCHEMA_ID beside Report",
     ),
 ];
 
-/// The documents the core lays out (plan v2.32 step 3, document/1):
-/// `<family> <core/app file> <constant>`. The product spells none of
-/// these ids under cli/src — a face reads `schema` off the document.
+/// The documents the core lays out (plan v2.32 steps 3 and 4,
+/// document/1): `<family> <core/app file> <constant>`. The product
+/// spells none of these ids under cli/src — a face reads `schema` off
+/// the document.
 const CORE: &str = "arch core/app/CE/Arch/Document.hs schemaId
+check core/app/CE/Score/Document.hs schemaId
+deadcode core/app/CE/Graph/Document.hs schemaId
 flow core/app/CE/Flow/Document.hs schemaId
+graph-canvas core/app/CE/Graph/Screen.hs canvasId
+graph-screen core/app/CE/Graph/Screen.hs screenId
+join core/app/CE/Join/Document.hs schemaId
+mentions core/app/CE/Mention/Document.hs schemaId
 merge core/app/CE/Merge/Document.hs schemaId
 query core/app/CE/Query/Document.hs querySchemaId
-rules core/app/CE/Query/Document.hs rulesSchemaId";
+rules core/app/CE/Query/Document.hs rulesSchemaId
+sites core/app/CE/Graph/Sites.hs schemaId
+structure core/app/CE/Structure/Document.hs schemaId";
 
 /// The report-id family: every value-shaped `"ce.<name>/<ver>"`
 /// literal under cli/src, keyed by name with a `-report` suffix

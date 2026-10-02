@@ -52,12 +52,12 @@ fn fixture(name: &str, penalty_max: Option<u32>) -> std::path::PathBuf {
 fn best_benefit(dir: &Path) -> i64 {
     let core = common::core_bin();
     let report = judge::run(dir, None, &core, (false, None, true)).expect("structure");
-    let split = report.split.expect("split armed");
-    split
-        .candidates
+    assert!(report.split, "split armed");
+    report
+        .split_candidates
         .iter()
-        .map(|c| c.3)
-        .chain(split.exempt.iter().map(|e| e.1))
+        .map(|c| c.benefit)
+        .chain(report.size_exempt.iter().map(|e| e.benefit))
         .max()
         .expect("the fixture must price at least one seam")
 }

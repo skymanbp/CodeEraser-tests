@@ -61,7 +61,7 @@ fn a_declaration_mounts_anchors_and_keeps_what_the_control_loses() {
             "{knob}: declared keeps all"
         );
         assert!(
-            report.kept >= 1,
+            report.counts.kept_edges >= 1,
             "{knob}: the declared edge resolved: {report:?}"
         );
         let report = judged(&format!("{knob}-undeclared"), tree);
@@ -70,7 +70,10 @@ fn a_declaration_mounts_anchors_and_keeps_what_the_control_loses() {
             [orphan],
             "{knob}: undeclared, only the root survives"
         );
-        assert_eq!(report.kept, 0, "{knob}: and the edge falls out of scope");
+        assert_eq!(
+            report.counts.kept_edges, 0,
+            "{knob}: and the edge falls out of scope"
+        );
     }
 }
 

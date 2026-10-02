@@ -181,12 +181,14 @@ fn phase_15_settles_an_orphan_debt_to_nothing() {
     assert_eq!(edge_count(&conn), 0, "a vanished file resolves to nothing");
 }
 
-/// The storage codes are frozen positions; an unregistered label
-/// must fail loudly, never silently invent a code.
+/// The storage codes are the positions of the package's `store` table
+/// (frozen against the tables golden by it/document_catalogue.rs); an
+/// unregistered label must fail loudly, never silently invent a code.
 #[test]
 fn kind_codes_frozen_and_loud() {
-    for (i, label) in KINDS.split_ascii_whitespace().enumerate() {
+    for (i, label) in crate::tables::get().store.site_kinds.iter().enumerate() {
         assert_eq!(kind_code(label).expect(label), i as i64);
+        assert_eq!(kind_label(i as i64), Some(*label));
     }
     assert!(kind_code("no_such_kind").is_err());
 }
