@@ -1,5 +1,6 @@
 //! Every sentence the PreToolUse guard speaks, asked in both languages
-//! (`cli/src/guard/say.rs`). Its own file rather than a stanza in
+//! (the core's `CE.Text.Guard`, asked by `cli/src/guard/speech.rs`
+//! since v2.32 step 5). Its own file rather than a stanza in
 //! guard_hook: that battery is about what the rules DECIDE, this one is
 //! about what they SAY, and the pair stood at 452 lines against a
 //! 300-line soft line.
@@ -84,7 +85,7 @@ fn scene(tag: &'static str, want: &'static str, en: &'static str, zh: &'static s
     }
 }
 
-/// Every sentence guard/say.rs holds, one row each — the two rules that
+/// Every sentence the guard catalogue holds, one row each — the two rules that
 /// judge the write, the graded-zone advisory, and the two degraded
 /// notes. The broken-config row carries a 900-character parse error, so
 /// its reason also runs past the 200-token warn budget: that is where
@@ -181,7 +182,7 @@ fn flow_scenes() -> Vec<Scene> {
     .into()
 }
 
-/// The whole set, asked in both languages (guard/say.rs) — why this
+/// The whole set, asked in both languages (CE.Text.Guard) — why this
 /// battery exists, and which three rows had no test before it, is the
 /// module header's story, told once.
 #[test]

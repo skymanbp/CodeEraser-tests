@@ -204,7 +204,8 @@ fn the_guard_judges_shipped_budgets_while_the_config_drifts() {
         reason.contains("drifted from the fenced baseline"),
         "the reason names the fence: {reason}"
     );
-    // the same refusal in Chinese. Both clauses come from guard/say.rs
+    // the same refusal in Chinese. Both clauses come from the core's
+    // guard catalogue (CE.Text.Guard, asked by guard/speech.rs)
     // and are asked as a set in guard_hook; the fence note is the one
     // only this test has the setup to reach.
     let out = common::run_hook_env(&dir, &["probe", "--hook"], &env, &[("CE_LANG", "zh")]);

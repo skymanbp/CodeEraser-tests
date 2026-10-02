@@ -20,7 +20,11 @@ fn convictions_relabel_and_the_fail_bit_relays() {
     let v = consume(&reply, &blocks).expect("judged");
     assert!(v.fail);
     assert_eq!(v.dups, 1);
-    assert_eq!(v.shown, vec!["y.rs:1-5 <-> z.rs:9-13 (50 tokens)"]);
+    // the convicted row relabels into its own block, not a rendering
+    let [b] = v.shown.as_slice() else {
+        panic!("one block shown")
+    };
+    assert_eq!([&b.a_file, &b.b_file], ["y.rs", "z.rs"]);
 }
 
 #[test]
