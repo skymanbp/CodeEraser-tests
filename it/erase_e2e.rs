@@ -151,13 +151,12 @@ fn plan_names_all_classes_and_is_deterministic() {
     assert_eq!(twin.reason, "bytes_differ");
     // acceptance row 4: two plans over one tree are byte-identical
     let again = erase::plan(&dir, None, &core).expect("plan again");
-    assert_eq!(
-        erase::render::report_json(&p).to_string(),
-        erase::render::report_json(&again).to_string(),
-        "determinism pinned"
-    );
+    let plan_json = |q: &erase::Plan| serde_json::json!([q.rows, q.counts]).to_string();
+    assert_eq!(plan_json(&p), plan_json(&again), "determinism pinned");
     // the diff face renders every eraseable row and carries provenance
-    let diff = erase::render::diff(&dir, &p).expect("diff");
+    let diff = erase::document::Diffs::of(&dir, &p)
+        .expect("diff")
+        .unified();
     for needle in [
         "+++ /dev/null",
         "## dead_file",

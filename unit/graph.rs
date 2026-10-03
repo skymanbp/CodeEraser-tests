@@ -1,4 +1,16 @@
-use super::{analyze, counts};
+use super::{FileSites, analyze};
+use std::collections::BTreeMap;
+
+/// Site counts keyed (lang, kind): this file's reading of a walk.
+fn counts(files: &[FileSites]) -> BTreeMap<(&'static str, &'static str), usize> {
+    let mut map = BTreeMap::new();
+    for file in files {
+        for site in &file.sites {
+            *map.entry((file.lang.name(), site.kind)).or_insert(0) += 1;
+        }
+    }
+    map
+}
 
 /// End-to-end walk on a real (temp) tree — `ce graph --sites`'
 /// engine gets its own test instead of only a smoke number in a

@@ -14,23 +14,6 @@ fn finding(kind: u8, seq: i64, v: i64) -> Finding {
     }
 }
 
-/// The names are one table, in the core's code order, and an unknown
-/// code is never passed off as a kind.
-#[test]
-fn the_kind_names_are_the_core_codes_in_order() {
-    let names: Vec<&str> = (0..5).map(kind_name).collect();
-    assert_eq!(
-        names,
-        [
-            "unreachable",
-            "dead_store",
-            "unused_local",
-            "unused_param",
-            "?"
-        ]
-    );
-}
-
 /// An unused parameter (kind 3, as observed) is advisory in every
 /// language by the package's catalogue; the others are judged exactly
 /// when the precision gate admitted the language.

@@ -13,9 +13,9 @@ const LINKED: &[(&str, &str)] = &[
     ("baseline", codeeraser::score::baseline::SCHEMA_ID),
     ("doctor", codeeraser::health::doctor::SCHEMA_ID),
     // the record schema was scraped behind erase::apply until plan
-    // v2.29 step 9 (O50) moved it to the model leaf beside SCHEMA_ID
+    // v2.29 step 9 (O50) moved it to the model leaf; the plan's id
+    // left for the core with the GUI preview (plan v2.32 step 6)
     ("erase-log", codeeraser::erase::LOG_SCHEMA),
-    ("erase-plan", codeeraser::erase::SCHEMA_ID),
     ("observe", codeeraser::hookio::OBSERVE_SCHEMA),
     ("setup", codeeraser::setup::SCHEMA_ID),
     ("update", codeeraser::update::SCHEMA_ID),
@@ -38,6 +38,7 @@ clone-units core/app/CE/Clone/Document.hs unitsSchema
 deadcode core/app/CE/Graph/Document.hs schemaId
 dedup core/app/CE/Dedup/Document.hs schemaId
 docdup core/app/CE/Docdup/Document.hs schemaId
+erase-plan core/app/CE/Erase/Document.hs schemaId
 erase-trail core/app/CE/Erase/Document.hs trailSchemaId
 flow core/app/CE/Flow/Document.hs schemaId
 graph-canvas core/app/CE/Graph/Screen.hs canvasId
