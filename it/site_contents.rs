@@ -22,6 +22,8 @@ const PAGES: &str = "\
 /zh/how/ site/zh/how/index.html
 /how/analysis/ site/how/analysis/index.html
 /zh/how/analysis/ site/zh/how/analysis/index.html
+/math/ site/math/index.html
+/zh/math/ site/zh/math/index.html
 ";
 
 /// The pages read: (served path, file, text).

@@ -36,7 +36,7 @@ fn seek(text: &str, from: usize, pat: &str, what: &str) -> usize {
         .unwrap_or_else(|| panic!("{what} has no {pat}"))
 }
 
-fn parse_chips(body: &str, label: &str, family: &str) -> Vec<Chip> {
+pub(crate) fn parse_chips(body: &str, label: &str, family: &str) -> Vec<Chip> {
     let mut chips = Vec::new();
     let mut item = 0;
     let ctx = format!("{label} family {family}: chip");

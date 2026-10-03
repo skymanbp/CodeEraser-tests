@@ -29,6 +29,8 @@ const SURFACES: &[(&str, usize, bool)] = &[
     ("site/zh/how/index.html", 10, ZH),
     ("site/stack/index.html", 5, EN),
     ("site/zh/stack/index.html", 5, ZH),
+    ("site/math/index.html", 2, EN),
+    ("site/zh/math/index.html", 2, ZH),
 ];
 
 /// The methodology booklets carrying chips (English): `file=count`
