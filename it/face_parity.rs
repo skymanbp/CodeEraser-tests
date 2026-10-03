@@ -175,7 +175,7 @@ fn every_catalogue_family_sits_in_one_row_with_its_faces() {
         .filter(|r| [&r.cli, &r.gui, &r.plugin].iter().any(|f| f.is_empty()))
         .map(|r| r.en.as_str())
         .collect();
-    assert!(faceless.is_empty(), "a face missing, no note: {faceless:?}");
+    assert_eq!(faceless, Vec::<&str>::new(), "a face missing, no note");
 }
 
 /// The webview's grants are the documented set and no more: core, the

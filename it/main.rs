@@ -116,6 +116,7 @@ mod facts_chips;
 mod facts_projection;
 mod facts_registry;
 mod fence_wire;
+mod fixture_asked;
 mod fixture_contract;
 mod fixtures_why;
 mod flow_audit;

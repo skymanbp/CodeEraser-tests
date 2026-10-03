@@ -92,12 +92,13 @@ fn bare<'a>(rows: &'a [[u64; 2]], grades: &'a [[u64; 3]], blocks: &'a [usize]) -
 #[test]
 fn no_request_carries_the_retired_judged_mask() {
     let grades = grade_rows(&Thresholds::default()).expect("coherent defaults");
-    let (blocks, rows) = ([2usize, 2], [[0u64, 1]; 4]);
-    let r = bare(&rows, &grades, &blocks);
-    for c in chunk::plan(&r, 2).expect("one file per chunk") {
-        let body = request_body(&r, &c);
-        assert!(body.get("judgedMask").is_none(), "{body}");
-    }
+    let r = bare(&[[0u64, 1]; 4], &grades, &[2usize, 2]);
+    let cuts = chunk::plan(&r, 2).expect("one file per chunk");
+    assert!(
+        cuts.iter()
+            .all(|c| request_body(&r, c).get("judgedMask").is_none()),
+        "a chunk's request carries the retired key"
+    );
     assert_echo(&json!({ "grades": grades }), &bare(&[], &grades, &[]))
         .expect("the grade echo alone");
 }
