@@ -14,7 +14,11 @@
 /// names the key the member carried on the day it dissolved: the
 /// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
 /// both readers in baseline_bridge.rs share `seated_or_retired`.
-pub const RETIRED: [(u64, &str); 45] = [
+pub const RETIRED: [(u64, &str); 47] = [
+    (
+        5414355871597516298,
+        "v2.32 step 6 2026-10-03: 8.0.0 retired structure/1's `patterns` request key, so CE.Structure imports the named refusal (CE.Wire.Retired) inside the import run it shared with CE.Docdup and StructureProps no longer refuses the pattern table twice - the two blocks this member's pair rode (Docdup.hs:38-43 / Structure.hs:32-37 imports, StructureProps.hs:124-134 / 134-137 refusals) left with the road (ce.toml dedup budget 37 -> 35)",
+    ),
     (
         7648469069779258723,
         "v2.32 step 5 Rust half part 2: the structure console moved into the core (CE.Structure.Lines), so structure/report.rs kept only its typed reader and its two console stanzas, which rhymed with each other (55 tokens), were deleted; that member dissolved",
@@ -42,6 +46,10 @@ pub const RETIRED: [(u64, &str); 45] = [
     (
         3619811066347535954,
         "v2.30 step 7b (3): the same retirement — the old sonar_whitepaper.rs CASES table rhymed with itself across two of its language tables, and the register is one NDJSON fixture; the self-member dissolved",
+    ),
+    (
+        11100202388371426840,
+        "v2.32 step 6 2026-10-03: 8.0.0 retired structure/1's `patterns` request key, so CE.Structure imports the named refusal (CE.Wire.Retired) inside the import run it shared with CE.Docdup and StructureProps no longer refuses the pattern table twice - the two blocks this member's pair rode (Docdup.hs:38-43 / Structure.hs:32-37 imports, StructureProps.hs:124-134 / 134-137 refusals) left with the road (ce.toml dedup budget 37 -> 35)",
     ),
     (
         12885443608603086983,

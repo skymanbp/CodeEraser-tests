@@ -28,7 +28,9 @@ fn major(version: &str) -> &str {
 /// A filed request as the regenerator asks it (§3): the handshake at
 /// PROTO; any other line a major left behind (its proto's major below
 /// the anchor's) re-anchored at ANCHOR; a family golden's request with
-/// every retired key lifted out. Text surgery, never a re-serialization:
+/// every retired key lifted out, and a structure request's retired
+/// `patterns` table re-spelled as `patternShapes`. Text surgery, never a
+/// re-serialization of the whole line:
 /// the filed key order is part of the bytes both consumers read.
 pub fn asked(rel: &str, filed: &str) -> String {
     if rel == HELLO {
@@ -47,7 +49,42 @@ pub fn asked(rel: &str, filed: &str) -> String {
             line = without_key(&line, key);
         }
     }
+    if rel == "structure/golden.ndjson" && !line.contains("\"patternShapes\":") {
+        line = as_shapes(&line);
+    }
     line
+}
+
+/// One stem's shape bits per retired pattern code (CE.Structure.Shape):
+/// lower_snake = lower + underscore, lower_kebab = lower + dash, camel =
+/// upper + lower, pascal = camel + first char upper, upper_snake =
+/// upper + underscore, digit_led = digit-led + lower, other =
+/// unclassifiable.
+/// Distinct codes, distinct bits: the folded distribution is the filed one.
+const SHAPE_OF_CODE: [u64; 7] = [5, 6, 12, 44, 9, 20, 64];
+
+/// A structure request's retired `patterns` table (8.0.0, plan v2.32
+/// step 6: the core classifies `patternShapes` itself) re-spelled as
+/// the shape facts it folds from, rows ascending; a line without the
+/// key, or with both roads (the golden that pins the refusal), comes
+/// back as is.
+fn as_shapes(line: &str) -> String {
+    let needle = "\"patterns\":";
+    let Some(at) = line.find(needle) else {
+        return line.to_string();
+    };
+    let start = at + needle.len();
+    let end = start + line[start..].find("]]").expect("a closed table") + 2;
+    let rows: Vec<[u64; 3]> = serde_json::from_str(&line[start..end]).expect("patterns rows");
+    let mut shapes: Vec<[u64; 3]> = rows
+        .iter()
+        .map(|&[dir, code, n]| [dir, SHAPE_OF_CODE[code as usize], n])
+        .collect();
+    shapes.sort();
+    let table = serde_json::to_string(&shapes).expect("shape rows");
+    let out = format!("{}\"patternShapes\":{table}{}", &line[..at], &line[end..]);
+    serde_json::from_str::<serde_json::Value>(&out).expect("still one json object");
+    out
 }
 
 /// The line without its top-level integer-valued `key`, the comma that
