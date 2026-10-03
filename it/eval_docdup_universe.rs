@@ -68,8 +68,9 @@ fn self_docdup_tracks_segments() {
 /// hold no HTML file, so html_text is proven on the repository's own
 /// pages through the same row throat the frozen rows use — every page
 /// named here must yield html_text segments, stored or ledgered under
-/// the admission floor (the GUI page's labels are all short), the
-/// site's prose pages must store live ones, and the ledger must show
+/// the admission floor (the GUI page's labels and, since the 2026-10-03
+/// rewrite, the home page's one-line captions are all short), the
+/// site's how page must store live ones, and the ledger must show
 /// the code and script elements the extractor shed on the way.
 /// One repository file's segment row through the frozen rows' throat
 /// — the liveness legs' opening (html_text's and text_para's).
@@ -83,7 +84,7 @@ fn own_row(page: &str, code: &str) -> serde_json::Value {
 fn html_text_is_alive_on_the_pages() {
     let mut shed = 0;
     for (page, prose) in [
-        ("site/index.html", true),
+        ("site/index.html", false),
         ("site/how/index.html", true),
         ("gui/ui/index.html", false),
     ] {
