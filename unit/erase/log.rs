@@ -16,27 +16,11 @@ fn line(class: &str, path: &str, span: Option<(i64, i64)>) -> String {
     .to_string()
 }
 
-/// The console stamp against a second oracle (python's datetime, UTC),
-/// on the epoch, two live values, and a leap day at a century boundary
-/// — the places civil-date arithmetic breaks.
-#[test]
-fn the_stamp_is_utc_to_the_second() {
-    let got = [0u64, 1_757_000_000_000, 1_757_088_000_123, 951_782_400_000].map(utc_stamp);
-    assert_eq!(
-        got,
-        [
-            "1970-01-01T00:00:00Z",
-            "2025-09-04T15:33:20Z",
-            "2025-09-05T16:00:00Z",
-            "2000-02-29T00:00:00Z"
-        ]
-    );
-}
-
 /// Every line is a record or a NAMED refusal, never a silent skip: a
-/// foreign schema, a line that is not JSON and a record carrying a
-/// field the writer never writes are the three refusals, each by its
-/// 1-based line, and the document counts both halves.
+/// foreign schema, a line that is not JSON, a record carrying a field
+/// the writer never writes and a class the writer's table does not hold
+/// (its class crosses to the core by code; booklet §13 item 42) are the
+/// four refusals, each by its 1-based line.
 #[test]
 fn the_reader_counts_what_it_cannot_read_by_line() {
     let dir = scratch("erase-log-read");
@@ -48,6 +32,7 @@ fn the_reader_counts_what_it_cannot_read_by_line() {
         "not json".to_string(),
         extra,
         line("dead_file", "b.md", None),
+        line("someday_class", "c.md", None),
     ]
     .join("\n")
         + "\n";
@@ -60,28 +45,15 @@ fn the_reader_counts_what_it_cannot_read_by_line() {
         ("a.py", Some((3, 9)))
     );
     let lines: Vec<usize> = l.unreadable.iter().map(|(n, _)| *n).collect();
-    assert_eq!(lines, [2, 3, 4]);
+    assert_eq!(lines, [2, 3, 4, 6]);
     assert!(
         l.unreadable[0].1.contains("ce.erase-log/9.0.0"),
         "{}",
         l.unreadable[0].1
     );
-    let doc = report_json(&l);
     assert_eq!(
-        (
-            doc["schema"].as_str(),
-            doc["log"].as_str(),
-            doc["unreadable"][1]["line"].as_u64()
-        ),
-        (Some(REPORT_SCHEMA), Some(LOG_REL), Some(3))
-    );
-    assert_eq!(
-        doc["counts"],
-        serde_json::json!({
-            "rows": 2,
-            "unreadable": 3,
-            "by_class": {"dead_file": 1, "t1_twin": 1}
-        })
+        l.unreadable[3].1,
+        "class \"someday_class\" is not an erase class"
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -97,7 +69,6 @@ fn an_absent_trail_is_absent_not_empty() {
         !l.present && l.rows.is_empty() && l.unreadable.is_empty(),
         "{l:?}"
     );
-    assert_eq!(report_json(&l)["present"], false);
     write_tree(&dir, &[(".ce/erase-log.ndjson", "")]);
     let l = read(&dir).expect("an empty file reads");
     assert!(

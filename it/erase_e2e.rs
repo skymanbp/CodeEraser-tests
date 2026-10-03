@@ -217,7 +217,8 @@ fn apply_refuses_by_name_then_converges() {
     applied.sort();
     assert_eq!(written, applied, "the log names the applied rows");
     let doc = codeeraser::faces::erase_log(&dir).expect("erase_log face");
-    assert_eq!(doc["schema"], erase::log::REPORT_SCHEMA);
+    let schema = doc["schema"].as_str().unwrap_or("");
+    assert!(schema.starts_with("ce.erase-trail-report/"), "{schema}");
     assert_eq!(doc["counts"]["rows"], 3);
     assert_eq!(doc["counts"]["unreadable"], 0);
     let after = erase::plan(&dir, None, &core).expect("post-plan");

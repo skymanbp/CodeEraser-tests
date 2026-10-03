@@ -231,10 +231,9 @@ fn gate_reports(dir: &std::path::Path, core: &str) -> Vec<Row> {
         ),
         row(
             "erase",
-            codeeraser::erase::render::report_json(
-                &codeeraser::erase::plan(dir, None, core).expect("erase plan"),
-            )
-            .to_string(),
+            codeeraser::faces::erase(dir, core)
+                .expect("erase plan")
+                .to_string(),
         ),
         // doctor is deliberately absent from this parity list: it is
         // the one face whose value is the MACHINE's state, so its
@@ -244,7 +243,10 @@ fn gate_reports(dir: &std::path::Path, core: &str) -> Vec<Row> {
         row(
             "trend",
             // commits=10 mirrors the MCP adapter's default exactly
-            trend::report_json(&trend::run(dir, None, core, 10, None).expect("trend")).to_string(),
+            trend::answer(core, &trend::run(dir, None, core, 10, None).expect("trend"))
+                .expect("the trend document")
+                .document
+                .to_string(),
         ),
     ]
 }

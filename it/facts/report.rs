@@ -16,21 +16,15 @@ const LINKED: &[(&str, &str)] = &[
     // v2.29 step 9 (O50) moved it to the model leaf beside SCHEMA_ID
     ("erase-log", codeeraser::erase::LOG_SCHEMA),
     ("erase-plan", codeeraser::erase::SCHEMA_ID),
-    // the trail READER's document (O50) — named for the trail because
-    // this table keys by family name and `erase-log` is the record's
-    ("erase-trail", codeeraser::erase::log::REPORT_SCHEMA),
     ("observe", codeeraser::hookio::OBSERVE_SCHEMA),
     ("setup", codeeraser::setup::SCHEMA_ID),
-    ("similar", codeeraser::similar::face::SCHEMA_ID),
     ("update", codeeraser::update::SCHEMA_ID),
 ];
 
 /// Report ids whose const sits behind a private module — scraped,
-/// each with the promotion that would link it.
-const PRIVATE: &[(&str, &str)] = &[(
-    "trend",
-    "trend::report is private; promote = re-export SCHEMA_ID beside Report",
-)];
+/// each with the promotion that would link it. (Empty since plan v2.32
+/// step 5 moved the trend document into the core.)
+const PRIVATE: &[(&str, &str)] = &[];
 
 /// The documents the core lays out (plan v2.32 steps 3, 4 and 5,
 /// document/1): `<family> <core/app file> <constant>`. The product
@@ -44,6 +38,7 @@ clone-units core/app/CE/Clone/Document.hs unitsSchema
 deadcode core/app/CE/Graph/Document.hs schemaId
 dedup core/app/CE/Dedup/Document.hs schemaId
 docdup core/app/CE/Docdup/Document.hs schemaId
+erase-trail core/app/CE/Erase/Document.hs trailSchemaId
 flow core/app/CE/Flow/Document.hs schemaId
 graph-canvas core/app/CE/Graph/Screen.hs canvasId
 graph-screen core/app/CE/Graph/Screen.hs screenId
@@ -53,8 +48,10 @@ merge core/app/CE/Merge/Document.hs schemaId
 query core/app/CE/Query/Document.hs querySchemaId
 rules core/app/CE/Query/Document.hs rulesSchemaId
 scan core/app/CE/Scan/Document.hs schemaId
+similar core/app/CE/Similar/Document.hs schemaId
 sites core/app/CE/Graph/Sites.hs schemaId
-structure core/app/CE/Structure/Document.hs schemaId";
+structure core/app/CE/Structure/Document.hs schemaId
+trend core/app/CE/Trend/Document.hs schemaId";
 
 /// The report-id family: every value-shaped `"ce.<name>/<ver>"`
 /// literal under cli/src, keyed by name with a `-report` suffix

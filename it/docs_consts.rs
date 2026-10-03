@@ -77,7 +77,7 @@ fn label_binding(name: &str) -> Vec<&str> {
 const SCHEMA_FILES: &str = "\
 01 core/app/CE/Dedup/Document.hs schemaId
 02 core/app/CE/Clone/Document.hs schemaId
-10 cli/src/trend/report.rs
+10 core/app/CE/Trend/Document.hs schemaId
 07 core/app/CE/Join/Document.hs schemaId
 16 core/app/CE/Query/Document.hs querySchemaId
 17 core/app/CE/Flow/Document.hs schemaId
