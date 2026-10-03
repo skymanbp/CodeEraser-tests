@@ -129,12 +129,12 @@ fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
     use codeeraser::{dedup, graph, scan};
     let core = common::core_bin();
     let row = no_args;
-    let (files, findings, summary, _fail, failed) = scan::analyze_judged(dir, &core).expect("scan");
+    let scan = scan::judged(dir, &core).expect("scan").document;
     let (found, dsum) = dedup::analyze(dir, None, None, None).expect("dedup");
     vec![
         row(
             "scan",
-            scan::report_string(&files, &findings, summary, &failed).expect("scan json"),
+            codeeraser::document::rendered("scan", &scan).expect("scan json"),
         ),
         row(
             "check_duplication",
@@ -167,7 +167,7 @@ fn judged_reports(dir: &std::path::Path) -> Vec<Row> {
 
 /// The first half of `judged_reports`: deadcode, clone, docdup, join.
 fn graph_and_clone_reports(dir: &std::path::Path, core: &str) -> Vec<Row> {
-    use codeeraser::{dedup, docdup, graph, join, report};
+    use codeeraser::{dedup, docdup, graph, join};
     let row = no_args;
     vec![
         row(
@@ -179,19 +179,17 @@ fn graph_and_clone_reports(dir: &std::path::Path, core: &str) -> Vec<Row> {
         ),
         row(
             "clone",
-            report::envelope(
-                (dedup::t3::SCHEMA_ID, "clones"),
-                &dedup::t3::run(dir, None, core).expect("clone"),
-            )
-            .to_string(),
+            dedup::t3::answer(dir, None, core)
+                .expect("the clone document")
+                .document
+                .to_string(),
         ),
         row(
             "docdup",
-            report::envelope(
-                (docdup::judge::SCHEMA_ID, "dups"),
-                &docdup::judge::run(dir, None, core).expect("docdup"),
-            )
-            .to_string(),
+            docdup::judge::answer(dir, None, core, false)
+                .expect("the docdup document")
+                .document
+                .to_string(),
         ),
         row(
             "join",
@@ -276,7 +274,7 @@ fn declared_knobs_reach_the_library() {
     let units = call(&mut s, 300, "clone", serde_json::json!({"units": true}));
     assert_eq!(
         units,
-        codeeraser::faces::clone_units(&dir)
+        codeeraser::faces::clone_units(&dir, &common::core_bin())
             .expect("units")
             .to_string(),
         "the units switch must reach the OTHER document, not the judgment"

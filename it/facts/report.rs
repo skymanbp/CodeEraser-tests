@@ -11,10 +11,6 @@ use std::path::Path;
 /// Report ids reachable through a `pub` path, by family name.
 const LINKED: &[(&str, &str)] = &[
     ("baseline", codeeraser::score::baseline::SCHEMA_ID),
-    ("clone", codeeraser::dedup::t3::SCHEMA_ID),
-    ("clone-units", codeeraser::dedup::unitcache::UNITS_SCHEMA_ID),
-    ("dedup", codeeraser::dedup::SCHEMA_ID),
-    ("docdup", codeeraser::docdup::judge::SCHEMA_ID),
     ("doctor", codeeraser::health::doctor::SCHEMA_ID),
     // the record schema was scraped behind erase::apply until plan
     // v2.29 step 9 (O50) moved it to the model leaf beside SCHEMA_ID
@@ -24,7 +20,6 @@ const LINKED: &[(&str, &str)] = &[
     // this table keys by family name and `erase-log` is the record's
     ("erase-trail", codeeraser::erase::log::REPORT_SCHEMA),
     ("observe", codeeraser::hookio::OBSERVE_SCHEMA),
-    ("scan", codeeraser::scan::report::SCHEMA),
     ("setup", codeeraser::setup::SCHEMA_ID),
     ("similar", codeeraser::similar::face::SCHEMA_ID),
     ("update", codeeraser::update::SCHEMA_ID),
@@ -44,7 +39,11 @@ const PRIVATE: &[(&str, &str)] = &[(
 const CORE: &str = "arch core/app/CE/Arch/Document.hs schemaId
 check core/app/CE/Score/Document.hs schemaId
 churn core/app/CE/Churn/Document.hs schemaId
+clone core/app/CE/Clone/Document.hs schemaId
+clone-units core/app/CE/Clone/Document.hs unitsSchema
 deadcode core/app/CE/Graph/Document.hs schemaId
+dedup core/app/CE/Dedup/Document.hs schemaId
+docdup core/app/CE/Docdup/Document.hs schemaId
 flow core/app/CE/Flow/Document.hs schemaId
 graph-canvas core/app/CE/Graph/Screen.hs canvasId
 graph-screen core/app/CE/Graph/Screen.hs screenId
@@ -53,6 +52,7 @@ mentions core/app/CE/Mention/Document.hs schemaId
 merge core/app/CE/Merge/Document.hs schemaId
 query core/app/CE/Query/Document.hs querySchemaId
 rules core/app/CE/Query/Document.hs rulesSchemaId
+scan core/app/CE/Scan/Document.hs schemaId
 sites core/app/CE/Graph/Sites.hs schemaId
 structure core/app/CE/Structure/Document.hs schemaId";
 

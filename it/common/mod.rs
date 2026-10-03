@@ -89,6 +89,25 @@ pub fn repo_root() -> PathBuf {
         .to_path_buf()
 }
 
+/// A document id the core owns (plan v2.32 steps 4 and 5), read off
+/// its Haskell constant `schemaId = "…"` in `file` (repo-relative) —
+/// the reading the facts registry links (facts/report.rs), for the
+/// legs that check a face against the id it must carry.
+pub fn core_schema_id(file: &str) -> String {
+    std::fs::read_to_string(repo_root().join(file))
+        .expect("core document module")
+        .lines()
+        .find_map(|l| {
+            Some(
+                l.strip_prefix("schemaId = \"")?
+                    .split('"')
+                    .next()?
+                    .to_string(),
+            )
+        })
+        .unwrap_or_else(|| panic!("{file}: no schemaId line"))
+}
+
 /// Every file under `dir`, recursively, whose extension is `ext` —
 /// the one walk the fixtures' `_why` gate and the unit-mount gate
 /// share (they were a clone row apart until the dedup gate said so).

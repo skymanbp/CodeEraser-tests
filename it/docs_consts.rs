@@ -75,8 +75,8 @@ fn label_binding(name: &str) -> Vec<&str> {
 /// `collision` past the cyclomatic line). The documents the core lays
 /// out (plan v2.32 steps 3 and 4) bind theirs in the core.
 const SCHEMA_FILES: &str = "\
-01 cli/src/dedup/mod.rs
-02 cli/src/dedup/t3/mod.rs
+01 core/app/CE/Dedup/Document.hs schemaId
+02 core/app/CE/Clone/Document.hs schemaId
 10 cli/src/trend/report.rs
 07 core/app/CE/Join/Document.hs schemaId
 16 core/app/CE/Query/Document.hs querySchemaId

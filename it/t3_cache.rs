@@ -11,16 +11,16 @@ use std::path::{Path, PathBuf};
 
 /// One tree thrice under a fresh index, judged cold: three T3 pairs at
 /// ted 0, every sendable pair on the wire, nothing replayed.
-fn cold(tag: &str) -> (PathBuf, String, t3::Report) {
+fn cold(tag: &str) -> (PathBuf, String, t3::Judged) {
     let dir = common::tmp(tag);
     common::seed_clone_trio(&dir);
     let core = core_bin();
     let first = t3::run(&dir, None, &core).expect("clone");
     let c = &first.counts;
     assert!(
-        c.clones >= 1 && c.judged >= 1,
+        !first.clones.is_empty() && c.judged >= 1,
         "judged pairs: {} / {}",
-        c.clones,
+        first.clones.len(),
         c.judged
     );
     assert_eq!(
@@ -31,8 +31,15 @@ fn cold(tag: &str) -> (PathBuf, String, t3::Report) {
     (dir, core, first)
 }
 
-fn names(r: &t3::Report) -> Vec<(String, String)> {
-    r.hits.iter().map(|h| (h.a.clone(), h.b.clone())).collect()
+fn names(r: &t3::Judged) -> Vec<(String, String)> {
+    let name = |i: usize| {
+        let u = &r.units[i];
+        format!("{}:{}#{}", u.path, u.key, u.nth)
+    };
+    r.clones
+        .iter()
+        .map(|&(a, b, _)| (name(a), name(b)))
+        .collect()
 }
 
 fn index(dir: &Path) -> rusqlite::Connection {

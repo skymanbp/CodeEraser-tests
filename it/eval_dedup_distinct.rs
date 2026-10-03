@@ -64,7 +64,7 @@ fn measure(name: &str, tip: &str, root: &Path) -> Value {
     json!({
         "name": name,
         "tip": tip,
-        "files": serde_json::to_value(&summary).expect("summary")["files"],
+        "files": summary.files,
         "blocks": found.blocks.len(),
         "suppressed": suppressed.len(),
         "histogram": histogram,

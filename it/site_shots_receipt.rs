@@ -95,29 +95,17 @@ fn the_receipt_names_what_the_pictures_show() {
         "the receipt names another window"
     );
 
-    // the structure and join ids are the core's documents' (plan
-    // v2.32 step 4), read off the Haskell constants the facts registry
-    // links (facts/report.rs)
-    let core_id = |file: &str| {
-        std::fs::read_to_string(root.join(file))
-            .expect("core document module")
-            .lines()
-            .find_map(|l| {
-                Some(
-                    l.strip_prefix("schemaId = \"")?
-                        .split('"')
-                        .next()?
-                        .to_string(),
-                )
-            })
-            .unwrap_or_else(|| panic!("{file}: no schemaId line"))
-    };
-    let structure = core_id("core/app/CE/Structure/Document.hs");
-    let join = core_id("core/app/CE/Join/Document.hs");
+    // the structure, join and dedup ids are the core's documents'
+    // (plan v2.32 steps 4 and 5), read off the Haskell constants the
+    // facts registry links (facts/report.rs)
+    let id = crate::common::core_schema_id;
+    let structure = id("core/app/CE/Structure/Document.hs");
+    let join = id("core/app/CE/Join/Document.hs");
+    let dedup = id("core/app/CE/Dedup/Document.hs");
     for (face, live) in [
         ("structure", structure.as_str()),
         ("join", join.as_str()),
-        ("dedup", codeeraser::dedup::SCHEMA_ID),
+        ("dedup", dedup.as_str()),
     ] {
         assert_eq!(
             receipt["schemas"][face].as_str(),

@@ -54,20 +54,19 @@ fn a_pair_both_families_judged_rides_the_sim_table_once() {
         ("a.rs", "b.rs"),
         "the clone family judges the pair"
     );
-    let doc = codeeraser::docdup::judge::run(&dir, None, &core_bin()).expect("docdup");
-    let [hit] = doc.hits.as_slice() else {
-        panic!("one doc pair, got {}", doc.hits.len());
+    let doc = codeeraser::faces::docdup(&dir, &core_bin()).expect("docdup");
+    let [hit] = doc["dups"].as_array().expect("dups").as_slice() else {
+        panic!("one doc pair, got {}", doc["dups"]);
     };
+    let (a, b) = (hit["a"].as_str().expect("a"), hit["b"].as_str().expect("b"));
     assert!(
-        hit.a.starts_with("a.rs:") && hit.b.starts_with("b.rs:"),
-        "the docdup family judges the SAME pair: {} <-> {}",
-        hit.a,
-        hit.b
+        a.starts_with("a.rs:") && b.starts_with("b.rs:"),
+        "the docdup family judges the SAME pair: {a} <-> {b}"
     );
     assert!(
-        hit.m.verbatim >= 50,
+        hit["verbatim"].as_u64() >= Some(50),
         "the shared block is a hard hit, not a Jaccard accident: {}",
-        hit.m.verbatim
+        hit["verbatim"]
     );
 
     // (2) the request the core refused: judged, one row, one candidate
@@ -97,9 +96,9 @@ fn a_t3_only_pair_rides_the_sim_table_as_kind_one() {
     // (1) the fixture IS the shape: no block, one T3 clone, c <-> d
     common::analyze(&dir, 0, 0);
     let t3 = codeeraser::dedup::t3::run(&dir, None, &core_bin()).expect("clone");
-    let pair: Vec<(&str, &str)> = t3.hits.iter().map(|h| (&*h.a, &*h.b)).collect();
+    let pair: Vec<(&str, &str)> = t3.file_pairs().collect();
     assert!(
-        matches!(pair[..], [(a, b)] if a.starts_with("c.rs:") && b.starts_with("d.rs:")),
+        matches!(pair[..], [("c.rs", "d.rs")]),
         "one near-miss pair, c <-> d: {pair:?}"
     );
     // (2) one sim row, one candidate, the clone axis charged as the

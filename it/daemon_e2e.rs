@@ -103,7 +103,10 @@ fn assert_dedup_probe(root: &Path) {
             assert!(!blocks.is_empty(), "seeded clone must be found");
             // transport check only — the schema SHAPE is pinned by the
             // report_schema golden, so no literal id duplicated here
-            assert_eq!(report["schema"], codeeraser::dedup::SCHEMA_ID);
+            assert_eq!(
+                report["schema"],
+                crate::common::core_schema_id("core/app/CE/Dedup/Document.hs")
+            );
         }
         other => panic!("expected report, got {other:?}"),
     }

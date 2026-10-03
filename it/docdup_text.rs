@@ -68,16 +68,16 @@ fn no_other_gate_reads_it(dir: &Path, core: &str) {
 fn plain_text_pairs_in_docdup_and_stays_out_of_every_other_gate() {
     let dir = fixture();
     let core = core_bin();
-    let doc = codeeraser::docdup::judge::run(&dir, None, &core).expect("docdup");
-    let names: Vec<(&str, &str)> = doc
-        .hits
-        .iter()
-        .map(|h| (h.a.as_str(), h.b.as_str()))
-        .collect();
+    let doc = codeeraser::faces::docdup(&dir, &core).expect("docdup");
+    let dups = &doc["dups"];
     assert_eq!(
-        names,
-        [("copy/notes2.txt:1-5 text_para", "notes.txt:1-5 text_para")],
-        "one pair, both sides plain-text paragraphs, CMakeLists.txt on neither"
+        (dups.as_array().map(Vec::len), &dups[0]["a"], &dups[0]["b"]),
+        (
+            Some(1),
+            &"copy/notes2.txt:1-5 text_para".into(),
+            &"notes.txt:1-5 text_para".into()
+        ),
+        "one pair, both sides plain-text paragraphs, CMakeLists.txt on neither: {dups}"
     );
     no_other_gate_reads_it(&dir, &core);
 

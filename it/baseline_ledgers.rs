@@ -19,7 +19,19 @@
 /// names the key the member carried on the day it dissolved: the
 /// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
 /// both readers in baseline_bridge.rs share `seated_or_retired`.
-pub const RETIRED: [(u64, &str); 41] = [
+pub const RETIRED: [(u64, &str); 44] = [
+    (
+        6631610987271775939,
+        "v2.32 step 5 lane A: the clone and docdup reports moved into the core (CE.Clone.Document / CE.Docdup.Document), so t3's `print` and docdup's `print` through crate::report::emit were deleted — the dedup/t3/mod.rs <-> docdup/judge/mod.rs member dissolved",
+    ),
+    (
+        6663525434078246090,
+        "v2.32 step 5 lane A: the same move — t3's Counts lost its Serialize derive and its serialised-only fields, so its field run no longer rhymes with config/thresholds.rs's Thresholds; that member dissolved",
+    ),
+    (
+        7038633364399792900,
+        "v2.32 step 5 lane A: the same move — faces.rs's clone_t3 and docdup read the core's documents (t3::answer / judge::answer), so the two `enveloped` faces rhyming with each other are gone; the faces.rs self-member dissolved",
+    ),
     (
         5552311341795790881,
         "v2.30 step 7b (3): Scan.hs's `reply` took an Echo record and its fenced / conditions helpers, so its head no longer rhymes with Audit.hs's `reply` (51 tokens) — the Audit.hs <-> Scan.hs member dissolved",

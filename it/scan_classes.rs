@@ -37,9 +37,10 @@ fn coc_under(toml: &str, name: &str) -> (bool, Vec<(String, usize, usize, bool)>
             ("src/b.rs", &tangled(6)),
         ],
     );
-    let (_files, findings, _summary, fail, _failed) =
-        scan::analyze_judged(&fx.dir, &common::gates::core_bin()).expect("judged");
-    let rows = findings
+    let judged = scan::analyze_judged(&fx.dir, &common::gates::core_bin()).expect("judged");
+    let fail = judged.settled.fail;
+    let rows = judged
+        .findings
         .iter()
         .filter(|f| f.rule == "cognitive")
         .map(|f| {
@@ -108,11 +109,11 @@ fn a_class_moves_its_files_fn_ladder_and_the_mirror_holds() {
         ],
     );
     let core = common::gates::core_bin();
-    let (files, findings, _summary, fail, _failed) =
-        scan::analyze_judged(&fx.dir, &core).expect("judged");
-    assert_eq!(files.len(), 2, "both files measured");
-    assert!(!fail, "no hard line breached");
-    let fn_lines: Vec<(&str, usize, usize)> = findings
+    let judged = scan::analyze_judged(&fx.dir, &core).expect("judged");
+    assert_eq!(judged.settled.files.len(), 2, "both files measured");
+    assert!(!judged.settled.fail, "no hard line breached");
+    let fn_lines: Vec<(&str, usize, usize)> = judged
+        .findings
         .iter()
         .filter(|f| f.rule == "fn-lines")
         .map(|f| (f.file.as_str(), f.value, f.threshold))
