@@ -85,22 +85,21 @@ fn bare<'a>(rows: &'a [[u64; 2]], grades: &'a [[u64; 3]], blocks: &'a [usize]) -
     }
 }
 
-/// The judged-language echo (7.2.0) is pinned like the grade table:
-/// the sent mask is accepted, a foreign value is drift refused by
-/// name, and no echo at all is a pre-7.2.0 core refused by name.
+/// The judged-language set left the wire at 8.0.0 (plan v2.32 step 6):
+/// no chunk's request carries `judgedMask` — the core refuses one that
+/// does by name — and a reply without it is the grade table's echo
+/// alone, accepted.
 #[test]
-fn the_judged_mask_echo_is_required_and_pinned() {
+fn no_request_carries_the_retired_judged_mask() {
     let grades = grade_rows(&Thresholds::default()).expect("coherent defaults");
-    let r = bare(&[], &grades, &[]);
-    let mask = crate::scan::lang::Lang::judged_mask();
-    let mut reply = json!({ "grades": grades, "judgedMask": mask });
-    assert_echo(&reply, &r).expect("the sent mask echoes");
-    reply["judgedMask"] = json!(mask | 1 << 40);
-    let drift = assert_echo(&reply, &r).expect_err("a foreign mask is drift");
-    assert!(drift.to_string().contains("judgedMask"), "{drift}");
-    reply.as_object_mut().expect("object").remove("judgedMask");
-    let silent = assert_echo(&reply, &r).expect_err("no echo = a pre-7.2.0 core");
-    assert!(silent.to_string().contains("7.2.0"), "{silent}");
+    let (blocks, rows) = ([2usize, 2], [[0u64, 1]; 4]);
+    let r = bare(&rows, &grades, &blocks);
+    for c in chunk::plan(&r, 2).expect("one file per chunk") {
+        let body = request_body(&r, &c);
+        assert!(body.get("judgedMask").is_none(), "{body}");
+    }
+    assert_echo(&json!({ "grades": grades }), &bare(&[], &grades, &[]))
+        .expect("the grade echo alone");
 }
 
 /// Both echoed tables are lifted the same way and required the same

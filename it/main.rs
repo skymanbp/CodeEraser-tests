@@ -110,6 +110,7 @@ mod eval_t3_precision;
 mod eval_t3_precision_parts;
 mod eval_t3_universe;
 mod face_parity;
+mod face_parity_table;
 mod facts;
 mod facts_chips;
 mod facts_projection;

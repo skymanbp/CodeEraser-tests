@@ -27,7 +27,11 @@ pub fn real_tables() -> &'static Value {
 /// advisory families' legs, where the core has no such family, which
 /// must come back named absent, never read as an empty answer.
 pub fn hello_only() -> String {
-    stub("stub-core-hello-only", "7.7.0", Some(real_tables()))
+    stub(
+        "stub-core-hello-only",
+        codeeraser::corelink::PROTO,
+        Some(real_tables()),
+    )
 }
 
 /// A stub core answering `proto` with `capabilities` = hello (and

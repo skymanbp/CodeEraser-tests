@@ -19,7 +19,7 @@ const REL: &str = "flow/golden.ndjson";
 
 /// The requests' proto: the major's floor, as every family's request
 /// line carries it (query_golden.rs::REQUEST_PROTO).
-const REQUEST_PROTO: &str = "7.0.0";
+const REQUEST_PROTO: &str = crate::facts::ver::ANCHOR;
 
 /// `==== <ext> <id> <kinds the core finds>` over each snippet.
 const SNIPPETS: &str = "\

@@ -49,7 +49,8 @@ fn set_head(dir: &Path, key: &str, value: Value) {
     std::fs::write(&file, text.replacen(&old, &format!("\"{key}\":{value}"), 1)).expect("write");
 }
 
-/// Legs 1, 2 and 5: no core, a core without `tables/1`, and a package
+/// Legs 1, 2 and 5: no core, a core of an older major (refused at the
+/// handshake since 8.0.0), a core without `tables/1`, and a package
 /// missing a table each refuse by name, exit 2, before anything is
 /// measured.
 #[test]
@@ -67,12 +68,17 @@ fn a_run_without_the_package_is_refused_by_name() {
             "tables/1",
         ),
         (
-            stub_core::stub("tables-old-core", "7.6.0", None),
+            stub_core::stub("tables-old-major", "7.10.0", None),
+            "proto mismatch",
+            "core 7.10.0 vs ce",
+        ),
+        (
+            stub_core::stub("tables-old-core", codeeraser::corelink::PROTO, None),
             "pre-7.7.0 core",
             "no tables/1",
         ),
         (
-            stub_core::stub("tables-short", "7.7.0", Some(&short)),
+            stub_core::stub("tables-short", codeeraser::corelink::PROTO, Some(&short)),
             "lacks a table",
             "compdb",
         ),

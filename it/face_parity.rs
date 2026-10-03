@@ -7,94 +7,17 @@
 //! MCP catalog, hooks.json, `plugin/commands`, `plugin/skills` — and
 //! the gate holds both directions: a shipped face no row claims, and
 //! a claimed face nobody shipped. Deliberate omissions are rows, not
-//! silence. The rendered table is embedded in both READMEs between
-//! `<!-- parity:begin -->` / `<!-- parity:end -->` and compared byte
-//! for byte; `CE_BLESS=1` is the only writer.
+//! silence. The rows' spine is the core's catalogue (plan v2.32 step
+//! 6): every report family `tables/1` lists sits in exactly one row,
+//! and that row carries the three faces or says why not. The rendered
+//! table is embedded in both READMEs between `<!-- parity:begin -->` /
+//! `<!-- parity:end -->` and compared byte for byte; `CE_BLESS=1` is
+//! the only writer. The table itself lives in face_parity_table.rs.
 
-use crate::common::repo_root;
+use crate::common::{repo_root, stub_core};
+use crate::face_parity_table::{Row, rows};
 use crate::facts::read;
 use std::collections::BTreeSet;
-
-/// The capability table, one row per line and seven `|` cells:
-/// name (en) | name (zh) | CLI | GUI | plugin | note (en) | note (zh).
-/// Items within a cell are comma-separated. A CLI item is the
-/// subcommand plus any flag that names the act (`erase --apply`); the
-/// claim is its first word. A GUI item is the tab (`tab:` prefixed)
-/// or a Tauri command; a plugin item carries a kind prefix (`mcp:` /
-/// `hook:` / `cmd:` / `skill:` / `mcpjson`). The note is the bilingual
-/// reason written into the first empty cell. One string literal: a
-/// list of same-shaped struct literals is a clone by construction.
-const TABLE: &str = "
-size / complexity / readability metrics | 尺寸 / 复杂度 / 可读性度量 | scan | tab:reports, scan_report | mcp:scan | |
-T1/T2 clone blocks | T1/T2 克隆块 | dedup | tab:reports, dedup_report | mcp:check_duplication | |
-T3 near-miss clones | T3 近似克隆 | clone | tab:reports, clone_report | mcp:clone | |
-documentation duplication | 文档重复 | docdup | tab:reports, docdup_report | mcp:docdup | |
-reference sites and the mention universe | 引用站点与提及宇宙 | graph | tab:reports, sites_report | mcp:graph_sites | |
-liveness verdicts + symbol advisory | 存活性判决 + 符号顾问 | deadcode | tab:graph, graphscreen_report, tab:reports, deadcode_report | mcp:deadcode | |
-git-window churn | git 窗口变动 | churn | tab:candidates, churn_report | mcp:churn | |
-three-signal join | 三信号联判 | join | tab:candidates, join_report | mcp:join | |
-tree-scale structure (split pricing) | 树尺度结构（拆分定价） | structure | tab:structure, structure_report | mcp:structure | |
-score trajectory | 分数轨迹 | trend | tab:trend, trend_report | mcp:trend | |
-score, ratchet and floor | 分数、棘轮与地板 | check | tab:score, check_report | mcp:check | |
-same-role advisor (similar units, associative view) | 同角色顾问（相似单元、联想视图） | similar | tab:similar, similar_report | mcp:similar_units | |
-code query and architecture rules | 代码查询与架构规则 | query, rules | tab:query, query_report, rules_report | mcp:query, mcp:rules | |
-intra-function dead code (unreachable, dead stores, unused locals and parameters) | 函数内死代码（不可达、死存储、未用局部量与形参） | flow, flow --check | tab:reports, flow_report, flow_kinds | mcp:flow | |
-clone merge suggestions (anti-unification) | 克隆合并建议（反统一） | merge | tab:reports, merge_report | mcp:merge_suggestions | |
-architecture analysis (layers, cuts, clusters, impact) | 架构分析（分层、拆环、簇、影响面） | arch | tab:reports, arch_report | mcp:architecture | |
-baseline writes | 基线写入 | baseline | | | CLI only: a machine surface never writes a baseline | 只在 CLI：机器面永不写基线
-erase plan | 擦除计划 | erase | tab:erase, erase_preview | mcp:erase, skill:erase | |
-erase apply | 擦除执行 | erase --apply | tab:erase, erase_apply | | no MCP face: applying is a human act | 无 MCP 面：执行是人类动作
-erase audit log | 擦除审计日志 | erase --log | tab:erase, erase_log_report | mcp:erase_log | |
-machine state | 本机状态 | doctor | tab:doctor, doctor_report | mcp:doctor | |
-update check | 更新检查 | update | tab:update, update_check | mcp:update_check, cmd:update, hook:SessionStart | |
-update apply | 更新执行 | update --yes | tab:update, update_apply | | the plugin's copy is re-pinned by `/plugin update codeeraser` | 插件副本由 `/plugin update codeeraser` 重钉
-write-time guard | 写入时守卫 | probe --hook | | hook:PreToolUse | hooks are the plugin's face | 钩子即插件之面
-asked-write settlement | ask 档写入的落地记录 | settle --hook | | hook:PostToolUse | hooks are the plugin's face | 钩子即插件之面
-stop audit / git hooks | Stop 审计 / git 钩子 | audit --hook, precommit, commitmsg | | hook:Stop | hooks are the plugin's face; precommit and commitmsg are git's | 钩子即插件之面；precommit 与 commitmsg 挂在 git 里
-session health line | 会话健康行 | health --hook | | hook:SessionStart | hooks are the plugin's face | 钩子即插件之面
-project daemon | 项目 daemon | daemon, ping | | | started lazily by every face | 每一面惰性启动
-read-only report server | 只读报告服务器 | mcp | | mcpjson | the plugin registers it | 插件自行注册
-uninstall | 卸载 | eject | | | CLI only | 只在 CLI
-Claude Code wiring | Claude Code 接线 | setup, setup --unwire | | | CLI only: the Windows installer calls it, AppImage / dmg users run it once | 只在 CLI：Windows 安装包调用它，AppImage / dmg 用户装后跑一次
-bench dashboard | 实测仪表盘 | | tab:bench, bench_doc | | compiled-in series; README and site carry the same block | 编译内置序列；README 与官网带同一块
-root anchoring | 根锚定 | | default_root, resolve_root | | every command and hook anchors through `root` | 每条命令与钩子都经 `root` 锚定
-";
-
-struct Row {
-    en: String,
-    zh: String,
-    cli: Vec<String>,
-    gui: Vec<String>,
-    plugin: Vec<String>,
-    note: (String, String),
-}
-
-fn items(cell: &str) -> Vec<String> {
-    cell.split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(String::from)
-        .collect()
-}
-
-fn rows() -> Vec<Row> {
-    TABLE
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .map(|l| {
-            let c: Vec<&str> = l.split('|').map(str::trim).collect();
-            assert_eq!(c.len(), 7, "seven cells: {l}");
-            Row {
-                en: c[0].into(),
-                zh: c[1].into(),
-                cli: items(c[2]),
-                gui: items(c[3]),
-                plugin: items(c[4]),
-                note: (c[5].into(), c[6].into()),
-            }
-        })
-        .collect()
-}
 
 /// clap's subcommand roster: every `Name {` / `Name(Args),` variant
 /// (cli_table.rs closes the README carrier table against it).
@@ -221,6 +144,40 @@ fn every_face_is_claimed_by_a_row_and_every_claim_ships() {
     }
 }
 
+/// The catalogue closes the table (plan v2.32 step 6): the families a
+/// row names are the core's own, each in one row only, every family is
+/// named, and a row that carries a report document has a CLI, a GUI and
+/// a plugin face or a note saying why not. A family the core gains
+/// without a face, or a face that drops out from under a family, is red
+/// here before it is silent on a screen.
+#[test]
+fn every_catalogue_family_sits_in_one_row_with_its_faces() {
+    let catalogue: BTreeSet<String> = stub_core::real_tables()["document"]
+        .as_object()
+        .expect("the catalogue's families")
+        .keys()
+        .cloned()
+        .collect();
+    let table = rows();
+    let named: Vec<&String> = table.iter().flat_map(|r| &r.docs).collect();
+    let once: BTreeSet<String> = named.iter().map(|d| d.to_string()).collect();
+    assert_eq!(named.len(), once.len(), "a family in two rows: {named:?}");
+    let unclaimed: Vec<_> = catalogue.difference(&once).collect();
+    let unknown: Vec<_> = once.difference(&catalogue).collect();
+    assert!(unclaimed.is_empty(), "families no row names: {unclaimed:?}");
+    assert!(
+        unknown.is_empty(),
+        "families the core does not list: {unknown:?}"
+    );
+    let faceless: Vec<&str> = table
+        .iter()
+        .filter(|r| !r.docs.is_empty() && r.note.0.is_empty())
+        .filter(|r| [&r.cli, &r.gui, &r.plugin].iter().any(|f| f.is_empty()))
+        .map(|r| r.en.as_str())
+        .collect();
+    assert!(faceless.is_empty(), "a face missing, no note: {faceless:?}");
+}
+
 /// The webview's grants are the documented set and no more: core, the
 /// event channel the `ce-task` feed rides, and the dialog plugin's
 /// `open` alone (the folder picker behind the root field, 2026-09-10).
@@ -275,12 +232,13 @@ fn cell(items: Vec<String>) -> String {
 
 fn render(zh: bool) -> String {
     let mut out = String::from(if zh {
-        "| 能力 | CLI | GUI（屏 · 命令） | 插件（hooks · MCP · 命令 · skill） |\n"
+        "| 能力 | 报告文档（核目录） | CLI | GUI（屏 · 命令） | 插件（hooks · MCP · 命令 · skill） |\n"
     } else {
-        "| capability | CLI | GUI (screen · commands) | plugin (hooks · MCP · commands · skills) |\n"
+        "| capability | report document (core catalogue) | CLI | GUI (screen · commands) | plugin (hooks · MCP · commands · skills) |\n"
     });
-    out += "|---|---|---|---|\n";
+    out += "|---|---|---|---|---|\n";
     for r in rows() {
+        let docs = cell(r.docs.iter().map(|d| format!("`{d}`")).collect());
         let mut cells = [
             cell(r.cli.iter().map(|c| format!("`ce {c}`")).collect()),
             cell(
@@ -298,7 +256,10 @@ fn render(zh: bool) -> String {
             *empty = format!("— {note}");
         }
         let name = if zh { &r.zh } else { &r.en };
-        out += &format!("| {name} | {} | {} | {} |\n", cells[0], cells[1], cells[2]);
+        out += &format!(
+            "| {name} | {docs} | {} | {} | {} |\n",
+            cells[0], cells[1], cells[2]
+        );
     }
     out
 }

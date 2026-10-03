@@ -166,30 +166,22 @@ fn no_name_of_any_kind_reaches_the_graph_request() {
     }
 }
 
-/// K16: the legacy body is the six keys and nothing else — the five
-/// legacy tables plus the judged-language mask every request carries
-/// since 7.2.0; the advisory road adds exactly two and leaves those
-/// six byte for byte (serde_json's Map is ordered, so removing the two
-/// keys from the advisory body must give the legacy body back).
+/// K16: the legacy body is the five legacy tables and nothing else —
+/// the judged-language mask rode from 7.2.0 and retired at 8.0.0 (the
+/// core reads its language table); the advisory road adds exactly two
+/// and leaves those five byte for byte (serde_json's Map is ordered, so
+/// removing the two keys from the advisory body must give the legacy
+/// body back).
 #[test]
 fn the_legacy_request_is_untouched_by_the_advisory_road() {
     let dir = indexed("export-surface-k16", FIXTURE);
     let legacy = request_body(&wire(&dir, Advisory::No), &[]);
-    assert_eq!(
-        keys(&legacy),
-        ["edges", "judgedMask", "nodes", "pos", "symbols", "unres"]
-    );
-    assert_eq!(
-        legacy["judgedMask"],
-        serde_json::json!(codeeraser::scan::lang::Lang::judged_mask()),
-        "the mask is the language rows' own summary"
-    );
+    assert_eq!(keys(&legacy), ["edges", "nodes", "pos", "symbols", "unres"]);
     let mut advised = request_body(&wire(&dir, Advisory::Yes), &[]);
     assert_eq!(
         keys(&advised),
         [
             "edges",
-            "judgedMask",
             "mounts",
             "nodes",
             "pos",
@@ -204,7 +196,7 @@ fn the_legacy_request_is_untouched_by_the_advisory_road() {
     assert_eq!(
         advised.to_string(),
         legacy.to_string(),
-        "six keys, same bytes"
+        "five keys, same bytes"
     );
 }
 

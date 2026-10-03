@@ -18,7 +18,7 @@ const REL: &str = "query/golden.ndjson";
 /// The requests' proto: the major's floor, as every family's request
 /// line carries it (the server answers the current one; the 7.2.0
 /// regenerator minted its new scan and graph requests the same way).
-const REQUEST_PROTO: &str = "7.0.0";
+const REQUEST_PROTO: &str = crate::facts::ver::ANCHOR;
 
 /// `id [why] [schema]` on a block's first line, the program under it;
 /// each block lexes after the prelude as the request's rules source.
