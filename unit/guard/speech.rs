@@ -1,4 +1,5 @@
 use super::*;
+use crate::document::Resolve;
 use crate::tombstone::{Kind, Row};
 
 fn site(file: &str, line: usize, kind: Kind) -> Row {
@@ -86,6 +87,7 @@ fn every_rule_is_one_say_row_and_every_string_a_reference() {
         (Some("guard"), &serde_json::json!({}))
     );
     assert_eq!(body["lang"], lines::lang());
+    let s = s.lists();
     let names = [
         ("file", 3, "b.py"),
         ("match_file", 1, "c.rs"),

@@ -3,9 +3,35 @@
 // order, counts, the `--kind` filter and the degraded road.
 use super::*;
 use crate::flow::wire::Finding;
-use crate::flow_report::report::Report;
 use crate::scan::lang::Lang;
 use serde::Deserialize;
+use serde_json::Value;
+use std::collections::BTreeMap;
+
+/// The fields of the bound document these legs read (the console that
+/// once read them is the core's since plan v2.32 step 5).
+#[derive(Deserialize)]
+struct FindingFace {
+    path: String,
+    unit: String,
+    kind: String,
+    line: u32,
+    judged: bool,
+}
+
+#[derive(Deserialize)]
+struct RefusedFace {
+    path: String,
+    unit: String,
+}
+
+#[derive(Deserialize)]
+struct Report {
+    counts: BTreeMap<String, u64>,
+    findings: Vec<FindingFace>,
+    refused: Vec<RefusedFace>,
+    degraded: Option<String>,
+}
 
 const PY: &str = "def gone():\n    return 1\n    print(\"never\")\n\n\ndef overwritten():\n    x = 1\n    x = 2\n    return x\n\n\ndef ignores(a):\n    return 3\n";
 

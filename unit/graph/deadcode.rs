@@ -66,26 +66,3 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
         );
     }
 }
-
-/// O23 (plan v2.25): the liveness reason is a CODE; the English word
-/// is the document's (CE.Graph.Document.whyCodes, plan v2.32 step 4)
-/// and every code has the Chinese the console prints under --lang zh
-/// here, until step 5. A code without its Chinese would ship the zh
-/// console one reason in English, the leak this table exists to end.
-#[test]
-fn every_liveness_reason_has_its_chinese() {
-    for (i, zh) in super::WHY_ZH.iter().enumerate() {
-        assert!(
-            !zh.is_ascii() && !zh.is_empty(),
-            "code {i} is not Chinese: {zh:?}"
-        );
-    }
-    let row: super::DeadRow = serde_json::from_value(json!({
-        "name": "a.rs", "verdict": "unreach_private",
-        "why": "referenced only from dead code; no entry flag",
-        "whyCode": 1, "confidence": null
-    }))
-    .expect("a dead row");
-    // the default language is English: the console word IS the document's
-    assert_eq!(row.why_line(), row.why);
-}

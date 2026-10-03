@@ -51,7 +51,9 @@ fn fixture(name: &str, penalty_max: Option<u32>) -> std::path::PathBuf {
 /// keeps the leg honest if the zone curve is ever retuned.
 fn best_benefit(dir: &Path) -> i64 {
     let core = common::core_bin();
-    let report = judge::run(dir, None, &core, (false, None, true)).expect("structure");
+    let answer = judge::run(dir, None, &core, (false, None, true)).expect("structure");
+    let report: judge::Report =
+        codeeraser::report::read_bound(answer.document, "structure").expect("read");
     assert!(report.split, "split armed");
     report
         .split_candidates

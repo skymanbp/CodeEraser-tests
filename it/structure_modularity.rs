@@ -158,10 +158,11 @@ fn the_measurement_sends_the_table_on_a_real_tree() {
         ],
     );
     common::build_index(&dir);
-    let report = judge::run(&dir, None, &core_bin(), (false, None, false)).expect("structure");
+    let answer = judge::run(&dir, None, &core_bin(), (false, None, false)).expect("structure");
+    let axes = &answer.document["axes"];
+    let codes = axes.as_array().map_or(&[][..], Vec::as_slice);
     assert!(
-        report.axes.iter().any(|[c, _]| *c == 7),
-        "the measurement sent no dirEdges table: {:?}",
-        report.axes
+        codes.iter().any(|a| a[0] == 7),
+        "the measurement sent no dirEdges table: {axes}"
     );
 }

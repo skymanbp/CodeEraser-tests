@@ -55,14 +55,14 @@ fn the_catalogue_is_the_frozen_one() {
     );
     let flow = &catalogue()["flow"];
     let kinds = json!([
-        ["unreachable", false],
-        ["dead_store", false],
-        ["unused_local", false],
-        ["unused_param", true]
+        ["unreachable", false, "unreachable", "不可达"],
+        ["dead_store", false, "dead store", "死存储"],
+        ["unused_local", false, "unused local", "未用局部量"],
+        ["unused_param", true, "unused parameter", "未用形参"]
     ]);
     assert_eq!(
         flow["kinds"], kinds,
-        "kinds and their advisory role, as observed"
+        "kinds, their advisory role and their labels (R8), as observed"
     );
     let mask = codeeraser::flow::judged_mask();
     let judged: Vec<i64> = (0..64).filter(|l| mask >> l & 1 == 1).collect();

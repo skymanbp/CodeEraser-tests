@@ -66,29 +66,37 @@ fn exported() -> PathBuf {
 
 /// The fields the doc freezes, off one run of the family's face.
 fn reading(root: &Path) -> Value {
-    let doc = codeeraser::arch::face::run(root, None, &common::core_bin(), &[]).expect("arch");
-    let r = <codeeraser::arch::report::Report as serde::Deserialize>::deserialize(&doc)
-        .expect("an arch document");
-    assert_eq!(r.degraded, None, "the self reading needs a judging core");
-    let layers: Map<String, Value> = r
-        .layers
+    let doc = codeeraser::arch::face::run(root, None, &common::core_bin(), &[])
+        .expect("arch")
+        .document;
+    assert_eq!(
+        doc["degraded"],
+        Value::Null,
+        "the self reading needs a judging core"
+    );
+    let rows = |k: &str| doc[k].as_array().cloned().unwrap_or_default();
+    // the document's rows, keyed by directory or as tuples of fields
+    let by_dir = |k: &str, of: &dyn Fn(&Value) -> Value| -> Map<String, Value> {
+        let dir = |r: &Value| r["dir"].as_str().expect("a dir").to_string();
+        rows(k).iter().map(|r| (dir(r), of(r))).collect()
+    };
+    let tuples = |k: &str, fields: &[&str]| -> Vec<Value> {
+        let tuple = |r: &Value| Value::Array(fields.iter().map(|f| r[*f].clone()).collect());
+        rows(k).iter().map(tuple).collect()
+    };
+    let clusters = rows("clusters");
+    let mut sizes: Vec<usize> = clusters
         .iter()
-        .map(|l| (l.dir.clone(), json!(l.level)))
+        .map(|c| c["files"].as_array().map_or(0, Vec::len))
         .collect();
-    let metrics: Map<String, Value> = r
-        .metrics
-        .iter()
-        .map(|m| (m.dir.clone(), json!([m.fan_in, m.fan_out, m.instability])))
-        .collect();
-    let mut sizes: Vec<usize> = r.clusters.iter().map(|c| c.files.len()).collect();
     sizes.sort_unstable_by(|a, b| b.cmp(a));
     json!({
-        "counts": r.counts,
-        "layers": layers,
-        "cuts": r.cuts.iter().map(|c| json!([c.from, c.to, c.refs, c.exact])).collect::<Vec<_>>(),
-        "metrics": metrics,
-        "misplaced": r.misplaced.iter().map(|m| json!([m.path, m.dir, m.majority])).collect::<Vec<_>>(),
-        "clusters": {"count": r.clusters.len(), "sizes": sizes},
+        "counts": doc["counts"],
+        "layers": by_dir("layers", &|l| l["level"].clone()),
+        "cuts": tuples("cuts", &["from", "to", "refs", "exact"]),
+        "metrics": by_dir("metrics", &|m| json!([m["fanIn"], m["fanOut"], m["instability"]])),
+        "misplaced": tuples("misplaced", &["path", "dir", "majority"]),
+        "clusters": {"count": clusters.len(), "sizes": sizes},
     })
 }
 

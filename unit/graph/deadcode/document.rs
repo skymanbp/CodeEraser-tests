@@ -29,12 +29,14 @@ fn fixture(reason: &str) -> (GraphWire, Judged) {
 /// The request carries the judgment's rows as they came, one advisory
 /// row per name numbered in order, the three advisory bits, the kept
 /// count and the degraded reason by its code in the package's list;
+/// the file-tier count and the console's `--check` as facts (plan
+/// v2.32 step 5: only the lines read them);
 /// the strings stay here — a node's path, a section's `path#unit`
 /// label, an advisory name — and nothing outside the tables resolves.
 #[test]
 fn the_request_is_the_judgment_and_the_strings_stay_here() {
     let (w, j) = fixture("graph_too_large");
-    let (req, names) = request("deadcode", &w, &j).expect("request");
+    let (req, names) = request(("deadcode", true), &w, &j).expect("request");
     let body = req.body();
     let reasons = crate::tables::get().document.deadcode.reasons;
     let code = reasons.iter().position(|r| *r == "graph_too_large");
@@ -49,7 +51,10 @@ fn the_request_is_the_judgment_and_the_strings_stay_here() {
     );
     assert_eq!(
         body["facts"],
-        json!({"unresolvedSites": 7, "asked": 1, "dropped": 0, "cut": 1})
+        json!({
+            "unresolvedSites": 7, "asked": 1, "dropped": 0, "cut": 1,
+            "files": 2, "check": 1
+        })
     );
     let said = |class: &str, i: i128| names.resolve(class, &[i]);
     assert_eq!(said("path", 2).as_deref(), Some("a.rs"));
@@ -66,7 +71,7 @@ fn the_request_is_the_judgment_and_the_strings_stay_here() {
 #[test]
 fn an_unlisted_reason_is_refused_by_name() {
     let (w, j) = fixture("no_such_reason");
-    let err = request("deadcode", &w, &j)
+    let err = request(("deadcode", false), &w, &j)
         .err()
         .expect("an unlisted reason")
         .to_string();

@@ -3,10 +3,80 @@
 // program's own faults, the core's errors, a degraded answer and a
 // healthy one labelled through the tables.
 use super::*;
-use crate::query::report::{AnswerFace, ErrorFace, GoalFace, Report};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
+
+// The query document's reader: these legs' own (the console that once
+// read it is the core's since plan v2.32 step 5).
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
+struct ProgramFace {
+    rules_file: Option<String>,
+    query: Option<String>,
+    why: bool,
+    tokens: usize,
+    clauses: usize,
+    prelude: usize,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
+struct GoalFace {
+    goal: usize,
+    kind: String,
+    name: Option<String>,
+    columns: Vec<String>,
+    sorts: Vec<String>,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
+struct AnswerFace {
+    goal: usize,
+    values: Vec<String>,
+    raw: Vec<Value>,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
+struct ProofFace {
+    goal: usize,
+    answer: usize,
+    node: i64,
+    parent: i64,
+    rule: i64,
+    pred: String,
+    args: Vec<String>,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
+struct ErrorFace {
+    at: String,
+    token: Option<usize>,
+    code: i64,
+    what: String,
+}
+
+/// The bound document, read.
+#[derive(Deserialize)]
+struct Report {
+    program: ProgramFace,
+    goals: Vec<GoalFace>,
+    answers: Vec<AnswerFace>,
+    proof: Vec<ProofFace>,
+    errors: Vec<ErrorFace>,
+    counts: BTreeMap<String, u64>,
+    degraded: Option<String>,
+}
+
+impl Report {
+    fn violations(&self) -> u64 {
+        self.counts.get("violations").copied().unwrap_or(0)
+    }
+
+    /// Whether the document carries a judgment: no lexical or program
+    /// error, and a core that answered.
+    fn judged(&self) -> bool {
+        self.errors.is_empty() && self.degraded.is_none()
+    }
+}
 
 fn ask(query: &str) -> Ask {
     Ask {
@@ -61,7 +131,9 @@ fn a_question_is_wrapped_once_into_query_form() {
 
 /// A question asked of this directory, its document and the reader.
 fn asked(query: &str) -> (Value, Report) {
-    let doc = run(Path::new("."), None, &core(), &ask(query)).unwrap();
+    let doc = run(Path::new("."), None, &core(), &ask(query))
+        .unwrap()
+        .document;
     let r = Report::deserialize(&doc).unwrap();
     (doc, r)
 }
@@ -95,7 +167,7 @@ fn a_lexical_fault_is_error_zero_at_its_place_and_no_judgment() {
         rules: Some(("ce.rules".into(), "assert x(F) :- mention(\"x, F).".into())),
         why: false,
     };
-    let rules_doc = run(Path::new("."), None, &core(), &rules).unwrap();
+    let rules_doc = run(Path::new("."), None, &core(), &rules).unwrap().document;
     assert_eq!(
         (&doc["schema"], &rules_doc["schema"]),
         (

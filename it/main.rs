@@ -17,6 +17,7 @@ mod baseline_bridge;
 mod baseline_ledgers;
 mod baseline_policy;
 mod baseline_reanchored;
+mod baseline_retired;
 mod bench;
 mod bench_backfill;
 mod bench_frozen_sources;

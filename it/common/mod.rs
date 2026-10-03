@@ -73,7 +73,9 @@ pub fn judged(dir: &Path) -> codeeraser::score::Outcome {
 
 /// One healthy `ce join` over a fixture's window.
 pub fn join_report(dir: &Path, days: u32) -> codeeraser::join::Report {
-    let r = codeeraser::join::run(dir, None, &core_bin(), days).expect("join");
+    let answer = codeeraser::join::run(dir, None, &core_bin(), days).expect("join");
+    let r: codeeraser::join::Report =
+        codeeraser::report::read_bound(answer.document, "join").expect("a join document");
     assert!(r.degraded.is_none(), "healthy graph reply");
     r
 }

@@ -38,7 +38,7 @@ score trajectory | 分数轨迹 | trend | tab:trend, trend_report | mcp:trend | 
 score, ratchet and floor | 分数、棘轮与地板 | check | tab:score, check_report | mcp:check | |
 same-role advisor (similar units, associative view) | 同角色顾问（相似单元、联想视图） | similar | tab:similar, similar_report | mcp:similar_units | |
 code query and architecture rules | 代码查询与架构规则 | query, rules | tab:query, query_report, rules_report | mcp:query, mcp:rules | |
-intra-function dead code (unreachable, dead stores, unused locals and parameters) | 函数内死代码（不可达、死存储、未用局部量与形参） | flow, flow --check | tab:reports, flow_report | mcp:flow | |
+intra-function dead code (unreachable, dead stores, unused locals and parameters) | 函数内死代码（不可达、死存储、未用局部量与形参） | flow, flow --check | tab:reports, flow_report, flow_kinds | mcp:flow | |
 clone merge suggestions (anti-unification) | 克隆合并建议（反统一） | merge | tab:reports, merge_report | mcp:merge_suggestions | |
 architecture analysis (layers, cuts, clusters, impact) | 架构分析（分层、拆环、簇、影响面） | arch | tab:reports, arch_report | mcp:architecture | |
 baseline writes | 基线写入 | baseline | | | CLI only: a machine surface never writes a baseline | 只在 CLI：机器面永不写基线

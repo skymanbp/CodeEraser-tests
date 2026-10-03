@@ -8,8 +8,9 @@
 //! Plus the ADR-006 independence pair: the --fail-under floor and
 //! the ratchet each fail ALONE.
 
-use crate::baseline_ledgers::{RETIRED, rekeyed_pairs, suite_pairs};
+use crate::baseline_ledgers::{rekeyed_pairs, suite_pairs};
 use crate::baseline_reanchored::{present, reanchored, reanchored_rows, relocated_rows};
+use crate::baseline_retired::RETIRED;
 use crate::common;
 use crate::common::check_opts as opts;
 use codeeraser::score;
@@ -214,9 +215,9 @@ fn floor_and_ratchet_fail_independently() {
     // faces of this gate disagreed for exactly that reason (K round
     // step 6: CI armed 950, the GUI could arm nothing)
     let floor = |o: &mut score::Outcome| {
-        score::document::document(&common::core_bin(), o)
+        score::document::document(&common::core_bin(), o, false)
             .expect("the check document")
-            .doc["floor"]
+            .document["floor"]
             .clone()
     };
     assert_eq!(floor(&mut floored), serde_json::json!(1000));

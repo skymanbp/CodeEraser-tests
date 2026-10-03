@@ -150,6 +150,7 @@ fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
             "graph_sites",
             graph::sites_document(&core, &graph::analyze(dir).expect("sites"))
                 .expect("the sites document")
+                .document
                 .to_string(),
         ),
     ]
@@ -195,7 +196,7 @@ fn graph_and_clone_reports(dir: &std::path::Path, core: &str) -> Vec<Row> {
             "join",
             join::run(dir, None, core, 14)
                 .expect("join")
-                .doc
+                .document
                 .to_string(),
         ),
     ]
@@ -219,14 +220,14 @@ fn gate_reports(dir: &std::path::Path, core: &str) -> Vec<Row> {
             "structure",
             structure::judge::run(dir, None, core, (false, None, false))
                 .expect("structure")
-                .doc
+                .document
                 .to_string(),
         ),
         row(
             "check",
-            score::document::document(core, &mut score::run(dir, opts).expect("check"))
+            score::document::document(core, &mut score::run(dir, opts).expect("check"), false)
                 .expect("the check document")
-                .doc
+                .document
                 .to_string(),
         ),
         row(

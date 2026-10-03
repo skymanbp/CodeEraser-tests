@@ -8,8 +8,7 @@
 use super::*;
 use crate::dedup::t3::tree::UnitTree;
 use crate::merge::groups::{FAMILY_NEAR, Member};
-use crate::merge::report::{GroupFace, Report};
-use serde::Deserialize;
+use serde_json::{Value, json};
 
 const TEXT: &str = "f(alpha, beta)";
 
@@ -40,8 +39,8 @@ fn hole(hole: usize, param: usize, m: usize, post: i64, post_end: i64) -> HoleRo
     }
 }
 
-/// One group with its answer, laid out and read.
-fn laid_out(g: Group, s: Suggestion, holes: Vec<HoleRow>) -> GroupFace {
+/// One group with its answer, laid out; the bound document's group.
+fn laid_out(g: Group, s: Suggestion, holes: Vec<HoleRow>) -> Value {
     let groups = [g];
     let answers = vec![Judged {
         groups: vec![(s, holes)],
@@ -59,8 +58,16 @@ fn laid_out(g: Group, s: Suggestion, holes: Vec<HoleRow>) -> GroupFace {
     let doc = document::assemble(&core, req, &names)
         .expect("laid out")
         .document;
-    let mut r = Report::deserialize(&doc).expect("read");
-    r.groups.remove(0)
+    doc["groups"][0].clone()
+}
+
+/// Every member's text at a parameter's entry.
+fn texts(face: &Value) -> Vec<&str> {
+    let values = face["holes"][0]["values"].as_array().expect("values");
+    values
+        .iter()
+        .map(|v| v["text"].as_str().expect("text"))
+        .collect()
 }
 
 #[test]
@@ -85,27 +92,28 @@ fn a_parameter_reads_its_first_hole_on_every_member() {
     ];
     let face = laid_out(g(), s, holes);
     assert_eq!(
-        (face.group, face.family.as_str(), face.reason.as_str()),
-        (0, "t1t2", "ok")
+        [&face["group"], &face["family"], &face["reason"]],
+        [&json!(0), &json!("t1t2"), &json!("ok")]
     );
-    let values: Vec<_> = face.holes[0]
-        .values
-        .iter()
-        .map(|v| v.text.as_str())
-        .collect();
-    assert_eq!(values, ["alpha", "beta"]);
-    assert_eq!(face.holes.len(), 1, "one entry per parameter");
+    assert_eq!(texts(&face), ["alpha", "beta"]);
+    assert_eq!(
+        face["holes"].as_array().map(Vec::len),
+        Some(1),
+        "one entry per parameter"
+    );
     let near = Group {
         family: FAMILY_NEAR,
         ..g()
     };
     let gap = vec![hole(0, 0, 0, 0, 1), hole(0, 0, 1, -1, -1)];
     let far = laid_out(near, s, gap);
-    let v = &far.holes[0].values;
-    assert_eq!(v[0].text, "alpha, beta", "first root to last");
-    assert_eq!(v[1].text, "", "an empty side");
-    assert_eq!(far.family, "t3");
-    assert_eq!(face.members[0].run, [1, 1]);
+    assert_eq!(
+        texts(&far),
+        ["alpha, beta", ""],
+        "first root to last; an empty side"
+    );
+    assert_eq!(far["family"], "t3");
+    assert_eq!(face["members"][0]["run"], json!([1, 1]));
     assert_eq!((REASONS[1], REASONS[5]), ("position", "no_savings"));
     assert_eq!(REASONS.len(), 6);
 }
