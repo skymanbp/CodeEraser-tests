@@ -32,23 +32,18 @@ const LINKED: &[(&str, &str)] = &[
 
 /// Report ids whose const sits behind a private module — scraped,
 /// each with the promotion that would link it.
-const PRIVATE: &[(&str, &str)] = &[
-    (
-        "churn",
-        "churn::report is private; promote = re-export SCHEMA beside Report",
-    ),
-    (
-        "trend",
-        "trend::report is private; promote = re-export SCHEMA_ID beside Report",
-    ),
-];
+const PRIVATE: &[(&str, &str)] = &[(
+    "trend",
+    "trend::report is private; promote = re-export SCHEMA_ID beside Report",
+)];
 
-/// The documents the core lays out (plan v2.32 steps 3 and 4,
+/// The documents the core lays out (plan v2.32 steps 3, 4 and 5,
 /// document/1): `<family> <core/app file> <constant>`. The product
 /// spells none of these ids under cli/src — a face reads `schema` off
 /// the document.
 const CORE: &str = "arch core/app/CE/Arch/Document.hs schemaId
 check core/app/CE/Score/Document.hs schemaId
+churn core/app/CE/Churn/Document.hs schemaId
 deadcode core/app/CE/Graph/Document.hs schemaId
 flow core/app/CE/Flow/Document.hs schemaId
 graph-canvas core/app/CE/Graph/Screen.hs canvasId

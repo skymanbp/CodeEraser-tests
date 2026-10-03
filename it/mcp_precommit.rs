@@ -126,7 +126,7 @@ fn no_args(name: &'static str, text: String) -> Row {
 
 /// The four faces whose measurement no judgment reads.
 fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
-    use codeeraser::{churn, dedup, graph, scan};
+    use codeeraser::{dedup, graph, scan};
     let core = common::core_bin();
     let row = no_args;
     let (files, findings, summary, _fail, failed) = scan::analyze_judged(dir, &core).expect("scan");
@@ -142,7 +142,9 @@ fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
         ),
         row(
             "churn",
-            churn::report_json(&churn::run(dir, 14).expect("churn")).to_string(),
+            codeeraser::faces::churn(dir, &core, 14)
+                .expect("churn")
+                .to_string(),
         ),
         row(
             "graph_sites",

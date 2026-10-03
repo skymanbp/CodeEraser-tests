@@ -66,7 +66,7 @@ fn a_declared_submodule_with_no_parent_history_is_named_not_a_silent_zero() {
         r.commits
     );
     assert_eq!(r.submodules_without_history, ["suite"]);
-    let json = churn::report_json(&r);
+    let json = laid_out(&r);
     assert_eq!(json["schema"], "ce.churn-report/0.2.0");
     assert_eq!(
         json["submodules_without_file_history"],
@@ -140,13 +140,21 @@ fn assert_report(r: &churn::Report) {
         r.surviving,
         r.added_in_window()
     );
-    let json = churn::report_json(r);
+    let json = laid_out(r);
     assert_eq!(json["schema"], "ce.churn-report/0.2.0");
     assert_eq!(
         json["added_in_window"].as_u64().unwrap(),
         json["surviving"].as_u64().unwrap() + json["churned"].as_u64().unwrap(),
         "survival ledger must balance"
     );
+}
+
+/// The report as the core lays it out (plan v2.32 step 5: the churn
+/// document is the core's, this side sends the window's integers).
+fn laid_out(r: &churn::Report) -> serde_json::Value {
+    churn::answer(&common::core_bin(), r, 30)
+        .expect("laid out")
+        .document
 }
 
 /// Per-unit attribution (M5-3h): every fixture edit is pinned to its

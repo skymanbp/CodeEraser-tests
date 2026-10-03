@@ -79,6 +79,7 @@ fn a_request_pads_its_absent_tables_and_facts() {
             "family": "arch", "ranges": {"why": 1},
             "rows": {"files": [[0, 0, 1]], "dirs": []},
             "facts": {"units": 2, "vars": 0}, "degraded": 0,
+            "lang": lines::lang(),
         })
     );
 }

@@ -56,7 +56,9 @@ fn laid_out(g: Group, s: Suggestion, holes: Vec<HoleRow>) -> GroupFace {
         .range("members", names.members.len())
         .range("why", 0);
     let core = crate::daemon::judge::core_bin().expect("a core");
-    let doc = document::assemble(&core, req, &names).expect("laid out");
+    let doc = document::assemble(&core, req, &names)
+        .expect("laid out")
+        .document;
     let mut r = Report::deserialize(&doc).expect("read");
     r.groups.remove(0)
 }

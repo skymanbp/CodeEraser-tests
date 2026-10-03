@@ -43,7 +43,9 @@ fn laid_out(j: wire::Judged) -> (Program, Report) {
     let req = Request::new("query").fact("tokens", program.tokens.len());
     names.program = Some(Program::lex(PRELUDE, None, Some("?- dead(F).")).unwrap());
     let req = answered(req, &mut names, j).unwrap();
-    let doc = document::assemble(&core(), finish(req, &names), &names).unwrap();
+    let doc = document::assemble(&core(), finish(req, &names), &names)
+        .unwrap()
+        .document;
     (program, Report::deserialize(&doc).unwrap())
 }
 

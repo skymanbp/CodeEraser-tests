@@ -55,7 +55,9 @@ fn laid_out(
     };
     let req = request(&mut names, judgment, shown);
     let core = crate::daemon::judge::core_bin().expect("a core");
-    let doc = document::assemble(&core, req, &names).expect("laid out");
+    let doc = document::assemble(&core, req, &names)
+        .expect("laid out")
+        .document;
     let r = Report::deserialize(&doc).expect("read");
     (doc, r)
 }
