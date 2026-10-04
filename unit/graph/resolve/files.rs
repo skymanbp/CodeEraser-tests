@@ -37,7 +37,7 @@ fn real_or(
     i: usize,
     drawn: impl FnOnce(&mut Draw) -> String,
 ) -> String {
-    if real.is_empty() || i % 4 != 0 {
+    if real.is_empty() || !i.is_multiple_of(4) {
         return drawn(d);
     }
     let at = d.under(real.len());
