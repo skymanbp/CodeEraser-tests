@@ -167,32 +167,41 @@ fn a_gitignored_database_and_its_forced_include_are_read() {
     );
 }
 
-/// The four reader modules and their tests obey the repository's
-/// size discipline (E01: a unit within 50 lines and 15 cognitive
-/// points), measured the way `ce scan` measures — settled through
-/// the core, the recursion charge included. The leg lived beside the
-/// readers' unit tests until plan v2.30 step 7b ③ moved the fold into
-/// the core, which the lib tests have no road to.
+/// The reader modules and their tests obey the repository's size
+/// discipline (E01: a unit within 50 lines and 15 cognitive points),
+/// measured the way `ce scan` measures — settled through the core, the
+/// recursion charge included. The leg lived beside the readers' unit
+/// tests until plan v2.30 step 7b ③ moved the fold into the core, which
+/// the lib tests have no road to. Since plan v2.33 W2-text the command
+/// line, flags and database readers are the core's (CE.Resolve.Cmdline /
+/// Flags / CompDb, a core file within 290 lines); the probe and the
+/// include-list reader stay in Rust, and the readers' unit tests run
+/// against the frozen copies.
 #[test]
 fn reader_sources_and_tests_meet_e01_limits() {
     let root = common::repo_root();
     let dir = common::tmp("compdb-readers-e01");
     let readers = [
-        "cli/src/graph/cmdline.rs",
-        "cli/src/graph/compdb_flags.rs",
-        "cli/src/graph/compdb.rs",
+        "cli/src/graph/compdb_find.rs",
         "cli/src/graph/ladder/c_head.rs",
         "cli/tests/unit/graph/cmdline.rs",
         "cli/tests/unit/graph/compdb_flags.rs",
         "cli/tests/unit/graph/compdb.rs",
         "cli/tests/unit/graph/ladder/c_head.rs",
+        "core/app/CE/Resolve/Cmdline.hs",
+        "core/app/CE/Resolve/Flags.hs",
+        "core/app/CE/Resolve/CompDb.hs",
     ];
     for rel in readers {
         let text = std::fs::read_to_string(root.join(rel)).expect("a reader source");
-        assert!(text.lines().count() <= 300, "{rel}: file length");
+        let (lang, wall) = match rel.ends_with(".hs") {
+            true => (Lang::Haskell, 290),
+            false => (Lang::Rust, 300),
+        };
+        assert!(text.lines().count() <= wall, "{rel}: file length");
         assert!(
-            !common::parse(Lang::Rust, &text).root_node().has_error(),
-            "{rel}: Rust syntax"
+            !common::parse(lang, &text).root_node().has_error(),
+            "{rel}: syntax"
         );
         std::fs::write(dir.join(rel.replace('/', "__")), text).expect("copy a reader");
     }

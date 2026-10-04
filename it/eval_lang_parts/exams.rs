@@ -5,25 +5,27 @@
 
 use super::Exam;
 use super::Reach::{Tree, Universe};
-use super::Stage::Scored;
+use super::Stage::Audited;
 
 /// The C family's rungs and the compilation-database readers they
 /// consult: one ladder for both exams, since a C++ include resolves
 /// exactly as a C one. Since plan v2.33 wave W2a the search runs in the
-/// core (CE.Resolve.C / CE.Resolve.CIndex) over this side's lowering
-/// (graph/resolve/), so both answer the C family's docs.
+/// core (CE.Resolve.C / CE.Resolve.CIndex), and since W2-text so do the
+/// database, command-line and flag readers (CE.Resolve.CompDb / Cmdline
+/// / Flags); this side probes for the databases (compdb_find.rs), reads
+/// the include lists (ladder/c_head.rs) and sends what it read
+/// (graph/resolve/), so all of them answer the C family's docs.
 const C_LADDER: &[&str] = &[
     "cli/src/graph/ladder/c*",
     "cli/src/graph/compdb*",
-    "cli/src/graph/cmdline.rs",
     "cli/src/graph/resolve/",
     "core/app/CE/Resolve.hs",
     "core/app/CE/Resolve/",
 ];
 
 /// The Lua ladder: the `package.path` reader here, the search in the
-/// core since plan v2.33 wave W2a (CE.Resolve.Lua), the lowering
-/// between them.
+/// core since plan v2.33 wave W2a (CE.Resolve.Lua), the request between
+/// them.
 const LUA_LADDER: &[&str] = &[
     "cli/src/graph/ladder/lua*",
     "cli/src/graph/resolve/",
@@ -56,7 +58,7 @@ const fn exam(
         reach: Universe,
         ladder,
         ladder_first: None,
-        stage: Scored,
+        stage: Audited,
         generation,
     }
 }

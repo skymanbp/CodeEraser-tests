@@ -43,12 +43,19 @@ fn resolve(from: &Path, rel: &str) -> PathBuf {
 
 /// The mounts one source file declares. Any `#[cfg(test)]` that is
 /// not the three-line shape `#[cfg(test)] / #[path = "…"] / mod x;`
-/// is a test body that crept back into src — reported, never mounted.
+/// is a test body that crept back into src — reported, never mounted —
+/// save one: `#[cfg(test)] / pub(crate) use x::name;` re-exporting a
+/// name out of a module this file mounted above it (roots.rs puts the
+/// frozen pyproject reader back at `roots::pyproject` for the frozen
+/// Python ladder, plan v2.33 W2-text), which carries no test body.
 fn mounts_in(file: &Path, text: &str, stray: &mut Vec<String>) -> Vec<PathBuf> {
     let lines: Vec<&str> = text.lines().collect();
-    let mut out = Vec::new();
+    let (mut out, mut mounted) = (Vec::new(), Vec::new());
     for (i, l) in lines.iter().enumerate() {
         if *l != "#[cfg(test)]" {
+            continue;
+        }
+        if reexports(lines.get(i + 1), &mounted) {
             continue;
         }
         let path = lines
@@ -59,11 +66,27 @@ fn mounts_in(file: &Path, text: &str, stray: &mut Vec<String>) -> Vec<PathBuf> {
             m.trim_start_matches("pub(crate) ").starts_with("mod ") && m.ends_with(';')
         });
         match path {
-            Some(p) if is_mod => out.push(resolve(file, p)),
+            Some(p) if is_mod => {
+                out.push(resolve(file, p));
+                mounted.push(module_name(lines[i + 2]));
+            }
             _ => stray.push(format!("{}:{}", file.display(), i + 1)),
         }
     }
     out
+}
+
+/// `mod x;` (any visibility) → `x`.
+fn module_name(line: &str) -> &str {
+    let tail = line.rsplit("mod ").next().unwrap_or(line);
+    tail.trim_end_matches(';')
+}
+
+/// `pub(crate) use x::name;` with `x` a module this file mounted.
+fn reexports(line: Option<&&str>, mounted: &[&str]) -> bool {
+    line.and_then(|l| l.strip_prefix("pub(crate) use "))
+        .and_then(|l| l.split_once("::"))
+        .is_some_and(|(m, _)| mounted.contains(&m))
 }
 
 /// The child modules a mounted unit file declares (`mod x;`, one per
