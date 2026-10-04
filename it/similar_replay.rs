@@ -8,8 +8,9 @@
 //! integers. Since step 3 the corpus is the PERSISTED one: each corpus
 //! is indexed into a scratch `.ce/index.db`, the bags are read back
 //! through the product's reader, and every query is ranked off the
-//! tables — with the in-memory corpus built from the same stored bags
-//! asserted to agree hit for hit, so the frozen numbers below pin the
+//! tables — since v2.33 W3 by the core (rank/1, roles over similar/1),
+//! with the in-memory corpus built from the same stored bags asserted
+//! to send the very same request, so the frozen numbers below pin the
 //! store and the differential upkeep as well as the scoring. A
 //! deterministic stratified sample of queries (sha256 rank, quotas in
 //! `parts`) is frozen for arbitration as
@@ -30,11 +31,13 @@
 
 use crate::common;
 use crate::similar_replay_parts as parts;
+use codeeraser::corelink::Link;
 use codeeraser::dedup;
-use codeeraser::similar::bm25::{self, Corpus, Doc, Hit, Postings, QueryTerm};
-use codeeraser::similar::file_bags;
-use codeeraser::similar::ppmi::{self, Table};
+use codeeraser::similar::corpus::{Corpus, Doc};
+use codeeraser::similar::ppmi::Table;
+use codeeraser::similar::rank::{self, Ask, Hit, Postings};
 use codeeraser::similar::reader::Reader;
+use codeeraser::similar::{file_bags, wire};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -53,6 +56,18 @@ pub const CORPORA: [(&str, &str); 5] = [
     ("typescript", "contracts/fixtures/crosscheck/typescript"),
 ];
 
+/// One candidate as the core ranked and judged it: the seat, the
+/// score's integer part, the evidence row, shape equality, and the role
+/// bit similar/1 answered.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Cand {
+    pub doc: usize,
+    pub score: i64,
+    pub hits: [u32; 6],
+    pub shape_equal: bool,
+    pub role: bool,
+}
+
 /// One corpus measured: its bags (as stored), its PPMI table, every
 /// unit's two top-K lists (bare, widened), and the texts for the
 /// packet.
@@ -60,7 +75,7 @@ pub struct Measured {
     pub name: &'static str,
     pub corpus: Corpus,
     pub table: Table,
-    pub ranked: Vec<(Vec<Hit>, Vec<Hit>)>,
+    pub ranked: Vec<(Vec<Cand>, Vec<Cand>)>,
     pub texts: BTreeMap<String, String>,
 }
 
@@ -102,41 +117,85 @@ fn round_trip(root: &Path, name: &str, docs: &[Doc]) -> BTreeMap<String, String>
     texts
 }
 
-/// Both arms of one query, ranked off the tables — and off the
-/// in-memory corpus built from the same stored bags, which must agree
-/// hit for hit: one ranking road, two posting sources.
-fn arms(reader: &Reader<'_>, corpus: &Corpus, table: &Table, i: usize) -> (Vec<Hit>, Vec<Hit>) {
-    let bare = corpus.query_of(i);
-    let (mut widened, mut in_memory) = (bare.clone(), bare.clone());
-    ppmi::expand(reader, &mut widened).expect("cooc rows");
-    ppmi::expand(table, &mut in_memory).expect("in-memory");
-    assert_eq!(widened, in_memory, "seat {i}: widened query");
-    let rank = |q: &[QueryTerm]| {
-        let hits = bm25::top_k(reader, q, K, Some(i)).expect("tables");
-        assert_eq!(
-            hits,
-            bm25::top_k(corpus, q, K, Some(i)).expect("in-memory"),
-            "seat {i}: the persisted and in-memory roads rank apart"
-        );
-        hits
+/// Both arms of one query, ranked by the core off the tables — the
+/// in-memory corpus built from the same stored bags must send the same
+/// request bytes, arm for arm: one ranking road, two posting sources —
+/// and judged over similar/1, whose order must be the rank order.
+fn arms(
+    link: &mut Link,
+    reader: &Reader<'_>,
+    corpus: &Corpus,
+    table: &Table,
+    i: usize,
+) -> (Vec<Cand>, Vec<Cand>) {
+    let q = corpus.query_of(i);
+    let ask = Ask {
+        query: &q,
+        k: K,
+        exclude: Some(i),
     };
-    (rank(&bare), rank(&widened))
+    let cooc = rank::cooc_rows(reader, &q).expect("cooc rows");
+    let mine = rank::cooc_rows(table, &q).expect("in-memory");
+    assert_eq!(cooc, mine, "seat {i}: cooc rows");
+    let same = |extra: &[u64], widen: bool| {
+        assert_eq!(
+            rank::request(reader, &ask, extra, Some(&cooc), widen, &[]).expect("tables"),
+            rank::request(corpus, &ask, extra, Some(&cooc), widen, &[]).expect("in-memory"),
+            "seat {i}: the persisted and in-memory roads ask apart"
+        );
+    };
+    same(&[], false);
+    let bare = rank::bare(link, reader, &ask, Some(&cooc))
+        .expect("tables")
+        .expect("ranked");
+    same(&bare.added, true);
+    let wide = rank::widened(link, reader, &ask, &cooc, &bare.added, &[])
+        .expect("tables")
+        .expect("ranked");
+    (judged(link, &bare, i), judged(link, &wide, i))
+}
+
+/// One arm's role bits from similar/1, which must keep the rank order.
+fn judged(link: &mut Link, arm: &rank::Arm, i: usize) -> Vec<Cand> {
+    if arm.hits.is_empty() {
+        return Vec::new();
+    }
+    let j = wire::judge(link, &arm.bag, &arm.hits).expect("judged");
+    let kept: Vec<usize> = (0..arm.hits.len()).collect();
+    assert_eq!(j.order, kept, "seat {i}: similar/1 re-ordered the rank");
+    arm.hits
+        .iter()
+        .zip(j.roles)
+        .map(|(h, role): (&Hit, bool)| Cand {
+            doc: h.doc,
+            score: h.score,
+            hits: h.hits,
+            shape_equal: h.shape_equal,
+            role,
+        })
+        .collect()
 }
 
 /// Index one corpus through the product's own walk into a scratch
 /// index, read the bags back, and rank every unit against the rest
 /// under both arms.
 pub fn measure(root: &Path, name: &'static str) -> Measured {
-    let scratch = common::tmp(&format!("similar-replay-{name}"));
+    // one scratch index per call: two legs measuring the same corpus in
+    // one test run (similar_wire, eval_similar_precision) must not
+    // rebuild each other's index under a live reader
+    static CALLS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let call = CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let scratch = common::tmp(&format!("similar-replay-{name}-{call}"));
     let (idx, _db) =
         dedup::refreshed_index(root, Some(scratch.join("index.db"))).expect("scratch index");
     let reader = Reader::open(&idx).expect("reader");
     let docs = reader.docs().expect("stored bags");
     let texts = round_trip(root, name, &docs);
-    let corpus = Corpus::build(docs);
+    let corpus = Corpus::build(docs).expect("seats ascending");
     let table = Table::build(&corpus);
+    let (mut link, _) = Link::open(&common::core_bin()).expect("core");
     let ranked = (0..corpus.docs.len())
-        .map(|i| arms(&reader, &corpus, &table, i))
+        .map(|i| arms(&mut link, &reader, &corpus, &table, i))
         .collect();
     Measured {
         name,

@@ -1,12 +1,11 @@
 //! The similar/1 leg against the REAL core (plan v2.29 step 5): every
 //! unit of the go fixture corpus is measured the way the ROI
-//! instrument measures it, its bare top-k rides the wire, and the
-//! core's answer must agree with the measuring side's own arithmetic
-//! — the order it sent (score descending, then identity, which is the
-//! wire's tie order) and the role bit bm25.rs carries as the declared
-//! mirror of CE.Similar.Cost. A disagreement is a drift between the
-//! two sides of one definition, and this is the leg that sees it.
-//! Then the capability gate: a link whose core does not offer the
+//! instrument measures it — ranked by rank/1, judged by similar/1,
+//! which must keep the rank order (score descending, then seat, which
+//! is identity) — and every role bit must be the spec's conjunction over
+//! the evidence row the core answered: N ≥ 1 ∧ C ≥ 1, or N ≥ 2 with
+//! the shape equal (spelled here, the test's own reading of booklet 15
+//! §5). Then the capability gate: a link whose core does not offer the
 //! family answers a named refusal, never an empty order.
 
 use crate::common::{core_bin, repo_root};
@@ -15,20 +14,15 @@ use codeeraser::corelink::Link;
 use codeeraser::similar::wire;
 
 #[test]
-fn the_core_orders_and_roles_every_go_unit_as_the_measurement_did() {
+fn the_core_ranks_and_roles_every_go_unit_by_the_spec_conjunction() {
     let m = measure(&repo_root().join("contracts/fixtures/crosscheck/go"), "go");
-    let (mut link, _) = Link::open(&core_bin()).expect("open");
     let mut judged_rows = 0;
     for (i, (bare, _)) in m.ranked.iter().enumerate() {
-        let query = m.corpus.query_of(i);
-        let j = wire::judge(&mut link, &query, bare).expect("judgment");
-        assert_eq!(
-            j.order,
-            (0..bare.len()).collect::<Vec<_>>(),
-            "unit {i}: the core re-ordered what the measurement sent"
-        );
-        let roles: Vec<bool> = bare.iter().map(|h| h.role).collect();
-        assert_eq!(j.roles, roles, "unit {i}: role bits differ");
+        for c in bare {
+            let [n, _, callee, ..] = c.hits;
+            let want = (n >= 1 && callee >= 1) || (n >= 2 && c.shape_equal);
+            assert_eq!(c.role, want, "unit {i}: seat {} role bit", c.doc);
+        }
         judged_rows += bare.len();
     }
     assert!(judged_rows > 100, "the go corpus judged {judged_rows} rows");

@@ -1,9 +1,10 @@
 //! Association supplies score only; no synthetic term enters spelled evidence.
 use super::config::Config;
 use super::feedback;
+use super::mirror::{self, QueryTerm};
 use super::stats::Stats;
 use crate::similar_replay::Measured;
-use codeeraser::similar::{Channel, bm25::QueryTerm, ppmi};
+use codeeraser::similar::Channel;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub fn expanded(
@@ -16,7 +17,7 @@ pub fn expanded(
     let mut q = bare.to_vec();
     let kind = c.text("assoc", "none");
     if kind == "v1" {
-        ppmi::expand(&m.table, &mut q).expect("in-memory");
+        mirror::expand(&m.table, &mut q);
         return q;
     }
     if kind == "none" || !gate(s, bare, c.text("gate", "always")) {
@@ -73,7 +74,7 @@ fn first(s: &Stats, q: &[QueryTerm], c: &Config) -> Vec<QueryTerm> {
     for parent in q.iter().filter(|t| t.channel.is_words()) {
         for &(term, p) in s.neighbours[&parent.term]
             .iter()
-            .filter(|(_, p)| *p >= c.int("min", ppmi::MIN_PPMI))
+            .filter(|(_, p)| *p >= c.int("min", mirror::MIN_PPMI))
             .take(c.int("m", 3) as usize)
         {
             if seen.insert(term) {
@@ -81,8 +82,8 @@ fn first(s: &Stats, q: &[QueryTerm], c: &Config) -> Vec<QueryTerm> {
                     term,
                     channel: s.channels[&term],
                     spelled: false,
-                    weight: parent.weight * p.min(ppmi::PPMI_CAP)
-                        / c.int("scale", ppmi::PPMI_SCALE),
+                    weight: parent.weight * p.min(mirror::PPMI_CAP)
+                        / c.int("scale", mirror::PPMI_SCALE),
                 });
             }
         }
@@ -103,8 +104,8 @@ fn second(s: &Stats, q: &[QueryTerm], c: &Config) -> Vec<QueryTerm> {
                 if spelled.contains(&term) {
                     continue;
                 }
-                let w = parent.weight * a.min(ppmi::PPMI_CAP) * b.min(ppmi::PPMI_CAP)
-                    / (ppmi::PPMI_SCALE * ppmi::PPMI_SCALE);
+                let w = parent.weight * a.min(mirror::PPMI_CAP) * b.min(mirror::PPMI_CAP)
+                    / (mirror::PPMI_SCALE * mirror::PPMI_SCALE);
                 let best = paths.entry(term).or_default();
                 *best = (*best).max(w);
             }

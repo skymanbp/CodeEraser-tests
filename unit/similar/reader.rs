@@ -1,9 +1,10 @@
 use super::*;
 use crate::dedup::Params;
 use crate::scan::lang::Lang;
-use crate::similar::bm25::{Corpus, query_of, top_k};
+use crate::similar::corpus::{Corpus, query_of};
 use crate::similar::file_bags;
-use crate::similar::ppmi::{Table, expand};
+use crate::similar::ppmi::Table;
+use crate::similar::rank::{Ask, cooc_rows, request};
 use crate::similar::terms::{feature_term, word_term};
 use std::path::PathBuf;
 
@@ -33,14 +34,16 @@ fn seat_named(reader: &Reader<'_>, name: &str) -> usize {
         .unwrap_or_else(|| panic!("{name} indexed"))
 }
 
-/// Both arms of every query rank the same off the tables as off the
-/// in-memory corpus built from the same stored bags — one ranking
-/// road — and the fixture says what it was built to say.
+/// Every query sends the same request off the tables as off the
+/// in-memory corpus built from the same stored bags — postings, df,
+/// lengths, co-occurrence rows, and the widened arm's every candidate
+/// expansion term — so the two sources are one ranking road whatever
+/// the core answers; and the fixture says what it was built to say.
 #[test]
-fn the_persisted_road_ranks_like_the_in_memory_one() {
+fn the_persisted_road_sends_the_in_memory_request() {
     let (dir, idx) = indexed("similar-reader-rank");
     let reader = Reader::open(&idx).expect("reader");
-    let corpus = Corpus::build(reader.docs().expect("stored bags"));
+    let corpus = Corpus::build(reader.docs().expect("stored bags")).expect("seats ascending");
     let table = Table::build(&corpus);
     assert_eq!(reader.n_docs(), 12);
     assert_eq!(reader.avg_len(), corpus.avg_len());
@@ -48,30 +51,45 @@ fn the_persisted_road_ranks_like_the_in_memory_one() {
         reader.df(word_term(Channel::Callee, "query")).expect("df"),
         2
     );
+    // every term of the corpus asked beside the query: a superset of any
+    // expansion the core could answer
+    let partners: Vec<u64> = (0..reader.n_docs())
+        .flat_map(|s| reader.bag(s).expect("bag").terms.into_keys())
+        .collect();
     for seat in 0..reader.n_docs() {
-        let bare = query_of(&reader.bag(seat).expect("bag"));
-        let (mut wide, mut wide_mem) = (bare.clone(), bare.clone());
-        expand(&reader, &mut wide).expect("cooc rows");
-        expand(&table, &mut wide_mem).expect("in-memory");
-        assert_eq!(wide, wide_mem, "seat {seat}: widened query");
-        for q in [&bare, &wide] {
-            assert_eq!(
-                top_k(&reader, q, 5, Some(seat)).expect("tables"),
-                top_k(&corpus, q, 5, Some(seat)).expect("in-memory"),
-                "seat {seat}"
-            );
-        }
+        let q = query_of(&reader.bag(seat).expect("bag"));
+        let ask = Ask {
+            query: &q,
+            k: 5,
+            exclude: Some(seat),
+        };
+        let cooc = cooc_rows(&reader, &q).expect("cooc rows");
+        assert_eq!(
+            cooc,
+            cooc_rows(&table, &q).expect("in-memory"),
+            "seat {seat}"
+        );
+        assert_eq!(
+            request(&reader, &ask, &[], Some(&cooc), false, &[]).expect("tables"),
+            request(&corpus, &ask, &[], Some(&cooc), false, &[]).expect("in-memory"),
+            "seat {seat}: bare"
+        );
+        assert_eq!(
+            request(&reader, &ask, &partners, Some(&cooc), true, &[seat]).expect("tables"),
+            request(&corpus, &ask, &partners, Some(&cooc), true, &[seat]).expect("in-memory"),
+            "seat {seat}: widened"
+        );
     }
     let fetch = seat_named(&reader, "fetch_user");
-    let hits = top_k(
-        &reader,
-        &query_of(&reader.bag(fetch).expect("bag")),
-        3,
-        Some(fetch),
-    )
-    .expect("tables");
-    assert!(reader.seats()[hits[0].doc].key.starts_with("load_user"));
-    assert!(hits[0].role, "user + query + shape p:1 ⇒ same role");
+    let load = seat_named(&reader, "load_user");
+    let shared = query_of(&reader.bag(fetch).expect("bag"))
+        .iter()
+        .filter(|t| reader.bag(load).expect("bag").terms.contains_key(&t.term))
+        .count();
+    assert!(
+        shared >= 3,
+        "fetch_user and load_user share user + query + shape"
+    );
     drop(idx);
     std::fs::remove_dir_all(&dir).ok();
 }

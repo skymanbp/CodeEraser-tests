@@ -1,7 +1,8 @@
 //! Full-corpus field lengths, collection frequencies, and cached association.
+use super::mirror;
 use crate::similar_replay::Measured;
-use codeeraser::similar::bm25::{self, Postings};
-use codeeraser::similar::{Channel, UnitBag, ppmi};
+use codeeraser::similar::rank::Postings;
+use codeeraser::similar::{Channel, UnitBag};
 use std::collections::BTreeMap;
 
 pub struct Stats {
@@ -36,16 +37,15 @@ impl Stats {
         }
         for (&t, ch) in &s.channels {
             if ch.is_words() {
-                s.neighbours
-                    .insert(t, ppmi::neighbours(&m.table, t).expect("in-memory"));
+                s.neighbours.insert(t, mirror::neighbours(&m.table, t));
             }
             let (n, df) = (m.corpus.docs.len(), m.corpus.df(t).expect("in-memory"));
             s.idfs.insert(
                 t,
                 [
-                    bm25::idf_fp(n, df),
-                    bm25::log2_fp(2 * n as u128 + 2, 2 * df as u128 + 1),
-                    bm25::log2_fp((n + 1) as u128, (df + 1) as u128),
+                    mirror::idf_fp(n, df),
+                    mirror::log2_fp(2 * n as u128 + 2, 2 * df as u128 + 1),
+                    mirror::log2_fp((n + 1) as u128, (df + 1) as u128),
                 ],
             );
         }

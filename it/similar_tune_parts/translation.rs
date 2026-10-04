@@ -1,9 +1,9 @@
 //! Row-stochastic PPMI translation, evaluated as a smoothed query likelihood.
 use super::config::Config;
+use super::mirror::QueryTerm;
 use super::score::likelihood;
 use super::stats::Stats;
 use crate::similar_replay::Measured;
-use codeeraser::similar::bm25::QueryTerm;
 use std::collections::BTreeMap;
 
 const UNIT: i128 = 4096;

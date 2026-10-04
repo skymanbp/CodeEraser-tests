@@ -5,6 +5,7 @@ mod data;
 mod diagnostics;
 mod feedback;
 mod metrics;
+mod mirror;
 mod novel;
 mod output;
 mod ranking;

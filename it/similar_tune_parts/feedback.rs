@@ -1,8 +1,8 @@
 //! Positive Rocchio and RM3-style feedback from full-corpus bare top-k, never labels.
 use super::config::Config;
+use super::mirror::QueryTerm;
 use super::stats::Stats;
 use crate::similar_replay::Measured;
-use codeeraser::similar::bm25::QueryTerm;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub fn terms(m: &Measured, s: &Stats, doc: usize, q: &[QueryTerm], c: &Config) -> Vec<QueryTerm> {

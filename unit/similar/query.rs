@@ -104,6 +104,9 @@ fn a_text_is_name_and_doc_evidence_only_and_excludes_no_seat() {
         !stems.contains(&terms::word_term(Channel::Doc, "the")),
         "stop word"
     );
-    assert!(q.iter().all(|t| t.spelled));
+    assert!(
+        q.iter().all(|t| t.tf >= 1),
+        "every word spelled at least once"
+    );
     assert!(text_terms("the a").is_empty());
 }

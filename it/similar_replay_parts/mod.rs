@@ -4,8 +4,8 @@
 
 use crate::common;
 use crate::eval_support::content_sha;
-use crate::similar_replay::{CORPORA, K, Measured};
-use codeeraser::similar::bm25::{self, Doc, Hit};
+use crate::similar_replay::{CORPORA, Cand, K, Measured};
+use codeeraser::similar::corpus::Doc;
 use codeeraser::similar::{Channel, SIMILAR_REV, docs, ppmi};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -51,7 +51,7 @@ fn identity(m: &Measured, d: &Doc) -> serde_json::Map<String, Value> {
 }
 
 /// One arm's placement of a candidate: rank (1-based) and score.
-fn placement(arm: &[Hit], doc: usize) -> Value {
+fn placement(arm: &[Cand], doc: usize) -> Value {
     arm.iter().position(|h| h.doc == doc).map_or(
         Value::Null,
         |i| json!({"rank": i + 1, "score": arm[i].score}),
@@ -60,7 +60,7 @@ fn placement(arm: &[Hit], doc: usize) -> Value {
 
 /// One candidate's row: identity plus evidence integers, shape
 /// equality, the role bit, same-file, and each arm's placement.
-fn candidate(m: &Measured, d: &Doc, c: usize, bare: &[Hit], wide: &[Hit]) -> Value {
+fn candidate(m: &Measured, d: &Doc, c: usize, bare: &[Cand], wide: &[Cand]) -> Value {
     let h = bare
         .iter()
         .chain(wide.iter())
@@ -179,15 +179,17 @@ pub fn sample(measured: &[Measured], exclude: &BTreeSet<String>) -> (Vec<Value>,
 }
 
 /// Every constant the measurement was taken under — a change to any
-/// of them is a different instrument and a different doc.
+/// of them is a different instrument and a different doc. The ranking's
+/// are the core's (the package's `limits.similar`, plan v2.33 W3).
 pub fn constants() -> Value {
+    let r = &codeeraser::tables::get().limits.similar;
     json!({
         "similar_rev": SIMILAR_REV, "k": K,
-        "k1": [bm25::K1.0, bm25::K1.1], "b": [bm25::B.0, bm25::B.1],
-        "idf_frac_bits": bm25::IDF_FRAC_BITS, "score_frac_bits": bm25::SCORE_FRAC_BITS,
-        "w_unit": bm25::W_UNIT,
-        "top_m": ppmi::TOP_M, "min_cooc": ppmi::MIN_COOC, "min_ppmi": ppmi::MIN_PPMI,
-        "ppmi_cap": ppmi::PPMI_CAP, "ppmi_scale": ppmi::PPMI_SCALE, "term_cap": ppmi::TERM_CAP,
+        "k1": [r.k1.0, r.k1.1], "b": [r.b.0, r.b.1],
+        "idf_frac_bits": r.idf_frac_bits, "score_frac_bits": r.score_frac_bits,
+        "w_unit": r.w_unit,
+        "top_m": r.top_m, "min_cooc": r.min_cooc, "min_ppmi": r.min_ppmi,
+        "ppmi_cap": r.ppmi_cap, "ppmi_scale": r.ppmi_scale, "term_cap": ppmi::TERM_CAP,
         "lead_gap": docs::LEAD_GAP, "head_gap": docs::HEAD_GAP,
         "quota_self": [QUOTA_SELF.0, QUOTA_SELF.1],
         "quota_fixture": [QUOTA_FIXTURE.0, QUOTA_FIXTURE.1],

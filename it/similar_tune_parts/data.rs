@@ -1,8 +1,9 @@
 //! Join immutable labels to freshly measured identities; stale text is never scored.
+use super::mirror;
 use crate::similar_replay::Measured;
 use crate::similar_replay_parts::identity_sha;
 use codeeraser::similar::Channel;
-use codeeraser::similar::bm25::{self, Postings};
+use codeeraser::similar::rank::Postings;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -141,7 +142,7 @@ pub struct Evidence {
 
 impl Evidence {
     pub fn role(&self) -> bool {
-        bm25::role(&self.hits, self.shape)
+        mirror::role(&self.hits, self.shape)
     }
 }
 
@@ -150,7 +151,7 @@ pub fn evidence(m: &Measured, query: usize, doc: usize) -> Evidence {
     let mut hits = [0; 6];
     let names = q.bag.channel(Channel::Name).len() as u32;
     for (t, (ch, _)) in &q.bag.terms {
-        if bm25::idf_fp(m.corpus.docs.len(), m.corpus.df(*t).expect("in-memory")) == 0 {
+        if mirror::idf_fp(m.corpus.docs.len(), m.corpus.df(*t).expect("in-memory")) == 0 {
             continue;
         }
         if d.bag.terms.contains_key(t) {

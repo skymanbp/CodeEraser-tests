@@ -1,15 +1,16 @@
 //! Test-only integer estimators. Production bags and statistics remain authoritative.
 use super::config::Config;
+use super::mirror::{self, QueryTerm};
 use super::stats::Stats;
 use crate::similar_replay::Measured;
-use codeeraser::similar::bm25::{self, Postings, QueryTerm};
+use codeeraser::similar::rank::Postings;
 
 pub fn query(m: &Measured, s: &Stats, doc: usize, c: &Config) -> Vec<QueryTerm> {
     let weights = c.weights();
-    let mut q = m.corpus.query_of(doc);
+    let mut q = mirror::query_of(&m.corpus.docs[doc].bag);
     for t in &mut q {
-        let tf = t.weight / (i128::from(t.channel.weight()) * bm25::W_UNIT);
-        t.weight = tf.min(c.int("qcap", i128::MAX)) * weights[t.channel.index()] * bm25::W_UNIT;
+        let tf = t.weight / (mirror::weight(t.channel) * mirror::W_UNIT);
+        t.weight = tf.min(c.int("qcap", i128::MAX)) * weights[t.channel.index()] * mirror::W_UNIT;
     }
     q.retain(|t| {
         t.weight > 0
@@ -44,9 +45,9 @@ pub fn bm_fraction(c: &Config, tf: i128, len: i128, avg: i128) -> (i128, i128) {
 pub fn signed_log(num: i128, den: i128) -> i128 {
     assert!(num > 0 && den > 0);
     if num >= den {
-        bm25::log2_fp(num as u128, den as u128)
+        mirror::log2_fp(num as u128, den as u128)
     } else {
-        -bm25::log2_fp(den as u128, num as u128)
+        -mirror::log2_fp(den as u128, num as u128)
     }
 }
 
@@ -86,9 +87,9 @@ pub fn score(m: &Measured, s: &Stats, q: &[QueryTerm], doc: usize, c: &Config) -
             (length, avg)
         };
         let (num, den) = bm_fraction(c, i128::from(*tf), len, av);
-        score += ((t.weight * idf(s, t.term, c) * num) << bm25::SCORE_FRAC_BITS) / den;
+        score += ((t.weight * idf(s, t.term, c) * num) << mirror::SCORE_FRAC_BITS) / den;
     }
-    score >> bm25::SCORE_FRAC_BITS
+    score >> mirror::SCORE_FRAC_BITS
 }
 
 fn language_model(m: &Measured, s: &Stats, q: &[QueryTerm], doc: usize, c: &Config) -> i128 {
@@ -123,7 +124,7 @@ fn similarity(m: &Measured, s: &Stats, q: &[QueryTerm], doc: usize, c: &Config) 
     let (mut dot, mut qnorm, mut dnorm, mut intersection, mut union) = (0, 0, 0, 0, 0);
     for t in q {
         let weight = idf(s, t.term, c);
-        let x = t.weight / bm25::W_UNIT;
+        let x = t.weight / mirror::W_UNIT;
         let y = terms
             .get(&t.term)
             .map_or(0, |(ch, tf)| i128::from(*tf) * weights[ch.index()]);

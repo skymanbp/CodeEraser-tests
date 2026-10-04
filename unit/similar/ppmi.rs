@@ -1,16 +1,15 @@
 use super::*;
-use crate::similar::bag::UnitBag;
-use crate::similar::bm25::{Corpus, Doc, W_UNIT, query_of};
+use crate::similar::corpus::Doc;
 use crate::similar::terms::{Channel, word_term};
 use std::collections::BTreeMap;
 
-fn doc(words: &[&str]) -> Doc {
+fn doc(path: &str, words: &[&str]) -> Doc {
     let mut terms = BTreeMap::new();
     for w in words {
         terms.insert(word_term(Channel::Name, w), (Channel::Name, 1));
     }
     Doc {
-        path: "x.rs".into(),
+        path: path.into(),
         bag: UnitBag {
             key: words.join("_"),
             nth: 0,
@@ -21,77 +20,46 @@ fn doc(words: &[&str]) -> Doc {
     }
 }
 
-/// `fetch` and `load` always travel together across four units while
-/// `render` never meets either — so `fetch` widens to `load` and to
-/// nothing else, at a fraction of its own weight, and the expansion
-/// is unspelled (adds score, never evidence).
+/// `fetch` and `load` travel together across four units, `fetch` meets
+/// `user` once and `render` never: the table counts each word's units
+/// and each pair once per unit, in both directions (the PPMI over these
+/// counts is the core's — RankProps works the same corpus by hand).
 #[test]
-fn a_query_widens_to_its_co_occurring_terms_only() {
-    let mut docs = vec![
-        doc(&["fetch", "load", "user"]),
-        doc(&["fetch", "load", "post"]),
-        doc(&["fetch", "load", "item"]),
-        doc(&["fetch", "load"]),
-        doc(&["render", "draw"]),
-        doc(&["render", "paint"]),
-        doc(&["user", "name"]),
-        doc(&["post", "body"]),
-    ];
-    // eight more units without either word: N = 16, so
-    // PPMI(fetch, load) = log2(4·16 / (4·4)) = 2 bits, exactly the floor
-    docs.extend((0..8).map(|i| doc(&[&format!("w{i}")])));
-    let corpus = Corpus::build(docs);
+fn the_table_counts_units_and_pairs_once_per_unit() {
+    let corpus = Corpus::build(vec![
+        doc("a.rs", &["fetch", "load", "user"]),
+        doc("b.rs", &["fetch", "load"]),
+        doc("c.rs", &["fetch", "load"]),
+        doc("d.rs", &["fetch", "load"]),
+        doc("e.rs", &["render", "draw"]),
+    ])
+    .expect("ascending");
     let table = Table::build(&corpus);
-    let (fetch, load, render) = (
-        word_term(Channel::Name, "fetch"),
-        word_term(Channel::Name, "load"),
-        word_term(Channel::Name, "render"),
+    let w = |s| word_term(Channel::Name, s);
+    assert_eq!(table.n_units(), 5);
+    assert_eq!(table.n_term(w("fetch")).expect("n"), 4);
+    let mut want = vec![(w("load"), 4), (w("user"), 1)];
+    want.sort_unstable();
+    assert_eq!(table.pairs(w("fetch")).expect("pairs"), want);
+    assert_eq!(table.pairs(w("user")).expect("pairs").len(), 2);
+    assert!(
+        table
+            .pairs(w("render"))
+            .expect("pairs")
+            .iter()
+            .all(|(b, _)| *b != w("fetch"))
     );
-    assert_eq!(table.ppmi(fetch, render), 0, "never co-occur");
-    let n = neighbours(&table, fetch).expect("in-memory");
-    assert_eq!(
-        n.len(),
-        1,
-        "user / post / item co-occur once each: below MIN_COOC"
-    );
-    assert_eq!(n[0].0, load);
-    assert_eq!(n[0].1, 2 << IDF_FRAC_BITS, "4·16 / (4·4) = 4 → two bits");
-
-    let mut q = query_of(&doc(&["fetch"]).bag);
-    let before = q.len();
-    expand(&table, &mut q).expect("in-memory");
-    let added: Vec<&QueryTerm> = q.iter().filter(|t| !t.spelled).collect();
-    assert_eq!(added.len(), 1, "load, at the floor, is appended");
-    assert_eq!(q.len(), before + added.len());
-    assert!(table.capped_units == 0);
+    assert_eq!(table.capped_units, 0);
 }
 
+/// A unit past TERM_CAP word terms counts only its first TERM_CAP in
+/// term order and is ledgered.
 #[test]
-fn expansion_weight_is_a_capped_fraction_of_the_parent() {
-    let corpus = Corpus::build(vec![
-        doc(&["a", "b"]),
-        doc(&["a", "b"]),
-        doc(&["c"]),
-        doc(&["d"]),
-        doc(&["e"]),
-        doc(&["f"]),
-        doc(&["g"]),
-        doc(&["h"]),
-    ]);
-    let table = Table::build(&corpus);
-    let (a, b) = (word_term(Channel::Name, "a"), word_term(Channel::Name, "b"));
-    assert_eq!(
-        table.ppmi(a, b),
-        2 << IDF_FRAC_BITS,
-        "2·8 / (2·2) = 4 → two bits"
-    );
-    let mut q = query_of(&doc(&["a"]).bag);
-    expand(&table, &mut q).expect("in-memory");
-    let added = q.iter().find(|t| !t.spelled).expect("b appended");
-    assert_eq!(added.term, b);
-    assert_eq!(added.weight, 3 * W_UNIT * (2 << IDF_FRAC_BITS) / PPMI_SCALE);
-    assert!(
-        added.weight < q[0].weight / 2 + 1,
-        "at most half the parent"
-    );
+fn a_unit_past_the_cap_counts_its_first_words_and_is_ledgered() {
+    let words: Vec<String> = (0..TERM_CAP + 4).map(|i| format!("w{i}")).collect();
+    let refs: Vec<&str> = words.iter().map(String::as_str).collect();
+    let corpus = Corpus::build(vec![doc("a.rs", &refs)]).expect("ascending");
+    let (kept, capped) = capped_words(&corpus.docs[0].bag);
+    assert!(capped && kept.len() == TERM_CAP);
+    assert_eq!(Table::build(&corpus).capped_units, 1);
 }

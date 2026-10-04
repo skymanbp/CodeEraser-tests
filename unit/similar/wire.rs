@@ -1,34 +1,26 @@
 use super::*;
-use crate::similar::Channel;
 use serde_json::json;
+
+const DEN: i64 = 1 << 16;
 
 fn hit(doc: usize, hits: [u32; 6], shape_equal: bool, score_fp: i64) -> Hit {
     Hit {
         doc,
-        score: score_fp >> SCORE_FRAC_BITS,
+        score: score_fp / DEN,
         score_fp,
+        den: DEN,
         hits,
         shape_equal,
-        role: super::super::bm25::role(&hits, shape_equal),
-    }
-}
-
-fn term(term: u64, channel: Channel, weight: i128) -> QueryTerm {
-    QueryTerm {
-        term,
-        channel,
-        weight,
-        spelled: true,
     }
 }
 
 #[test]
-fn rows_are_the_nine_integers_in_measurement_order_with_the_fixed_point_unit() {
+fn rows_are_the_nine_integers_in_rank_order_over_the_answered_denominator() {
     let sent = rows(&[
-        hit(7, [1, 0, 1, 0, 2, 0], false, 3 << SCORE_FRAC_BITS),
+        hit(7, [1, 0, 1, 0, 2, 0], false, 3 * DEN),
         hit(2, [2, 1, 0, 0, 0, 1], true, 5),
     ]);
-    let den = 1i64 << SCORE_FRAC_BITS;
+    let den = DEN;
     assert_eq!(
         sent,
         [
@@ -39,15 +31,9 @@ fn rows_are_the_nine_integers_in_measurement_order_with_the_fixed_point_unit() {
 }
 
 #[test]
-fn the_query_bag_rides_sorted_by_hash_with_weights_summed_per_term() {
-    let q = [
-        term(9, Channel::Name, 768),
-        term(3, Channel::Callee, 512),
-        term(9, Channel::Name, 256),
-    ];
-    assert_eq!(query_terms(&q), [[3, 512], [9, 1024]]);
+fn the_body_carries_the_ranked_bag_and_the_rows() {
     assert_eq!(
-        body(&query_terms(&q), &rows(&[])),
+        body(&[[3, 512], [9, 1024]], &rows(&[])),
         json!({"query": [[3, 512], [9, 1024]], "rows": []})
     );
 }

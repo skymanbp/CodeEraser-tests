@@ -1,10 +1,23 @@
-//! Independent product replay checks: a tuning mirror must earn its baseline.
+//! Independent product replay checks: a tuning mirror must earn its
+//! baseline — against what the core ranked for every bare and widened
+//! arm (plan v2.33 W3 moved the product's ranking into the core).
 use super::data::{self, Pool};
+use super::mirror;
 use super::ranking::{Frame, Ranked};
 use crate::similar_replay::Measured;
-use codeeraser::similar::{bm25, ppmi};
 
 pub fn baseline(m: &Measured, p: &Pool<'_>, f: &Frame, ranks: &[Ranked]) {
+    for (i, h) in m.ranked[f.doc].0.iter().enumerate() {
+        assert_eq!(
+            f.shortlist[i], h.doc,
+            "BM25 mirror against the core's bare arm"
+        );
+        assert_eq!(
+            f.base[h.doc],
+            Some(i128::from(h.score)),
+            "BM25 mirror score"
+        );
+    }
     for r in ranks {
         assert_eq!(r.score, f.base[r.doc].unwrap_or(0), "BM25 mirror score");
     }
@@ -45,9 +58,16 @@ pub fn baseline(m: &Measured, p: &Pool<'_>, f: &Frame, ranks: &[Ranked]) {
 }
 
 pub fn widened(m: &Measured, query: usize, ranks: &[Ranked]) {
-    let mut q = m.corpus.query_of(query);
-    ppmi::expand(&m.table, &mut q).expect("in-memory");
-    let live = bm25::top_k(&m.corpus, &q, m.corpus.docs.len(), Some(query)).expect("in-memory");
+    let mut q = mirror::query_of(&m.corpus.docs[query].bag);
+    mirror::expand(&m.table, &mut q);
+    let live = mirror::top_k(&m.corpus, &q, m.corpus.docs.len(), Some(query));
+    let core: Vec<(usize, i64)> = m.ranked[query].1.iter().map(|h| (h.doc, h.score)).collect();
+    let mine: Vec<(usize, i64)> = live
+        .iter()
+        .take(core.len())
+        .map(|h| (h.doc, h.score))
+        .collect();
+    assert_eq!(mine, core, "PPMI mirror against the core's widened arm");
     for r in ranks {
         let want = live.iter().find(|h| h.doc == r.doc).map_or(0, |h| h.score);
         assert_eq!(r.score, i128::from(want), "PPMI mirror score");

@@ -52,12 +52,4 @@ fn the_evidence_row_order_is_n_p_c_d_s_l() {
     let labels: Vec<&str> = Channel::ALL.iter().map(|c| c.label()).collect();
     assert_eq!(labels, ["N", "P", "C", "D", "S", "L"]);
     assert_eq!(Channel::Callee.index(), 2);
-    assert_eq!(
-        (
-            Channel::Name.weight(),
-            Channel::Callee.weight(),
-            Channel::Doc.weight()
-        ),
-        (3, 2, 1)
-    );
 }
