@@ -26,12 +26,20 @@ pub fn real_tables() -> &'static Value {
 /// A stub that offers nothing but `hello` and the real package: the
 /// advisory families' legs, where the core has no such family, which
 /// must come back named absent, never read as an empty answer.
+/// Built once per test process: legs on parallel threads share this
+/// one name-keyed directory, and `tmp` wipes it first — rebuilding it
+/// per leg let one leg's wipe land between another's two mkdirs, or
+/// delete the script while that leg's `ce` child was running it.
 pub fn hello_only() -> String {
-    stub(
-        "stub-core-hello-only",
-        codeeraser::corelink::PROTO,
-        Some(real_tables()),
-    )
+    static PATH: OnceLock<String> = OnceLock::new();
+    PATH.get_or_init(|| {
+        stub(
+            "stub-core-hello-only",
+            codeeraser::corelink::PROTO,
+            Some(real_tables()),
+        )
+    })
+    .clone()
 }
 
 /// A stub core answering `proto` with `capabilities` = hello (and
