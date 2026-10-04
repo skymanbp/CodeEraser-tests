@@ -240,11 +240,12 @@ pub(super) fn scored_doc(exam: &Exam, name: &str, tip: &str) -> Value {
     let scope = tree.scope();
     let sampled = of_corpus(sample["rows"].as_array().expect("rows"), name);
     let truths = review["rows"].as_array().expect("rows");
-    let rows: Vec<Value> = sampled
+    let pairs: Vec<(&Value, &str)> = sampled
         .iter()
         .zip(truths)
-        .map(|(s, a)| score::judge(s, a["truth"].as_str().expect("truth"), &scope, &walk))
+        .map(|(s, a)| (*s, a["truth"].as_str().expect("truth")))
         .collect();
+    let rows = score::judge_all(&pairs, &scope, &walk);
     json!({
         "schema": score::PRECISION_SCHEMA,
         "corpus": {"name": name, "tip": tip, "lang": exam.lang},

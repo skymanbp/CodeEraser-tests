@@ -9,6 +9,7 @@
 //! (eval_support::identity_hash, the M5-2 payload order), seats are
 //! integer largest remainder (eval_support::largest_remainder).
 
+pub mod answer;
 pub mod draw;
 pub mod exams;
 pub mod freezing;

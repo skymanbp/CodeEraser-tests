@@ -159,18 +159,27 @@ pub fn compdb(dir: &Path, rows: &str) {
 pub type Case = (Lang, &'static str, &'static str, &'static str, Outcome);
 
 /// Drive a case table through the dispatcher against one
-/// materialized fixture — the shared act + assert throat. A row's
-/// kind may carry the site's line as `kind@line` (a folded import, a
-/// type reference inside a class body — step 5b); a bare kind stands
-/// on line 1, exact for a fixture with nothing above the site.
+/// materialized fixture — the shared act + assert throat, every row in
+/// one batch (the core answers four languages' rows in one resolve/1
+/// request since plan v2.33 wave W2a). A row's kind may carry the
+/// site's line as `kind@line` (a folded import, a type reference inside
+/// a class body — step 5b); a bare kind stands on line 1, exact for a
+/// fixture with nothing above the site.
 pub fn run_cases(fx: &Fixture, cases: Vec<Case>) {
     let scope = fx.scope();
-    for (lang, kind, from, spec, want) in cases {
-        let (kind, line) = kind
-            .split_once('@')
-            .map_or((kind, 1), |(k, l)| (k, l.parse().expect("a line after @")));
-        let got = ladder::resolve(lang, &site(kind, from, spec, line), &scope);
-        assert_eq!(got, want, "{lang:?} {kind}@{line} {spec:?}");
+    let sites: Vec<(Lang, ladder::Site)> = cases
+        .iter()
+        .map(|(lang, kind, from, spec, _)| {
+            let (kind, line) = kind
+                .split_once('@')
+                .map_or((*kind, 1), |(k, l)| (k, l.parse().expect("a line after @")));
+            (*lang, site(kind, from, spec, line))
+        })
+        .collect();
+    let batch: Vec<(Lang, &ladder::Site)> = sites.iter().map(|(l, s)| (*l, s)).collect();
+    let got = ladder::resolve_all(&batch, &scope).expect("the core answers resolve/1");
+    for ((lang, at), (got, (.., want))) in sites.iter().zip(got.into_iter().zip(cases)) {
+        assert_eq!(got, want, "{lang:?} {}@{} {:?}", at.kind, at.line, at.spec);
     }
 }
 

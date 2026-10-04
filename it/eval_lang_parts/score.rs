@@ -8,13 +8,14 @@
 //! its own). The generator (generate.rs, `#[ignore]`) and the verifier
 //! the CI gate runs (precision.rs) derive through these functions (G1).
 
+use super::answer::{answers, found};
 use super::walk::Walk;
-use crate::common::{Fixture, reason_name};
+use crate::common::Fixture;
 use crate::eval_graph_precision_parts::{ratio, rescore, verdict_of};
 use crate::eval_lang_parts::review::ECHO;
 use crate::eval_lang_parts::{Exam, PRECISION_DOCS, Stage};
 use crate::eval_support::{lang_of, tally_add};
-use codeeraser::graph::ladder::{self, Outcome, Scope, Site, c_head, java_header, lua_path};
+use codeeraser::graph::ladder::{Scope, Site, c_head, java_header, lua_path};
 use codeeraser::graph::sites::{RawSite, detect};
 use codeeraser::scan::lang::Lang;
 use serde_json::{Map, Value, json};
@@ -77,71 +78,26 @@ pub fn tree(root: &Path, texts: &[(String, String)], read: Vec<String>) -> Fixtu
     }
 }
 
-/// An outcome as the four fields every judged row and gap site carries:
-/// the in-corpus answer (a package at the tree root is "."; a section
-/// is `path#slug`, its slugless degrade the file), whether External
-/// answered, the rung, and the refusal reason.
-pub(super) fn answer(out: &Outcome) -> Value {
-    let (answered, external, rung, reason) = match out {
-        Outcome::Resolved { path, rung }
-        | Outcome::ResolvedVia { path, rung }
-        | Outcome::ResolvedInert { path, rung } => (Some(path.clone()), false, Some(*rung), None),
-        Outcome::ResolvedPackage { dir, rung } => {
-            let dir = if dir.is_empty() { "." } else { dir };
-            (Some(dir.to_string()), false, Some(*rung), None)
-        }
-        Outcome::ResolvedSection { path, slug, rung } => {
-            let at = slug
-                .as_ref()
-                .map_or_else(|| path.clone(), |s| format!("{path}#{s}"));
-            (Some(at), false, Some(*rung), None)
-        }
-        Outcome::External { rung } => (None, true, Some(*rung), None),
-        Outcome::Unresolved(r) => (None, false, None, Some(reason_name(*r))),
-    };
-    json!({"answered": answered, "external": external, "rung": rung, "reason": reason})
-}
-
-/// Which of the three answer shapes a row or gap site holds: an
-/// in-corpus answer with its rung, External with its rung, a refusal
-/// with its reason — anything else is a cooked row.
-pub(super) fn shape_of(a: &Value) -> Option<&'static str> {
-    match (&a["answered"], &a["external"], &a["rung"], &a["reason"]) {
-        (Value::String(_), Value::Bool(false), Value::Number(_), Value::Null) => Some("answered"),
-        (Value::Null, Value::Bool(true), Value::Number(_), Value::Null) => Some("external"),
-        (Value::Null, Value::Bool(false), Value::Null, Value::String(_)) => Some("refused"),
-        _ => None,
-    }
-}
-
-/// The ladder's answer for one detected site of a frozen file.
-fn resolved(path: &str, site: &RawSite, lang: &str, scope: &Scope) -> Value {
-    let at = Site {
-        kind: site.kind,
-        from: path,
-        spec: &site.spec,
-        line: site.line,
-    };
-    answer(&ladder::resolve(lang_of(lang), &at, scope))
-}
-
-/// One judged sample row: the sampled identity, the ladder's answer and
-/// the verdict against the frozen truth as the walk scores it (the M5-2
-/// row shape, plus `audit_truth` when the walk rewrote the truth).
-pub fn judge(row: &Value, truth: &str, scope: &Scope, walk: &Walk) -> Value {
-    let lang = row["lang"].as_str().expect("lang");
-    let site = Site {
-        kind: row["kind"].as_str().expect("kind"),
-        from: row["path"].as_str().expect("path"),
-        spec: row["spec"].as_str().expect("spec"),
-        line: usize::try_from(row["line"].as_u64().expect("line")).expect("line"),
-    };
-    judged(
-        row,
-        truth,
-        walk,
-        answer(&ladder::resolve(lang_of(lang), &site, scope)),
-    )
+/// The judged sample rows: each sampled identity, the ladder's answer
+/// and the verdict against its frozen truth as the walk scores it (the
+/// M5-2 row shape, plus `audit_truth` when the walk rewrote the truth).
+pub fn judge_all(rows: &[(&Value, &str)], scope: &Scope, walk: &Walk) -> Vec<Value> {
+    let sites: Vec<(Lang, Site)> = rows
+        .iter()
+        .map(|(row, _)| {
+            let site = Site {
+                kind: row["kind"].as_str().expect("kind"),
+                from: row["path"].as_str().expect("path"),
+                spec: row["spec"].as_str().expect("spec"),
+                line: usize::try_from(row["line"].as_u64().expect("line")).expect("line"),
+            };
+            (lang_of(row["lang"].as_str().expect("lang")), site)
+        })
+        .collect();
+    rows.iter()
+        .zip(answers(&sites, scope))
+        .map(|((row, truth), a)| judged(row, truth, walk, a))
+        .collect()
 }
 
 /// A sample row judged on the answer given — the ladder's (judge), or
@@ -196,18 +152,24 @@ pub fn summary(rows: &[Value]) -> Value {
 /// what the detector cannot see is in no denominator.
 pub fn universe(texts: &[(String, String)], lang: &str, scope: &Scope) -> Value {
     let (mut by, mut refused) = (BTreeMap::new(), BTreeMap::new());
-    for (path, text) in texts {
-        for site in detect(text, lang_of(lang)) {
-            let a = resolved(path, &site, lang, scope);
-            let cell = format!("{lang}/{}", site.kind);
-            match (a["rung"].as_u64(), a["reason"].as_str()) {
-                (Some(g), _) => tally_add(&mut by, &format!("{cell}/r{g}"), 1),
-                (None, reason) => tally_add(
-                    &mut refused,
-                    &format!("{cell}/{}", reason.expect("reason")),
-                    1,
-                ),
-            }
+    let sites: Vec<(&str, RawSite)> = texts
+        .iter()
+        .flat_map(|(path, text)| {
+            detect(text, lang_of(lang))
+                .into_iter()
+                .map(move |s| (path.as_str(), s))
+        })
+        .collect();
+    let refs: Vec<(&str, &RawSite)> = sites.iter().map(|(p, s)| (*p, s)).collect();
+    for ((_, site), a) in sites.iter().zip(answers(&found(&refs, lang), scope)) {
+        let cell = format!("{lang}/{}", site.kind);
+        match (a["rung"].as_u64(), a["reason"].as_str()) {
+            (Some(g), _) => tally_add(&mut by, &format!("{cell}/r{g}"), 1),
+            (None, reason) => tally_add(
+                &mut refused,
+                &format!("{cell}/{}", reason.expect("reason")),
+                1,
+            ),
         }
     }
     ledger(by, refused)
@@ -240,28 +202,43 @@ pub fn gaps(review: &Value, texts: &[(String, String)], lang: &str, scope: &Scop
         .iter()
         .map(|(p, t)| (p.as_str(), t.as_str()))
         .collect();
-    let answered = |g: &Value| {
-        let path = g["path"].as_str().expect("path");
-        let line = usize::try_from(g["line"].as_u64().expect("line")).expect("line");
-        let Some(read) = text.get(path) else {
-            panic!("{path}: a site gap in a file the walk refuses")
-        };
-        let sites: Vec<Value> = detect(read, lang_of(lang))
-            .into_iter()
-            .filter(|s| s.line == line)
-            .map(|s| {
-                let mut row = resolved(path, &s, lang, scope);
-                (row["nth"], row["kind"], row["spec"]) =
-                    (json!(s.nth), json!(s.kind), json!(s.spec));
-                row
-            })
-            .collect();
-        json!({"path": path, "line": line, "sites": sites})
-    };
-    review["site_gaps"]
+    let per: Vec<(&str, u64, Vec<RawSite>)> = review["site_gaps"]
         .as_array()
         .expect("site_gaps")
         .iter()
-        .map(answered)
+        .map(|g| {
+            let (path, line) = (
+                g["path"].as_str().expect("path"),
+                g["line"].as_u64().expect("line"),
+            );
+            let Some(read) = text.get(path) else {
+                panic!("{path}: a site gap in a file the walk refuses")
+            };
+            let on = |s: &RawSite| s.line as u64 == line;
+            (
+                path,
+                line,
+                detect(read, lang_of(lang)).into_iter().filter(on).collect(),
+            )
+        })
+        .collect();
+    let refs: Vec<(&str, &RawSite)> = per
+        .iter()
+        .flat_map(|(p, _, ss)| ss.iter().map(move |s| (*p, s)))
+        .collect();
+    let mut got = answers(&found(&refs, lang), scope).into_iter();
+    per.iter()
+        .map(|(path, line, ss)| {
+            let rows: Vec<Value> = ss
+                .iter()
+                .zip(got.by_ref())
+                .map(|(s, mut row)| {
+                    (row["nth"], row["kind"], row["spec"]) =
+                        (json!(s.nth), json!(s.kind), json!(s.spec));
+                    row
+                })
+                .collect();
+            json!({"path": path, "line": line, "sites": rows})
+        })
         .collect()
 }

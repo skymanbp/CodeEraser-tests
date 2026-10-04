@@ -242,22 +242,41 @@ fn the_mcp_tool_relays_the_face_and_refuses_a_path_list_that_is_not_one() {
 /// ruling 1): a stub that shakes hands without `document/1`, refused by
 /// name, exit 2, both forms, nothing printed from this side; and a path
 /// where no core exists — the CLI naming it as its `--core` is refused
-/// before any judgment, the library face by name.
+/// before any judgment, the library face by name. The tree holds no
+/// import site: since plan v2.33 wave W2a a Python import is resolved by
+/// the core (`resolve/1`), and a stub without that family leaves the
+/// graph owed — the leg below — before the document is ever asked.
 #[test]
 fn a_core_that_cannot_lay_the_document_out_is_refused_by_name() {
-    let dir = seeded("arch-degraded");
+    let dir = common::doc_tree("arch-degraded", "--- a/x.py\nX = 1\n--- b/y.py\nY = 2\n");
+    common::init_and_commit(&dir, "seed");
     let stub = common::stub_core::hello_only();
     let missing = common::tmp("arch-no-core").join("no-such-core.exe");
     let missing = missing.to_string_lossy().into_owned();
     common::refused_for_its_core(&dir, &["arch", ".", "--core", &missing], &missing);
-    for json in [true, false] {
-        let (code, out, err) = arch(&dir, &stub, json, &[]);
-        assert_eq!((code, out.as_str()), (Some(2), ""), "{err}");
-        assert!(
-            err.contains("arch document: core offers no document/1"),
-            "{err}"
-        );
-    }
+    refused_both_forms(&dir, &stub, &["arch document: core offers no document/1"]);
     let err = codeeraser::faces::arch(&dir, &missing, &[]).expect_err("no core");
     assert!(err.to_string().contains("arch document:"), "{err:#}");
+}
+
+/// A core without `resolve/1` over a tree whose Python files import
+/// each other (plan v2.33 wave W2a, the no-core rule): the sites are
+/// stored unresolved and the graph is owed, so the face refuses by
+/// name — exit 2, both forms, nothing printed — instead of judging a
+/// graph with the edges missing.
+#[test]
+fn a_core_that_cannot_resolve_leaves_the_graph_owed_and_is_refused_by_name() {
+    let dir = seeded("arch-owed");
+    let stub = common::stub_core::hello_only();
+    refused_both_forms(&dir, &stub, &["resolve_unavailable", "resolve/1"]);
+}
+
+/// Both forms refused by a core: exit 2, nothing printed, every needle
+/// in the refusal.
+fn refused_both_forms(dir: &Path, core: &str, needles: &[&str]) {
+    for json in [true, false] {
+        let (code, out, err) = arch(dir, core, json, &[]);
+        assert_eq!((code, out.as_str()), (Some(2), ""), "{err}");
+        assert!(needles.iter().all(|n| err.contains(n)), "{err}");
+    }
 }

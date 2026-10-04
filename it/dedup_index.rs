@@ -6,6 +6,7 @@
 //! and put — the dedup ratchet counts test scaffolding too.
 
 use codeeraser::dedup::{Params, index::Index, pairs, tokens};
+use codeeraser::graph::store;
 use codeeraser::scan::lang::Lang;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -206,10 +207,13 @@ fn markdown_is_graph_cache_not_fingerprints() {
     assert_eq!(idx.file_count().expect("count"), 2, "markdown is indexed");
     let mut specs: Vec<String> = Vec::new();
     assert!(
-        idx.ensure_edges_resolved(42, |s| {
-            specs.push(s.spec.clone());
-            Vec::new()
-        })
+        idx.ensure_edges_resolved(
+            42,
+            store::each(|s| {
+                specs.push(s.spec.clone());
+                Vec::new()
+            })
+        )
         .expect("sweep"),
         "fresh key fires the sweep"
     );
@@ -220,7 +224,8 @@ fn markdown_is_graph_cache_not_fingerprints() {
         "cached sites reach the resolver callback"
     );
     assert!(
-        !idx.ensure_edges_resolved(42, |_| Vec::new()).expect("skip"),
+        !idx.ensure_edges_resolved(42, store::each(|_| Vec::new()))
+            .expect("skip"),
         "unchanged key skips the sweep"
     );
 }

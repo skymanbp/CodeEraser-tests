@@ -69,15 +69,31 @@ fn mounts_in(file: &Path, text: &str, stray: &mut Vec<String>) -> Vec<PathBuf> {
 /// The child modules a mounted unit file declares (`mod x;`, one per
 /// line): a `#[path]`-mounted file reads its children as a mod-rs file
 /// does, from its own directory (unit/flow/lang.rs holds the
-/// per-language lowering legs, plan v2.32 step 2).
+/// per-language lowering legs, plan v2.32 step 2), unless the line
+/// before names the child's own `#[path]` (unit/graph/ladder/frozen.rs
+/// mounts the frozen rungs in oracle/, plan v2.33 W2a).
 fn children(unit: &Path) -> Vec<PathBuf> {
     let text = std::fs::read_to_string(unit).unwrap_or_default();
+    let lines: Vec<&str> = text.lines().collect();
     let dir = unit.parent().expect("a file has a directory");
-    text.lines()
-        .filter_map(|l| l.strip_prefix("mod ")?.strip_suffix(';'))
-        .filter(|n| n.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
-        .map(|n| dir.join(format!("{n}.rs")))
-        .collect()
+    let mut out = Vec::new();
+    for (i, l) in lines.iter().enumerate() {
+        let Some(n) = l.strip_prefix("mod ").and_then(|m| m.strip_suffix(';')) else {
+            continue;
+        };
+        if !n.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
+            continue;
+        }
+        let named = i
+            .checked_sub(1)
+            .and_then(|k| lines[k].strip_prefix("#[path = \""))
+            .and_then(|p| p.strip_suffix("\"]"));
+        out.push(match named {
+            Some(p) => resolve(unit, p),
+            None => dir.join(format!("{n}.rs")),
+        });
+    }
+    out
 }
 
 fn declared(root: &Path) -> BTreeSet<String> {

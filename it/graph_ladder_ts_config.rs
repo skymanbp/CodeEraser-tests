@@ -26,7 +26,8 @@ fn extends_cycle_is_config_depth() {
             Lang::TypeScript,
             &site("import", "a.ts", "anything", 1),
             &fx.scope()
-        ),
+        )
+        .expect("this side's rungs"),
         Outcome::Unresolved(Reason::ConfigDepth)
     );
 }

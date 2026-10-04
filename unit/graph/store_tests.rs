@@ -36,27 +36,31 @@ fn seeded(text: &str) -> Connection {
 fn two_phase_lifecycle() {
     let mut conn = seeded("mod alpha;\nfn holder() {\n    use crate::x;\n}\n");
     let mut seen = 0;
-    let fired = ensure_resolved(&mut conn, 7, |s| {
-        seen += 1;
-        vec![EdgeRow {
-            dst_path: s.file.clone(),
-            dst_unit: String::new(),
-            kind: s.kind,
-            rung: 1,
-            granularity: 0,
-            via_reexport: 0,
-        }]
-    })
+    let fired = ensure_resolved(
+        &mut conn,
+        7,
+        each(|s| {
+            seen += 1;
+            vec![EdgeRow {
+                dst_path: s.file.clone(),
+                dst_unit: String::new(),
+                kind: s.kind,
+                rung: 1,
+                granularity: 0,
+                via_reexport: 0,
+            }]
+        }),
+    )
     .expect("sweep");
     assert!(fired, "fresh key fires");
     assert_eq!(seen, 2, "both cached sites visited");
     assert_eq!(edge_count(&conn), 2);
     assert!(
-        !ensure_resolved(&mut conn, 7, |_| Vec::new()).expect("skip"),
+        !ensure_resolved(&mut conn, 7, each(|_| Vec::new())).expect("skip"),
         "matching key must skip"
     );
     assert_eq!(edge_count(&conn), 2, "skip touches nothing");
-    assert!(ensure_resolved(&mut conn, 8, |_| Vec::new()).expect("refire"));
+    assert!(ensure_resolved(&mut conn, 8, each(|_| Vec::new())).expect("refire"));
     assert_eq!(edge_count(&conn), 0, "key change replays from zero");
     recommit(&mut conn, "use crate::y;\n");
     let sites: i64 = conn
@@ -86,7 +90,7 @@ fn recommit(conn: &mut Connection, text: &str) {
 /// The empty-dirty, ledger-driven phase 1.5 both debt legs end on,
 /// plus the retirement assertion they share.
 fn settle_and_expect_clear(conn: &mut Connection) {
-    resolve_refreshed(conn, &BTreeSet::new(), one_edge).expect("settle");
+    resolve_refreshed(conn, &BTreeSet::new(), each(one_edge)).expect("settle");
     assert_eq!(pending_count(conn), 0, "settled debt retires by evidence");
 }
 
@@ -111,12 +115,12 @@ fn one_edge(s: &CachedSite) -> Vec<EdgeRow> {
 fn phase_15_is_idempotent_over_a_swept_file() {
     let mut conn = seeded("mod alpha;\n");
     assert!(
-        ensure_resolved(&mut conn, 7, one_edge).expect("sweep"),
+        ensure_resolved(&mut conn, 7, each(one_edge)).expect("sweep"),
         "the racing sweep fires"
     );
     assert_eq!(edge_count(&conn), 1);
     let dirty: BTreeSet<String> = ["a.rs".to_string()].into();
-    resolve_refreshed(&mut conn, &dirty, one_edge).expect("phase 1.5");
+    resolve_refreshed(&mut conn, &dirty, each(one_edge)).expect("phase 1.5");
     assert_eq!(
         edge_count(&conn),
         1,
@@ -136,12 +140,12 @@ fn phase_15_is_idempotent_over_a_swept_file() {
 #[test]
 fn a_refresh_debt_survives_process_death_and_the_next_run_settles_it() {
     let mut conn = seeded("mod alpha;\n");
-    assert!(ensure_resolved(&mut conn, 7, one_edge).expect("sweep"));
+    assert!(ensure_resolved(&mut conn, 7, each(one_edge)).expect("sweep"));
     assert_eq!(edge_count(&conn), 1);
     recommit(&mut conn, "mod alpha;\n");
     assert_eq!(edge_count(&conn), 0, "the cascade dropped the edges");
     // …process death here; the next run finds nothing dirty itself
-    assert!(!ensure_resolved(&mut conn, 7, one_edge).expect("skip"));
+    assert!(!ensure_resolved(&mut conn, 7, each(one_edge)).expect("skip"));
     settle_and_expect_clear(&mut conn);
     assert_eq!(edge_count(&conn), 1, "the persisted debt must be settled");
 }
@@ -154,7 +158,7 @@ fn a_firing_sweep_retires_the_whole_debt_ledger() {
     recommit(&mut conn, "mod alpha;\n");
     conn.execute("INSERT INTO resolve_pending (path) VALUES ('gone.rs')", [])
         .expect("orphan debt");
-    assert!(ensure_resolved(&mut conn, 9, one_edge).expect("sweep"));
+    assert!(ensure_resolved(&mut conn, 9, each(one_edge)).expect("sweep"));
     assert_eq!(
         pending_count(&conn),
         0,

@@ -7,7 +7,8 @@
 //! gates like review.rs and verify.rs: the tamper gate runs it on
 //! forged copies.
 
-use super::score::{PRECISION_SCHEMA, ledger, shape_of, summary};
+use super::answer::shape_of;
+use super::score::{PRECISION_SCHEMA, ledger, summary};
 use super::tree;
 use super::walk::{Walk, walk_record};
 use crate::eval_graph_precision_parts::verdict_of;

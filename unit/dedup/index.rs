@@ -1,5 +1,11 @@
 use super::*;
 
+// The differential gate of plan v2.33 wave W2a (core vs the frozen
+// a8db74a9 rungs), mounted under the index whose resolve sweep its
+// real-tree leg drives.
+#[path = "ladder_diff/mod.rs"]
+mod ladder_diff;
+
 /// A revision-skewed index is REPORTED stale and left intact —
 /// twice, because the defect this pins was a diagnostic that
 /// repaired what it measured: the same read through `Index::open`

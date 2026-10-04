@@ -7,7 +7,8 @@
 //! doc is the one an oracle ladder scores (oracle_precision): the
 //! real docs retire whenever a ladder change moves their answers.
 
-use super::score::{PRECISION_SCHEMA, answer, judged, ledger, summary};
+use super::answer::answer;
+use super::score::{PRECISION_SCHEMA, judged, ledger, summary};
 use super::walk::{Walk, universe_files, walk_record};
 use super::{AUDIT_TABLES, EXAMS, Exam, Generated, SLICES};
 use crate::eval_support::{

@@ -15,7 +15,8 @@ fn facade_answers(tag: &str, rows: &[(&'static str, Outcome)]) {
     let fx = fixture(tag, REEXPORT_TREE);
     let scope = fx.scope();
     for (spec, want) in rows {
-        let got = ladder::resolve(Lang::Rust, &site("use", "src/lib.rs", spec, 1), &scope);
+        let got = ladder::resolve(Lang::Rust, &site("use", "src/lib.rs", spec, 1), &scope)
+            .expect("this side's rungs");
         assert_eq!(&got, want, "{spec}");
     }
 }
@@ -173,6 +174,7 @@ fn inline_mod_super_comes_home() {
     let scope = fx.scope();
     let at = |spec: &'static str, line: usize| {
         ladder::resolve(Lang::Rust, &site("use", "src/lib.rs", spec, line), &scope)
+            .expect("this side's rungs")
     };
     assert_eq!(at("super::escape", 5), ok("src/lib.rs", 3));
     assert_eq!(at("self::helper::x", 6), ok("src/lib.rs", 3));
@@ -268,7 +270,8 @@ fn path_attr_remaps_resolve_at_r1() {
         ("src/graph/md.rs", "shallow", 19, no(Reason::OutOfScope)),
     ];
     for (from, spec, line, want) in cases {
-        let got = ladder::resolve(Lang::Rust, &site("mod_decl", from, spec, *line), &scope);
+        let got = ladder::resolve(Lang::Rust, &site("mod_decl", from, spec, *line), &scope)
+            .expect("this side's rungs");
         assert_eq!(&got, want, "{from} {spec} @{line}");
     }
     // the bare head declared in the inline mod mounts through the same
@@ -278,7 +281,8 @@ fn path_attr_remaps_resolve_at_r1() {
             Lang::Rust,
             &site("use", "src/graph/md.rs", "conv::Thing", 20),
             &scope
-        ),
+        )
+        .expect("this side's rungs"),
         ok("src/graph/md/inline/conv.rs", 3)
     );
 }
