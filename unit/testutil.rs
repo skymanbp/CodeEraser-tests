@@ -115,6 +115,40 @@ pub fn four_node_wire(edges: &[[i64; 4]]) -> crate::graph::deadcode::GraphWire {
     }
 }
 
+/// A similar-corpus seat whose bag holds each word once on the Name
+/// channel — the advisor tests' unit (ppmi, rank).
+pub fn word_doc(path: &str, words: &[&str]) -> crate::similar::corpus::Doc {
+    use crate::similar::terms::{Channel, word_term};
+    let terms = words
+        .iter()
+        .map(|w| (word_term(Channel::Name, w), (Channel::Name, 1)))
+        .collect();
+    crate::similar::corpus::Doc {
+        path: path.into(),
+        bag: crate::similar::bag::UnitBag {
+            key: words.join("_"),
+            nth: 0,
+            start_line: 1,
+            end_line: 1,
+            terms,
+        },
+    }
+}
+
+/// `fetch` and `load` together in four seats, `user` once beside them
+/// — the co-occurrence corpus both advisor tables are tested on.
+pub fn fetch_load_docs() -> Vec<crate::similar::corpus::Doc> {
+    [
+        ("a.rs", &["fetch", "load", "user"][..]),
+        ("b.rs", &["fetch", "load"]),
+        ("c.rs", &["fetch", "load"]),
+        ("d.rs", &["fetch", "load"]),
+    ]
+    .into_iter()
+    .map(|(path, words)| word_doc(path, words))
+    .collect()
+}
+
 /// One per-declaration word case as one line: the source, then
 /// ` ⇒`, then every unit `measure` must find, in source order, as
 /// `name:letters` with `bit_of` reading each letter (`-` = none); an

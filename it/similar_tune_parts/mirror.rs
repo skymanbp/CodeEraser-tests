@@ -73,19 +73,23 @@ pub fn top_k(c: &Corpus, query: &[QueryTerm], k: usize, exclude: Option<usize>) 
             *acc.entry(seat).or_insert(0) += contribution(q.weight, idf, i128::from(tf), len, avg);
         }
     }
-    let mut ranked: Vec<(usize, i128)> = acc
-        .into_iter()
-        .filter(|(s, _)| Some(*s) != exclude)
-        .collect();
-    ranked.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
-    ranked.truncate(k);
-    ranked
+    strongest(acc.into_iter().filter(|(s, _)| Some(*s) != exclude), k)
         .into_iter()
         .map(|(doc, score)| Hit {
             doc,
             score: (score >> SCORE_FRAC_BITS) as i64,
         })
         .collect()
+}
+
+/// The `cap` strongest entries, by score descending then key ascending
+/// — the one order the ranking, the neighbours and the feedback centroid
+/// all cut by.
+pub fn strongest<K: Ord>(items: impl IntoIterator<Item = (K, i128)>, cap: usize) -> Vec<(K, i128)> {
+    let mut out: Vec<(K, i128)> = items.into_iter().collect();
+    out.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    out.truncate(cap);
+    out
 }
 
 /// The same-role conjunction over an evidence row.
@@ -150,17 +154,14 @@ pub fn neighbours(c: &impl Cooc, a: u64) -> Vec<(u64, i128)> {
     if n_a == 0 || 4 * n_a > n {
         return Vec::new();
     }
-    let mut out: Vec<(u64, i128)> = c
+    let scored = c
         .pairs(a)
         .expect("in-memory")
         .into_iter()
         .filter(|(_, n_ab)| *n_ab >= MIN_COOC)
         .map(|(b, n_ab)| (b, ppmi_fp(n, n_ab, n_a, c.n_term(b).expect("in-memory"))))
-        .filter(|(_, p)| *p >= MIN_PPMI)
-        .collect();
-    out.sort_by(|x, y| y.1.cmp(&x.1).then(x.0.cmp(&y.0)));
-    out.truncate(TOP_M);
-    out
+        .filter(|(_, p)| *p >= MIN_PPMI);
+    strongest(scored, TOP_M)
 }
 
 /// Widen a query in place by every spelled word term's neighbours.

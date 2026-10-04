@@ -7,20 +7,21 @@
 use serde_json::{Value, json};
 
 /// Frozen constants of the t3-candidates family — the numeric knobs
-/// echo the ONE product binding (the core's clone limits, read through
-/// dedup::candidates since plan v2.33 W3) so doc and code cannot
-/// disagree. `min_reported_pairs` is the per-corpus T-G14
-/// output floor (anti-silence: "report almost nothing" must red),
-/// set as HALF the scout run's identical-struct pair count, rounded
-/// up: pairs whose two units carry byte-equal structural facts
-/// (nodes, shingle set, kind histogram) are near-certain 1.0-TSED
-/// clones, and the ×0.5 margin covers the residual gap between
-/// equal pre-order facts and equal tree shape — a derived bound
-/// with a stated hedge, not a guess (scout 2026-08-13: identical
-/// pairs 105/126/35/1234/6506).
+/// echo the ONE product binding (the core's clone limits, LSH shape and
+/// hot-group cap, read through dedup::candidates since plan v2.33 W3)
+/// so doc and code cannot disagree. `min_reported_pairs` is the
+/// per-corpus T-G14 output floor (anti-silence: "report almost
+/// nothing" must red), set as HALF the scout run's identical-struct
+/// pair count, rounded up: pairs whose two units carry byte-equal
+/// structural facts (nodes, shingle set, kind histogram) are
+/// near-certain 1.0-TSED clones, and the ×0.5 margin covers the
+/// residual gap between equal pre-order facts and equal tree shape — a
+/// derived bound with a stated hedge, not a guess (scout 2026-08-13:
+/// identical pairs 105/126/35/1234/6506).
 pub fn t3c_constants(corpus: &str) -> Value {
     use codeeraser::dedup::candidates as c;
     let l = c::limits();
+    let (perms, bands, rows) = c::lsh_shape();
     let floor: u64 = match corpus {
         "self" => 53,
         "cobra" => 63,
@@ -33,10 +34,10 @@ pub fn t3c_constants(corpus: &str) -> Value {
         "t3_min_nodes": l.min_unit_nodes,
         "tsed_num": l.tsed_num,
         "tsed_den": l.tsed_den,
-        "minhash_perms": c::LSH_SHAPE.0,
-        "lsh_bands": c::LSH_SHAPE.1,
-        "lsh_rows": c::LSH_SHAPE.2,
-        "hot_group_cap": c::HOT_GROUP_CAP,
+        "minhash_perms": perms,
+        "lsh_bands": bands,
+        "lsh_rows": rows,
+        "hot_group_cap": c::hot_group_cap(),
         "min_reported_pairs": floor,
     })
 }

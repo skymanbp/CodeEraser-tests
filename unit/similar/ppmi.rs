@@ -1,24 +1,6 @@
 use super::*;
-use crate::similar::corpus::Doc;
 use crate::similar::terms::{Channel, word_term};
-use std::collections::BTreeMap;
-
-fn doc(path: &str, words: &[&str]) -> Doc {
-    let mut terms = BTreeMap::new();
-    for w in words {
-        terms.insert(word_term(Channel::Name, w), (Channel::Name, 1));
-    }
-    Doc {
-        path: path.into(),
-        bag: UnitBag {
-            key: words.join("_"),
-            nth: 0,
-            start_line: 1,
-            end_line: 1,
-            terms,
-        },
-    }
-}
+use crate::testutil::{fetch_load_docs, word_doc as doc};
 
 /// `fetch` and `load` travel together across four units, `fetch` meets
 /// `user` once and `render` never: the table counts each word's units
@@ -26,14 +8,9 @@ fn doc(path: &str, words: &[&str]) -> Doc {
 /// counts is the core's — RankProps works the same corpus by hand).
 #[test]
 fn the_table_counts_units_and_pairs_once_per_unit() {
-    let corpus = Corpus::build(vec![
-        doc("a.rs", &["fetch", "load", "user"]),
-        doc("b.rs", &["fetch", "load"]),
-        doc("c.rs", &["fetch", "load"]),
-        doc("d.rs", &["fetch", "load"]),
-        doc("e.rs", &["render", "draw"]),
-    ])
-    .expect("ascending");
+    let mut docs = fetch_load_docs();
+    docs.push(doc("e.rs", &["render", "draw"]));
+    let corpus = Corpus::build(docs).expect("ascending");
     let table = Table::build(&corpus);
     let w = |s| word_term(Channel::Name, s);
     assert_eq!(table.n_units(), 5);

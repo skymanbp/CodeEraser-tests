@@ -110,7 +110,7 @@ fn second(s: &Stats, q: &[QueryTerm], c: &Config) -> Vec<QueryTerm> {
                 *best = (*best).max(w);
             }
         }
-        for (term, weight) in feedback::strongest(paths, c.int("m", 3) as usize) {
+        for (term, weight) in mirror::strongest(paths, c.int("m", 3) as usize) {
             let best = added.entry(term).or_default();
             *best = (*best).max(weight);
         }

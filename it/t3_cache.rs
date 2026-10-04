@@ -1,8 +1,8 @@
 //! The T3 verdict cache end to end (plan v2.30 step 5b-9). A second
 //! `ce clone` over an unchanged tree replays every sendable pair and
-//! asks the core nothing, reporting the same clones; a poisoned row
-//! is refused by the mirror ensure — a replayed bit is judged, never
-//! trusted; a new tree re-sends its own pairs and no other, and the
+//! asks the core no pair, reporting the same clones; a poisoned row
+//! is refused by the core's decision (clone/1 `decide`, plan v2.33
+//! W3) — a replayed bit is judged, never trusted; a new tree re-sends its own pairs and no other, and the
 //! same tree in four files is one slot.
 
 use crate::common::{self, core_bin};
@@ -79,7 +79,7 @@ fn a_second_run_replays_every_verdict_and_a_poisoned_row_is_refused() {
         Err(e) => format!("{e:#}"),
     };
     assert!(
-        refused.contains("disagrees with the pinned mirror"),
+        refused.contains("disagrees with the core's decision"),
         "{refused}"
     );
 }

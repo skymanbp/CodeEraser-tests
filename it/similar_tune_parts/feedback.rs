@@ -1,6 +1,6 @@
 //! Positive Rocchio and RM3-style feedback from full-corpus bare top-k, never labels.
 use super::config::Config;
-use super::mirror::QueryTerm;
+use super::mirror::{QueryTerm, strongest};
 use super::stats::Stats;
 use crate::similar_replay::Measured;
 use std::collections::{BTreeMap, BTreeSet};
@@ -46,11 +46,4 @@ pub fn terms(m: &Measured, s: &Stats, doc: usize, q: &[QueryTerm], c: &Config) -
             spelled: false,
         })
         .collect()
-}
-
-pub fn strongest(map: BTreeMap<u64, i128>, cap: usize) -> Vec<(u64, i128)> {
-    let mut out: Vec<_> = map.into_iter().collect();
-    out.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
-    out.truncate(cap);
-    out
 }

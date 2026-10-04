@@ -17,16 +17,24 @@ fn reply_pins_refuse_drift_and_degradation() {
     assert_eq!((rows, counts), (vec![[1, 2]], vec![3]));
 }
 
-/// The verdict-bit throat (ADR-008 P1) fires generically ONCE
-/// here: bits decode in row order, a truncated or missing array
-/// refuses — an unqualified score row must never default.
+/// The per-row column throat (the verdict bits of ADR-008 P1 and every
+/// family column beside them) fires generically ONCE here: a column
+/// decodes in row order, a truncated or missing one refuses — an
+/// unqualified score row must never default.
 #[test]
-fn verdict_bits_decode_and_length_lock() {
+fn row_columns_decode_and_length_lock() {
     let ok = json!({"verdicts": [true, false]});
-    assert_eq!(verdict_bits(&ok, 2).expect("bits"), vec![true, false]);
-    assert!(verdict_bits(&ok, 3).is_err(), "truncated bits refuse");
+    let bits: Vec<bool> = rows_for(&ok, "verdicts", 2).expect("bits");
+    assert_eq!(bits, vec![true, false]);
+    let short = rows_for::<bool>(&ok, "verdicts", 3).expect_err("truncated bits refuse");
     assert!(
-        verdict_bits(&json!({}), 0).is_err(),
+        short
+            .to_string()
+            .contains("core sent 2 verdicts for 3 score rows"),
+        "{short}"
+    );
+    assert!(
+        rows_for::<bool>(&json!({}), "verdicts", 0).is_err(),
         "missing verdicts refuses even for zero rows"
     );
 }

@@ -53,30 +53,26 @@ fn dedup_check_without_budget_is_an_error() {
 
 /// `--check` accepts the calibrated operating point or a tighter one
 /// only — a looser filter empties the budget with no clone repaid
-/// (k4 fence attack, item O41). The refusal precedes any core
-/// contact (a nonexistent core proves it, and the message, not the
-/// exit code, is what the old binary could not produce); tightening
-/// rows reach the core and stay red on the same seeded pair.
+/// (k4 fence attack, item O41). The refusal precedes any measurement:
+/// `--min-tokens` above the guarantee and `--min-distinct 0` precede any
+/// core contact (a nonexistent core proves it, and the message, not the
+/// exit code, is what the old binary could not produce); `--min-distinct`
+/// above the floor is refused once the floor is read off the core's
+/// package (plan v2.33 W3), still before measuring. Tightening rows reach
+/// the core and stay red on the same seeded pair.
 #[test]
 fn dedup_check_refuses_loosening_overrides_before_the_core() {
     let dir = tmp("gate-dedup-filters");
     common::seed_clone_pair(&dir);
     common::seed_budget(&dir, 0);
+    let real = core_bin();
     let loosening = [
-        ("--min-tokens", "1000"),
-        ("--min-distinct", "8"),
-        ("--min-distinct", "0"),
+        ("--min-tokens", "1000", "ce-core-that-does-not-exist"),
+        ("--min-distinct", "8", real.as_str()),
+        ("--min-distinct", "0", "ce-core-that-does-not-exist"),
     ];
-    for (flag, value) in loosening {
-        let args = [
-            "dedup",
-            ".",
-            "--check",
-            flag,
-            value,
-            "--core",
-            "ce-core-that-does-not-exist",
-        ];
+    for (flag, value, core) in loosening {
+        let args = ["dedup", ".", "--check", flag, value, "--core", core];
         let out = common::run_ce(&dir, &args);
         let err = String::from_utf8_lossy(&out.stderr);
         assert_eq!(

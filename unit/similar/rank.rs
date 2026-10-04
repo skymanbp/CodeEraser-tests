@@ -1,26 +1,8 @@
 use super::*;
-use crate::similar::bag::UnitBag;
 use crate::similar::corpus::{Corpus, Doc, query_of};
 use crate::similar::ppmi::Table;
 use crate::similar::terms::word_term;
-use std::collections::BTreeMap;
-
-fn doc(path: &str, words: &[&str]) -> Doc {
-    let mut terms = BTreeMap::new();
-    for w in words {
-        terms.insert(word_term(Channel::Name, w), (Channel::Name, 1));
-    }
-    Doc {
-        path: path.into(),
-        bag: UnitBag {
-            key: words.join("_"),
-            nth: 0,
-            start_line: 1,
-            end_line: 1,
-            terms,
-        },
-    }
-}
+use crate::testutil::{fetch_load_docs, word_doc as doc};
 
 fn corpus(docs: Vec<Doc>) -> Corpus {
     Corpus::build(docs).expect("seats ascending")
@@ -74,12 +56,7 @@ fn the_request_carries_postings_for_scoring_terms_only() {
 /// no pairs at all.
 #[test]
 fn cooc_rows_fetch_by_the_package_floor_and_ratio() {
-    let mut docs = vec![
-        doc("a.rs", &["fetch", "load", "user"]),
-        doc("b.rs", &["fetch", "load"]),
-        doc("c.rs", &["fetch", "load"]),
-        doc("d.rs", &["fetch", "load"]),
-    ];
+    let mut docs = fetch_load_docs();
     docs.extend((0..12).map(|i| doc(&format!("z{i:02}.rs"), &["wide", &format!("w{i}")])));
     let c = corpus(docs);
     let t = Table::build(&c);
@@ -93,6 +70,14 @@ fn cooc_rows_fetch_by_the_package_floor_and_ratio() {
     assert_eq!(rows.pairs, [[fetch, load, 4, 4]]);
     let rows = cooc_rows(&t, &query_of(&doc("q.rs", &["wide"]).bag)).expect("in-memory");
     assert_eq!((rows.words, rows.pairs.len()), (vec![[wide, 12]], 0));
+}
+
+/// A hit row naming `seat` and nothing else, as many as `seats` lists.
+fn seats(seats: &[u64]) -> Value {
+    seats
+        .iter()
+        .map(|s| json!([s, 0, 0, 0, 0, 0, 0, 0, 0]))
+        .collect()
 }
 
 fn reply(hits: Value) -> Value {
@@ -118,20 +103,10 @@ fn a_well_formed_reply_is_relayed_and_every_skew_is_named() {
     let degraded = json!({"degraded": true, "reason": "rank_too_large"});
     assert_eq!(consume(&degraded, 1, 1), Err("rank_too_large".into()));
     for (hits, n, k, want) in [
-        (json!([[9, 0, 0, 0, 0, 0, 0, 0, 0]]), 4, 5, "out of range"),
-        (
-            json!([[1, 0, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0, 0]]),
-            4,
-            5,
-            "repeated",
-        ),
+        (seats(&[9]), 4, 5, "out of range"),
+        (seats(&[1, 1]), 4, 5, "repeated"),
         (json!([[1, 0, 0]]), 4, 5, "a hit is"),
-        (
-            json!([[1, 0, 0, 0, 0, 0, 0, 0, 0], [2, 0, 0, 0, 0, 0, 0, 0, 0]]),
-            4,
-            1,
-            "more hits",
-        ),
+        (seats(&[1, 2]), 4, 1, "more hits"),
     ] {
         let err = consume(&reply(hits), n, k).expect_err(want);
         assert!(err.contains(want), "{want}: {err}");
