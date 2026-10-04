@@ -7,15 +7,11 @@
 //! and the constants), terms.rs `Channel::weight` and wire.rs
 //! `query_terms` (the bag similar/1 was sent). Plan v2.33 W3 moved the
 //! ranking into the core (rank/1); this copy stays as the differential
-//! oracle (unit/similar/rank_differential.rs) and as the tuning
-//! instrument's formulas (it/similar_tune_parts/mirror.rs mounts this
-//! same file), so it names the library through its parent's `lib`
-//! alias — `crate` in the unit tree, `codeeraser` in the it crate.
-//! Never edit the bodies.
+//! oracle (unit/similar/rank_differential.rs). Never edit the bodies.
 
-use super::lib::similar::bag::UnitBag;
-use super::lib::similar::corpus::Doc;
-use super::lib::similar::terms::Channel;
+use crate::similar::bag::UnitBag;
+use crate::similar::corpus::Doc;
+use crate::similar::terms::Channel;
 use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 

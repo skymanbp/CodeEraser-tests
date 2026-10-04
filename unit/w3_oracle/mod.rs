@@ -10,12 +10,6 @@ pub mod fourclass;
 pub mod similar;
 pub mod t3;
 
-/// The library as similar.rs names it: the it crate mounts that oracle
-/// too (the tuning instrument's formulas), with `lib` = `codeeraser`.
-mod lib {
-    pub(crate) use crate::similar;
-}
-
 /// The differential gates' other side: the real core over the real wire.
 pub(crate) fn core_link() -> crate::corelink::Link {
     let core = crate::daemon::judge::core_bin().expect("a core");

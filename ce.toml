@@ -64,6 +64,9 @@ entry_globs = ["gui/", "unit/"]
 # checks into one, the seeded pass counts its counters through one
 # list, and two row parsers / import heads took their second spelling.
 # Row set diffed against the 18e46b5 tree: that row gone, none new.
-# Measured on the formatted tree. Ratchet DOWN with every cleanup.
+# Measured on the formatted tree. The tuning instrument and its mount
+# retired later in the same wave (coordinator ruling 2026-10-04, the
+# it_reads_unit rule): 90 measured again, no row gone, none new.
+# Ratchet DOWN with every cleanup.
 [dedup]
 budget = 90

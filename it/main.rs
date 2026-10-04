@@ -203,8 +203,6 @@ mod setup_e2e;
 mod similar_face;
 mod similar_replay;
 mod similar_replay_parts;
-mod similar_tune;
-mod similar_tune_parts;
 mod similar_wire;
 mod site_contents;
 mod site_math;
