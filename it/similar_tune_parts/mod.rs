@@ -7,7 +7,18 @@ mod feedback;
 mod metrics;
 mod mirror;
 mod novel;
+// The frozen ranking oracle of plan v2.33 W3, shared whole with the
+// unit tree's differential gate; allowed dead because this instrument
+// reads only its formulas, never its corpus and table.
+#[allow(dead_code)]
+#[path = "../../unit/w3_oracle/similar.rs"]
+mod oracle;
 mod output;
+
+/// The library as the oracle names it (`crate` in the unit tree).
+mod lib {
+    pub use codeeraser::similar;
+}
 mod ranking;
 mod roles;
 mod score;

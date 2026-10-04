@@ -33,7 +33,6 @@ use crate::l2_fpr_replay_parts::{Label, Row, Tally};
 use codeeraser::daemon::judge::Judge;
 use codeeraser::fourclass::batch::BatchClassification;
 use codeeraser::fourclass::session;
-use codeeraser::fourclass::stacking::dup_spans;
 use codeeraser::tombstone::texts::{self, Side};
 use std::path::{Path, PathBuf};
 
@@ -106,16 +105,28 @@ fn judge_commit(judge: &mut Judge, root: &Path, sha: &str) -> Judged {
         return Judged::Skipped("partial");
     }
     let inputs = crate::eval_l2_edges_parts::pair_inputs(&loaded);
-    let spans: Vec<usize> = inputs.iter().map(|i| dup_spans(i).len()).collect();
     let batch = judge.judge_changeset(&inputs);
     if batch.degraded.is_some() {
         return Judged::Skipped("degraded");
     }
+    let spans = if batch.suspicions.is_empty() {
+        Vec::new() // read only for the rows an intercept writes
+    } else {
+        new_spans(&inputs)
+    };
     Judged::Measured(Box::new(Measured {
         files: loaded.iter().map(|l| l.rel.clone()).collect(),
         batch,
         spans,
     }))
+}
+
+/// The newly-duplicated span count per pair, as the core's L1 answer
+/// (`moves/1`) names it to the cross-pair rule.
+fn new_spans(inputs: &[codeeraser::fourclass::batch::PairInput]) -> Vec<usize> {
+    let (mut link, _) = codeeraser::corelink::Link::open(&common::core_bin()).expect("open core");
+    let l1 = crate::fourclass_moves::judged(&mut link, inputs);
+    l1.dup_spans.iter().map(Vec::len).collect()
 }
 
 /// Every intercepted (commit, firing pair) as one ledger row.

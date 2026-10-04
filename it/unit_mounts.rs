@@ -67,9 +67,10 @@ fn mounts_in(file: &Path, text: &str, stray: &mut Vec<String>) -> Vec<PathBuf> {
 }
 
 /// The child modules a mounted unit file declares (`mod x;`, one per
-/// line): a `#[path]`-mounted file reads its children as a mod-rs file
-/// does, from its own directory (unit/flow/lang.rs holds the
-/// per-language lowering legs, plan v2.32 step 2), unless the line
+/// line, any visibility — unit/w3_oracle/mod.rs exposes its oracles
+/// as `pub mod`): a `#[path]`-mounted file reads its children as a
+/// mod-rs file does, from its own directory (unit/flow/lang.rs holds
+/// the per-language lowering legs, plan v2.32 step 2), unless the line
 /// before names the child's own `#[path]` (unit/graph/ladder/frozen.rs
 /// mounts the frozen rungs in oracle/, plan v2.33 W2a).
 fn children(unit: &Path) -> Vec<PathBuf> {
@@ -78,6 +79,9 @@ fn children(unit: &Path) -> Vec<PathBuf> {
     let dir = unit.parent().expect("a file has a directory");
     let mut out = Vec::new();
     for (i, l) in lines.iter().enumerate() {
+        let l = l
+            .trim_start_matches("pub(crate) ")
+            .trim_start_matches("pub ");
         let Some(n) = l.strip_prefix("mod ").and_then(|m| m.strip_suffix(';')) else {
             continue;
         };

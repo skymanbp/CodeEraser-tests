@@ -14,7 +14,7 @@
 /// names the key the member carried on the day it dissolved: the
 /// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
 /// both readers in baseline_bridge.rs share `seated_or_retired`.
-pub const RETIRED: [(u64, &str); 47] = [
+pub const RETIRED: [(u64, &str); 50] = [
     (
         5414355871597516298,
         "v2.32 step 6 2026-10-03: 8.0.0 retired structure/1's `patterns` request key, so CE.Structure imports the named refusal (CE.Wire.Retired) inside the import run it shared with CE.Docdup and StructureProps no longer refuses the pattern table twice - the two blocks this member's pair rode (Docdup.hs:38-43 / Structure.hs:32-37 imports, StructureProps.hs:124-134 / 134-137 refusals) left with the road (ce.toml dedup budget 37 -> 35)",
@@ -206,5 +206,17 @@ pub const RETIRED: [(u64, &str); 47] = [
     (
         18190675168993883734,
         "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
+    ),
+    (
+        1890265009673430078,
+        "v2.33 W3 2026-10-04: docdup/1 gained the `seqs` request shape (an optional field and its `.:?` read) and each scored row its measured run (the `runs` column before the counts), so CE.Docdup's request record / FromJSON / respondWith head and its reply head no longer rhyme with CE.Clone's - the two blocks these members rode left with them (ce.toml dedup budget 35 -> 33)",
+    ),
+    (
+        6431664410968615078,
+        "v2.33 W3 2026-10-04: docdup/1 gained the `seqs` request shape (an optional field and its `.:?` read) and each scored row its measured run (the `runs` column before the counts), so CE.Docdup's request record / FromJSON / respondWith head and its reply head no longer rhyme with CE.Clone's - the two blocks these members rode left with them (ce.toml dedup budget 35 -> 33)",
+    ),
+    (
+        10624204810296426211,
+        "v2.33 W3 2026-10-04: the clone and docdup verdict mirrors retired into the core (clone/1 `decide`, docdup/1), and unit/dedup/t3.rs and unit/docdup/judge.rs dropped their verdict-boundary tests - the two file heads this member rode (lines 1-9 of each) left with them (the suite's dedup budget 91 -> 90)",
     ),
 ];

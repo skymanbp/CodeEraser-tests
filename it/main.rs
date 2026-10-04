@@ -128,6 +128,7 @@ mod flow_precision;
 mod flow_provenance;
 mod foreign_readers;
 mod fourclass_decls;
+mod fourclass_moves;
 mod fpr_flow_gate;
 mod fpr_flow_replay;
 mod fpr_flow_replay_parts;

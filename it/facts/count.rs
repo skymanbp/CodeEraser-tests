@@ -121,6 +121,18 @@ fn golden_requests(root: &Path) -> usize {
 }
 
 /// Counts off the tree and the contract JSONs.
+/// Capabilities the hello reply offers that are no judgment family.
+const NOT_FAMILIES: [&str; 8] = [
+    "hello",
+    "tables/1",
+    "document/1",
+    "resolve/1",
+    "candidates/1",
+    "rank/1",
+    "docpairs/1",
+    "moves/1",
+];
+
 fn tree(root: &Path) -> Vec<Fact> {
     let hooks = json(root, "plugin/hooks/hooks.json");
     let hello = read(root, "contracts/fixtures/handshake/hello-ok.ndjson");
@@ -130,18 +142,19 @@ fn tree(root: &Path) -> Vec<Fact> {
     vec![
         linked(
             "count:families#word",
-            // the judgment families: not the handshake, the definition
-            // package tables/1 (v2.32 step 1), the report documents
-            // document/1 (step 3) nor the ladders' search resolve/1 (v2.33
-            // W2a: it answers where a site leads, graph judges what it means)
+            // the judgment families: not the handshake, not the
+            // definition package tables/1 (plan v2.32 step 1), not the
+            // report documents document/1 (step 3), not the stages plan
+            // v2.33 moved into the core whose answers feed a family counted
+            // here (W2a resolve/1 the graph judgment; W3 candidates/1 and
+            // docpairs/1 the clone and docdup judgments, rank/1 similar/1,
+            // moves/1 fourclass/2)
             capabilities
                 .iter()
-                .filter(|c| {
-                    !["hello", "tables/1", "document/1", "resolve/1"]
-                        .contains(&c.as_str().unwrap_or(""))
-                })
+                .filter(|c| !NOT_FAMILIES.contains(&c.as_str().unwrap_or("")))
                 .count(),
-            "contracts/fixtures/handshake/hello-ok.ndjson::capabilities (minus hello, tables/1, document/1 and resolve/1)",
+            "contracts/fixtures/handshake/hello-ok.ndjson::capabilities (minus hello, tables/1, document/1, \
+             the W2a stage resolve/1 and the W3 stages candidates/1, rank/1, docpairs/1, moves/1)",
         ),
         linked(
             "count:golden_requests#digits",

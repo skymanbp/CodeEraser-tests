@@ -51,6 +51,19 @@ entry_globs = ["gui/", "unit/"]
 # and none are new (the two rows the step first landed, the chunk
 # battery's twin arc/event legs and its head against wire_tests.rs's
 # derived leg, were merged and reshaped before the count was read).
+# 91 -> 90 (plan v2.33 W3, 2026-10-03): the row that rode in with the
+# unit tree -- unit/dedup/t3.rs's and unit/docdup/judge.rs's verdict
+# boundary heads (52 tokens, lines 1-9 of each) -- left with the two
+# mirrors those legs pinned (`is_clone`, `is_dup`); the core decides
+# both now and the differential gates drive it. The rows the lane first
+# landed went before the count was read: the tuning instrument's
+# formulas are the frozen oracle's own file (it/similar_tune_parts
+# mounts unit/w3_oracle/similar.rs, five rows), the oracle's
+# `extend_exhaustive` reads its 093aede4 frame again, the differential
+# legs open the core through `w3_oracle::core_link` and fold each arm's
+# checks into one, the seeded pass counts its counters through one
+# list, and two row parsers / import heads took their second spelling.
+# Row set diffed against the 18e46b5 tree: that row gone, none new.
 # Measured on the formatted tree. Ratchet DOWN with every cleanup.
 [dedup]
-budget = 91
+budget = 90

@@ -85,7 +85,8 @@ fn a_short_body_relocates_by_its_declaration_and_a_tie_relocates_nowhere() {
             .collect();
         assert_eq!(got, want, "{name}");
         for (pair, input) in batch.pairs.iter().zip(&inputs) {
-            let l1 = codeeraser::fourclass::classify(input.before, input.after, input.lang);
+            let alone = crate::fourclass_moves::judged(&mut link, std::slice::from_ref(input));
+            let l1 = &alone.pairs[0];
             assert_eq!(pair.counts, l1.counts, "{name}: no line changes class");
             assert_eq!(pair.moved, l1.moved, "{name}: no moved-line delta");
         }

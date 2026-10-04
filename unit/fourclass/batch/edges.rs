@@ -1,6 +1,6 @@
 use super::*;
-use crate::fourclass::model::classify;
 use crate::scan::lang::Lang;
+use crate::w3_oracle::fourclass::classify;
 use serde_json::json;
 
 /// Two pairs: `helper/1` leaves pair 0 and arrives at pair 1.

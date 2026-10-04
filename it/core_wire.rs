@@ -274,11 +274,21 @@ fn degraded_reply_keeps_l1_pure() {
     let before_a = format!("{flood}let alpha = 2;\nlet beta = 3;\n");
     let after_b = format!("{flood}let alpha = 2;\nlet beta = 3;\n");
     let inputs = removal_addition_batch(&before_a, &after_b);
-    let l1 = classify_batch(&inputs, None);
+    // no link: L1 is the core's too (plan v2.33 W3), so there is no
+    // Rust copy to report — no pairs, a named reason
+    let none = classify_batch(&inputs, None);
+    assert_eq!(none.degraded.as_deref(), Some("no_link"));
+    assert!(none.pairs.is_empty(), "no Rust L1 behind a missing core");
     let (mut link, _) = codeeraser::corelink::Link::open(&core_bin()).expect("open");
+    let l1 = crate::fourclass_moves::judged(&mut link, &inputs);
     let l2 = classify_batch(&inputs, Some(&mut link));
     assert_eq!(l2.degraded.as_deref(), Some("bucket_cap"), "cap visible");
     assert!(l2.relocations.is_empty(), "no partial relocations");
+    assert_eq!(
+        l1.pairs.len(),
+        l2.pairs.len(),
+        "a degraded cross-pair pass keeps L1"
+    );
     for (a, b) in l1.pairs.iter().zip(&l2.pairs) {
         assert_eq!(
             (a.counts.added_novel, a.counts.removed_deleted),

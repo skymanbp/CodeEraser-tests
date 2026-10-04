@@ -21,7 +21,7 @@ use std::path::PathBuf;
 pub const HELLO: &str = "handshake/hello-ok.ndjson";
 
 /// The wire golden files both consumers read, in Spec.hs's order.
-pub const GOLDEN_FILES: [&str; 23] = [
+pub const GOLDEN_FILES: [&str; 25] = [
     HELLO,
     "handshake/wire-errors.ndjson",
     "fourclass/golden.ndjson",
@@ -46,6 +46,7 @@ pub const GOLDEN_FILES: [&str; 23] = [
     "candidates/golden.ndjson",
     "rank/golden.ndjson",
     "docpairs/golden.ndjson",
+    "moves/golden.ndjson",
 ];
 
 fn fixture(rel: &str) -> PathBuf {
