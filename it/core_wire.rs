@@ -130,10 +130,10 @@ fn knob_default_drift_gate() {
             "cochangeFloor": 2, "violCost": 10, "defaultWeight": 1,
             "scoreScale": 1000, "tolNum": 102, "tolDen": 100, "tolAbs": 10,
             // 2.19.0 (batch-7 slice 1): CE.Dedup.Cost.minDistinct —
-            // this pin, DEFAULT_MIN_DISTINCT's mirror declaration in
-            // pairs.rs, and the per-run dedupBlocks ensure in
-            // budget.rs are the three legs holding the one floor
-            "minDistinct": codeeraser::dedup::pairs::DEFAULT_MIN_DISTINCT,
+            // this pin, the package's `limits.dedup` the report reads
+            // (pairs::default_min_distinct, plan v2.33 W3), and the
+            // per-run dedupBlocks ensure in budget.rs hold the one floor
+            "minDistinct": codeeraser::dedup::pairs::default_min_distinct(),
         }),
         "core Cost.hs defaults drifted from the pinned knob face"
     );

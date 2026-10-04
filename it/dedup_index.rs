@@ -74,7 +74,7 @@ fn cross_file_t2_clone_detected() {
     let instances = idx.all_instances().expect("instances");
     let filter = pairs::Filter {
         min_tokens: p.guarantee(),
-        min_distinct: pairs::DEFAULT_MIN_DISTINCT,
+        min_distinct: pairs::default_min_distinct(),
     };
     let found = pairs::clone_blocks(&instances, &streams, filter);
     assert_eq!(found.hot_chained, 0);

@@ -43,6 +43,7 @@ pub const GOLDEN_FILES: [&str; 21] = [
     "tables/golden.ndjson",
     "document/golden.ndjson",
     "resolve/golden.ndjson",
+    "candidates/golden.ndjson",
 ];
 
 fn fixture(rel: &str) -> PathBuf {

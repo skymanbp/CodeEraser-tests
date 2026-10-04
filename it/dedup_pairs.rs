@@ -8,7 +8,7 @@ use codeeraser::scan::lang::Lang;
 fn flt(min_tokens: usize) -> pairs::Filter {
     pairs::Filter {
         min_tokens,
-        min_distinct: pairs::DEFAULT_MIN_DISTINCT,
+        min_distinct: pairs::default_min_distinct(),
     }
 }
 

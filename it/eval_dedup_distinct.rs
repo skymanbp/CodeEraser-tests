@@ -22,7 +22,7 @@
 
 use crate::common;
 use crate::eval_support::corpus::PINNED_CORPORA;
-use codeeraser::dedup::pairs::DEFAULT_MIN_DISTINCT;
+use codeeraser::dedup::pairs::default_min_distinct;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -51,7 +51,7 @@ fn measure(name: &str, tip: &str, root: &Path) -> Value {
     let suppressed: Vec<Value> = found
         .blocks
         .iter()
-        .filter(|b| b.distinct < DEFAULT_MIN_DISTINCT)
+        .filter(|b| b.distinct < default_min_distinct())
         .map(|b| {
             json!({
                 "a": format!("{}:{}", b.a_file, b.a_start),
@@ -138,7 +138,7 @@ fn coherent(c: &Value) {
     let total: u64 = hist.values().map(|v| v.as_u64().expect("count")).sum();
     let below: u64 = hist
         .iter()
-        .filter(|(k, _)| k.parse::<usize>().expect("distinct") < DEFAULT_MIN_DISTINCT)
+        .filter(|(k, _)| k.parse::<usize>().expect("distinct") < default_min_distinct())
         .map(|(_, v)| v.as_u64().expect("count"))
         .sum();
     assert_eq!(
@@ -194,7 +194,7 @@ fn the_fixtures_reproduce_the_calibration_and_the_record_restates_the_doc() {
     let root = common::repo_root();
     let doc = load(&root);
     assert_eq!(doc["schema"], SCHEMA);
-    assert_eq!(doc["floor"].as_u64(), Some(DEFAULT_MIN_DISTINCT as u64));
+    assert_eq!(doc["floor"].as_u64(), Some(default_min_distinct() as u64));
     let corpora = doc["corpora"].as_array().expect("corpora");
     let frozen = corpora
         .iter()
@@ -224,7 +224,7 @@ fn regenerate() {
     }
     let doc = json!({
         "schema": SCHEMA,
-        "floor": DEFAULT_MIN_DISTINCT,
+        "floor": default_min_distinct(),
         "min_tokens": codeeraser::dedup::Params::default().guarantee(),
         "corpora": corpora,
     });

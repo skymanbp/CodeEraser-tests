@@ -13,7 +13,7 @@ use crate::common::{rust_fn, tmp};
 fn filter(p: Params) -> pairs::Filter {
     pairs::Filter {
         min_tokens: p.guarantee(),
-        min_distinct: pairs::DEFAULT_MIN_DISTINCT,
+        min_distinct: pairs::default_min_distinct(),
     }
 }
 

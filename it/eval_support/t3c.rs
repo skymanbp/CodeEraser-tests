@@ -7,8 +7,9 @@
 use serde_json::{Value, json};
 
 /// Frozen constants of the t3-candidates family — the numeric knobs
-/// echo the ONE product binding (dedup::candidates) so doc and code
-/// cannot disagree. `min_reported_pairs` is the per-corpus T-G14
+/// echo the ONE product binding (the core's clone limits, read through
+/// dedup::candidates since plan v2.33 W3) so doc and code cannot
+/// disagree. `min_reported_pairs` is the per-corpus T-G14
 /// output floor (anti-silence: "report almost nothing" must red),
 /// set as HALF the scout run's identical-struct pair count, rounded
 /// up: pairs whose two units carry byte-equal structural facts
@@ -19,6 +20,7 @@ use serde_json::{Value, json};
 /// pairs 105/126/35/1234/6506).
 pub fn t3c_constants(corpus: &str) -> Value {
     use codeeraser::dedup::candidates as c;
+    let l = c::limits();
     let floor: u64 = match corpus {
         "self" => 53,
         "cobra" => 63,
@@ -28,9 +30,9 @@ pub fn t3c_constants(corpus: &str) -> Value {
         other => panic!("no t3-candidates floor for {other}"),
     };
     json!({
-        "t3_min_nodes": c::T3_MIN_NODES,
-        "tsed_num": c::TSED_NUM,
-        "tsed_den": c::TSED_DEN,
+        "t3_min_nodes": l.min_unit_nodes,
+        "tsed_num": l.tsed_num,
+        "tsed_den": l.tsed_den,
         "minhash_perms": c::LSH_SHAPE.0,
         "lsh_bands": c::LSH_SHAPE.1,
         "lsh_rows": c::LSH_SHAPE.2,

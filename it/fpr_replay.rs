@@ -32,7 +32,7 @@
 
 use crate::common::{blob, chain, changed, git_lines, repo_root, tmp};
 use crate::fpr_replay_parts::{Class, Intercept, pair, report};
-use codeeraser::dedup::pairs::{DEFAULT_MIN_DISTINCT, Filter};
+use codeeraser::dedup::pairs::{Filter, default_min_distinct};
 use codeeraser::dedup::probe::{self, Match, Target};
 use codeeraser::dedup::{Params, index::Index};
 use codeeraser::scan::lang::Lang;
@@ -239,7 +239,7 @@ pub fn replay(
         p,
         f: Filter {
             min_tokens: p.guarantee(),
-            min_distinct: DEFAULT_MIN_DISTINCT,
+            min_distinct: default_min_distinct(),
         },
         lang,
     };

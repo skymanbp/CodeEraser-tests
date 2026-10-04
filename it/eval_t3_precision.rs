@@ -22,7 +22,7 @@ use std::collections::BTreeMap;
 
 /// One row's stored facts re-derived (T-G4/G6 + the θ pin): identity
 /// echo, truth echo against the frozen audit, judged_clone recomputed
-/// from raw ted at the product threshold binding, verdict recomputed
+/// from raw ted at the core's threshold, verdict recomputed
 /// from its own row.
 fn check_row(corpus: &str, rank: &str, row: &Value, s: &Value, truths: &BTreeMap<&str, &str>) {
     for key in t3f::T3_IDENTITY {
@@ -32,9 +32,13 @@ fn check_row(corpus: &str, rank: &str, row: &Value, s: &Value, truths: &BTreeMap
     if let (Some(ted), Some(n1), Some(n2)) =
         (row["ted"].as_i64(), row["n1"].as_i64(), row["n2"].as_i64())
     {
+        // the threshold the core judges by, off its package (plan v2.33
+        // W3: the product holds no copy of the formula any more)
+        let l = codeeraser::dedup::candidates::limits();
+        let mx = n1.max(n2);
         assert_eq!(
             judged_clone,
-            codeeraser::dedup::t3::is_clone(ted, n1, n2),
+            (mx - ted) * l.tsed_den >= l.tsed_num * mx,
             "{corpus}/{rank}: judged_clone contradicts its raw ted (θ pin)"
         );
     } else {

@@ -45,7 +45,7 @@ fn the_hit_path_serves_the_slot_and_a_content_move_invalidates_it() {
     assert!(found.blocks.is_empty(), "two tiny files share nothing");
     let f = Filter {
         min_tokens: Params::default().guarantee(),
-        min_distinct: crate::dedup::pairs::DEFAULT_MIN_DISTINCT,
+        min_distinct: crate::dedup::pairs::default_min_distinct(),
     };
     let idx = open(&root);
     let d = digest(idx.raw()).unwrap();
