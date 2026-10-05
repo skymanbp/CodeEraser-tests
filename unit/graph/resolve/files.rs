@@ -23,7 +23,7 @@ pub(super) fn scratch(leg: &str) -> PathBuf {
     dir
 }
 
-fn put(root: &Path, rel: &str, text: &str) {
+pub(super) fn put(root: &Path, rel: &str, text: &str) {
     let p = root.join(rel);
     std::fs::create_dir_all(p.parent().expect("a parent")).expect("dirs");
     std::fs::write(p, text).expect("write");
@@ -42,6 +42,35 @@ pub(super) fn real_or(
     }
     let at = d.under(real.len());
     d.mutate(&real[at])
+}
+
+/// A text reader's questions, `[rel, text]`: the text drawn from `lines`
+/// (up to `max` of them over the four line ends, then one odd
+/// character) or, every fourth, a real text named `name` mutated; one in
+/// five opens with a byte-order mark. Prints how many real texts the
+/// trees gave.
+pub(super) fn bom_texts(
+    seed: u64,
+    name: &str,
+    lines: &'static str,
+    rels: &'static str,
+    max: usize,
+) -> Vec<Value> {
+    let [lines, seps, rels] = [lines, "\n¦\r\n¦\n\n¦\r", rels].map(table);
+    let real = real_texts(name);
+    let qs = questions(seed, |d, i| {
+        let mut text = real_or(d, &real, i, |d| d.words(&lines, &seps, max) + d.one(ODD));
+        if d.chance(5) {
+            text.insert(0, '\u{feff}');
+        }
+        json!([d.one(&rels), text])
+    });
+    println!(
+        "real {} texts: {}",
+        name.trim_start_matches('*'),
+        real.len()
+    );
+    qs
 }
 
 /// Lines a go.mod is drawn from.

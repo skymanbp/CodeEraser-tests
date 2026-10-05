@@ -15,7 +15,10 @@
 //! re-aimed at ../; java_pick.rs's one edit: `unannotated` reads the
 //! annotation half of the header lexer from ../oracle_cfg/
 //! java_annotation.rs, since the header and type readers stay in cli/src
-//! and the walk still hands their output over as Scope::java). All
+//! and the walk still hands their output over as Scope::java).
+//! oracle/hs.rs is a byte copy of ladder/hs.rs at fa83a48d, before
+//! stage D; it reads the frozen cabal reader (../oracle_cfg/cabal.rs)
+//! at `crate::graph::cabal` and paths.rs's `one_of`, unchanged. All
 //! are compiled for tests only, each mounted here by `#[path]` (oracle/
 //! holds no mod.rs: a parent there would turn each copy's `super::` into
 //! an edge back to it, a cycle); the differential gate
@@ -40,6 +43,8 @@ pub(crate) use c_index::forced_wire;
 mod c_search;
 #[path = "oracle/go.rs"]
 mod go;
+#[path = "oracle/hs.rs"]
+mod hs;
 #[path = "oracle/java.rs"]
 mod java;
 #[path = "../oracle_cfg/java_annotation.rs"]
@@ -60,7 +65,8 @@ mod r_package;
 pub(crate) use r_package::packages;
 
 /// The a8db74a9 dispatcher for the ladders the core now holds, R's arm
-/// added at c96ab3f6 and Java's at 27d0d56d: the empty specifier refused
+/// added at c96ab3f6, Java's at 27d0d56d and Haskell's at fa83a48d: the
+/// empty specifier refused
 /// before any rung.
 pub(crate) fn resolve(lang: Lang, site: &Site, scope: &Scope) -> Outcome {
     if site.spec.is_empty() {
@@ -73,6 +79,7 @@ pub(crate) fn resolve(lang: Lang, site: &Site, scope: &Scope) -> Outcome {
         Lang::Lua => lua::resolve(site, scope),
         Lang::R => r::resolve(site, scope),
         Lang::Java => java::resolve(site, scope),
+        Lang::Haskell => hs::resolve(site.from, site.spec, scope),
         _ => Outcome::Unresolved(Reason::Unsupported),
     }
 }

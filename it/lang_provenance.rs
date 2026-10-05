@@ -133,16 +133,17 @@ fn ladder_first(exam: &Exam, sample: &str, audits: Option<&[String]>, why: &str)
 }
 
 /// What a precision doc's answers are computed from besides its exam's
-/// own ladder (Exam::ladder): the shared rungs and path helpers, the
+/// own ladder (Exam::ladder): the shared rungs and path helpers (the
+/// last helper of ladder/paths.rs, `one_of`, is the core's
+/// CE.Resolve.Answer since plan v2.33 W2-text stage D), the
 /// site detector, the resolver-config names, the walk that picks the
 /// universe, the language registry and the pinned grammars. A change
 /// anywhere else that moves an answer is the release replay's to find
 /// (eval_lang_parts/replay.rs). The lockfile is here for its pins and
 /// is read as content (LOCK, eval_support::lock_pins); the rest as
 /// history.
-const ANSWERED_BY: [&str; 9] = [
+const ANSWERED_BY: [&str; 8] = [
     "cli/src/graph/ladder/mod.rs",
-    "cli/src/graph/ladder/paths.rs",
     "cli/src/graph/roots.rs",
     "cli/src/graph/keys.rs",
     "cli/src/graph/sites*",

@@ -44,6 +44,23 @@ java MEMBERS=m|N|CONST|of|Inner|Ghost
 java JDK=java.util|java.util.function|java.io|javax.swing|java.lang|jdk.jfr|java.sql|org.w3c.dom|java.util.concurrent
 java ROOTS=src/main/java|lib/src/main/java|a|lib|src/test/java||x|src
 java ANNOTATIONS=@Tag |@a.b.Tag |@Tag(1) |@Tag(x = ")") |@A @B(1) |@Tag /* c */ |@Tag("""s)""") |@Tag('(') |@Tag("\"(") |@Tag(// x~) |@ |@1x |@Tag(|@a.* |@Tag(("(")) |@Tag(/* ) */) |@ Tag |@a. b |@Tag('\'') |@Tag("unclosed|@Tag(/* open
+hs DIRS=|src|src/Data|src/A|app|lib|lib/Data|pkg|pkg/src|pkg/src/A|pkg/src/Data|other|other/lib|other/lib/Data|test|x|x/Y|Data|A|A/B|pkg/A
+hs BASES=Main.hs|A.hs|B.hs|Map.hs|Util.hs|Foo.hs|lower.hs|Data.hs|Setup.hs|notes.md|A.hs-boot
+hs CABAL_DIRS=|pkg|other|app|x|src
+hs CABAL_NAMES=p|q|pkgA|other
+hs LIBRARY=other/lib/A.hs|other/lib/B.hs|other/lib/Data/Map.hs|other/lib/Util.hs|other/lib/lower.hs|other/lib/A/B.hs|x/lib/A.hs|pkg/src/Main.hs|pkg/src/A.hs|pkg/Setup.hs
+hs PACKAGES=pkgA|pkgB|other|base|containers||pkgA-x
+hs HEADERS=library|Library|library internal|executable exe|Executable  exe|test-suite t|benchmark b|common shared|common base-deps|common|flag f|source-repository head|  if os(windows)|  else|library:|LIBRARY
+hs FIELDS=Hs-Source-Dirs|EXPOSED-MODULES|ghc-options|name|other_modules|x y|default-language|Main-Is
+hs ROOTS=src|lib|.|app|../x|src lib|src, lib|pkg/src|..|../..|./src/|src  ,app|x/Y|other/lib|
+hs MODULES=A|A.B|Data.Map|Util|Foo|Main|B|Data|Src.A|A, B|Data.Map Util|lower|A.b|Foo,|Data.Util|Y.A
+hs DEPENDS=base >=4 && <5|containers|pkgA|pkgB, other|other ^>=1.0|text, pkgA >= 1|, base|pkgA-x|base, containers, pkgB||(pkgA)|mtl
+hs MAINS=Main.hs|A.hs|src/Main.hs|Main.lhs||../Main.hs
+hs COMMONS=shared|base-deps|shared, base-deps|missing|Shared
+hs INDENTS=  |	||    
+hs BOOT=Prelude|Data.Map|Data.List|Control.Monad|Data.Text|System.IO|GHC.Generics|Data.IORef|Data.Map.Strict|Control.Monad.State|Data.Aeson|Text.Printf|Data.Set|Data.ByteString
+hs BOOT_PACKAGES=base|containers|text|mtl|bytestring|aeson|pkgA
+hs MALFORMED=lower.Case|A..B|.A|A.|"unclosed A|"" A|"pkgA"A|"pkgA"   A.B   |a|A B|Data.map|"pkgA"|9A|Ä.B
 "#;
 
 /// The table a key names: `<leg> <NAME>`.

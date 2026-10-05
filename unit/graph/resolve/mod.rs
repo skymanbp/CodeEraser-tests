@@ -1,5 +1,6 @@
 //! The configuration readers' differential gate (plan v2.33 W2-text
-//! stage A; R's DESCRIPTION since stage B): the frozen readers
+//! stage A; R's DESCRIPTION since stage B, the .cabal since stage D): the
+//! frozen readers
 //! (unit/graph/oracle_cfg/, mounted at their old paths under cfg(test))
 //! against the core's readers, asked directly through resolve/1's
 //! `inspect` object (CE.Resolve.Inspect).
@@ -11,6 +12,7 @@
 //! classes are compared over every scalar value. A leg prints its tally
 //! and fails on the first disagreement count above zero.
 
+mod cabal;
 mod description;
 mod draw;
 mod files;

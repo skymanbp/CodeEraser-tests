@@ -2,10 +2,10 @@
 //! by `;`) is walked and indexed into a fresh database the way a
 //! `ce dedup` run does, and its edge sweep's sites — every site the
 //! index holds — go to both sides through the store's own resolver
-//! callback; the forced-include arcs and the R package code are compared
-//! over the walked set.
+//! callback; the forced-include arcs, the R package code, the cabal mains
+//! and the cabal privacy are compared over the walked set.
 
-use super::beside::{compare_forced, compare_packages};
+use super::beside::{compare_declared, compare_forced, compare_private};
 use super::common::{Tally, compare, scratch};
 use crate::config::Config;
 use crate::dedup::{Params, index, walkidx};
@@ -58,7 +58,8 @@ fn one_tree(root: &Path, db: &Path, tally: &mut Tally) {
     idx.ensure_edges_resolved(walked.resolve_key, &mut resolver)
         .expect("sweep");
     compare_forced(root, &walked.live, tally, &ctx);
-    compare_packages(root, &walked.live, tally, &ctx);
+    compare_declared(root, &walked.live, tally, &ctx);
+    compare_private(root, &walked.live, tally, &ctx);
 }
 
 #[test]

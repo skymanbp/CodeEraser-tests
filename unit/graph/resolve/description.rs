@@ -11,9 +11,7 @@
 //! space inside, a quote never closed, over continuation lines that start
 //! with a space or a tab.
 
-use super::draw::{ODD, real_texts};
-use super::files::{on_disk, real_or, scratch};
-use super::{questions, table};
+use super::files::{bom_texts, on_disk, scratch};
 use crate::graph::ladder::frozen::description;
 use serde_json::json;
 
@@ -23,22 +21,14 @@ const LINES: &str = "Package: pkg¦Package:   spaced  ¦Package:¦  pkg2¦Packag
 #[test]
 #[ignore = "needs a core: the differential gate"]
 fn descriptions_agree() {
-    let [lines, seps, rels] = [
+    let qs = bom_texts(
+        9,
+        "DESCRIPTION",
         LINES,
-        "\n¦\r\n¦\n\n¦\r",
         "DESCRIPTION¦pkg/DESCRIPTION¦é/DESCRIPTION",
-    ]
-    .map(table);
-    let real = real_texts("DESCRIPTION");
+        8,
+    );
     let root = scratch("description");
-    let qs = questions(9, |d, i| {
-        let mut text = real_or(d, &real, i, |d| d.words(&lines, &seps, 8) + d.one(ODD));
-        if d.chance(5) {
-            text.insert(0, '\u{feff}');
-        }
-        json!([d.one(&rels), text])
-    });
-    println!("real DESCRIPTION texts: {}", real.len());
     on_disk("description", &qs, &root, 0, |root, rel| {
         json!(description::parse(root, rel).map(|d| (d.dir, d.package, d.collate)))
     });

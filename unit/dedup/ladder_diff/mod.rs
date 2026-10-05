@@ -1,13 +1,14 @@
 //! The differential gate of plan v2.33 wave W2a (user instruction
 //! 2026-10-03): every site a tree holds for the ladders the core now
 //! runs (Python, Lua, Go, C / C++; R since W2-text stage B, Java since
-//! stage C) is resolved
+//! stage C, Haskell since stage D) is resolved
 //! twice — by the core over the real resolve/1 wire
 //! (`ladder::resolve_all`) and by the frozen rungs
 //! (unit/graph/ladder/oracle/, mounted as `ladder::frozen` in
 //! cli/src/graph/ladder/mod.rs) — and the two outcomes must be equal,
-//! site by site; the C forced-include arcs and the R package code
-//! likewise. Legs are `#[ignore]`d instruments (a core must be named):
+//! site by site; the C forced-include arcs, the R package code, the
+//! cabal mains and the cabal privacy likewise. Legs are `#[ignore]`d
+//! instruments (a core must be named):
 //! `real` walks the trees `CE_LADDER_DIFF_TREES` names, the random legs
 //! build seeded trees (`CE_LADDER_DIFF_SEED`, `CE_LADDER_DIFF_N` trees of
 //! 30 sites each). Each leg prints its tally verbatim and fails on any
@@ -19,6 +20,7 @@ mod beside;
 mod c;
 mod common;
 mod go;
+mod hs;
 mod java;
 mod java_gen;
 mod lua;

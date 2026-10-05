@@ -93,7 +93,8 @@ pub(super) const ODD: &[&str] = &[
     "=>", ")", "(", "\"",
 ];
 
-/// The real configuration texts named `name` under the trees
+/// The real configuration texts named `name` (`*x`: whose name ends in
+/// `x`) under the trees
 /// CE_RESOLVE_DIFF_TREES lists (`;`-separated), at most two hundred,
 /// build, dependency and VCS directories skipped.
 pub(super) fn real_texts(name: &str) -> Vec<String> {
@@ -120,7 +121,10 @@ pub(super) fn real_texts(name: &str) -> Vec<String> {
             let (p, file) = (e.path(), e.file_name());
             if p.is_dir() && depth < 3 && !skip.iter().any(|s| file == *s) {
                 stack.push((p, depth + 1));
-            } else if file == name
+            } else if (file == name
+                || name
+                    .strip_prefix('*')
+                    .is_some_and(|s| file.to_string_lossy().ends_with(s)))
                 && out.len() < 200
                 && let Ok(t) = std::fs::read_to_string(&p)
             {

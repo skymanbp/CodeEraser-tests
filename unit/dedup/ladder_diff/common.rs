@@ -3,7 +3,7 @@
 //! rng.rs; the comparisons beside the sites: beside.rs; the frozen
 //! dispatcher: unit/graph/ladder/frozen.rs).
 
-use super::beside::{compare_forced, compare_packages};
+use super::beside::{compare_declared, compare_forced, compare_private};
 use super::rng::Rng;
 use crate::graph::ladder::java_header::Header;
 use crate::graph::ladder::lua_path::Template;
@@ -20,6 +20,8 @@ pub(super) struct Tally {
     classes: BTreeMap<(&'static str, String), usize>,
     pub(super) forced: (usize, usize),
     pub(super) packages: (usize, usize),
+    pub(super) mains: (usize, usize),
+    pub(super) private: (usize, usize),
     mismatches: usize,
     shown: Vec<String>,
 }
@@ -37,6 +39,10 @@ impl Tally {
         println!("forced arcs: trees {trees} arcs {arcs}");
         let (trees, packages) = self.packages;
         println!("R package code: trees {trees} packages {packages}");
+        let (trees, mains) = self.mains;
+        println!("cabal mains: trees {trees} mains {mains}");
+        let (files, private) = self.private;
+        println!("cabal privacy: files {files} private {private}");
         println!("mismatches: {}", self.mismatches);
         self.shown.iter().for_each(|m| println!("MISMATCH {m}"));
         assert_eq!(self.mismatches, 0, "{leg}: core and frozen oracle disagree");
@@ -50,6 +56,19 @@ impl Tally {
         self.mismatches += 1;
         if self.shown.len() < 25 {
             self.shown.push(what);
+        }
+    }
+
+    /// One comparison: a disagreement is spelled with both sides.
+    pub(super) fn agree<T: PartialEq + std::fmt::Debug>(
+        &mut self,
+        what: &str,
+        got: &T,
+        want: &T,
+        ctx: &dyn Fn() -> String,
+    ) {
+        if got != want {
+            self.miss(format!("{what}: core {got:?} oracle {want:?}\n{}", ctx()));
         }
     }
 }
@@ -234,8 +253,9 @@ pub(super) type Tree = (World, Vec<Owned>);
 
 /// A random leg: `CE_LADDER_DIFF_N` seeded trees, each built by `tree`
 /// in a fresh directory, both sides on its sites (and on its forced-
-/// include arcs when `forced`, on its R package code when it declares a
-/// DESCRIPTION); the tally printed, any mismatch fails.
+/// include arcs when `forced`, on its R package code and cabal mains when
+/// it declares a DESCRIPTION or a .cabal, on its cabal privacy when it
+/// declares a .cabal); the tally printed, any mismatch fails.
 pub(super) fn leg(
     name: &str,
     salt: u64,
@@ -272,8 +292,12 @@ pub(super) fn leg(
         if forced {
             compare_forced(&root, &world.files, &mut tally, &ctx);
         }
-        if world.configs.iter().any(|c| c.ends_with("DESCRIPTION")) {
-            compare_packages(&root, &world.files, &mut tally, &ctx);
+        let named = |suffix| world.configs.iter().any(|c| c.ends_with(suffix));
+        if named("DESCRIPTION") || named(".cabal") {
+            compare_declared(&root, &world.files, &mut tally, &ctx);
+        }
+        if named(".cabal") {
+            compare_private(&root, &world.files, &mut tally, &ctx);
         }
     }
     tally.report(&format!("{name} random"));

@@ -7,13 +7,37 @@
 //! back at their old paths, where the frozen ladders (ladder::frozen) read
 //! them; the differential gate (unit/graph/resolve/) holds the core's
 //! readers against them. pyproject.rs is mounted from roots.rs.
+//! cabal.rs and cabal_parse.rs are byte copies of cli/src/graph/ at
+//! fa83a48d, before stage D of W2-text moved the cabal reading into the
+//! core (cabal.rs's one edit: its unit-test mount reads `../`); the
+//! `roots` below gives them back `beside`, the opening only they read,
+//! as it stood there. cabal_mains.rs is the main-is expansion of
+//! deadcode/targets.rs at fa83a48d.
 //!
 //! Each copy is mounted here by `#[path]` (oracle_cfg/ holds no mod.rs: a
 //! parent there would turn the copies' references to their old parent
 //! into edges back to it, a cycle — ladder/frozen.rs, same reason). The
-//! glob gives the copies their old parent's names (`roots`, each other).
+//! copies find their old parent's names here: `roots` below, each other.
 
-use super::*;
+/// The live path steps, and `beside` as it stood at fa83a48d.
+mod roots {
+    pub(crate) use crate::graph::roots::*;
+    use std::path::Path;
+
+    /// A config file's text with the directory it speaks for: the opening
+    /// every reader of a per-directory file shares (a cabal file, a
+    /// `compile_flags.txt`) - one throat, or the two openings read as
+    /// clones of each other.
+    pub(crate) fn beside(root: &Path, rel: &str) -> Option<(String, String)> {
+        let text = std::fs::read_to_string(root.join(rel)).ok()?;
+        Some((text, parent_dir(rel)))
+    }
+}
+
+#[path = "oracle_cfg/cabal.rs"]
+pub(crate) mod cabal;
+#[path = "oracle_cfg/cabal_mains.rs"]
+pub(crate) mod cabal_mains;
 
 #[path = "oracle_cfg/cmdline.rs"]
 pub(crate) mod cmdline;
