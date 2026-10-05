@@ -44,3 +44,7 @@ pub fn own_root_dir<'a>(from: &str, dirs: impl Iterator<Item = &'a String>) -> O
         _ => None,
     }
 }
+
+#[cfg(test)]
+#[path = "../java_sets.rs"]
+mod tests;

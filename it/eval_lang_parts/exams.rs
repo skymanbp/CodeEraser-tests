@@ -5,7 +5,7 @@
 
 use super::Exam;
 use super::Reach::{Tree, Universe};
-use super::Stage::Scored;
+use super::Stage::Audited;
 
 /// The C family's rungs and the compilation-database readers they
 /// consult: one ladder for both exams, since a C++ include resolves
@@ -42,6 +42,18 @@ const R_LADDER: &[&str] = &[
     "core/app/CE/Resolve/",
 ];
 
+/// The Java ladder: the header and type readers here (the walk reads
+/// every Java file's head with them, ladder/java_header.rs and
+/// java_types.rs), the rungs in the core since plan v2.33 W2-text stage
+/// C (CE.Resolve.Java and its helpers), the request that carries each
+/// header between them.
+const JAVA_LADDER: &[&str] = &[
+    "cli/src/graph/ladder/java*",
+    "cli/src/graph/resolve/",
+    "core/app/CE/Resolve.hs",
+    "core/app/CE/Resolve/",
+];
+
 /// Why the C family's ladder precedes its sample (Exam::ladder_first).
 const C_LADDER_FIRST: &str = "step 2 landed the C family's ladder (b7e78c7, 2026-09-24) before any \
     exam of it existed; booklet section 14 item 14 fills the C/C++ three-piece set in at step 6, \
@@ -67,7 +79,7 @@ const fn exam(
         reach: Universe,
         ladder,
         ladder_first: None,
-        stage: Scored,
+        stage: Audited,
         generation,
     }
 }
@@ -116,7 +128,7 @@ pub const EXAMS: [Exam; 6] = [
             ("jsoup", "093e2f58492c531667e551e8793513a41b22443e"),
         ],
         &["java"],
-        &["cli/src/graph/ladder/java*"],
+        JAVA_LADDER,
         1,
     ),
     exam(

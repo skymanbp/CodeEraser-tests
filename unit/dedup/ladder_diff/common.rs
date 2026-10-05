@@ -5,6 +5,7 @@
 
 use super::beside::{compare_forced, compare_packages};
 use super::rng::Rng;
+use crate::graph::ladder::java_header::Header;
 use crate::graph::ladder::lua_path::Template;
 use crate::graph::ladder::{self, Memo, Outcome, Scope, Site};
 use crate::scan::lang::Lang;
@@ -101,6 +102,9 @@ pub(super) struct World {
     pub search_roots: BTreeMap<String, BTreeSet<String>>,
     pub lua: BTreeSet<Template>,
     pub includes: BTreeMap<String, Vec<String>>,
+    pub java: BTreeMap<String, Header>,
+    /// Each site's line, by its place in the tree's sites (absent: 1).
+    pub lines: Vec<usize>,
 }
 
 impl World {
@@ -170,7 +174,7 @@ impl World {
 
     /// Both sides on this world's sites, rooted at `root`.
     fn judge(&self, root: &Path, sites: &[(Lang, Site)], tally: &mut Tally) {
-        let (none, java) = (BTreeSet::new(), BTreeMap::new());
+        let none = BTreeSet::new();
         let (m1, m2) = (Memo::default(), Memo::default());
         let scope = |memo| Scope {
             files: &self.files,
@@ -180,7 +184,7 @@ impl World {
             memo,
             crate_roots: &none,
             search_roots: &self.search_roots,
-            java: &java,
+            java: &self.java,
             lua: &self.lua,
             includes: &self.includes,
         };
@@ -194,8 +198,8 @@ impl World {
         let mut configs = Vec::new();
         texts(root, root, &mut configs);
         format!(
-            "  files {:?}\n  search_roots {:?}\n  lua {:?}\n  includes {:?}\n  configs {configs:?}",
-            self.files, self.search_roots, self.lua, self.includes
+            "  files {:?}\n  search_roots {:?}\n  lua {:?}\n  includes {:?}\n  java {:?}\n  configs {configs:?}",
+            self.files, self.search_roots, self.lua, self.includes, self.java
         )
     }
 }
@@ -251,12 +255,14 @@ pub(super) fn leg(
         let (world, owned) = tree(&mut rng, &root);
         let sites: Vec<(Lang, Site)> = owned
             .iter()
-            .map(|(lang, kind, from, spec)| {
+            .zip(0..)
+            .map(|((lang, kind, from, spec), at)| {
+                let line = world.lines.get(at).copied().unwrap_or(1);
                 let site = Site {
                     kind,
                     from,
                     spec,
-                    line: 1,
+                    line,
                 };
                 (*lang, site)
             })

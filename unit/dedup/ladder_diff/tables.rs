@@ -2,7 +2,7 @@
 //! the words joined by `|` (an empty word allowed: a leading, doubled or
 //! trailing `|`). One text, so the tables are data and not code.
 
-const TABLES: &str = r"
+const TABLES: &str = r#"
 py DIRS=|a|a/b|a/b/c|src|src/a|src/pkg|lib|lib/a|pkg|pkg/sub|x
 py BASES=__init__.py|__init__.py|x.py|y.py|a.py|b.py|c.py|sub.py|os.py|requests.py|pkg.py|notes.md
 py ROOTS=lib|src|./lib|lib/|pkg||..|a/b|a/../lib|pkg/sub|x//
@@ -35,7 +35,16 @@ r ROOTS=R|pkg/R|x||..|R/sub|a/../R|scripts/
 r PACKAGES=pkgA|pkgB|stats|utils|pkg.dots|pkgA |
 r COLLATE=a.R|b.R|c.r|sub/a.R|../a.R|b b.R|zz.R||utils.R|.R
 r DESC_DIRS=|pkg|x|a|R
-";
+java DIRS=src/main/java/a|src/main/java/a/b|src/test/java/a|src/test/java/a/b|lib/src/main/java/a|lib/src/main/java/a/b|lib/src/test/java/a|a|a/b|x||src/main/java|src/it/java/a
+java BASES=A.java|B.java|C.java|D.java|Util.java|package-info.java|A.java|B.java|notes.md
+java PACKAGES=a|a.b|x||a.c|b|a.B|java.util|org.x
+java CLASSES=A|B|C|D|Util|N|M|String|List|Map|Object|Inner|X|Ghost
+java SUPERS=C|N|A.N|a.b.C|a.b.C.N|B|Object|java.util.List|Util.Inner|x.D|D|A|C.M|a.A.Inner|Map.Entry|a.b.Ghost
+java MEMBERS=m|N|CONST|of|Inner|Ghost
+java JDK=java.util|java.util.function|java.io|javax.swing|java.lang|jdk.jfr|java.sql|org.w3c.dom|java.util.concurrent
+java ROOTS=src/main/java|lib/src/main/java|a|lib|src/test/java||x|src
+java ANNOTATIONS=@Tag |@a.b.Tag |@Tag(1) |@Tag(x = ")") |@A @B(1) |@Tag /* c */ |@Tag("""s)""") |@Tag('(') |@Tag("\"(") |@Tag(// x~) |@ |@1x |@Tag(|@a.* |@Tag(("(")) |@Tag(/* ) */) |@ Tag |@a. b |@Tag('\'') |@Tag("unclosed|@Tag(/* open
+"#;
 
 /// The table a key names: `<leg> <NAME>`.
 pub(super) fn t(key: &str) -> &'static str {

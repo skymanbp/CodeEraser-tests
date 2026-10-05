@@ -278,3 +278,7 @@ impl At<'_> {
         settle(starred, 3, Reason::AmbiguousPaths, self.scope)
     }
 }
+
+#[cfg(test)]
+#[path = "../java.rs"]
+mod tests;

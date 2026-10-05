@@ -1,6 +1,7 @@
 //! The differential gate of plan v2.33 wave W2a (user instruction
 //! 2026-10-03): every site a tree holds for the ladders the core now
-//! runs (Python, Lua, Go, C / C++; R since W2-text stage B) is resolved
+//! runs (Python, Lua, Go, C / C++; R since W2-text stage B, Java since
+//! stage C) is resolved
 //! twice — by the core over the real resolve/1 wire
 //! (`ladder::resolve_all`) and by the frozen rungs
 //! (unit/graph/ladder/oracle/, mounted as `ladder::frozen` in
@@ -18,6 +19,8 @@ mod beside;
 mod c;
 mod common;
 mod go;
+mod java;
+mod java_gen;
 mod lua;
 mod py;
 mod r;
