@@ -14,7 +14,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
 /// A clean scratch directory for one leg.
-fn scratch(leg: &str) -> PathBuf {
+pub(super) fn scratch(leg: &str) -> PathBuf {
     let base = std::env::var("CE_RESOLVE_DIFF_SCRATCH")
         .map_or_else(|_| std::env::temp_dir(), PathBuf::from);
     let dir = base.join(format!("resolve-diff-{leg}"));
@@ -31,7 +31,7 @@ fn put(root: &Path, rel: &str, text: &str) {
 
 /// Every fourth question a real text (mutated) when the trees hold any,
 /// else one drawn.
-fn real_or(
+pub(super) fn real_or(
     d: &mut Draw,
     real: &[String],
     i: usize,
@@ -70,7 +70,13 @@ fn rel_of(v: &Value) -> &str {
 /// A leg over files: each question's text (`[.., path, text]` from
 /// `at`) written at its path, then read back by `read` (the frozen
 /// reader, its answer spelled for the comparison).
-fn on_disk(leg: &str, qs: &[Value], root: &Path, at: usize, read: impl Fn(&Path, &str) -> Value) {
+pub(super) fn on_disk(
+    leg: &str,
+    qs: &[Value],
+    root: &Path,
+    at: usize,
+    read: impl Fn(&Path, &str) -> Value,
+) {
     check(leg, qs, |q| {
         put(root, rel_of(&q[at]), rel_of(&q[at + 1]));
         read(root, rel_of(&q[at]))

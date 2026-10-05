@@ -50,7 +50,7 @@ fn declared_targets_come_from_the_manifests() {
     tree.extend(sources.map(|f| (f, "")));
     crate::testutil::write_tree(&root, &tree);
     let files: BTreeSet<String> = sources.map(String::from).into();
-    let d = Declared::gather(&root, &files, &BTreeSet::new());
+    let d = Declared::gather(&root, &files, &BTreeSet::new()).expect("the core answers");
     let hits: Vec<&str> = sources.into_iter().filter(|f| d.hit(f)).collect();
     assert_eq!(
         hits,
@@ -72,7 +72,7 @@ fn declared_targets_come_from_the_manifests() {
     .into();
     assert_eq!(*d.package_code_by_root(), want, "each package's code");
     let declared = ["it/main.rs", "it/gone.rs"].map(String::from).into();
-    let d = Declared::gather(&root, &files, &declared);
+    let d = Declared::gather(&root, &files, &declared).expect("the core answers");
     assert!(d.hit("it/main.rs"), "declared in ce.toml and walked");
     assert!(
         !d.hit("it/gone.rs"),

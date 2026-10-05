@@ -44,6 +44,7 @@ mod r;
 mod r_package;
 
 pub(crate) use c_index::forced_wire;
+pub(crate) use r::description;
 pub(crate) use r_package::packages;
 
 /// The a8db74a9 dispatcher for the ladders the core now holds, R's arm

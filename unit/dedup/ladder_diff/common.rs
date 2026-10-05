@@ -1,8 +1,9 @@
-//! What the legs share: the tally, the two-sided comparison (sites,
-//! forced-include arcs), a Scope's owned inputs and the random-tree
-//! driver (the seeded stream: rng.rs; the frozen dispatcher:
-//! unit/graph/ladder/frozen.rs).
+//! What the legs share: the tally, the two-sided comparison of sites, a
+//! Scope's owned inputs and the random-tree driver (the seeded stream:
+//! rng.rs; the comparisons beside the sites: beside.rs; the frozen
+//! dispatcher: unit/graph/ladder/frozen.rs).
 
+use super::beside::{compare_forced, compare_packages};
 use super::rng::Rng;
 use crate::graph::ladder::lua_path::Template;
 use crate::graph::ladder::{self, Memo, Outcome, Scope, Site};
@@ -16,7 +17,8 @@ use std::path::{Path, PathBuf};
 pub(super) struct Tally {
     sites: BTreeMap<&'static str, usize>,
     classes: BTreeMap<(&'static str, String), usize>,
-    forced: (usize, usize),
+    pub(super) forced: (usize, usize),
+    pub(super) packages: (usize, usize),
     mismatches: usize,
     shown: Vec<String>,
 }
@@ -32,6 +34,8 @@ impl Tally {
         }
         let (trees, arcs) = self.forced;
         println!("forced arcs: trees {trees} arcs {arcs}");
+        let (trees, packages) = self.packages;
+        println!("R package code: trees {trees} packages {packages}");
         println!("mismatches: {}", self.mismatches);
         self.shown.iter().for_each(|m| println!("MISMATCH {m}"));
         assert_eq!(self.mismatches, 0, "{leg}: core and frozen oracle disagree");
@@ -41,22 +45,11 @@ impl Tally {
         self.sites.values().sum()
     }
 
-    fn miss(&mut self, what: String) {
+    pub(super) fn miss(&mut self, what: String) {
         self.mismatches += 1;
         if self.shown.len() < 25 {
             self.shown.push(what);
         }
-    }
-}
-
-fn lang_name(lang: Lang) -> &'static str {
-    match lang {
-        Lang::Python => "python",
-        Lang::Lua => "lua",
-        Lang::Go => "go",
-        Lang::C => "c",
-        Lang::Cpp => "cpp",
-        _ => "other",
     }
 }
 
@@ -86,7 +79,7 @@ pub(super) fn compare(
     };
     for ((lang, site), got) in sites.iter().zip(answered) {
         let want = ladder::frozen::resolve(*lang, site, oracle);
-        let name = lang_name(*lang);
+        let name = lang.name();
         *tally.sites.entry(name).or_default() += 1;
         *tally.classes.entry((name, class(&want))).or_default() += 1;
         if got != want {
@@ -96,30 +89,6 @@ pub(super) fn compare(
                 ctx()
             ));
         }
-    }
-}
-
-/// The forced-include arcs both ways over one file set.
-pub(super) fn compare_forced(
-    root: &Path,
-    files: &BTreeSet<String>,
-    tally: &mut Tally,
-    ctx: &dyn Fn() -> String,
-) {
-    let ids: BTreeMap<(&str, &str), usize> = files
-        .iter()
-        .enumerate()
-        .map(|(i, f)| ((f.as_str(), ""), i))
-        .collect();
-    let (mut want, mut got) = (BTreeSet::new(), BTreeSet::new());
-    ladder::frozen::forced_wire(root, files, &ids, &mut want);
-    if let Err(e) = crate::graph::resolve::forced_wire(root, files, &ids, &mut got) {
-        return tally.miss(format!("forced: core refused: {e}\n{}", ctx()));
-    }
-    tally.forced.0 += 1;
-    tally.forced.1 += want.len();
-    if got != want {
-        tally.miss(format!("forced: core {got:?} oracle {want:?}\n{}", ctx()));
     }
 }
 
@@ -156,6 +125,28 @@ impl World {
             .collect();
         if !declared.is_empty() {
             self.search_roots.insert(lang.into(), declared);
+        }
+    }
+
+    /// Manifests named `name` (go.mod, DESCRIPTION) at the directories of
+    /// the `|` table `dirs`, each written as `text` draws it with chance
+    /// `pct` %, and (5 %) one listed at `ghost/` and never written.
+    pub(super) fn manifests(
+        &mut self,
+        (rng, root): (&mut Rng, &Path),
+        (dirs, name): (&'static str, &str),
+        pct: usize,
+        text: fn(&mut Rng) -> String,
+    ) {
+        for dir in dirs.split('|') {
+            if rng.chance(pct) {
+                let rel = crate::graph::roots::join_dir(dir, name);
+                put(root, &rel, &text(rng));
+                self.configs.push(rel);
+            }
+        }
+        if rng.chance(5) {
+            self.configs.push(format!("ghost/{name}"));
         }
     }
 
@@ -239,7 +230,8 @@ pub(super) type Tree = (World, Vec<Owned>);
 
 /// A random leg: `CE_LADDER_DIFF_N` seeded trees, each built by `tree`
 /// in a fresh directory, both sides on its sites (and on its forced-
-/// include arcs when `forced`); the tally printed, any mismatch fails.
+/// include arcs when `forced`, on its R package code when it declares a
+/// DESCRIPTION); the tally printed, any mismatch fails.
 pub(super) fn leg(
     name: &str,
     salt: u64,
@@ -270,8 +262,12 @@ pub(super) fn leg(
             })
             .collect();
         world.judge(&root, &sites, &mut tally);
+        let ctx = || world.describe(&root);
         if forced {
-            compare_forced(&root, &world.files, &mut tally, &|| world.describe(&root));
+            compare_forced(&root, &world.files, &mut tally, &ctx);
+        }
+        if world.configs.iter().any(|c| c.ends_with("DESCRIPTION")) {
+            compare_packages(&root, &world.files, &mut tally, &ctx);
         }
     }
     tally.report(&format!("{name} random"));

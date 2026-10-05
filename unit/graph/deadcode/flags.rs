@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 fn roles_at(root: &Path, name: &str) -> i64 {
     let entries = globs::compile_inclusions(root, &[], "[graph] entry_globs").expect("empty set");
     let files = BTreeSet::from([name.to_string()]);
-    let declared = Declared::gather(root, &files, &BTreeSet::new());
+    let declared = Declared::gather(root, &files, &BTreeSet::new()).expect("the core answers");
     roles_of(root, name, &entries, &declared)
 }
 

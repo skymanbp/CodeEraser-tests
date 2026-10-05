@@ -4,10 +4,9 @@
 //! with and without non-test `.go` files, and import paths built from
 //! module prefixes, stdlib names, dotted heads and odd slashes.
 
-use super::common::{Tree, World, leg, put};
+use super::common::{Tree, World, leg};
 use super::rng::Rng;
 use super::tables::t;
-use crate::graph::roots::join_dir;
 use crate::scan::lang::Lang;
 use std::path::Path;
 
@@ -55,16 +54,7 @@ fn spec(rng: &mut Rng) -> String {
 
 fn tree(rng: &mut Rng, root: &Path) -> Tree {
     let mut world = World::seeded(rng, (10, 30), t("go DIRS"), t("go BASES"));
-    for dir in t("go MOD_DIRS").split('|') {
-        if rng.chance(55) {
-            let rel = join_dir(dir, "go.mod");
-            put(root, &rel, &go_mod(rng));
-            world.configs.push(rel);
-        }
-    }
-    if rng.chance(5) {
-        world.configs.push("ghost/go.mod".into());
-    }
+    world.manifests((rng, root), (t("go MOD_DIRS"), "go.mod"), 55, go_mod);
     let keep = |f: &str| f.ends_with(".go");
     let owned = world.sites(rng, keep, (t("go DIRS"), "zz.go"), |rng, from| {
         (Lang::Go, "import", from, spec(rng))

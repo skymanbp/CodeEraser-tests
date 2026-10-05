@@ -1,7 +1,8 @@
 //! The configuration readers' differential gate (plan v2.33 W2-text
-//! stage A): the frozen 92e728b1 readers (unit/graph/oracle_cfg/, mounted
-//! at their old paths under cfg(test)) against the core's readers, asked
-//! directly through resolve/1's `inspect` object (CE.Resolve.Inspect).
+//! stage A; R's DESCRIPTION since stage B): the frozen readers
+//! (unit/graph/oracle_cfg/, mounted at their old paths under cfg(test))
+//! against the core's readers, asked directly through resolve/1's
+//! `inspect` object (CE.Resolve.Inspect).
 //! Every leg is `#[ignore]`d — it needs a core — and draws at least ten
 //! thousand seeded questions (CE_RESOLVE_DIFF_SEED moves the seed;
 //! CE_RESOLVE_DIFF_N the count), some of them real configuration texts
@@ -10,6 +11,7 @@
 //! classes are compared over every scalar value. A leg prints its tally
 //! and fails on the first disagreement count above zero.
 
+mod description;
 mod draw;
 mod files;
 mod text;

@@ -28,6 +28,13 @@ c NAMES=x.h|y.h|a.h|lib/x.h|A/B.h|../x.h|./y.h|sub/x.h|include/x.h|z.h|cfg.h|a//
 c PLACES=include|lib|src|a/include|inc|fw|.|..|../outside|src/sub|x|
 c FORCED=cfg.h|x.h|include/x.h|../x.h|a/./x.h|y.h|z.h
 c DRIVERS=cc|clang++|cl.exe|clang-cl
+r DIRS=|R|R/sub|pkg|pkg/R|pkg/R/sub|a|a/b|scripts|x|x/R|inst
+r BASES=a.R|b.R|c.r|zz.R|utils.R|b b.R|.R|x.Rmd|notes.txt|a.R
+r SOURCE=a.R|b.R|c.r|R|utils.R|..|.||sub|x|b b.R|scripts|pkg
+r ROOTS=R|pkg/R|x||..|R/sub|a/../R|scripts/
+r PACKAGES=pkgA|pkgB|stats|utils|pkg.dots|pkgA |
+r COLLATE=a.R|b.R|c.r|sub/a.R|../a.R|b b.R|zz.R||utils.R|.R
+r DESC_DIRS=|pkg|x|a|R
 ";
 
 /// The table a key names: `<leg> <NAME>`.

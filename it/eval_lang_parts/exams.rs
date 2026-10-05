@@ -5,7 +5,7 @@
 
 use super::Exam;
 use super::Reach::{Tree, Universe};
-use super::Stage::Scored;
+use super::Stage::Audited;
 
 /// The C family's rungs and the compilation-database readers they
 /// consult: one ladder for both exams, since a C++ include resolves
@@ -28,6 +28,15 @@ const C_LADDER: &[&str] = &[
 /// them.
 const LUA_LADDER: &[&str] = &[
     "cli/src/graph/ladder/lua*",
+    "cli/src/graph/resolve/",
+    "core/app/CE/Resolve.hs",
+    "core/app/CE/Resolve/",
+];
+
+/// The R ladder: in the core since plan v2.33 W2-text stage B
+/// (CE.Resolve.R, the DESCRIPTION reader CE.Resolve.Description), the
+/// request that carries each DESCRIPTION's text between them.
+const R_LADDER: &[&str] = &[
     "cli/src/graph/resolve/",
     "core/app/CE/Resolve.hs",
     "core/app/CE/Resolve/",
@@ -58,7 +67,7 @@ const fn exam(
         reach: Universe,
         ladder,
         ladder_first: None,
-        stage: Scored,
+        stage: Audited,
         generation,
     }
 }
@@ -127,7 +136,7 @@ pub const EXAMS: [Exam; 6] = [
             ("covid19model", "fcc30e2b8d046ddf3ef10dfc222e42b5cd732622"),
         ],
         &["R", "r"],
-        &["cli/src/graph/ladder/r/"],
+        R_LADDER,
         1,
     ),
     Exam {
