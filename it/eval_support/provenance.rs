@@ -198,18 +198,15 @@ pub fn blob_at(rev: &str, path: &str) -> String {
 /// on every bump and that line answers nothing, so a doc is held to
 /// the pins and a bump alone never retires it (v1.8.0's lesson).
 pub fn lock_pins(lock: &str) -> String {
-    let mut out = String::with_capacity(lock.len());
-    let mut lines = lock.lines().peekable();
-    while let Some(line) = lines.next() {
-        out.push_str(line);
-        out.push('\n');
-        if line == "name = \"codeeraser\""
-            && lines.peek().is_some_and(|n| n.starts_with("version = "))
-        {
-            lines.next();
-        }
-    }
-    out
+    let mut after_own_name = false;
+    lock.lines()
+        .filter(|line| {
+            let own_version = after_own_name && line.starts_with("version = ");
+            after_own_name = *line == "name = \"codeeraser\"";
+            !own_version
+        })
+        .flat_map(|line| [line, "\n"])
+        .collect()
 }
 
 /// The one answers input read by content: cli/Cargo.lock's pins

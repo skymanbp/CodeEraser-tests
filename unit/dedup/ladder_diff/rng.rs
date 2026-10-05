@@ -8,12 +8,17 @@ use std::collections::BTreeSet;
 pub(super) struct Rng(u64);
 
 impl Rng {
+    /// The leg's stream: the seed mixed with the leg's salt. The state
+    /// only has to be nonzero (xorshift stays at zero); `.max(1)` keeps
+    /// every other state as it is. (Until plan v2.33 W2-text stage E this
+    /// was `| 1`, which folded each even state onto the odd one above it:
+    /// seeds 2 and 3 drew the same trees on every leg.)
     pub(super) fn new(salt: u64) -> Rng {
         let seed = std::env::var("CE_LADDER_DIFF_SEED")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(0x5eed_2033_u64);
-        Rng((seed ^ salt.wrapping_mul(0x9e37_79b9_7f4a_7c15)) | 1)
+        Rng((seed ^ salt.wrapping_mul(0x9e37_79b9_7f4a_7c15)).max(1))
     }
 
     fn next(&mut self) -> u64 {

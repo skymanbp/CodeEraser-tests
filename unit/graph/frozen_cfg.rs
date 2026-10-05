@@ -12,12 +12,23 @@
 //! core (cabal.rs's one edit: its unit-test mount reads `../`); the
 //! `roots` below gives them back `beside`, the opening only they read,
 //! as it stood there. cabal_mains.rs is the main-is expansion of
-//! deadcode/targets.rs at fa83a48d.
+//! deadcode/targets.rs at fa83a48d. roots_ts.rs and jsonc.rs are byte
+//! copies of cli/src/graph/ at dd0eec61, before stage E moved the
+//! tsconfig chain and the JSONC reading into the core (jsonc.rs's one
+//! edit: its unit-test mount reads `../`); ts_package.rs, the
+//! package.json half of roots.rs there, is mounted from roots.rs (its
+//! `read_jsonc` reads this jsonc.rs, the frozen chain reads it back
+//! through `roots` below).
 //!
 //! Each copy is mounted here by `#[path]` (oracle_cfg/ holds no mod.rs: a
 //! parent there would turn the copies' references to their old parent
 //! into edges back to it, a cycle — ladder/frozen.rs, same reason). The
 //! copies find their old parent's names here: `roots` below, each other.
+
+#[path = "oracle_cfg/jsonc.rs"]
+pub(crate) mod jsonc;
+#[path = "oracle_cfg/roots_ts.rs"]
+pub(crate) mod roots_ts;
 
 /// The live path steps, and `beside` as it stood at fa83a48d.
 mod roots {

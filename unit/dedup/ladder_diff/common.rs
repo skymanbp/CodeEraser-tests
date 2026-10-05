@@ -303,6 +303,21 @@ pub(super) fn leg(
     tally.report(&format!("{name} random"));
 }
 
+/// A language's legs, one per rung, from its `<lang> LEGS` table (rows
+/// `name salt rung`): each a seeded leg over `tree` aimed at its rung.
+pub(super) fn legs(lang: &str, tree: fn(&mut Rng, &Path, usize) -> Tree) {
+    for row in super::tables::t(&format!("{lang} LEGS")).split('|') {
+        let cells: Vec<&str> = row.split(' ').collect();
+        let [name, salt, rung] = cells[..] else {
+            panic!("a leg row: {row}");
+        };
+        let rung = rung.parse().expect("a rung");
+        leg(name, salt.parse().expect("a salt"), false, |rng, root| {
+            tree(rng, root, rung)
+        });
+    }
+}
+
 /// The scratch root the instruments write under.
 pub(super) fn scratch() -> PathBuf {
     std::env::var("CE_LADDER_DIFF_SCRATCH")

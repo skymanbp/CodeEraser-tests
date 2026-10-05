@@ -244,17 +244,9 @@ fn tree(rng: &mut Rng, root: &Path, rung: usize) -> Tree {
     (world, owned)
 }
 
-/// The three legs, one per rung: name, salt, rung.
-const LEGS: [(&str, u64, usize); 3] = [
-    ("hs-roots", 11, 0),
-    ("hs-packages", 12, 1),
-    ("hs-external", 13, 2),
-];
-
+/// The three legs, one per rung (the `hs LEGS` table).
 #[test]
 #[ignore = "instrument: needs a core (CE_CORE_BIN); run with --ignored --nocapture"]
 fn hs_random_trees_agree() {
-    for (name, salt, rung) in LEGS {
-        super::common::leg(name, salt, false, |rng, root| tree(rng, root, rung));
-    }
+    super::common::legs("hs", tree);
 }

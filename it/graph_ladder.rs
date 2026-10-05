@@ -229,7 +229,8 @@ fn ts_cases() -> Vec<Case> {
 }
 
 /// TS rows, the bare rung (R5) and the refusals: a dependency, a
-/// leftover, Node's builtins (step 5b, ts_node.rs: bare or `node:`-
+/// leftover, Node's builtins (step 5b; CE.Resolve.Ts.isBuiltin since
+/// v2.33 W2-text stage E: bare or `node:`-
 /// prefixed, a subpath, a prefix-only name; a `node:` name Node has no
 /// module for is nothing), a package vendored under the importing
 /// file's own package (External from inside that package alone), an

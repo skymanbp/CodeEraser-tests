@@ -18,7 +18,12 @@
 //! and the walk still hands their output over as Scope::java).
 //! oracle/hs.rs is a byte copy of ladder/hs.rs at fa83a48d, before
 //! stage D; it reads the frozen cabal reader (../oracle_cfg/cabal.rs)
-//! at `crate::graph::cabal` and paths.rs's `one_of`, unchanged. All
+//! at `crate::graph::cabal` and paths.rs's `one_of`, unchanged.
+//! oracle/ts.rs and oracle/ts_node.rs are byte copies of ladder/ at
+//! dd0eec61, before stage E; ts.rs reads the frozen tsconfig chain
+//! (../oracle_cfg/roots_ts.rs, at `crate::graph::roots_ts`) and the
+//! frozen package.json reader (../oracle_cfg/ts_package.rs, at
+//! `crate::graph::roots`), both mounted at their old paths. All
 //! are compiled for tests only, each mounted here by `#[path]` (oracle/
 //! holds no mod.rs: a parent there would turn each copy's `super::` into
 //! an edge back to it, a cycle); the differential gate
@@ -59,15 +64,17 @@ mod paths;
 mod py;
 #[path = "oracle/r.rs"]
 mod r;
+#[path = "oracle/ts.rs"]
+mod ts;
 pub(crate) use r::description;
 #[path = "../oracle_cfg/r_package.rs"]
 mod r_package;
 pub(crate) use r_package::packages;
 
 /// The a8db74a9 dispatcher for the ladders the core now holds, R's arm
-/// added at c96ab3f6, Java's at 27d0d56d and Haskell's at fa83a48d: the
-/// empty specifier refused
-/// before any rung.
+/// added at c96ab3f6, Java's at 27d0d56d, Haskell's at fa83a48d and the
+/// TS / TSX one at dd0eec61: the empty specifier refused before any
+/// rung.
 pub(crate) fn resolve(lang: Lang, site: &Site, scope: &Scope) -> Outcome {
     if site.spec.is_empty() {
         return Outcome::Unresolved(Reason::Empty);
@@ -80,6 +87,7 @@ pub(crate) fn resolve(lang: Lang, site: &Site, scope: &Scope) -> Outcome {
         Lang::R => r::resolve(site, scope),
         Lang::Java => java::resolve(site, scope),
         Lang::Haskell => hs::resolve(site.from, site.spec, scope),
+        Lang::TypeScript | Lang::Tsx => ts::resolve(site.from, site.spec, scope),
         _ => Outcome::Unresolved(Reason::Unsupported),
     }
 }
