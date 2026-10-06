@@ -42,11 +42,19 @@ package h
 func H() {}
 ";
 
-fn seeded(name: &str) -> PathBuf {
-    let ring: String = (0..RING)
+/// The ring of Python files, each importing the next.
+fn ring() -> String {
+    (0..RING)
         .map(|i| format!("--- r{i:02}/m.py\nimport r{:02}.m\n", (i + 1) % RING))
-        .collect();
-    let dir = common::doc_tree(name, &format!("{DOC}{ring}"));
+        .collect()
+}
+
+fn seeded(name: &str) -> PathBuf {
+    planted(name, &format!("{DOC}{}", ring()))
+}
+
+fn planted(name: &str, spec: &str) -> PathBuf {
+    let dir = common::doc_tree(name, spec);
     common::init_and_commit(&dir, "seed");
     dir
 }
@@ -263,12 +271,18 @@ fn a_core_that_cannot_lay_the_document_out_is_refused_by_name() {
 /// each other (plan v2.33 wave W2a, the no-core rule): the sites are
 /// stored unresolved and the graph is owed, so the face refuses by
 /// name — exit 2, both forms, nothing printed — instead of judging a
-/// graph with the edges missing.
+/// graph with the edges missing. The tree is the Python ring alone and
+/// holds no code unit: since plan v2.33 W6 a unit's bag is the core's
+/// (`bags/1`), so over the seeded tree, whose Go files hold units, the
+/// same stub is refused for the bags while the index refreshes — the
+/// second half — before the graph is ever asked.
 #[test]
 fn a_core_that_cannot_resolve_leaves_the_graph_owed_and_is_refused_by_name() {
-    let dir = seeded("arch-owed");
     let stub = common::stub_core::hello_only();
-    refused_both_forms(&dir, &stub, &["resolve_unavailable", "resolve/1"]);
+    let owed = planted("arch-owed", &ring());
+    refused_both_forms(&owed, &stub, &["resolve_unavailable", "resolve/1"]);
+    let units = seeded("arch-no-bags");
+    refused_both_forms(&units, &stub, &["bags/1: core offers no bags/1"]);
 }
 
 /// Both forms refused by a core: exit 2, nothing printed, every needle

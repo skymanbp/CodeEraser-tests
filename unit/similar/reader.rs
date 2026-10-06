@@ -3,9 +3,9 @@ use crate::dedup::Params;
 use crate::scan::lang::Lang;
 use crate::similar::corpus::{Corpus, query_of};
 use crate::similar::file_bags;
+use crate::similar::frozen::{feature_term, word_term};
 use crate::similar::ppmi::Table;
 use crate::similar::rank::{Ask, cooc_rows, request};
-use crate::similar::terms::{feature_term, word_term};
 use std::path::PathBuf;
 
 const A: &str = "/// Fetch the user row by id.\nfn fetch_user(id: u64) -> User {\n    query(id)\n}\n\n/// Load the user row by id.\nfn load_user(id: u64) -> User {\n    query(id)\n}\n";
@@ -104,7 +104,7 @@ fn index_and_query_take_one_term_road() {
     let (dir, idx) = indexed("similar-reader-road");
     let reader = Reader::open(&idx).expect("reader");
     for (path, text) in FILES {
-        for fresh in file_bags(text, Lang::Rust) {
+        for fresh in file_bags(text, Lang::Rust).expect("bags/1") {
             let seat = reader
                 .seat_of(path, &fresh.key, fresh.nth)
                 .unwrap_or_else(|| panic!("{path} {} indexed", fresh.key));

@@ -1,5 +1,6 @@
 use super::*;
-use crate::similar::terms::{Channel, word_term};
+use crate::similar::frozen::word_term;
+use crate::similar::terms::Channel;
 use crate::testutil::{fetch_load_docs, word_doc as doc};
 
 /// `fetch` and `load` travel together across four units, `fetch` meets

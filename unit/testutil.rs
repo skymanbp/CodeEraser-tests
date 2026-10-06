@@ -118,7 +118,7 @@ pub fn four_node_wire(edges: &[[i64; 4]]) -> crate::graph::deadcode::GraphWire {
 /// A similar-corpus seat whose bag holds each word once on the Name
 /// channel — the advisor tests' unit (ppmi, rank).
 pub fn word_doc(path: &str, words: &[&str]) -> crate::similar::corpus::Doc {
-    use crate::similar::terms::{Channel, word_term};
+    use crate::similar::{Channel, frozen::word_term};
     let terms = words
         .iter()
         .map(|w| (word_term(Channel::Name, w), (Channel::Name, 1)))

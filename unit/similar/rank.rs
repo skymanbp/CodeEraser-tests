@@ -1,7 +1,7 @@
 use super::*;
 use crate::similar::corpus::{Corpus, Doc, query_of};
+use crate::similar::frozen::word_term;
 use crate::similar::ppmi::Table;
-use crate::similar::terms::word_term;
 use crate::testutil::{fetch_load_docs, word_doc as doc};
 
 fn corpus(docs: Vec<Doc>) -> Corpus {

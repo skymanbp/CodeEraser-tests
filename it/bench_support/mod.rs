@@ -32,7 +32,7 @@ pub const BENCH_SCHEMA: &str = "ce.bench/0.2.0";
 pub const BENCH_HARNESS: &str = "ce.bench/0.1.0";
 
 /// A debug measurement is refused, never annotated
-/// (PERF-BUDGET.md:88-90 `NOT admissible`). Both drivers ask here, so
+/// (PERF-BUDGET.md:89-91 `NOT admissible`). Both drivers ask here, so
 /// the rule and the citation backing it have one owner.
 pub fn release_only() {
     if cfg!(debug_assertions) {

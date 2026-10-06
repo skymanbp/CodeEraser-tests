@@ -1,4 +1,5 @@
 use super::*;
+use crate::similar::Channel;
 
 /// A method inside an impl: the innermost seat of a line in the
 /// method is the method, of the impl's own line the impl.
@@ -92,21 +93,21 @@ fn resolution_finds_the_innermost_seat_and_names_the_ambiguous_key() {
 
 #[test]
 fn a_text_is_name_and_doc_evidence_only_and_excludes_no_seat() {
-    let q = text_terms("Fetch the user record");
+    let q = text_terms("Fetch the user record").expect("bags/1");
     assert!(
         q.iter()
             .all(|t| matches!(t.channel, Channel::Name | Channel::Doc))
     );
     let stems: std::collections::HashSet<u64> = q.iter().map(|t| t.term).collect();
-    assert!(stems.contains(&terms::word_term(Channel::Name, "fetch")));
-    assert!(stems.contains(&terms::word_term(Channel::Doc, "user")));
+    assert!(stems.contains(&crate::similar::frozen::word_term(Channel::Name, "fetch")));
+    assert!(stems.contains(&crate::similar::frozen::word_term(Channel::Doc, "user")));
     assert!(
-        !stems.contains(&terms::word_term(Channel::Doc, "the")),
+        !stems.contains(&crate::similar::frozen::word_term(Channel::Doc, "the")),
         "stop word"
     );
     assert!(
         q.iter().all(|t| t.tf >= 1),
         "every word spelled at least once"
     );
-    assert!(text_terms("the a").is_empty());
+    assert!(text_terms("the a").expect("bags/1").is_empty());
 }

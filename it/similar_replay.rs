@@ -92,7 +92,7 @@ fn round_trip(root: &Path, name: &str, docs: &[Doc]) -> BTreeMap<String, String>
     let mut seen = 0;
     for path in paths {
         let (text, lang) = dedup::walked_text(root, path).expect("walked text");
-        let mut fresh = file_bags(&text, lang);
+        let mut fresh = file_bags(&text, lang).expect("bags/1");
         fresh.sort_by(|a, b| (&a.key, a.nth).cmp(&(&b.key, b.nth)));
         let stored: Vec<&Doc> = docs.iter().filter(|d| d.path == path).collect();
         assert_eq!(fresh.len(), stored.len(), "{name}: {path}: unit count");

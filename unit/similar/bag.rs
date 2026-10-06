@@ -1,5 +1,5 @@
 use super::*;
-use crate::similar::terms::{feature_term, word_term};
+use crate::similar::frozen::terms::{Channel as Frozen, feature_term, word_term};
 
 const RUST: &str = r#"
 /// Fetches the user record by id.
@@ -91,8 +91,8 @@ py helper/0 P ret:0 +";
 #[test]
 fn bags_read_the_six_channels_as_tabled() {
     let corpora = [
-        ("rs", file_bags(RUST, Lang::Rust)),
-        ("py", file_bags(PYTHON, Lang::Python)),
+        ("rs", file_bags(RUST, Lang::Rust).expect("bags/1")),
+        ("py", file_bags(PYTHON, Lang::Python).expect("bags/1")),
     ];
     for line in EXPECT.lines() {
         let f: Vec<&str> = line.split(' ').collect();
@@ -103,7 +103,7 @@ fn bags_read_the_six_channels_as_tabled() {
             .iter()
             .find(|b| b.key == key)
             .unwrap_or_else(|| panic!("{line}"));
-        let ch = *Channel::ALL
+        let ch = *Frozen::ALL
             .iter()
             .find(|c| c.label() == ch)
             .expect("channel");
@@ -125,7 +125,7 @@ fn bags_read_the_six_channels_as_tabled() {
 #[test]
 fn anonymous_units_carry_no_name_evidence_and_markdown_none_at_all() {
     let ts = "const f = (a: number) => a + 1;\nfunction g() { return [1].map(x => x); }\n";
-    let bags = file_bags(ts, Lang::TypeScript);
+    let bags = file_bags(ts, Lang::TypeScript).expect("bags/1");
     let anon = bags
         .iter()
         .find(|b| b.key.starts_with("(anonymous)"))
@@ -133,15 +133,19 @@ fn anonymous_units_carry_no_name_evidence_and_markdown_none_at_all() {
     assert!(anon.channel(Channel::Name).is_empty());
     assert!(
         anon.terms
-            .contains_key(&feature_term(Channel::Shape, b"k:lambda"))
+            .contains_key(&feature_term(Frozen::Shape, b"k:lambda"))
     );
-    assert!(file_bags("# Title\n\ntext\n", Lang::Markdown).is_empty());
+    assert!(
+        file_bags("# Title\n\ntext\n", Lang::Markdown)
+            .expect("no unit, no ask")
+            .is_empty()
+    );
 }
 
 #[test]
 fn the_bag_universe_is_the_unitsig_universe() {
     let facts = crate::dedup::unitcache::unit_facts(RUST, Lang::Rust);
-    let bags = file_bags(RUST, Lang::Rust);
+    let bags = file_bags(RUST, Lang::Rust).expect("bags/1");
     let a: Vec<(String, i64)> = facts.iter().map(|f| (f.key.clone(), f.nth)).collect();
     let b: Vec<(String, i64)> = bags.iter().map(|b| (b.key.clone(), b.nth)).collect();
     assert_eq!(a, b, "same units, same nth, same order");

@@ -2,8 +2,8 @@ use super::*;
 use crate::dedup::Params;
 use crate::dedup::index::Index;
 use crate::scan::lang::Lang;
+use crate::similar::frozen::word_term;
 use crate::similar::reader::Reader;
-use crate::similar::terms::word_term;
 use std::collections::BTreeSet;
 
 const FETCH: &str = "/// Fetch the user row by id.\nfn fetch_user(id: u64) -> User {\n    query(id)\n}\n\nfn render_page(p: &Page) {\n    draw(p);\n}\n";
@@ -123,7 +123,7 @@ fn both_removed(mut idx: Index) {
 /// and only words carry a marginal.
 #[test]
 fn an_untouched_unit_cancels_out_of_the_delta() {
-    let bags = file_bags(FETCH, Lang::Rust);
+    let bags = file_bags(FETCH, Lang::Rust).expect("bags/1");
     assert_eq!(bags.len(), 2);
     let mut d = Delta::default();
     for b in &bags {
