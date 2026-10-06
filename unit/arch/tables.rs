@@ -1,5 +1,5 @@
 use super::*;
-use crate::arch::wire::{ARCH_FILE_CAP, ARCH_REF_CAP, over_cap};
+use crate::arch::wire::over_cap;
 use crate::structure::tree;
 use crate::testutil::node;
 
@@ -122,15 +122,16 @@ fn every_directory_parent_is_an_earlier_row() {
 
 #[test]
 fn the_caps_refuse_before_the_core_by_name() {
+    let caps = &crate::tables::get().limits.caps;
     let mut t = assembled(&[]).expect("tables");
     assert_eq!(over_cap(&t), None);
-    t.files = vec![[0, 0, 0]; ARCH_FILE_CAP + 1];
+    t.files = vec![[0, 0, 0]; caps.arch_files + 1];
     let files = over_cap(&t).expect("files over the cap");
     assert!(files.starts_with("arch_too_large: 131073 files"), "{files}");
-    t.files.truncate(ARCH_FILE_CAP);
+    t.files.truncate(caps.arch_files);
     assert_eq!(over_cap(&t), None);
     // the two reference tables count together: at the cap is inside
-    t.edges = vec![[0, 1, 1]; ARCH_REF_CAP - t.pkg_edges.len()];
+    t.edges = vec![[0, 1, 1]; caps.arch_refs - t.pkg_edges.len()];
     assert_eq!(over_cap(&t), None);
     t.pkg_edges.push([0, 1, 1]);
     let refs = over_cap(&t).expect("references over the cap");

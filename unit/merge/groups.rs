@@ -7,7 +7,7 @@
 use super::*;
 use crate::dedup::struct_fp::kind_code;
 use crate::dedup::t3::tree::fragment_of;
-use crate::merge::wire::{GROUP_CAP, chunks};
+use crate::merge::wire::chunks;
 
 fn unit(path: &str, start: i64, end: i64) -> Unit {
     Unit {
@@ -185,7 +185,7 @@ fn every_group_not_sent_is_counted_by_why() {
     let none = Frags::new();
     assert_eq!(counted("m.md", &none), only(|u| &mut u.no_slot_table));
     assert_eq!(counted("m.py", &none), only(|u| &mut u.unbuilt));
-    let big = TREE_NODE_CAP / 2 + 1;
+    let big = crate::tables::get().limits.caps.merge_tree_nodes / 2 + 1;
     let lld: Vec<i64> = (0..big as i64).collect();
     let wide = tree(&vec![1; big], &lld, &vec![0; big]);
     assert_eq!(
@@ -257,14 +257,19 @@ fn a_chunk_never_splits_a_group() {
             })
             .collect(),
     };
-    let quarter = TREE_NODE_CAP / 4;
+    let caps = &crate::tables::get().limits.caps;
+    let quarter = caps.merge_tree_nodes / 4;
     let groups = [group(quarter), group(quarter), group(quarter), group(1)];
     assert_eq!(
         chunks(&groups),
         vec![0..2, 2..4],
         "two groups fill the node cap"
     );
-    let many: Vec<Group> = (0..=GROUP_CAP).map(|_| group(1)).collect();
-    assert_eq!(chunks(&many), vec![0..GROUP_CAP, GROUP_CAP..GROUP_CAP + 1]);
+    let groups_cap = caps.merge_groups;
+    let many: Vec<Group> = (0..=groups_cap).map(|_| group(1)).collect();
+    assert_eq!(
+        chunks(&many),
+        vec![0..groups_cap, groups_cap..groups_cap + 1]
+    );
     assert!(chunks(&[]).is_empty());
 }

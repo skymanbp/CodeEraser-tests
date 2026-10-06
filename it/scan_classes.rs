@@ -3,12 +3,34 @@
 //! the class its fn line sits at 80 and the row grades clean; on the
 //! global table it warns at 50, and the finding names the line it was
 //! measured against. The classed run rides the whole judged road
-//! (Classes → rowClasses/gradeOverrides → the core → findings_from),
-//! and analyze_judged's pinned-mirror ensure proves the local
-//! per-class evaluate equal to the wire on every such run.
+//! (Classes → rowClasses/gradeOverrides → the core's levels → the
+//! core's document), read here off the document every surface prints.
 
 use crate::common;
 use codeeraser::scan;
+
+/// The judged document's findings of one rule, as (file, value,
+/// threshold, is_fail), beside the run's fail bit.
+fn findings(dir: &std::path::Path, rule: &str) -> (bool, Vec<(String, u64, u64, bool)>) {
+    let answer = scan::judged(dir, &common::gates::core_bin()).expect("judged");
+    let rows = answer.document["findings"]
+        .as_array()
+        .expect("findings")
+        .iter()
+        .filter(|f| f["rule"] == rule)
+        .map(|f| {
+            let num = |k: &str| f[k].as_u64().expect(k);
+            let file = f["file"].as_str().map(str::to_string);
+            (
+                file.expect("file"),
+                num("value"),
+                num("threshold"),
+                f["level"] == "fail",
+            )
+        })
+        .collect();
+    (answer.fail, rows)
+}
 
 /// `depth` nested ifs: cognitive complexity 1+2+..+depth, the
 /// whitepaper's nesting increment spelled as a fixture rather than
@@ -28,7 +50,7 @@ fn tangled(depth: usize) -> String {
 
 /// One tree, one config, the cognitive findings it produces as
 /// (file, value, limit, is_fail) plus the run's fail bit.
-fn coc_under(toml: &str, name: &str) -> (bool, Vec<(String, usize, usize, bool)>) {
+fn coc_under(toml: &str, name: &str) -> (bool, Vec<(String, u64, u64, bool)>) {
     let fx = common::fixture(
         name,
         &[
@@ -37,22 +59,7 @@ fn coc_under(toml: &str, name: &str) -> (bool, Vec<(String, usize, usize, bool)>
             ("src/b.rs", &tangled(6)),
         ],
     );
-    let judged = scan::analyze_judged(&fx.dir, &common::gates::core_bin()).expect("judged");
-    let fail = judged.settled.fail;
-    let rows = judged
-        .findings
-        .iter()
-        .filter(|f| f.rule == "cognitive")
-        .map(|f| {
-            (
-                f.file.clone(),
-                f.value,
-                f.threshold,
-                f.level == scan::report::Level::Fail,
-            )
-        })
-        .collect();
-    (fail, rows)
+    findings(&fx.dir, "cognitive")
 }
 
 /// The complexity wall (plan v2.24). The load-bearing leg is the
@@ -91,7 +98,7 @@ fn the_complexity_wall_bites_only_where_a_line_was_declared() {
 }
 
 #[test]
-fn a_class_moves_its_files_fn_ladder_and_the_mirror_holds() {
+fn a_class_moves_its_files_fn_ladder() {
     let body: String = (0..58).map(|i| format!("    let v{i} = {i};\n")).collect();
     let long_fn = format!("fn long() {{\n{body}}}\n");
     let fx = common::fixture(
@@ -108,16 +115,11 @@ fn a_class_moves_its_files_fn_ladder_and_the_mirror_holds() {
             ("src/b.rs", &long_fn),
         ],
     );
-    let core = common::gates::core_bin();
-    let judged = scan::analyze_judged(&fx.dir, &core).expect("judged");
-    assert_eq!(judged.settled.files.len(), 2, "both files measured");
-    assert!(!judged.settled.fail, "no hard line breached");
-    let fn_lines: Vec<(&str, usize, usize)> = judged
-        .findings
-        .iter()
-        .filter(|f| f.rule == "fn-lines")
-        .map(|f| (f.file.as_str(), f.value, f.threshold))
-        .collect();
+    let settled = scan::settle(&fx.dir, &common::gates::core_bin()).expect("settled");
+    assert_eq!(settled.files.len(), 2, "both files measured");
+    let (fail, rows) = findings(&fx.dir, "fn-lines");
+    assert!(!fail, "no hard line breached");
+    let fn_lines: Vec<(&str, u64, u64)> = rows.iter().map(|r| (r.0.as_str(), r.1, r.2)).collect();
     assert_eq!(
         fn_lines,
         vec![("src/b.rs", 60, 50)],

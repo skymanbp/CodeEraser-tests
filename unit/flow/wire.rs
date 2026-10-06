@@ -69,7 +69,8 @@ fn the_body_leads_every_row_with_its_units_request_index() {
 
 #[test]
 fn the_plan_is_greedy_under_the_cap_and_refuses_a_unit_heavier_than_it() {
-    let half = ROW_CAP / 2;
+    let cap = crate::tables::get().limits.caps.flow_rows;
+    let half = cap / 2;
     let files = vec![
         file(
             Lang::Rust,
@@ -79,7 +80,7 @@ fn the_plan_is_greedy_under_the_cap_and_refuses_a_unit_heavier_than_it() {
                 unit(2, 5, &[], false),
             ],
         ),
-        file(Lang::C, vec![unit(7, ROW_CAP, &[], false)]),
+        file(Lang::C, vec![unit(7, cap, &[], false)]),
         file(Lang::C, vec![unit(8, 3, &[], false)]),
     ];
     let (sent, refused) = plan(&files);

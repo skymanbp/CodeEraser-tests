@@ -15,16 +15,16 @@ use std::sync::LazyLock;
 /// landed in (a clone of its own, apart from the HTML exam's) as
 /// Rust's second corpus (booklet §5.5).
 const TABLE: &str = "\
-python     | requests=8068356288978c4f54661ae6f95afe0e0831885e | py | scored | 1
-typescript | zod=912f0f51b0ced654d0069741e7160834dca742ee | ts mts cts | scored | 2
-tsx        | zod=912f0f51b0ced654d0069741e7160834dca742ee | tsx | scored | 1
-rust       | ripgrep=3fce3b5bb0236da2df6d99672afb8a719642eca7 codeeraser-flow=5278e747f65687f8afa457395b82594f5f2978d1 | rs | scored | 2
-go         | cobra=adbc8813901bba65827259daa8e22ff94ec1f30e | go | scored | 1
-c          | lua=0b29f408433e92953cc72b1d3e06c7ac8139e439 | c | scored | 1
-cpp        | fmt=6d71f74624be5daa548073ff8e4e0c8aa5476010 | cpp cc cxx hpp hh hxx h inl | scored | 2
-java       | gson=854c8255b625cf1e13c701a83ea9ccb4caaa576a | java | scored | 1
-lua        | luarocks=2d2cc8eff2f03c23d142f8059146fb241dcf56b5 | lua | scored | 1
-r          | stringr=ae054b1d28f630fee22ddb3cb7525396e62af4fe | R r | scored | 2";
+python     | requests=8068356288978c4f54661ae6f95afe0e0831885e | py | audited | 1
+typescript | zod=912f0f51b0ced654d0069741e7160834dca742ee | ts mts cts | audited | 2
+tsx        | zod=912f0f51b0ced654d0069741e7160834dca742ee | tsx | audited | 1
+rust       | ripgrep=3fce3b5bb0236da2df6d99672afb8a719642eca7 codeeraser-flow=5278e747f65687f8afa457395b82594f5f2978d1 | rs | audited | 2
+go         | cobra=adbc8813901bba65827259daa8e22ff94ec1f30e | go | audited | 1
+c          | lua=0b29f408433e92953cc72b1d3e06c7ac8139e439 | c | audited | 1
+cpp        | fmt=6d71f74624be5daa548073ff8e4e0c8aa5476010 | cpp cc cxx hpp hh hxx h inl | audited | 2
+java       | gson=854c8255b625cf1e13c701a83ea9ccb4caaa576a | java | audited | 1
+lua        | luarocks=2d2cc8eff2f03c23d142f8059146fb241dcf56b5 | lua | audited | 1
+r          | stringr=ae054b1d28f630fee22ddb3cb7525396e62af4fe | R r | audited | 2";
 
 /// Every exam. The stage column is the one the audit and the scoring
 /// commits flip, a word per row (`sampled` -> `audited` in the commit
