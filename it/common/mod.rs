@@ -17,7 +17,6 @@ pub mod fixtures;
 pub mod gates;
 pub mod gitio;
 mod history;
-pub mod holders;
 pub mod hooks;
 pub mod ladder;
 pub mod ledger;
@@ -26,6 +25,7 @@ pub mod metric;
 pub mod session;
 pub mod stats;
 pub mod stub_core;
+pub mod touch;
 // One brace, not five `pub use` lines: the per-line form made this
 // index a byte-shaped twin of eval_support/mod.rs the moment a fifth
 // entry joined, and a module index is not something to clone.

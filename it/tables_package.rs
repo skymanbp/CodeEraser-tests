@@ -123,10 +123,8 @@ fn the_cache_holds_until_its_identity_moves() {
         .expect("mtime");
     assert_eq!(again, stamp, "no fetch rewrote it: the core was not asked");
     let later = SystemTime::now() + Duration::from_secs(86_400);
-    // ETXTBSY on ubuntu CI, twice: the panic names who executes it
-    let f = common::holders::open_for_write(Path::new(&core));
-    f.set_modified(later).expect("touch core");
-    drop(f);
+    // never write-open the core: its exec write-deny can outlive the run
+    common::touch::touch_modified(Path::new(&core), later);
     let before = head(&dir)["core"]["mtime_ns"].clone();
     assert_eq!(scan(&dir, &core).0, Some(0), "after the core moved");
     assert_ne!(
