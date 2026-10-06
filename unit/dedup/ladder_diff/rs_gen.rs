@@ -56,8 +56,7 @@ pub(super) fn workspace() -> String {
 /// re-export surface), three in ten aimed elsewhere.
 pub(super) fn source(rng: &mut Rng, rung: usize) -> String {
     let n = 3 + rng.below(8);
-    let items: Vec<String> = (0..n).map(|_| item(rng, rung, 0)).collect();
-    items.join("\n") + "\n"
+    items(rng, rung, 0, n).join("\n") + "\n"
 }
 
 fn item(rng: &mut Rng, rung: usize, depth: usize) -> String {
@@ -95,12 +94,19 @@ fn module(rng: &mut Rng) -> String {
     format!("{attrs}{vis}mod {};", rng.pick(t("rs NAMES")))
 }
 
+/// `n` items at `depth`, drawn one after another.
+fn items(rng: &mut Rng, rung: usize, depth: usize, n: usize) -> Vec<String> {
+    let mut out = Vec::with_capacity(n);
+    for _ in 0..n {
+        out.push(item(rng, rung, depth));
+    }
+    out
+}
+
 /// A bodied module (or a function body) holding one to four items.
 fn inline(rng: &mut Rng, rung: usize, depth: usize) -> String {
-    let body: Vec<String> = (0..1 + rng.below(4))
-        .map(|_| item(rng, rung, depth + 1))
-        .collect();
-    let body = body.join("\n");
+    let n = 1 + rng.below(4);
+    let body = items(rng, rung, depth + 1, n).join("\n");
     match rng.below(6) {
         0 => format!("fn f() {{\n{body}\n}}"),
         1 => format!("#[cfg(test)]\nmod tests {{\n    use super::*;\n{body}\n}}"),

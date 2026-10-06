@@ -154,15 +154,12 @@ fn rust_privacy_is_nothing_the_whole_package_or_its_bin_roots() {
         .split_whitespace()
         .collect();
     let files: BTreeSet<String> = sources.iter().map(|p| p.to_string()).collect();
-    let owners: BTreeMap<String, String> = sources
-        .into_iter()
-        .filter_map(|p| {
-            Some((
-                p.into(),
-                roots::nearest_up(&root, &roots::parent_dir(p), "Cargo.toml")?,
-            ))
-        })
-        .collect();
+    let mut owners = BTreeMap::new();
+    for p in sources {
+        if let Some(manifest) = roots::nearest_up(&root, &roots::parent_dir(p), "Cargo.toml") {
+            owners.insert(p.to_string(), manifest);
+        }
+    }
     let kept = crate::graph::resolve::private(&root, &files, &BTreeMap::new(), &owners)
         .expect("the core reads the manifests");
     assert_eq!(

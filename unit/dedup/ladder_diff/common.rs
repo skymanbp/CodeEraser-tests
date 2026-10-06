@@ -200,21 +200,20 @@ impl World {
     fn judge(&self, root: &Path, sites: &[(Lang, Site)], tally: &mut Tally) {
         let none = BTreeSet::new();
         let (m1, m2) = (Memo::default(), Memo::default());
-        let scope = |memo| Scope {
+        let core = Scope {
             files: &self.files,
             assets: &none,
             configs: &self.configs,
             root,
-            memo,
+            memo: &m1,
             crate_roots: &self.crate_roots,
             search_roots: &self.search_roots,
             java: &self.java,
             lua: &self.lua,
             includes: &self.includes,
         };
-        compare(sites, &scope(&m1), &scope(&m2), tally, &|| {
-            self.describe(root)
-        });
+        let oracle = Scope { memo: &m2, ..core };
+        compare(sites, &core, &oracle, tally, &|| self.describe(root));
     }
 
     /// The tree as text, for a mismatch report.
