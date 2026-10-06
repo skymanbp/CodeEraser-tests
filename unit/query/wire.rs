@@ -7,17 +7,17 @@ fn counts(answers: u64) -> Value {
 }
 
 #[test]
-fn the_body_carries_the_tables_by_decimal_code_and_the_two_flags() {
+fn the_body_carries_the_texts_the_tables_by_decimal_code_and_the_two_flags() {
     let facts = BTreeMap::from([
         (1u32, vec![vec![3u64], vec![5]]),
         (9, vec![vec![3, 5, 7, 1]]),
     ]);
     assert_eq!(
-        body(&[json!([16, 0]), json!([0, 1])], &facts, 8, true, false),
+        body(&json!(["p.", null, "?- p."]), &facts, true, false),
         json!({
-            "program": [[16, 0], [0, 1]],
+            "texts": ["p.", null, "?- p."],
             "facts": {"1": [[3], [5]], "9": [[3, 5, 7, 1]]},
-            "prelude": 8, "why": true, "schema": false,
+            "why": true, "schema": false,
         })
     );
 }

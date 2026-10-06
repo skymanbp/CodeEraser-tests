@@ -90,8 +90,13 @@ fn core() -> String {
     crate::daemon::judge::core_bin().expect("a core")
 }
 
-fn dead_f() -> (Program, Labels) {
-    let program = Program::lex(PRELUDE, None, Some("?- dead(F).")).unwrap();
+/// `?- dead(F).` as the core lexes it, and two labelled nodes.
+fn dead_f() -> (Lexed, Labels) {
+    let mut link = document::open(&core()).expect("a core link");
+    let texts = lexed::texts(PRELUDE, None, Some("?- dead(F)."));
+    let Ok(Lex::Program(program)) = lexed::lex(&mut link, &texts) else {
+        panic!("the question lexes");
+    };
     let labels = Labels {
         nodes: vec!["a.rs".into(), "b.rs".into()],
         ..Labels::default()
@@ -100,23 +105,21 @@ fn dead_f() -> (Program, Labels) {
 }
 
 /// `?- dead(F).` answered by `j`, laid out and read.
-fn laid_out(j: wire::Judged) -> (Program, Report) {
+fn laid_out(j: wire::Judged) -> (Lexed, Report) {
     let (program, labels) = dead_f();
+    let req = Request::new("query").fact("tokens", program.tokens);
     let mut names = Names {
         rules_file: None,
         query: Some("?- dead(F).".into()),
-        program: None,
-        heads: columns::goals(&program),
+        program: Some(program),
         labels: Some(labels),
         why: crate::document::Why::default(),
     };
-    let req = Request::new("query").fact("tokens", program.tokens.len());
-    names.program = Some(Program::lex(PRELUDE, None, Some("?- dead(F).")).unwrap());
     let req = answered(req, &mut names, j).unwrap();
     let doc = document::assemble(&core(), finish(req, &names), &names)
         .unwrap()
         .document;
-    (program, Report::deserialize(&doc).unwrap())
+    (dead_f().0, Report::deserialize(&doc).unwrap())
 }
 
 /// `?-` in front and `.` behind, each only when the text lacks it.
@@ -199,7 +202,7 @@ fn an_unreadable_glob_is_a_program_error_at_the_glob_token() {
 
 #[test]
 fn the_cores_errors_come_before_any_goal() {
-    let at = dead_f().0.tokens.len() - 3;
+    let at = dead_f().0.tokens - 3;
     let (program, r) = laid_out(wire::Judged {
         errors: vec![(at, 2)],
         ..Default::default()
