@@ -123,10 +123,8 @@ fn the_cache_holds_until_its_identity_moves() {
         .expect("mtime");
     assert_eq!(again, stamp, "no fetch rewrote it: the core was not asked");
     let later = SystemTime::now() + Duration::from_secs(86_400);
-    let f = std::fs::File::options()
-        .write(true)
-        .open(&core)
-        .expect("open core");
+    // ETXTBSY on ubuntu CI, twice: the panic names who executes it
+    let f = common::holders::open_for_write(Path::new(&core));
     f.set_modified(later).expect("touch core");
     drop(f);
     let before = head(&dir)["core"]["mtime_ns"].clone();

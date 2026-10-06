@@ -17,6 +17,7 @@ pub mod fixtures;
 pub mod gates;
 pub mod gitio;
 mod history;
+pub mod holders;
 pub mod hooks;
 pub mod ladder;
 pub mod ledger;
