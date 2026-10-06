@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 
 /// Inclusive scalar ranges a predicate holds for (the surrogate gap
 /// bridged, as the core reports them).
-fn ranges(p: fn(char) -> bool) -> Vec<[u32; 2]> {
+pub(super) fn ranges(p: impl Fn(char) -> bool) -> Vec<[u32; 2]> {
     let mut out: Vec<[u32; 2]> = Vec::new();
     for c in (0..=0x10FFFF_u32)
         .filter_map(char::from_u32)

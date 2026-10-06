@@ -30,7 +30,13 @@
 //! live `pubuse_hash`, ladder/rs_cst.rs); ladder/mod.rs mounts rs_tree
 //! and rs_reexport back at `ladder::rs_tree` / `ladder::rs_reexport`,
 //! where rs_use.rs reads them, and rs_use.rs reads the frozen Cargo
-//! reader (../oracle_cfg/cargo.rs) at `crate::graph::cargo`. All
+//! reader (../oracle_cfg/cargo.rs) at `crate::graph::cargo`.
+//! oracle/md.rs is a byte copy of ladder/md.rs at 3b7234eb, before stage
+//! G (its edits: the head and slug modules and the unit-test mount
+//! dropped — it reads the live slug module, ladder/md_slug.rs, which
+//! stays on the measuring side; `fold` and `is_scheme` opened to the
+//! crate, re-exported here for the reader legs, unit/graph/resolve/md.rs).
+//! All
 //! are compiled for tests only, each mounted here by `#[path]` (oracle/
 //! holds no mod.rs: a parent there would turn each copy's `super::` into
 //! an edge back to it, a cycle); the differential gate
@@ -65,6 +71,9 @@ mod java_annotation;
 mod java_sets;
 #[path = "oracle/lua.rs"]
 mod lua;
+#[path = "oracle/md.rs"]
+mod md;
+pub(crate) use md::{fold, is_scheme};
 #[path = "oracle/paths.rs"]
 mod paths;
 #[path = "oracle/py.rs"]
@@ -82,9 +91,14 @@ mod rs;
 
 /// The a8db74a9 dispatcher for the ladders the core now holds, R's arm
 /// added at c96ab3f6, Java's at 27d0d56d, Haskell's at fa83a48d, the
-/// TS / TSX one at dd0eec61 and Rust's at 1324c927: the empty specifier
-/// refused before any rung.
+/// TS / TSX one at dd0eec61, Rust's at 1324c927 and Markdown's at
+/// 3b7234eb: the empty specifier refused before any rung but
+/// Markdown's, which reads it as the document itself (the 3b7234eb
+/// `resolve_all` exempted it).
 pub(crate) fn resolve(lang: Lang, site: &Site, scope: &Scope) -> Outcome {
+    if lang == Lang::Markdown {
+        return md::resolve(site, scope);
+    }
     if site.spec.is_empty() {
         return Outcome::Unresolved(Reason::Empty);
     }
@@ -99,6 +113,25 @@ pub(crate) fn resolve(lang: Lang, site: &Site, scope: &Scope) -> Outcome {
         Lang::Haskell => hs::resolve(site.from, site.spec, scope),
         Lang::TypeScript | Lang::Tsx => ts::resolve(site.from, site.spec, scope),
         _ => Outcome::Unresolved(Reason::Unsupported),
+    }
+}
+
+/// The 3b7234eb `Outcome::with_rung` (ladder/outcome.rs there; its last
+/// live reader, the Markdown reference rungs, moved into the core in
+/// stage G): the same answer at another rung, a refusal untouched — the
+/// frozen Python, Go and Markdown rungs relabel with it.
+impl Outcome {
+    pub(crate) fn with_rung(mut self, rung: super::Rung) -> Self {
+        match &mut self {
+            Self::Resolved { rung: r, .. }
+            | Self::ResolvedPackage { rung: r, .. }
+            | Self::ResolvedSection { rung: r, .. }
+            | Self::ResolvedVia { rung: r, .. }
+            | Self::ResolvedInert { rung: r, .. }
+            | Self::External { rung: r } => *r = rung,
+            Self::Unresolved(_) => {}
+        }
+        self
     }
 }
 

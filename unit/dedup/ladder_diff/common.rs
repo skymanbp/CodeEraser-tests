@@ -81,6 +81,10 @@ fn class(o: &Outcome) -> String {
         Outcome::Resolved { rung, .. } => format!("resolved r{rung}"),
         Outcome::ResolvedPackage { rung, .. } => format!("package r{rung}"),
         Outcome::External { rung } => format!("external r{rung}"),
+        Outcome::ResolvedSection { rung, slug, .. } => {
+            format!("section r{rung} {}", slug.is_some())
+        }
+        Outcome::ResolvedInert { rung, .. } => format!("inert r{rung}"),
         Outcome::Unresolved(r) => format!("unresolved {r:?}"),
         other => format!("{other:?}"),
     }
@@ -120,6 +124,7 @@ pub(super) fn compare(
 #[derive(Default)]
 pub(super) struct World {
     pub files: BTreeSet<String>,
+    pub assets: BTreeSet<String>, // walked, never parsed: Markdown's second set
     pub configs: Vec<String>,
     pub search_roots: BTreeMap<String, BTreeSet<String>>,
     pub lua: BTreeSet<Template>,
@@ -198,11 +203,10 @@ impl World {
 
     /// Both sides on this world's sites, rooted at `root`.
     fn judge(&self, root: &Path, sites: &[(Lang, Site)], tally: &mut Tally) {
-        let none = BTreeSet::new();
         let (m1, m2) = (Memo::default(), Memo::default());
         let core = Scope {
             files: &self.files,
-            assets: &none,
+            assets: &self.assets,
             configs: &self.configs,
             root,
             memo: &m1,
@@ -221,8 +225,14 @@ impl World {
         let mut configs = Vec::new();
         texts(root, root, &mut configs);
         format!(
-            "  files {:?}\n  crate_roots {:?}\n  search_roots {:?}\n  lua {:?}\n  includes {:?}\n  java {:?}\n  configs {configs:?}",
-            self.files, self.crate_roots, self.search_roots, self.lua, self.includes, self.java
+            "  files {:?}\n  assets {:?}\n  crate_roots {:?}\n  search_roots {:?}\n  lua {:?}\n  includes {:?}\n  java {:?}\n  configs {configs:?}",
+            self.files,
+            self.assets,
+            self.crate_roots,
+            self.search_roots,
+            self.lua,
+            self.includes,
+            self.java
         )
     }
 }

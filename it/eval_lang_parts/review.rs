@@ -41,10 +41,9 @@ pub fn class_of(truth: &str, kind: &str, files: &BTreeSet<String>) -> &'static s
     if let Some(k) = TRUTH_KEYWORDS.iter().find(|k| **k == truth) {
         return k;
     }
-    let (path, member) = match truth.split_once('#') {
-        Some((p, m)) => (p, Some(m)),
-        None => (truth, None),
-    };
+    let (path, member) = truth
+        .split_once('#')
+        .map_or((truth, None), |(p, m)| (p, Some(m)));
     if files.contains(path) {
         return match member {
             None => "file",

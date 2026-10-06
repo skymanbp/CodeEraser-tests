@@ -119,6 +119,16 @@ rs PLANT src/bin/x.rs=use a::Thing;~use a::b::Other;~mod helper;|use crate::Root
 rs PLANT tests/it/main.rs=mod common;~use common::Thing;~use a::b::c::C;|mod common;~use crate::common::*;~use a::Root;
 rs PLANT tests/it/common.rs=pub struct Thing;~pub use a::b::Other;|pub use super::Thing;~use crate::Thing;
 rs LEGS=rs-mod 31 0|rs-crate 32 1|rs-local 33 2|rs-extern 34 3|rs-binder 35 4
+md DIRS=|docs|docs/sub|a|a/b|img|site|site/zh|x y|é
+md BASES=README.md|a.md|b.md|index.md|x.markdown|notes.md|a b.md|a#b.md|é.md|c.py|lib.rs|A.MD|a.Md|.md|readme.md
+md ASSETS=img/logo.png|style.css|a.png|docs/x.svg|data.json|docs/sub/i.png|logo.png|a b.png|site/zh/s.css
+md HEADS=Intro|Getting Started|intro|Ünïcode Title|100% done|a_b|Σίσυφος|x y|`code` span|FAQ|émoji 🎉|ΟΔΟΣ|Intro
+md LINES=# $H|## $H|$H~===|$H~---|<a id="$H"></a>|<a name="$H"></a>|[$L]: $T|   [$L]: $T|[$L]:$T|[$L]: <$T>|[$L]: $T "title"|```~[$L]: $T~```|<!-- [$L]: $T -->|see [x][$L] here|[$L][] and [$L]|text [t]($T)|    [$L]: $T|plain text|> [$L]: $T|- [$L]: $T|[x][$L]|``~# $H~``
+md LABELS=Foo|foo|FOO| foo |Foo  Bar|foo bar|ΣΑΣ|σας|ΑΣ.|Σ|İ|ǅ|Straße|x°y|x y|a^b|ΟΔΟΣ ΣΤΗ|A'Σ|label|Label|LABEL|ẞ|Ꮳ
+md TARGETS=a.md|./a.md|../b.md|docs/|docs|a.md#intro|b.md#Intro|#frag|#|ftp:x|https:y|mailto:x|//host/x|/abs.md|a%20b.md|a b.md|%2e%2e/a.md|img/logo.png|c.py|..|.||x:y|C:/x|a%23b.md|a#b.md|%C3%A9.md|é.md|%e9.md|%+f|docs/sub/|README.md#x%20y|a.md#|zz.md|index.md#getting-started|a.markdown#intro|x.markdown|a1+.x:y|1a:b|../../..|logo.png|style.css|%ED%A0%80.md|%C0%AF.md|%F4%90%80%80.md|%2Fa.md
+md PREFIXES=||||../|docs/|./|../../|img/|site/zh/|%2e/|a/b/
+md FRAGS=x-y|getting-started|code-span|intro|intro-1|getting-started|x%20y|x y|Intro|faq|%C3%BCn%C3%AFcode-title|ünïcode-title|code-span|nope||%ZZ|σίσυφος|100-done|a_b|%CE%BF%CE%B4%CE%BF%CF%82|%+f|émoji-|x%2|ab%
+md LEGS=md-link 41 0|md-image 42 1|md-reflink 43 2|md-refdef 44 3|md-url 45 4
 "#;
 
 /// The table a key names: `<leg> <NAME>`.
