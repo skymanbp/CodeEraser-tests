@@ -65,8 +65,7 @@ fn the_request_carries_the_verdicts_as_rows_and_the_paths_as_references() {
         ..Said::bare(Face::Precommit)
     };
     assert!(said.blocked());
-    let s = Strings::of(&said);
-    let mut body = s.body(&said);
+    let mut body = body(&said);
     body["lang"] = serde_json::json!(0);
     let want = serde_json::json!({
         "family": "audit", "degraded": null, "lang": 0,
@@ -76,11 +75,11 @@ fn the_request_carries_the_verdicts_as_rows_and_the_paths_as_references() {
             "net": [[-3]], "dups": [[5, 1]], "blocks": [[0, 1, 9, 20, 28, 60]],
             "tomb": [[1, 1, 0, 1, 1, 0, 3, 1, 0, 0]], "places": [[0, 3, 2]],
         },
+        "strings": {
+            "block_a": ["a.rs"], "block_b": ["b.rs"], "place_file": ["README.md"], "error": [],
+        },
     });
     assert_eq!(body, want);
-    let bound = ["block_a", "block_b", "place_file", "error"].map(|c| s.resolve(c, &[0]));
-    let held = [Some("a.rs"), Some("b.rs"), Some("README.md"), None];
-    assert_eq!(bound, held.map(|p| p.map(String::from)));
 }
 
 #[test]
@@ -92,12 +91,12 @@ fn a_degraded_leg_is_state_two_and_names_its_error() {
         git: true,
         ..Said::bare(Face::Stop)
     };
-    let s = Strings::of(&said);
+    let body = body(&said);
     assert_eq!(
-        s.resolve("error", &[0]).as_deref(),
-        Some("core unavailable")
+        body["strings"]["error"],
+        serde_json::json!(["core unavailable"])
     );
-    assert_eq!(s.body(&said)["ranges"]["errors"], 1);
+    assert_eq!(body["ranges"]["errors"], 1);
 }
 
 #[test]

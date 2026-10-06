@@ -74,16 +74,9 @@ fn laid_out(
     judgment: Result<Verdict, String>,
     shown: Option<&[(String, i64)]>,
 ) -> (Value, Report) {
-    let mut names = Names {
-        paths,
-        files,
-        why: crate::document::Why::default(),
-    };
-    let req = request(&mut names, judgment, shown);
+    let req = request((paths, files), judgment, shown);
     let core = crate::daemon::judge::core_bin().expect("a core");
-    let doc = document::assemble(&core, req, &names)
-        .expect("laid out")
-        .document;
+    let doc = document::assemble(&core, req).expect("laid out").document;
     let r = Report::deserialize(&doc).expect("read");
     (doc, r)
 }
@@ -154,14 +147,9 @@ fn an_unknown_kind_is_the_cores_refusal_named_by_the_name_given() {
     let shown = shown_kinds(&["unreachable,dead".into()]);
     let codes: Vec<i64> = shown.iter().flatten().map(|(_, c)| *c).collect();
     assert_eq!(codes, [0, -1]);
-    let mut names = Names {
-        paths: &paths,
-        files: &files,
-        why: crate::document::Why::default(),
-    };
-    let req = request(&mut names, Ok(v), shown.as_deref());
+    let req = request((&paths, &files), Ok(v), shown.as_deref());
     let core = crate::daemon::judge::core_bin().expect("a core");
-    let err = document::assemble(&core, req, &names).expect_err("refused");
+    let err = document::assemble(&core, req).expect_err("refused");
     assert_eq!(
         named_kind(err, shown.as_deref()).to_string(),
         "flow document: unknown kind \"dead\"; the catalogue lists unreachable, dead_store, unused_local, unused_param"

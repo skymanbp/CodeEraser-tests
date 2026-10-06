@@ -116,7 +116,7 @@ fn laid_out(j: wire::Judged) -> (Lexed, Report) {
         why: crate::document::Why::default(),
     };
     let req = answered(req, &mut names, j).unwrap();
-    let doc = document::assemble(&core(), finish(req, &names), &names)
+    let doc = document::assemble_bound(&core(), Err(String::new()), finish(req, &names), &names)
         .unwrap()
         .document;
     (dead_f().0, Report::deserialize(&doc).unwrap())

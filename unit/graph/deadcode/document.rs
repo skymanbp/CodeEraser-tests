@@ -31,13 +31,13 @@ fn fixture(reason: &str) -> (GraphWire, Judged) {
 /// count and the degraded reason by its code in the package's list;
 /// the file-tier count and the console's `--check` as facts (plan
 /// v2.32 step 5: only the lines read them);
-/// the strings stay here — a node's path, a section's `path#unit`
-/// label, an advisory name — and nothing outside the tables resolves.
+/// the strings ride along — each node's path and unit (the core
+/// spells a section's `path#unit` label), each advisory name (plan
+/// v2.33 W7).
 #[test]
-fn the_request_is_the_judgment_and_the_strings_stay_here() {
+fn the_request_is_the_judgment_and_the_strings_ride_along() {
     let (w, j) = fixture("graph_too_large");
-    let (req, names) = request(("deadcode", true), &w, &j).expect("request");
-    let body = req.body();
+    let body = request(("deadcode", true), &w, &j).expect("request").body();
     let reasons = crate::tables::get().document.deadcode.reasons;
     let code = reasons.iter().position(|r| *r == "graph_too_large");
     assert_eq!(body["rows"]["reason"], json!([[code.expect("listed")]]));
@@ -56,14 +56,13 @@ fn the_request_is_the_judgment_and_the_strings_stay_here() {
             "files": 2, "check": 1
         })
     );
-    let said = |class: &str, i: i128| names.resolve(class, &[i]);
-    assert_eq!(said("path", 2).as_deref(), Some("a.rs"));
-    assert_eq!(said("node_name", 2).as_deref(), Some("a.rs#Intro"));
-    assert_eq!(said("node_name", 3).as_deref(), Some("pkg"));
-    assert_eq!(said("symbol", 0).as_deref(), Some("never_spelled"));
-    assert_eq!(said("path", 4), None);
-    assert_eq!(said("symbol", 1), None);
-    assert_eq!(said("site_spec", 0), None);
+    let strings = &body["strings"];
+    assert_eq!(strings["path"][2], "a.rs");
+    assert_eq!(strings["node_unit"][2], "Intro");
+    assert_eq!(strings["path"][3], "pkg");
+    assert_eq!(strings["node_unit"][3], "");
+    assert_eq!(strings["symbol"], json!(["never_spelled"]));
+    assert_eq!(strings["why"], json!([]));
 }
 
 /// A degraded reply whose reason the package does not list is named,

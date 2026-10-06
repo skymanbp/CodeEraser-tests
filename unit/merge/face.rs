@@ -3,7 +3,7 @@
 //! hole, from the hole's first root to its last — a gap's whole forest —
 //! and an empty side is "". Since plan v2.32 step 3 the core lays the
 //! document out: these legs send the request this side builds to the
-//! core this process measures with and read the bound document back.
+//! core this process measures with and read the spelled document back.
 
 use super::*;
 use crate::dedup::t3::tree::UnitTree;
@@ -46,18 +46,10 @@ fn laid_out(g: Group, s: Suggestion, holes: Vec<HoleRow>) -> Value {
         groups: vec![(s, holes)],
         counts: [1, 2, 6, 1, 0, 1],
     }];
-    let names = Names {
-        members: groups.iter().flat_map(|g| &g.members).collect(),
-        texts: [("a.py".to_string(), TEXT.to_string())].into(),
-        why: crate::document::Why::default(),
-    };
-    let req = request(&groups, answers, Unsendable::default(), 0)
-        .range("members", names.members.len())
-        .range("why", 0);
+    let texts: Texts = [("a.py".to_string(), TEXT.to_string())].into();
+    let req = request(&groups, answers, (Unsendable::default(), 0), &texts);
     let core = crate::daemon::judge::core_bin().expect("a core");
-    let doc = document::assemble(&core, req, &names)
-        .expect("laid out")
-        .document;
+    let doc = document::assemble(&core, req).expect("laid out").document;
     doc["groups"][0].clone()
 }
 

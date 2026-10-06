@@ -57,10 +57,22 @@ fn an_unresolvable_reference_is_named() {
     }
 }
 
+/// A face's strings ride the request by class, one JSON array level
+/// per integer the class's reference carries; a request with none says
+/// `strings` only when it asks to be spelled (plan v2.33 W7).
 #[test]
-fn ranks_are_the_joint_string_order() {
-    assert_eq!(ranks(["b", "a/", "a", "c"]), vec![2, 1, 0, 3]);
-    assert_eq!(ranks(["x", "x"]), vec![0, 0]);
+fn a_request_carries_its_strings_by_class() {
+    let body = Request::new("churn")
+        .text("path", ["a.rs", "b.rs"])
+        .text("unit", [["f"], ["g"]])
+        .text("mount", "cli/tests")
+        .body();
+    assert_eq!(
+        body["strings"],
+        json!({"path": ["a.rs", "b.rs"], "unit": [["f"], ["g"]], "mount": "cli/tests"})
+    );
+    assert_eq!(Request::new("score").spelled().body()["strings"], json!({}));
+    assert!(Request::new("guard").body().get("strings").is_none());
 }
 
 #[test]
