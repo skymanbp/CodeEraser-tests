@@ -23,7 +23,14 @@
 //! dd0eec61, before stage E; ts.rs reads the frozen tsconfig chain
 //! (../oracle_cfg/roots_ts.rs, at `crate::graph::roots_ts`) and the
 //! frozen package.json reader (../oracle_cfg/ts_package.rs, at
-//! `crate::graph::roots`), both mounted at their old paths. All
+//! `crate::graph::roots`), both mounted at their old paths.
+//! oracle/{rs,rs_use,rs_bind,rs_tree,rs_reexport,rs_surface}.rs are byte
+//! copies of ladder/ at 1324c927, before stage F (rs_reexport.rs's one
+//! edit: its unit-test mount is dropped — the test it mounted reads the
+//! live `pubuse_hash`, ladder/rs_cst.rs); ladder/mod.rs mounts rs_tree
+//! and rs_reexport back at `ladder::rs_tree` / `ladder::rs_reexport`,
+//! where rs_use.rs reads them, and rs_use.rs reads the frozen Cargo
+//! reader (../oracle_cfg/cargo.rs) at `crate::graph::cargo`. All
 //! are compiled for tests only, each mounted here by `#[path]` (oracle/
 //! holds no mod.rs: a parent there would turn each copy's `super::` into
 //! an edge back to it, a cycle); the differential gate
@@ -70,11 +77,13 @@ pub(crate) use r::description;
 #[path = "../oracle_cfg/r_package.rs"]
 mod r_package;
 pub(crate) use r_package::packages;
+#[path = "oracle/rs.rs"]
+mod rs;
 
 /// The a8db74a9 dispatcher for the ladders the core now holds, R's arm
-/// added at c96ab3f6, Java's at 27d0d56d, Haskell's at fa83a48d and the
-/// TS / TSX one at dd0eec61: the empty specifier refused before any
-/// rung.
+/// added at c96ab3f6, Java's at 27d0d56d, Haskell's at fa83a48d, the
+/// TS / TSX one at dd0eec61 and Rust's at 1324c927: the empty specifier
+/// refused before any rung.
 pub(crate) fn resolve(lang: Lang, site: &Site, scope: &Scope) -> Outcome {
     if site.spec.is_empty() {
         return Outcome::Unresolved(Reason::Empty);
@@ -86,8 +95,36 @@ pub(crate) fn resolve(lang: Lang, site: &Site, scope: &Scope) -> Outcome {
         Lang::Lua => lua::resolve(site, scope),
         Lang::R => r::resolve(site, scope),
         Lang::Java => java::resolve(site, scope),
+        Lang::Rust => rs::resolve(site, scope),
         Lang::Haskell => hs::resolve(site.from, site.spec, scope),
         Lang::TypeScript | Lang::Tsx => ts::resolve(site.from, site.spec, scope),
         _ => Outcome::Unresolved(Reason::Unsupported),
     }
+}
+
+/// The 1324c927 workspace-member throat of the R4 rungs (ladder/mod.rs
+/// there; its last live reader, the Rust rungs, moved into the core in
+/// stage F, and ladder/mod.rs re-exports it for the frozen ones): the
+/// in-scope configs of one basename, parsed once per sweep (the memo), and
+/// filtered by name — each caller judges the hit count (1 = the
+/// member, more = its own ambiguity reason).
+pub(crate) fn members<T: Clone + 'static>(
+    scope: &Scope,
+    basename: &'static str,
+    load: impl Fn(&Path, &str) -> Option<T>,
+    keep: impl Fn(&T) -> bool,
+) -> Vec<T> {
+    scope
+        .configs
+        .iter()
+        .filter(|c| c.rsplit('/').next() == Some(basename))
+        .filter_map(|c| {
+            scope
+                .memo
+                .cached(basename, c, || load(scope.root, c))
+                .as_ref()
+                .clone()
+        })
+        .filter(|t| keep(t))
+        .collect()
 }

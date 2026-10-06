@@ -1,14 +1,18 @@
 //! The comparisons beside the sites: the C forced-include arcs (the
-//! deadcode wire's unit → header arcs), the R package code and the cabal
-//! mains (the declared-target pass's `packages`, plan v2.33 W2-text stage
-//! B, and `mains`, stage D) and the Haskell files a cabal keeps private
-//! (the mounts table's `private`, stage D), each answered by the frozen
-//! oracle and by the core over one file set.
+//! deadcode wire's unit → header arcs), the R package code, the cabal
+//! mains and the Cargo crate roots (the declared-target pass's
+//! `packages`, plan v2.33 W2-text stage B, `mains`, stage D, and
+//! `crates`, stage F) and the Haskell and Rust files a cabal or a
+//! Cargo.toml keeps private (the mounts table's `private`, stages D and
+//! F), each answered by the frozen oracle and by the core over one file
+//! set.
 
 use super::common::Tally;
 use crate::graph::ladder;
 use crate::graph::oracle_cfg::cabal_mains;
-use crate::graph::{cabal, roots};
+use crate::graph::oracle_cfg::rust_targets::RustTargets;
+use crate::graph::resolve::Manifests;
+use crate::graph::{cabal, cargo, roots};
 use crate::scan::lang::Lang;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -35,9 +39,10 @@ pub(super) fn compare_forced(
     tally.agree("forced", &got, &want, ctx);
 }
 
-/// The R package code and the cabal mains both ways over one file set,
-/// over the manifests the declared-target pass finds: each R file's
-/// nearest DESCRIPTION, each walked directory's nearest .cabal.
+/// The R package code, the cabal mains and the Cargo crate roots both
+/// ways over one file set, over the manifests the declared-target pass
+/// finds: each R file's nearest DESCRIPTION, each walked directory's
+/// nearest .cabal and nearest Cargo.toml.
 pub(super) fn compare_declared(
     root: &Path,
     files: &BTreeSet<String>,
@@ -53,22 +58,40 @@ pub(super) fn compare_declared(
         .iter()
         .filter_map(|f| cabal::nearest(root, &roots::parent_dir(f)))
         .collect();
+    let manifests: BTreeSet<String> = files
+        .iter()
+        .filter_map(|f| roots::nearest_up(root, &roots::parent_dir(f), "Cargo.toml"))
+        .collect();
     let packages = ladder::frozen::packages(root, &descriptions, files);
     let mains = cabal_mains::mains(root, &cabals, files);
-    let got = match crate::graph::resolve::declared(root, files, &descriptions, &cabals) {
+    let crates: BTreeSet<String> = manifests
+        .iter()
+        .filter_map(|m| cargo::package(root, m))
+        .flat_map(|p| p.crate_roots(files))
+        .collect();
+    let found = Manifests {
+        descriptions: &descriptions,
+        cabals: &cabals,
+        cargo: &manifests,
+    };
+    let got = match crate::graph::resolve::declared(root, files, &found) {
         Ok(got) => got,
         Err(e) => return tally.miss(format!("declared: core refused: {e}\n{}", ctx())),
     };
     tally.agree("packages", &got.packages, &packages, ctx);
     tally.agree("mains", &got.mains, &mains, ctx);
+    tally.agree("crates", &got.crates, &crates, ctx);
     tally.packages.0 += 1;
     tally.packages.1 += packages.len();
     tally.mains.0 += 1;
     tally.mains.1 += mains.len();
+    tally.crates.0 += 1;
+    tally.crates.1 += crates.len();
 }
 
-/// The Haskell files their nearest cabal keeps private both ways, every
-/// walked Haskell file asked (the mounts table's bit 1).
+/// The Haskell files their nearest cabal keeps private and the Rust files
+/// their nearest Cargo.toml keeps private, both ways, every walked
+/// Haskell and Rust file asked (the mounts table's bit 1).
 pub(super) fn compare_private(
     root: &Path,
     files: &BTreeSet<String>,
@@ -80,17 +103,29 @@ pub(super) fn compare_private(
         .filter(|f| Lang::judged_path(Path::new(f)) == Some(Lang::Haskell))
         .filter_map(|f| Some((f.clone(), cabal::nearest(root, &roots::parent_dir(f))?)))
         .collect();
-    let want: BTreeSet<String> = owners
+    let rust: BTreeMap<String, String> = files
+        .iter()
+        .filter(|f| Lang::judged_path(Path::new(f)) == Some(Lang::Rust))
+        .filter_map(|f| {
+            let manifest = roots::nearest_up(root, &roots::parent_dir(f), "Cargo.toml")?;
+            Some((f.clone(), manifest))
+        })
+        .collect();
+    let mut want: BTreeSet<String> = owners
         .iter()
         .filter(|(f, c)| cabal::parse(root, c).is_some_and(|c| c.keeps_private(f)))
         .map(|(f, _)| f.clone())
         .collect();
-    let haskell: BTreeSet<String> = owners.keys().cloned().collect();
-    let got = match crate::graph::resolve::private(root, &haskell, &owners) {
+    want.extend(
+        rust.iter()
+            .filter(|(f, m)| RustTargets::of(cargo::package(root, m), files).keeps(f))
+            .map(|(f, _)| f.clone()),
+    );
+    let got = match crate::graph::resolve::private(root, files, &owners, &rust) {
         Ok(got) => got,
         Err(e) => return tally.miss(format!("private: core refused: {e}\n{}", ctx())),
     };
     tally.agree("private", &got, &want, ctx);
-    tally.private.0 += owners.len();
+    tally.private.0 += owners.len() + rust.len();
     tally.private.1 += want.len();
 }

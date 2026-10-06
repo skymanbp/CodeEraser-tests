@@ -90,6 +90,35 @@ ts PLANT_PKG_FILES=packages/p1/src/index.ts|packages/p1/src/a/x.ts|packages/p1/s
 ts LEGS=ts-relative 21 0|ts-esm 25 4|ts-paths 22 1|ts-workspace 23 2|ts-bare 24 3
 ts SPELL_PATHS=src/>@app/|src/>~/|src/a/>@dup/|lib/>@lib/|src/>|>|src/>src/|lib/>@app/
 ts SPELL_MEMBERS=packages/p1/src/>@scope/p1/lib/|packages/p1/src/>@scope/p1/|packages/p2/src/>p2/|packages/p1/src/a/>@scope/p1/lib/a/|packages/p1/src/>p1/lib/|packages/p2/src/>p2/lib/
+rs PKG_DIRS=|crates/a|crates/b|tools/x
+rs FILES=src/lib.rs|src/main.rs|src/a.rs|src/a/mod.rs|src/a/b.rs|src/b/mod.rs|src/b/c.rs|src/bin/x.rs|src/bin/y/main.rs|src/bin/y/part.rs|tests/t.rs|tests/it/main.rs|tests/it/common.rs|build.rs|src/x/y.rs|src/inner/deep.rs|src/p/q.rs|lib/core.rs|src/tools/gen.rs|src/a/b/mod.rs|src/c.rs|src/util.rs|src/x.rs|src/inner.rs|src/tests.rs|src/other.rs|src/sub/y.rs|src/lib.rs|src/main.rs
+rs LOOSE=scratch/x.rs|it/main.rs|it/sub.rs|it/sub/mod.rs|a.rs|mod.rs|crates/a/src/lib.rs|crates/b/src/main.rs
+rs PKG_NAMES=a|a-b|a_b|b|core|x|std|tools|serde|a
+rs LIB_PATHS=src/lib.rs|src/x.rs|lib/core.rs|src/missing.rs|../escape.rs|src/a/mod.rs
+rs BIN_PATHS=src/main.rs|src/tools/gen.rs|src/bin/x.rs|src/b/c.rs|../out.rs
+rs DEPS=serde|tempfile|a|a-b|b|x|cc|rand|a_b
+rs NAMES=a|b|c|x|y|inner|deep|tests|util|q|p|sub|tools|other|gen|common|core
+rs ITEMS=Thing|Other|X|Y|a|b|inner|f|C|util|x|gen|Deep|Root|Z|deep|Thing|Other
+rs EXTERN=std|core|alloc|serde|a|a_b|b|x|tempfile|test|proc_macro|rand|tools|gen|missing|a-b
+rs LOCAL=self|super|super::super|super::super::super|self::super
+rs PATHS=other.rs|../x.rs|sub/y.rs|a/b.rs|inner/deep.rs|../../../../escape.rs|mod.rs|b.rs|x.rs|tests.rs|a/mod.rs|./c.rs|p/q.rs|util.rs
+rs VIS=|||pub |pub |pub(crate) |pub(super) 
+rs DEFS=pub struct $;|struct $;|pub fn $() {}|fn $() {}|pub(crate) struct $;|pub enum $ {}|pub const $: u8 = 0;|macro_rules! $ { () => {} }|pub trait $ {}|static $: u8 = 0;|pub type $ = u8;|pub union $ { x: u8 }|impl $ {}
+rs NOISE=// use crate::fake;|/* mod nope; */|const S: &str = "mod fake; use crate::x;";|use crate::{a,|#![allow(dead_code)]|fn g() {~    let _ = 1;~}|mod|use ;|use {};
+rs PLANTS=src/lib.rs|src/a.rs|src/a/deep.rs|src/b/mod.rs|src/b/c.rs|src/c.rs|src/x/y.rs|src/inner/deep.rs|src/main.rs|src/bin/x.rs|tests/it/main.rs|tests/it/common.rs
+rs PLANT src/lib.rs=pub mod a;~pub mod b;~mod c;~pub use a::Thing;~pub use b::*;~pub struct Root;|mod a;~pub mod b;~#[path = "x/y.rs"]~pub mod p;~pub use crate::a::deep::Deep;~pub use self::c::Other as Z;~mod c;|pub mod a;~pub mod b;~pub extern crate core as y;~pub use a::deep;~mod inner {~    pub mod deep;~    pub use super::a::Thing;~    use self::deep::Deep;~}|pub mod a;~pub mod b;~pub mod c;~pub use crate::b::c::*;~pub use a::*;~fn f() {~    use crate::a::deep::Thing;~}
+rs PLANT src/a.rs=pub mod deep;~pub use self::deep::Thing;~pub use deep::*;|pub mod deep;~pub struct Thing;~pub use crate::b::Other;|pub use crate::c::*;~pub mod deep;~use super::b::c;|pub mod deep;~pub use super::b::Other;~pub use crate::Root;
+rs PLANT src/a/deep.rs=pub struct Thing;~pub struct Deep;~pub fn f() {}|pub use super::super::b::Other;~pub struct Deep;|use super::Thing;~use crate::b;~pub struct Deep;~pub use crate::c::Other as Thing;
+rs PLANT src/b/mod.rs=pub mod c;~pub struct Other;~pub use self::c::Thing;|pub use crate::a::*;~pub use crate::a::deep::Deep as Other;~mod c;|pub mod c;~pub use c::*;~pub use super::a::deep;|mod c;~pub extern crate std as y;~pub use self::c::C as Other;
+rs PLANT src/b/c.rs=pub struct Thing;~pub struct C;|pub use super::Other;~pub struct C;~use super::super::a::Thing;|pub struct C;~pub use crate::a::*;
+rs PLANT src/c.rs=pub struct Other;~pub use crate::a::Thing;~pub use super::b::*;|pub struct Other;~pub mod deep {~    pub use crate::a::deep::*;~}|pub use crate::b::Other;~pub use crate::b::c::*;
+rs PLANT src/x/y.rs=pub struct Thing;~pub use crate::a::*;|pub use super::super::a::deep::Deep;~pub struct Y;
+rs PLANT src/inner/deep.rs=pub struct Deep;|pub use crate::a::Thing;~pub struct Deep;
+rs PLANT src/main.rs=mod a;~use crate::a::Thing;~use a::deep::Deep;|use a::Thing;~use a::b::Other;~use a_b::c::*;~fn main() {}|mod a;~mod b;~mod c;~use crate::b::Other;~use crate::c::deep::Deep;
+rs PLANT src/bin/x.rs=use a::Thing;~use a::b::Other;~mod helper;|use crate::Root;~use a::deep::Deep;
+rs PLANT tests/it/main.rs=mod common;~use common::Thing;~use a::b::c::C;|mod common;~use crate::common::*;~use a::Root;
+rs PLANT tests/it/common.rs=pub struct Thing;~pub use a::b::Other;|pub use super::Thing;~use crate::Thing;
+rs LEGS=rs-mod 31 0|rs-crate 32 1|rs-local 33 2|rs-extern 34 3|rs-binder 35 4
 "#;
 
 /// The table a key names: `<leg> <NAME>`.

@@ -18,13 +18,20 @@
 //! edit: its unit-test mount reads `../`); ts_package.rs, the
 //! package.json half of roots.rs there, is mounted from roots.rs (its
 //! `read_jsonc` reads this jsonc.rs, the frozen chain reads it back
-//! through `roots` below).
+//! through `roots` below). cargo.rs is a byte copy of cli/src/graph/ at
+//! 1324c927, before stage F moved the Cargo.toml reading into the core;
+//! it reads the frozen TOML walk (oracle_cfg/toml_walk.rs, mounted from
+//! roots.rs) through `roots` below. rust_targets.rs holds mounts.rs's
+//! `RustTargets` as it stood there, the bin-root facts the mounts
+//! table's bit 1 read before it asked the core.
 //!
 //! Each copy is mounted here by `#[path]` (oracle_cfg/ holds no mod.rs: a
 //! parent there would turn the copies' references to their old parent
 //! into edges back to it, a cycle — ladder/frozen.rs, same reason). The
 //! copies find their old parent's names here: `roots` below, each other.
 
+#[path = "oracle_cfg/cargo.rs"]
+pub(crate) mod cargo;
 #[path = "oracle_cfg/jsonc.rs"]
 pub(crate) mod jsonc;
 #[path = "oracle_cfg/roots_ts.rs"]
@@ -58,3 +65,5 @@ pub(crate) mod compdb;
 pub(crate) mod compdb_flags;
 #[path = "oracle_cfg/gomod.rs"]
 pub(crate) mod gomod;
+#[path = "oracle_cfg/rust_targets.rs"]
+pub(crate) mod rust_targets;

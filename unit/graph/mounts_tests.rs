@@ -132,7 +132,8 @@ fn python_privacy_reads_underscore_segments_of_the_path() {
 /// keeps the whole package (a helper module included); a lib target
 /// keeps the bin roots alone — the default main, a declared [[bin]]
 /// path, a src/bin child — and neither the lib root, a plain module,
-/// nor a test.
+/// nor a test. The manifests are the core's reading since plan v2.33
+/// W2-text stage F (resolve/1 `private`).
 #[test]
 fn rust_privacy_is_nothing_the_whole_package_or_its_bin_roots() {
     let root = scratch("mounts-rs");
@@ -147,43 +148,29 @@ fn rust_privacy_is_nothing_the_whole_package_or_its_bin_roots() {
             ("tool/Cargo.toml", "[package]\nname = \"tool\"\n"),
         ],
     );
-    let sources = [
-        "scratch/x.rs",
-        "lib/src/lib.rs",
-        "lib/src/main.rs",
-        "lib/src/bin/extra.rs",
-        "lib/src/bin/nested/main.rs",
-        "lib/src/bin/nested/part.rs",
-        "lib/src/tools/gen.rs",
-        "lib/src/module.rs",
-        "lib/tests/t.rs",
-        "tool/src/main.rs",
-        "tool/src/util.rs",
-    ];
-    let files: BTreeSet<String> = sources.map(String::from).into();
-    let targets = |manifest: &str| RustTargets::of(cargo::package(&root, manifest), &files);
-    let (root_ws, lib, tool) = (
-        targets("Cargo.toml"),
-        targets("lib/Cargo.toml"),
-        targets("tool/Cargo.toml"),
-    );
-    let kept: Vec<&str> = sources
+    let sources: Vec<&str> = "scratch/x.rs lib/src/lib.rs lib/src/main.rs lib/src/bin/extra.rs \
+        lib/src/bin/nested/main.rs lib/src/bin/nested/part.rs lib/src/tools/gen.rs \
+        lib/src/module.rs lib/tests/t.rs tool/src/main.rs tool/src/util.rs"
+        .split_whitespace()
+        .collect();
+    let files: BTreeSet<String> = sources.iter().map(|p| p.to_string()).collect();
+    let owners: BTreeMap<String, String> = sources
         .into_iter()
-        .filter(|p| {
-            let pkg = match p.split('/').next() {
-                Some("lib") => &lib,
-                Some("tool") => &tool,
-                _ => &root_ws,
-            };
-            pkg.keeps(p)
+        .filter_map(|p| {
+            Some((
+                p.into(),
+                roots::nearest_up(&root, &roots::parent_dir(p), "Cargo.toml")?,
+            ))
         })
         .collect();
+    let kept = crate::graph::resolve::private(&root, &files, &BTreeMap::new(), &owners)
+        .expect("the core reads the manifests");
     assert_eq!(
-        kept,
+        kept.iter().map(String::as_str).collect::<Vec<_>>(),
         [
-            "lib/src/main.rs",
             "lib/src/bin/extra.rs",
             "lib/src/bin/nested/main.rs",
+            "lib/src/main.rs",
             "lib/src/tools/gen.rs",
             "tool/src/main.rs",
             "tool/src/util.rs",

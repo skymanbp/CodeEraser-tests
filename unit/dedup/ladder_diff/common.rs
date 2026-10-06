@@ -21,6 +21,7 @@ pub(super) struct Tally {
     pub(super) forced: (usize, usize),
     pub(super) packages: (usize, usize),
     pub(super) mains: (usize, usize),
+    pub(super) crates: (usize, usize),
     pub(super) private: (usize, usize),
     mismatches: usize,
     shown: Vec<String>,
@@ -41,8 +42,10 @@ impl Tally {
         println!("R package code: trees {trees} packages {packages}");
         let (trees, mains) = self.mains;
         println!("cabal mains: trees {trees} mains {mains}");
+        let (trees, crates) = self.crates;
+        println!("cargo crate roots: trees {trees} roots {crates}");
         let (files, private) = self.private;
-        println!("cabal privacy: files {files} private {private}");
+        println!("cabal and cargo privacy: files {files} private {private}");
         println!("mismatches: {}", self.mismatches);
         self.shown.iter().for_each(|m| println!("MISMATCH {m}"));
         assert_eq!(self.mismatches, 0, "{leg}: core and frozen oracle disagree");
@@ -122,6 +125,8 @@ pub(super) struct World {
     pub lua: BTreeSet<Template>,
     pub includes: BTreeMap<String, Vec<String>>,
     pub java: BTreeMap<String, Header>,
+    /// The declared Rust crate roots (`[graph] crate_roots`).
+    pub crate_roots: BTreeSet<String>,
     /// Each site's line, by its place in the tree's sites (absent: 1).
     pub lines: Vec<usize>,
 }
@@ -201,7 +206,7 @@ impl World {
             configs: &self.configs,
             root,
             memo,
-            crate_roots: &none,
+            crate_roots: &self.crate_roots,
             search_roots: &self.search_roots,
             java: &self.java,
             lua: &self.lua,
@@ -217,8 +222,8 @@ impl World {
         let mut configs = Vec::new();
         texts(root, root, &mut configs);
         format!(
-            "  files {:?}\n  search_roots {:?}\n  lua {:?}\n  includes {:?}\n  java {:?}\n  configs {configs:?}",
-            self.files, self.search_roots, self.lua, self.includes, self.java
+            "  files {:?}\n  crate_roots {:?}\n  search_roots {:?}\n  lua {:?}\n  includes {:?}\n  java {:?}\n  configs {configs:?}",
+            self.files, self.crate_roots, self.search_roots, self.lua, self.includes, self.java
         )
     }
 }
@@ -253,9 +258,10 @@ pub(super) type Tree = (World, Vec<Owned>);
 
 /// A random leg: `CE_LADDER_DIFF_N` seeded trees, each built by `tree`
 /// in a fresh directory, both sides on its sites (and on its forced-
-/// include arcs when `forced`, on its R package code and cabal mains when
-/// it declares a DESCRIPTION or a .cabal, on its cabal privacy when it
-/// declares a .cabal); the tally printed, any mismatch fails.
+/// include arcs when `forced`, on its R package code, cabal mains and
+/// crate roots when it declares a DESCRIPTION, a .cabal or a Cargo.toml,
+/// on its cabal and Cargo privacy when it declares a .cabal or a
+/// Cargo.toml); the tally printed, any mismatch fails.
 pub(super) fn leg(
     name: &str,
     salt: u64,
@@ -293,10 +299,10 @@ pub(super) fn leg(
             compare_forced(&root, &world.files, &mut tally, &ctx);
         }
         let named = |suffix| world.configs.iter().any(|c| c.ends_with(suffix));
-        if named("DESCRIPTION") || named(".cabal") {
+        if named("DESCRIPTION") || named(".cabal") || named("Cargo.toml") {
             compare_declared(&root, &world.files, &mut tally, &ctx);
         }
-        if named(".cabal") {
+        if named(".cabal") || named("Cargo.toml") {
             compare_private(&root, &world.files, &mut tally, &ctx);
         }
     }
