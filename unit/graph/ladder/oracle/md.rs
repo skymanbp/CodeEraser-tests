@@ -54,7 +54,7 @@ use std::rc::Rc;
 
 // percent_decode at a0cb6e13 (stage H moved its live readers into the core)
 #[path = "../../oracle_cfg/md_percent.rs"]
-pub(super) mod slug;
+pub(crate) mod slug;
 
 pub fn resolve(site: &Site, scope: &Scope) -> Outcome {
     let (from, spec) = (site.from, site.spec);
