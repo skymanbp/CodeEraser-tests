@@ -9,7 +9,7 @@
 use super::text::ranges;
 use super::{agree, check, link, questions};
 use crate::graph::ladder::frozen;
-use crate::graph::ladder::md::slug::percent_decode;
+use crate::graph::ladder::frozen::percent_decode;
 use serde_json::{Value, json};
 
 /// Whether a capital sigma after `lead` and a character lowers final.

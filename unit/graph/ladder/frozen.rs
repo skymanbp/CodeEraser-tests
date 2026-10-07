@@ -35,7 +35,15 @@
 //! G (its edits: the head and slug modules and the unit-test mount
 //! dropped — it reads the live slug module, ladder/md_slug.rs, which
 //! stays on the measuring side; `fold` and `is_scheme` opened to the
-//! crate, re-exported here for the reader legs, unit/graph/resolve/md.rs).
+//! crate, re-exported here for the reader legs, unit/graph/resolve/md.rs;
+//! since stage H its `percent_decode` is the a0cb6e13 one, mounted as its
+//! `slug` module from ../oracle_cfg/md_percent.rs).
+//! oracle/html.rs and oracle/html_head.rs are byte copies of ladder/ at
+//! a0cb6e13, before stage H (html_head.rs's one edit: its unit-test mount
+//! re-aimed at ../); html.rs reads the frozen Markdown rungs' `fragment`,
+//! `anchor` and `is_scheme` and their `slug::percent_decode`, html_head.rs
+//! the live tree-sitter readers it always read (the document walk, the
+//! section units' ids), which stay on the measuring side.
 //! All
 //! are compiled for tests only, each mounted here by `#[path]` (oracle/
 //! holds no mod.rs: a parent there would turn each copy's `super::` into
@@ -63,6 +71,10 @@ mod c_search;
 mod go;
 #[path = "oracle/hs.rs"]
 mod hs;
+#[path = "oracle/html.rs"]
+mod html;
+#[path = "oracle/html_head.rs"]
+pub(crate) mod html_head;
 #[path = "oracle/java.rs"]
 mod java;
 #[path = "../oracle_cfg/java_annotation.rs"]
@@ -73,6 +85,7 @@ mod java_sets;
 mod lua;
 #[path = "oracle/md.rs"]
 mod md;
+pub(crate) use md::slug::percent_decode;
 pub(crate) use md::{fold, is_scheme};
 #[path = "oracle/paths.rs"]
 mod paths;
@@ -91,13 +104,15 @@ mod rs;
 
 /// The a8db74a9 dispatcher for the ladders the core now holds, R's arm
 /// added at c96ab3f6, Java's at 27d0d56d, Haskell's at fa83a48d, the
-/// TS / TSX one at dd0eec61, Rust's at 1324c927 and Markdown's at
-/// 3b7234eb: the empty specifier refused before any rung but
-/// Markdown's, which reads it as the document itself (the 3b7234eb
-/// `resolve_all` exempted it).
+/// TS / TSX one at dd0eec61, Rust's at 1324c927, Markdown's at 3b7234eb
+/// and HTML's at a0cb6e13: the empty specifier refused before any rung
+/// but Markdown's and HTML's, which read it themselves (the a0cb6e13
+/// `resolve_all` exempted both).
 pub(crate) fn resolve(lang: Lang, site: &Site, scope: &Scope) -> Outcome {
-    if lang == Lang::Markdown {
-        return md::resolve(site, scope);
+    match lang {
+        Lang::Markdown => return md::resolve(site, scope),
+        Lang::Html => return html::resolve(site, scope),
+        _ => {}
     }
     if site.spec.is_empty() {
         return Outcome::Unresolved(Reason::Empty);

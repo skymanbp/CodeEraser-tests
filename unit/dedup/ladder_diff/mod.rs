@@ -2,7 +2,7 @@
 //! 2026-10-03): every site a tree holds for the ladders the core now
 //! runs (Python, Lua, Go, C / C++; R since W2-text stage B, Java since
 //! stage C, Haskell since stage D, TypeScript / TSX since stage E, Rust
-//! since stage F, Markdown since stage G) is
+//! since stage F, Markdown since stage G, HTML since stage H) is
 //! resolved
 //! twice — by the core over the real resolve/1 wire
 //! (`ladder::resolve_all`) and by the frozen rungs
@@ -24,6 +24,7 @@ mod c;
 mod common;
 mod go;
 mod hs;
+mod html;
 mod java;
 mod java_gen;
 mod lua;

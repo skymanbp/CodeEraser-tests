@@ -1,13 +1,14 @@
-//! The document reader pinned (plan v2.30 step 5): what the HTML rungs
-//! read off a page's own text — the origin that serves it and the tree
-//! root that origin derives, its `<base href>`, the two URL readings —
-//! and the id_hash ↔ ids coupling: the hashed projection and the
-//! consulted projection must move together, or an id edit stops
-//! re-firing the sweep (the md slug_hash discipline, md_tests.rs).
+//! The document reader pinned (plan v2.30 step 5), on the frozen
+//! a0cb6e13 copy since plan v2.33 W2-text stage H moved its readings into
+//! the core (oracle/html_head.rs; the differential gate holds the core to
+//! it): what the HTML rungs read off a page's own text — the origin that
+//! serves it and the tree root that origin derives, its `<base href>`,
+//! the two URL readings. The id_hash ↔ ids coupling stays on the live
+//! reader (html_ids.rs).
 //! Each battery is one text, `a @@ b @@ …` per row (the clone gate
 //! reads a tuple table's rhythm; a text has none).
 
-use super::{decode_refs, id_hash, ids, read, split_origin};
+use super::{decode_refs, read, split_origin};
 
 /// The rows of one battery, each split into exactly N fields; a row
 /// of another width names the shape it should have had.
@@ -115,31 +116,4 @@ fn character_references_decode_and_the_rest_stays_written() {
     for [raw, want] in rows(REFERENCES, "written @@ decoded") {
         assert_eq!(decode_refs(raw), want, "{raw}");
     }
-}
-
-/// `why @@ a @@ b`: two documents whose hashes must differ exactly when
-/// their consulted id lists differ.
-const COUPLING: &str = r#"
-a body edit holds the hash @@ <h2 id="a">x</h2> @@ <h2 id="a">y</h2>
-an id edit moves it @@ <h2 id="a">x</h2> @@ <h2 id="b">x</h2>
-an id added moves it @@ <h2 id="a">x</h2> @@ <h2 id="a">x</h2><p id="c"></p>
-document order is part of the projection @@ <p id="a"></p><p id="b"></p> @@ <p id="b"></p><p id="a"></p>
-a duplicate id is a second entry @@ <p id="a"></p> @@ <p id="a"></p><p id="a"></p>
-an empty id is no entry @@ <p id="a"></p> @@ <p id="a"></p><p id=""></p>
-"#;
-
-#[test]
-fn id_hash_moves_exactly_when_the_id_set_moves() {
-    for [why, a, b] in rows(COUPLING, "why @@ a @@ b") {
-        assert_eq!(
-            id_hash(a) == id_hash(b),
-            ids(a) == ids(b),
-            "projection coupling broke: {why}"
-        );
-    }
-    assert_eq!(
-        ids(r#"<p id="a"></p><div><p id="a"></p></div>"#),
-        ["a", "a"],
-        "every id, in document order"
-    );
 }

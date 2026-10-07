@@ -5,7 +5,7 @@
 
 use super::Exam;
 use super::Reach::{Tree, Universe};
-use super::Stage::Scored;
+use super::Stage::Audited;
 
 /// The C family's rungs and the compilation-database readers they
 /// consult: one ladder for both exams, since a C++ include resolves
@@ -79,7 +79,7 @@ const fn exam(
         reach: Universe,
         ladder,
         ladder_first: None,
-        stage: Scored,
+        stage: Audited,
         generation,
     }
 }
@@ -92,6 +92,18 @@ const fn exam(
 /// application apiece: a package reaches its own files by module name,
 /// an application by path (`dofile`, `source`). The R ladder is a
 /// directory of its own — a `r*` pathspec would hold the Rust rungs.
+/// The HTML ladder: the head and `id` reader here (the walk reads each
+/// page's head with it, ladder/html_head.rs), the rungs and the page's
+/// derivations in the core since plan v2.33 W2-text stage H
+/// (CE.Resolve.Html / CE.Resolve.HtmlHead), the request that carries
+/// each page's facts between them.
+const HTML_LADDER: &[&str] = &[
+    "cli/src/graph/ladder/html*",
+    "cli/src/graph/resolve/",
+    "core/app/CE/Resolve.hs",
+    "core/app/CE/Resolve/",
+];
+
 /// Lua's exam is at its second generation: the first was frozen before
 /// the detector read a load under protection (`pcall(require, "x")`,
 /// the core's CE.Lang.Lua `protected` table).
@@ -164,7 +176,7 @@ pub const EXAMS: [Exam; 6] = [
                 ("learning-area", "dbed6bcb8284634c7549c4da596ec30b0cfc6e7e"),
             ],
             &["html", "htm"],
-            &["cli/src/graph/ladder/html*"],
+            HTML_LADDER,
             1,
         )
     },

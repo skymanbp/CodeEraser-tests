@@ -6,7 +6,8 @@
 //! the cross-file staleness repayment. Their divergence is the only
 //! way that debt returns, so it is pinned here as a table.
 
-use super::slug::{percent_decode, slug_hash, slug_set};
+use super::slug::{slug_hash, slug_set};
+use crate::graph::ladder::frozen::percent_decode;
 use crate::graph::ladder::md::head::{atx_heading, headings};
 
 #[test]

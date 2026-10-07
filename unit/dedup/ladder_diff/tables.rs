@@ -129,6 +129,20 @@ md TARGETS=a.md|./a.md|../b.md|docs/|docs|a.md#intro|b.md#Intro|#frag|#|ftp:x|ht
 md PREFIXES=||||../|docs/|./|../../|img/|site/zh/|%2e/|a/b/
 md FRAGS=x-y|getting-started|code-span|intro|intro-1|getting-started|x%20y|x y|Intro|faq|%C3%BCn%C3%AFcode-title|ünïcode-title|code-span|nope||%ZZ|σίσυφος|100-done|a_b|%CE%BF%CE%B4%CE%BF%CF%82|%+f|émoji-|x%2|ab%
 md LEGS=md-link 41 0|md-image 42 1|md-reflink 43 2|md-refdef 44 3|md-url 45 4
+html DIRS=|site|site/how|site/zh|site/zh/how|docs|docs/sub|public|a b|é
+html BASES=index.html|index.html|index.htm|a.html|b.htm|about.html|page.html|x.HTML|README.md|guide.md|c.py|a b.html|é.html|a&b.html|.html
+html ASSETS=img/logo.png|style.css|site/app.js|site/img/a.png|docs/x.svg|a b.png|fonts/f.woff2|site/zh/s.css|favicon.ico|site/how/i.png
+html ROOTS=|site|docs|site/zh|public|nope|a b
+html ORIGINS=https://a.example|https://a.example|https://a.example|https://A.EXAMPLE|http://placeholder@a.example|//a.example|https://a.example:8080|https://b.example|HTTP://a.example|ftp://a.example||mailto:|a.example|https://|1x://a.example
+html LANGS=en|en|zh-Hans|EN-us|zh|-|
+html HREFLANGS=en|zh|zh-Hans|EN|x-default|ZH-hant|
+html RELS=canonical|Canonical|alternate canonical|canonicalx|stylesheet
+html BASE_HREFS=sub/|../|./|/site/|/|https://a.example/site/|//a.example/docs/|https://b.example/x/|mailto:x|/nope/|a&amp;b/|%73ite/|site|?q=1|#top||https://a.example|/site/index.html|https://a.example/site/a?q=1/x|docs/sub/
+html IDS=top|intro|a b|中文|x%20y|dup|dup|Top|&amp;|é|getting-started|
+html TARGETS=|#|#top|?q|?q=1#top|./|../|.|..|index.html|a.html|a.html#top|/|/site/|/site/how/|//a.example/x|mailto:x@y|javascript:void(0)|data:image/png;base64,AA|tel:1|a%20b.html|a b.html|a&amp;b.html|&#x2F;site/|&#47;|%2Fsite|img/logo.png|style.css|README.md#intro|guide.md#getting-started|docs/|docs|nope.html|é.html|%C3%A9.html|%ZZ|x:y|C:/x|1a:b|/../../x|&#0;|&#x110000;|&#+47;x|&lt;b&gt;|&amp|&nope;a
+html FRAGS=top|intro|getting-started|a b|a%20b|中文|%E4%B8%AD%E6%96%87|dup|Top|&amp;|%26amp;|é|%C3%A9|x%2|nope||%ZZ|x%20y|x%2520y
+html MD_HEADS=Intro|Getting Started|top|中文|Dup|dup
+html LEGS=html-href 51 0|html-src 52 1|html-action 53 2|html-fragment 54 3|html-origin 55 4
 "#;
 
 /// The table a key names: `<leg> <NAME>`.

@@ -2,7 +2,8 @@
 //! stage A; R's DESCRIPTION since stage B, the .cabal since stage D, the
 //! JSONC reader, the tsconfig chain and the package.json since stage E,
 //! the Cargo.toml since stage F, the Markdown rungs' lowercase, label
-//! fold and target readings since stage G): the frozen readers
+//! fold and target readings since stage G, the HTML rungs' reference and
+//! page readings since stage H): the frozen readers
 //! (unit/graph/oracle_cfg/, mounted at their old paths under cfg(test))
 //! against the core's readers, asked directly through resolve/1's
 //! `inspect` object (CE.Resolve.Inspect).
@@ -19,6 +20,7 @@ mod cargo;
 mod description;
 mod draw;
 mod files;
+mod html;
 mod md;
 mod text;
 mod ts;
