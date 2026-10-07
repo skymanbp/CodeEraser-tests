@@ -8,7 +8,7 @@
 use super::super::binder::ranks;
 use super::super::kit::{Leg, leg};
 use super::{Names, slashed, widths};
-use crate::arch::tables::Tables;
+use crate::structure::oracle::tables::Tables;
 use serde_json::json;
 
 /// A face's tables: the paths, the directories (the root `""` first).

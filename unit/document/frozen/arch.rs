@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 
 use super::binder::{self as document, Resolve, Why};
-use crate::arch::tables::Tables;
+use crate::structure::oracle::tables::Tables;
 
 #[path = "../spelled/arch.rs"]
 mod spelled;

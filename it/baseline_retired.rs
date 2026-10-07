@@ -14,7 +14,7 @@
 /// names the key the member carried on the day it dissolved: the
 /// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
 /// both readers in baseline_bridge.rs share `seated_or_retired`.
-pub const RETIRED: [(u64, &str); 50] = [
+pub const RETIRED: [(u64, &str); 52] = [
     (
         5414355871597516298,
         "v2.32 step 6 2026-10-03: 8.0.0 retired structure/1's `patterns` request key, so CE.Structure imports the named refusal (CE.Wire.Retired) inside the import run it shared with CE.Docdup and StructureProps no longer refuses the pattern table twice - the two blocks this member's pair rode (Docdup.hs:38-43 / Structure.hs:32-37 imports, StructureProps.hs:124-134 / 134-137 refusals) left with the road (ce.toml dedup budget 37 -> 35)",
@@ -218,5 +218,13 @@ pub const RETIRED: [(u64, &str); 50] = [
     (
         10624204810296426211,
         "v2.33 W3 2026-10-04: the clone and docdup verdict mirrors retired into the core (clone/1 `decide`, docdup/1), and unit/dedup/t3.rs and unit/docdup/judge.rs dropped their verdict-boundary tests - the two file heads this member rode (lines 1-9 of each) left with them (the suite's dedup budget 91 -> 90)",
+    ),
+    (
+        2247815219895934008,
+        "v2.33 W1 item 3 2026-10-06: structure/1 carries the paths and the core builds the tree and the dir-keyed tables, so structure/wire.rs's Request lost its run of integer table fields and no longer rhymes with SeamTables (Request:17-30 / 24-35 <-> SeamTables:68-73 / 69-73, 64 / 53 tokens) - that member dissolved; the same field shape now pairs SeamTables with Reply (new member 11222999076006596231), clone block count unchanged (ce.toml dedup budget 33)",
+    ),
+    (
+        10172017980086749569,
+        "v2.33 W1 item 3 2026-10-06: the same move - structure/wire.rs's Request no longer rhymes with score/wire.rs's Request (score Request:22-34 / 23-35 <-> structure Request:18-35, 55 / 65 tokens); that member dissolved and the field shape now pairs score/wire.rs's Request with structure/wire.rs's Reply (new member 29619703907010342), clone block count unchanged",
     ),
 ];

@@ -189,7 +189,7 @@ fn foreign_files_read_for_the_graph_and_the_advisory() {
 /// link is the one doc row.
 #[test]
 fn a_foreign_doc_is_read_and_never_a_stale_candidate() {
-    use codeeraser::structure::{judge, rows, tree};
+    use codeeraser::structure::{judge, rows};
     let core = common::core_bin();
     let read = superproject("foreign-readers-stale", true);
     std::fs::write(
@@ -202,21 +202,15 @@ See [the root](root.rs).
     .expect("NOTES.md");
     judge::run(&read, None, &core, (false, Some(30), false))
         .expect("a foreign doc's link is an edge, not a doc row");
-    let own: Vec<String> = common::walked(&read)
-        .into_iter()
-        .filter(|(_, foreign)| !foreign)
-        .map(|(p, _)| p)
-        .collect();
     let (_idx, w) = common::graph_wire(&read, deadcode::Advisory::No);
-    let (docs, edges) =
-        rows::stale_doc_rows(&read, &w, &tree::build(&own), 30).expect("stale rows");
-    assert_eq!(docs.len(), 1, "NOTES.md alone is placed: {docs:?}");
+    let docs = rows::stale_docs(&read, &w, 30).expect("stale rows");
+    assert_eq!(docs.len(), 1, "NOTES.md alone is sent: {docs:?}");
+    assert_eq!(docs[0].0, "NOTES.md", "the own doc: {docs:?}");
     assert_eq!(
-        edges.len(),
+        docs[0].2.len(),
         1,
-        "root.rs, committed in the window, is NOTES.md's one changed target: {edges:?}"
+        "root.rs, committed in the window, is NOTES.md's one changed target: {docs:?}"
     );
-    assert_eq!(edges[0][0], 0, "the edge hangs on the own doc: {edges:?}");
 }
 
 /// The guard is inert on a foreign path while the submodule has no
