@@ -2,6 +2,7 @@ use super::*;
 use crate::dedup::Params;
 use crate::dedup::index::Index;
 use crate::scan::lang::Lang;
+use crate::similar::file_bags;
 use crate::similar::frozen::word_term;
 use crate::similar::reader::Reader;
 use std::collections::BTreeSet;
