@@ -7,22 +7,28 @@ fn counts(answers: u64) -> Value {
 }
 
 #[test]
-fn the_body_carries_the_texts_the_tables_by_decimal_code_and_the_two_flags() {
+fn the_body_carries_the_program_the_tables_by_decimal_code_and_the_two_flags() {
     let facts = BTreeMap::from([
         (1u32, vec![vec![3u64], vec![5]]),
         (9, vec![vec![3, 5, 7, 1]]),
     ]);
     assert_eq!(
-        body(&json!(["p.", null, "?- p."]), (&facts, None), true, false),
+        body(
+            &json!({"texts": ["p.", null, "?- p."], "pack": [["no_dir_cycles"]]}),
+            (&facts, None),
+            true,
+            false
+        ),
         json!({
             "texts": ["p.", null, "?- p."],
+            "pack": [["no_dir_cycles"]],
             "facts": {"1": [[3], [5]], "9": [[3, 5, 7, 1]]},
             "why": true, "schema": false,
         })
     );
     let tree = json!({"paths": ["a/x.py", "b"], "packages": [1]});
     assert_eq!(
-        body(&json!([]), (&BTreeMap::new(), Some(&tree)), false, false)["tree"],
+        body(&json!({}), (&BTreeMap::new(), Some(&tree)), false, false)["tree"],
         tree,
         "the tree form rides as sent"
     );

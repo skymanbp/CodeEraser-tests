@@ -12,7 +12,7 @@ fn with_class(name: &str, globs: &[&str], tol: Option<usize>) -> Config {
                     ..ClassKnobs::default()
                 },
             }],
-            file: None,
+            ..RulesCfg::default()
         },
         ..Config::default()
     }
@@ -25,16 +25,27 @@ fn with_score(score: ScoreCfg) -> Config {
     }
 }
 
-/// Rule 7: the rules file is a path the query family reads, never a
-/// knob — naming one leaves the fingerprint byte for byte (plan
-/// v2.31 step 2).
+/// Rule 7: the rules file is a path the query family reads and the
+/// rule pack is checks it judges, never knobs — naming one, or
+/// switching every pack item on, leaves the fingerprint byte for byte
+/// (plan v2.31 step 2; the pack plan v2.33).
 #[test]
-fn the_rules_file_is_not_a_knob() {
+fn the_rules_file_and_the_pack_are_not_knobs() {
     let mut named = with_class("vendored", &["vendor/**"], Some(0));
     let bare = named.knobs_digest();
     named.rules.file = Some("arch.rules".into());
+    named.rules.pack = toml::from_str(
+        r#"no_dir_cycles = true
+fan_in_max = 3
+fan_out_max = 4
+layers = ["a/**", "b/**"]
+forbid = [["a/**", "c/**"]]"#,
+    )
+    .expect("a pack table");
     assert_eq!(named.knobs_digest(), bare);
     assert!(canonical(&named)["rules"].get("file").is_none());
+    assert!(canonical(&named)["rules"].get("pack").is_none());
+    assert_eq!(named.rules.pack.rows().len(), 5);
 }
 
 /// A repo that declares nothing has no fingerprint. Absence is the
@@ -102,7 +113,7 @@ fn the_rulepack_still_moves_it_in_every_part() {
                     knobs: ClassKnobs::default(),
                 })
                 .collect(),
-            file: None,
+            ..RulesCfg::default()
         },
         ..Config::default()
     };
@@ -248,7 +259,7 @@ fn the_tree_holds_declarations_only() {
                     ..ClassKnobs::default()
                 },
             }],
-            file: None,
+            ..RulesCfg::default()
         },
         ..Config::default()
     };

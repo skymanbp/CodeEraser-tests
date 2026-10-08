@@ -56,6 +56,11 @@ structure.layout\tDeclared directory weights the divergence axis judges against;
 trend.min_points\tHistory points required before a slope is judged
 trend.decline_floor_micro\tDecline floor in micro-per-mille per day; declaring it arms the trend fail bit
 rules.class	Path classes with their own size and complexity lines (plan v2.13): an array of tables, each with a local `name`, its `globs` (the exclude list's dialect through the exclude list's own parser — gitignore syntax, `dir/` the directory's files; the first declared match owns a path, an unmatched path keeps the global table) and `knobs` — `file_lines_warn`, `file_lines_fail`, `cognitive_warn`, `cognitive_fail`, `fn_lines_warn`, `fn_lines_fail`, `ratchet_tolerance`, `cognitive_ratchet_tolerance`; an absent knob inherits the global line. The score reads the size and complexity three, the scan ladder the six lines — `cognitive_fail` (v2.24) among them, so a class may carry a complexity wall the rest of the tree does not — and `ratchet_tolerance` (5.1.0) is the class's own ADR-006 allowance in lines: declared, it replaces BOTH global legs, so `0` freezes the class at its current ceilings and the global `max(+2%, +10)` never applies; `cognitive_ratchet_tolerance` (6.4.0) is the same allowance for the fn-complexity rows alone — declared, it replaces `ratchet_tolerance` for those rows, so a class may freeze its lines and still allow complexity growth, or the reverse. At most 64 classes, each class's ladder must climb, and only a class's index and knobs ever cross the wire. Since 6.0.0 the baseline records a fingerprint of the WHOLE parsed config — every table, not just this one — and since O39 that fingerprint is the CANONICAL effective knob set: the values that differ from the shipped defaults, so comments, key order, a knob spelled at its default and an optional knob nobody declared leave it alone, and a class's `name` is a label outside it (a rename is silence); editing any effective knob fails `ce check` by name (`knobs_digest`) until `CE_ACCEPT_FENCE=1 ce baseline` re-pins the same ceilings under the new config (refused when anything else held) or `CE_ACCEPT_BASELINE=1` names a new floor, so neither a glob edit nor a `[score]` edit can move every line in silence. Since 6.4.0 `ce scan` judges the same fence (`knobs_digest` among its named conditions, exit 1), and the PreToolUse hook judges budgets with the SHIPPED thresholds, exclude list and classes while the config drifts, naming the fence in its deny reason — a drifted config is an unverified document, and a hook that kept any part of it would let the edit that produced the drift choose its own budget. Enabling classes changes what the score judges a file against — scores are not comparable across that switch
+rules.pack.no_dir_cycles	The built-in rule pack (plan v2.33): the `[rules.pack]` table switches on common architecture checks without writing CE Datalog. The core renders each declared item to CE Datalog — assertions and helper rules spelled `pack_…`, a reserved prefix (a rule of yours that defines one is program error 7) — and lexes that text between the prelude and the rules file, so `ce rules`, the MCP `rules` tool, the GUI's Query screen and `ce query` judge the pack beside the rules file's assertions, every violation a witness row with its proof; `ce query --prelude` prints the rendered text. Like `file`, the table is never a knob — the knob fingerprint drops it (config::canonical rule 7), so switching a check on touches no baseline. `true`: no two directories reference each other, directly or through others — `pack_no_dir_cycles(D, E)`, one row per pair, over the transitive closure of the prelude's `dir_ref`
+rules.pack.fan_in_max	A file referenced by more than this many other files is a violation, `pack_fan_in_max(G, N)` (file nodes only, any reference kind); absent = not judged
+rules.pack.fan_out_max	A file referencing more than this many other files is a violation, `pack_fan_out_max(F, N)` (file nodes only, any reference kind); absent = not judged
+rules.pack.layers	Ordered globs, top layer first (the rules file's glob dialect, read through its own `in(F, \"glob\")`): a file in a lower layer may not reference a file in a higher one — one assertion `pack_layers_<i>_<j>(F, G)` per ordered pair i > j, a file belonging to every layer whose glob it matches. Fewer than two globs, more than 16, or a glob holding a quote is refused by name; a glob the dialect cannot read is an error at its place in the pack (`pack line:column`)
+rules.pack.forbid	Pairs `[from, to]` of globs: a file matching the first may not reference a file matching the second — `pack_forbid_<k>(F, G)` per pair, at most 64 pairs
 rules.file\tThe rules file `ce rules` judges and `ce query` builds on (plan v2.31 step 2): a path relative to the project root, never a knob — the knob fingerprint drops it (config::canonical rule 7), so naming or moving it touches no baseline. Unset = `ce.rules` at the root when it exists, and no file at all is zero assertions (`ce rules` says so and exits 0); a file named here must exist, and a missing one is refused by name. `ce query --file` and the MCP tools' `file` argument override it for one question
 tombstone.tier\tThe tombstone class's own hook tier: observe / warn / ask / deny; unset = observe. `[guard] mode` does not reach this class — a class with a key of its own decides at that key — and the class ships at observe until docs/FPR-TOMBSTONE.md argues a promotion (plan §4.2). Any other value is refused at load by name, so a mistyped tier can never look armed
 tombstone.budget\tSites one changeset may carry before the class's condition holds (`sites > budget`, judged by the core over tombstone/1); absent = no condition is evaluated (`over` never holds) while the core still seats the sites; the judgment reaches the observe feed either way
@@ -188,6 +193,27 @@ fn default_cell(v: &str) -> String {
     }
 }
 
+/// A section's fields: serde's key list held to its Debug fields (a
+/// future rename would split the two sources — red, never a silently
+/// wrong page), every sub-table spread into its own dotted keys
+/// (`[rules.pack]`'s five as `pack.no_dir_cycles` … under `[rules]`).
+fn held(section: &str, dbg: &str) -> Vec<(String, String)> {
+    let fields = debug_pairs(dbg);
+    let named: BTreeSet<String> = fields.iter().map(|(k, _)| k.clone()).collect();
+    let probed = probed_keys(Some(section));
+    assert_eq!(probed, named, "[{section}] serde/Debug field sets differ");
+    let mut out = Vec::new();
+    for (k, v) in fields {
+        if is_section(&v) {
+            let sub = held(&format!("{section}.{k}"), &v);
+            out.extend(sub.into_iter().map(|(n, d)| (format!("{k}.{n}"), d)));
+        } else {
+            out.push((k, v));
+        }
+    }
+    out
+}
+
 /// One markdown table for one group of keys, defaults joined from
 /// the Debug pairs, prose from the TSV; `used` collects coverage for
 /// the final set-equality check.
@@ -231,12 +257,7 @@ fn config_page() -> String {
         .collect();
     s += &format!("\n## Top level\n\n{}", key_table("", &leaves, &mut used));
     for (name, v) in top.iter().filter(|(_, v)| is_section(v)) {
-        let fields = debug_pairs(v);
-        let probed = probed_keys(Some(name));
-        let named: BTreeSet<String> = fields.iter().map(|(k, _)| k.clone()).collect();
-        // serde-facing names vs struct fields: a future rename would
-        // split the two sources — red, never a silently wrong page
-        assert_eq!(probed, named, "[{name}] serde/Debug field sets differ");
+        let fields = held(name, v);
         s += &format!("\n## [{name}]\n\n{}", key_table(name, &fields, &mut used));
     }
     let tsv: BTreeSet<String> = KEY_DOC_TSV

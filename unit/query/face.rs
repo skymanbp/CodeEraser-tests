@@ -94,7 +94,8 @@ fn core() -> String {
 fn dead_f() -> (Lexed, Labels) {
     let mut link = document::open(&core()).expect("a core link");
     let texts = lexed::texts(PRELUDE, None, Some("?- dead(F)."));
-    let Ok(Lex::Program(program)) = lexed::lex(&mut link, &texts) else {
+    let program = lexed::program(texts, Vec::new());
+    let Ok(Lex::Program(program)) = lexed::lex(&mut link, &program) else {
         panic!("the question lexes");
     };
     let labels = Labels {

@@ -60,7 +60,7 @@ fn class_grade_rows_carry_effective_pairs_for_declared_codes() {
                 },
             },
         ],
-        file: None,
+        ..RulesCfg::default()
     };
     assert_eq!(
         class_grade_rows(&rules, &global),

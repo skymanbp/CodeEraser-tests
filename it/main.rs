@@ -196,6 +196,7 @@ mod release_roster_parts;
 mod report_schema;
 mod rescache_face;
 mod root_anchor;
+mod rules_pack;
 mod sarif_face;
 mod scan_classes;
 mod settle_hook;

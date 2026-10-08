@@ -54,7 +54,8 @@ fn seeded(name: &str) -> PathBuf {
 }
 
 /// `ce <args…> . --core <core>` (+ `--format json`): (exit, stdout, stderr).
-fn run(dir: &Path, args: &[&str], json: bool) -> (Option<i32>, String, String) {
+/// Also the rule pack's runner (`rules_pack`).
+pub(crate) fn run(dir: &Path, args: &[&str], json: bool) -> (Option<i32>, String, String) {
     let core = common::core_bin();
     let mut full: Vec<&str> = args.to_vec();
     full.extend_from_slice(&[".", "--core", &core]);

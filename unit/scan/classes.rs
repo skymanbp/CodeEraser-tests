@@ -13,7 +13,7 @@ fn rules(classes: &[Decl]) -> RulesCfg {
                 knobs: Default::default(),
             })
             .collect(),
-        file: None,
+        ..RulesCfg::default()
     }
 }
 

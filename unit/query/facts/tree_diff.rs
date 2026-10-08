@@ -59,7 +59,7 @@ fn answered(link: &mut Link, nodes: &Nodes, wanted: &BTreeSet<u32>) -> Value {
         .collect();
     let text: String = read.iter().map(|(_, q)| format!("?- {q}.\n")).collect();
     let body = crate::query::wire::body(
-        &json!(["", null, text]),
+        &json!({"texts": ["", null, text]}),
         (&s.finish(), Some(&tree)),
         false,
         false,
