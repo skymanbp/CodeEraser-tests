@@ -52,3 +52,36 @@ fn a_dropped_link_parks_its_session_for_the_next_open() {
         "the refusal kept it; the own link never parked"
     );
 }
+
+/// A line over the core's byte ceiling (plan v2.33 legacy item 1). A
+/// whole pass never sends it: it meets the named degradation a family
+/// cap gives. Sent anyway, the core refuses it before decoding, so its
+/// `too_large` echoes no id — a named refusal, not a desync: the session
+/// is not broken and the next request is answered under its own id.
+#[test]
+fn an_overlong_line_is_refused_by_name_and_the_session_survives() {
+    let core = std::env::var("CE_CORE_BIN").expect("the unit tests run with CE_CORE_BIN");
+    let mut link = super::Link::own(&core).expect("the core answers").0;
+    let over =
+        || serde_json::json!({ "pad": "x".repeat(crate::tables::get().limits.caps.line_bytes) });
+    let pass = super::judged::whole_pass::<serde_json::Value>(
+        &mut link,
+        ("tables/1", "7.7.0", "tables"),
+        over(),
+        ("probe pass", &[]),
+    );
+    let held = pass.expect_err("over the line").to_string();
+    assert!(
+        held.starts_with("tables/1 degraded the probe pass (request line "),
+        "{held}"
+    );
+    assert!(held.ends_with("line the core reads; not sent)"), "{held}");
+    let sent = link.request("tables", over()).expect_err("over the line");
+    assert!(
+        sent.starts_with("core refused tables.request: too_large: "),
+        "{sent}"
+    );
+    assert!(!link.session().broken, "the framing held");
+    let next = link.request("tables", serde_json::json!({}));
+    assert!(next.is_ok(), "the next request is answered: {next:?}");
+}
