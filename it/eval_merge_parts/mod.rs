@@ -163,7 +163,12 @@ pub fn corpora() -> Vec<(String, Value, PathBuf)> {
 
 /// The merge document over a tree.
 pub fn measure(root: &Path) -> Value {
-    codeeraser::faces::merge(root, &common::core_bin()).expect("merge face")
+    codeeraser::faces::doc(codeeraser::faces::merge(
+        root,
+        &common::core_bin(),
+        Default::default(),
+    ))
+    .expect("merge face")
 }
 
 /// One corpus's frozen section: the counts, the groups not sent, and a

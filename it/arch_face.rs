@@ -8,6 +8,7 @@
 //! importing a sibling package — the one package reference.
 
 use crate::common;
+use codeeraser::faces;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -90,7 +91,8 @@ fn judged(name: &str, impact: &[&str]) -> (PathBuf, Value) {
 
 fn face(dir: &Path, impact: &[&str]) -> Value {
     let impact: Vec<String> = impact.iter().map(|s| s.to_string()).collect();
-    codeeraser::faces::arch(dir, &common::core_bin(), &impact).expect("the arch face")
+    let answer = faces::arch(dir, &common::core_bin(), &impact, Default::default());
+    faces::doc(answer).expect("the arch face")
 }
 
 /// Every directory arc the fixture spells, by construction.
@@ -259,12 +261,13 @@ fn a_core_that_cannot_lay_the_document_out_is_refused_by_name() {
     let dir = common::doc_tree("arch-degraded", "--- a/x.py\nX = 1\n--- b/y.py\nY = 2\n");
     common::init_and_commit(&dir, "seed");
     let stub = common::stub_core::hello_only();
-    let missing = common::tmp("arch-no-core").join("no-such-core.exe");
-    let missing = missing.to_string_lossy().into_owned();
-    common::refused_for_its_core(&dir, &["arch", ".", "--core", &missing], &missing);
+    let missing = common::tmp("arch-no-core")
+        .join("no-such-core.exe")
+        .display()
+        .to_string();
+    let ask = |c: &str| faces::arch(&dir, c, &[], Default::default());
+    common::refused_without_core(&dir, "arch", &missing, ask);
     refused_both_forms(&dir, &stub, &["arch document: core offers no document/1"]);
-    let err = codeeraser::faces::arch(&dir, &missing, &[]).expect_err("no core");
-    assert!(err.to_string().contains("arch document:"), "{err:#}");
 }
 
 /// A core without `resolve/1` over a tree whose Python files import

@@ -30,6 +30,24 @@ pub fn refused_for_its_core(dir: &Path, args: &[&str], missing: &str) {
     assert!(err.contains(missing) && err.contains("tables/1"), "{err}");
 }
 
+/// A core path that is not there, on two faces of `family`: the CLI
+/// naming it as `--core` is refused before any judgment, and the
+/// library face (`face`, asked with that path) by name — no document
+/// either way.
+pub fn refused_without_core(
+    dir: &Path,
+    family: &str,
+    missing: &str,
+    face: impl FnOnce(&str) -> anyhow::Result<codeeraser::document::Answer>,
+) {
+    refused_for_its_core(dir, &[family, ".", "--core", missing], missing);
+    let err = codeeraser::faces::doc(face(missing)).expect_err("no core");
+    assert!(
+        err.to_string().contains(&format!("{family} document:")),
+        "{err:#}"
+    );
+}
+
 /// Run `ce` expecting success; the stdout text comes back for content
 /// assertions — the run/assert/read stanza lives once (the P2 census
 /// caught sibling copies growing across eject/doctor/mcp tests).

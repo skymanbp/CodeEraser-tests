@@ -7,6 +7,7 @@
 //! golden, and every family's bound document against the catalogue.
 
 use crate::common::{self, stub_core};
+use codeeraser::faces;
 use serde_json::{Value, json};
 
 fn catalogue() -> &'static Value {
@@ -76,19 +77,19 @@ fn every_bound_document_carries_its_catalogue_schema() {
     let dir = common::tmp("document-catalogue");
     let seed = "def gone():\n    return 1\n    print(2)\n";
     std::fs::write(dir.join("a.py"), seed).expect("seed");
-    let core = common::core_bin();
+    let (core, p) = (common::core_bin(), faces::Plumb::default);
     let docs = [
-        ("arch", codeeraser::faces::arch(&dir, &core, &[])),
-        ("flow", codeeraser::faces::flow(&dir, &core, &[])),
-        ("merge", codeeraser::faces::merge(&dir, &core)),
+        ("arch", faces::arch(&dir, &core, &[], p())),
+        ("flow", faces::flow(&dir, &core, &[], p())),
+        ("merge", faces::merge(&dir, &core, p())),
         (
             "query",
-            codeeraser::faces::query(&dir, &core, "dead(F)", false, None),
+            faces::query(&dir, &core, ("dead(F)", false), None, p()),
         ),
-        ("rules", codeeraser::faces::rules(&dir, &core, None, false)),
+        ("rules", faces::rules(&dir, &core, None, false, p())),
     ];
-    for (family, doc) in docs {
-        let doc = doc.unwrap_or_else(|e| panic!("{family}: {e:#}"));
+    for (family, answer) in docs {
+        let doc = faces::doc(answer).unwrap_or_else(|e| panic!("{family}: {e:#}"));
         assert_eq!(doc["schema"], catalogue()[family]["schema"], "{family}");
         if family == "flow" {
             let rows = catalogue()["flow"]["kinds"].as_array().expect("kinds");

@@ -54,7 +54,12 @@ fn a_pair_both_families_judged_rides_the_sim_table_once() {
         ("a.rs", "b.rs"),
         "the clone family judges the pair"
     );
-    let doc = codeeraser::faces::docdup(&dir, &core_bin()).expect("docdup");
+    let doc = codeeraser::faces::doc(codeeraser::faces::docdup(
+        &dir,
+        &core_bin(),
+        Default::default(),
+    ))
+    .expect("docdup");
     let [hit] = doc["dups"].as_array().expect("dups").as_slice() else {
         panic!("one doc pair, got {}", doc["dups"]);
     };

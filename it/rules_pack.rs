@@ -51,7 +51,14 @@ fn json_rules(dir: &Path) -> (Option<i32>, Value) {
 }
 
 fn library(dir: &Path) -> Value {
-    codeeraser::faces::rules(dir, &common::core_bin(), None, false).expect("the rules face")
+    codeeraser::faces::doc(codeeraser::faces::rules(
+        dir,
+        &common::core_bin(),
+        None,
+        false,
+        Default::default(),
+    ))
+    .expect("the rules face")
 }
 
 /// (goal name, the answers' values) per goal, in goal order.

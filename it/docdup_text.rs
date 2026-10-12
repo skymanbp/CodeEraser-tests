@@ -68,7 +68,8 @@ fn no_other_gate_reads_it(dir: &Path, core: &str) {
 fn plain_text_pairs_in_docdup_and_stays_out_of_every_other_gate() {
     let dir = fixture();
     let core = core_bin();
-    let doc = codeeraser::faces::docdup(&dir, &core).expect("docdup");
+    let doc = codeeraser::faces::doc(codeeraser::faces::docdup(&dir, &core, Default::default()))
+        .expect("docdup");
     let dups = &doc["dups"];
     assert_eq!(
         (dups.as_array().map(Vec::len), &dups[0]["a"], &dups[0]["b"]),

@@ -4,6 +4,7 @@
 
 use crate::common;
 use crate::common::{McpSession, git, rust_fn, tmp};
+use codeeraser::faces;
 
 /// Server over a seeded project (the harness lives in common/mcp.rs).
 fn mcp_session(name: &str) -> McpSession {
@@ -106,10 +107,8 @@ fn mcp_report_faces_match_library() {
 /// built by one closure so the builder cannot re-grow parallel row
 /// stanzas (the census caught two builders doing exactly that). The
 /// split below is the repo's own seam, not an arbitrary halving:
-/// four families are MEASUREMENT-only — no judgment; three never open
-/// a core link (faces.rs says so where it takes the core argument and
-/// ignores it) and the sites document is laid out by the core (plan
-/// v2.32 step 4) — the rest are judged. Splitting per ROW would recreate the
+/// four families report a measurement (scan, dedup, churn, sites), the
+/// rest a judgment. Splitting per ROW would recreate the
 /// twin-stanza clone this comment used to justify one long builder
 /// with; splitting along the seam does not.
 fn library_reports(dir: &std::path::Path) -> Vec<(&'static str, serde_json::Value, String)> {
@@ -142,7 +141,7 @@ fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
         ),
         row(
             "churn",
-            codeeraser::faces::churn(dir, &core, 14)
+            faces::doc(faces::churn(dir, &core, 14))
                 .expect("churn")
                 .to_string(),
         ),
@@ -232,7 +231,7 @@ fn gate_reports(dir: &std::path::Path, core: &str) -> Vec<Row> {
         ),
         row(
             "erase",
-            codeeraser::faces::erase(dir, core)
+            faces::gated_doc(faces::erase(dir, core, Default::default(), |_, _| None))
                 .expect("erase plan")
                 .to_string(),
         ),
@@ -277,9 +276,14 @@ fn declared_knobs_reach_the_library() {
     let units = call(&mut s, 300, "clone", serde_json::json!({"units": true}));
     assert_eq!(
         units,
-        codeeraser::faces::clone_units(&dir, &common::core_bin())
-            .expect("units")
-            .to_string(),
+        faces::doc(faces::clone(
+            &dir,
+            &common::core_bin(),
+            true,
+            Default::default()
+        ))
+        .expect("units")
+        .to_string(),
         "the units switch must reach the OTHER document, not the judgment"
     );
     let judged = call(&mut s, 301, "clone", serde_json::json!({}));

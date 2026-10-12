@@ -19,7 +19,7 @@ const REFUSALS: [&str; 4] = ["ensure!(", "bail!(", "panic!(", "anyhow!("];
 
 /// Every string literal on `line`, unquoted, honouring backslash
 /// escapes so a `\"` inside a message does not end it early.
-fn literals(line: &str) -> Vec<String> {
+pub(crate) fn literals(line: &str) -> Vec<String> {
     let (mut out, mut cur, mut inside, mut esc) = (Vec::new(), String::new(), false, false);
     for c in line.chars() {
         if !inside {

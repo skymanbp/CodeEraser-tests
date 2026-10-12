@@ -121,7 +121,11 @@ fn the_cli_prints_the_library_face_and_every_group_shape_is_judged() {
     let (code, out, err) = run(&dir, &core, &["--format", "json"]);
     assert_eq!(code, Some(0), "{err}");
     let doc: Value = serde_json::from_str(&out).expect("json");
-    assert_eq!(doc, codeeraser::faces::merge(&dir, &core).expect("face"));
+    assert_eq!(
+        doc,
+        codeeraser::faces::doc(codeeraser::faces::merge(&dir, &core, Default::default()))
+            .expect("face")
+    );
     assert_eq!(doc["schema"], "ce.merge-report/0.1.0");
     assert!(doc["degraded"].is_null(), "{doc}");
     let whole = group(&doc, "t1t2", false);
@@ -191,7 +195,13 @@ fn one_group_prints_alone_and_the_clone_report_is_unmoved() {
     let (code, _, err) = run(&dir, &core, &["--group", "99"]);
     assert_eq!(code, Some(2));
     assert!(err.contains("--group 99"), "{err}");
-    let clone = codeeraser::faces::clone_t3(&dir, &core).expect("clone");
+    let clone = codeeraser::faces::doc(codeeraser::faces::clone(
+        &dir,
+        &core,
+        false,
+        Default::default(),
+    ))
+    .expect("clone");
     let hits: Vec<String> = clone["clones"]
         .as_array()
         .expect("clones")
@@ -220,7 +230,7 @@ fn the_mcp_tool_relays_the_face_and_an_absent_core_is_refused() {
     assert_eq!(got["isError"], false, "{got}");
     assert_eq!(
         got["content"][0]["text"],
-        codeeraser::faces::merge(&dir, &core)
+        codeeraser::faces::doc(codeeraser::faces::merge(&dir, &core, Default::default()))
             .expect("face")
             .to_string()
     );
@@ -228,6 +238,7 @@ fn the_mcp_tool_relays_the_face_and_an_absent_core_is_refused() {
     let absent = dir.join("no-such-core.exe");
     let absent = absent.to_str().expect("utf-8");
     common::refused_for_its_core(&dir, &["merge", ".", "--core", absent], absent);
-    let err = codeeraser::faces::merge(&dir, absent).expect_err("no core");
+    let err = codeeraser::faces::doc(codeeraser::faces::merge(&dir, absent, Default::default()))
+        .expect_err("no core");
     assert!(err.to_string().contains("merge document:"), "{err:#}");
 }

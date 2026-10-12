@@ -85,6 +85,14 @@ pub fn join_report(dir: &Path, days: u32) -> codeeraser::join::Report {
 /// tracked file starts here. It lived as seven private copies across
 /// the test binaries until the clone gate pointed at one pair; the
 /// class was all seven, so the definition moved here once.
+/// The `key` strings of a document's `list` rows (no list, or a row
+/// without one, adds nothing): the reading every gate over a listed
+/// document shares.
+pub fn listed<'a>(doc: &'a serde_json::Value, list: &str, key: &str) -> Vec<&'a str> {
+    let rows = doc[list].as_array().into_iter().flatten();
+    rows.filter_map(|row| row[key].as_str()).collect()
+}
+
 pub fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()

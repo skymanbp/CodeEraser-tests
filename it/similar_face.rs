@@ -28,7 +28,14 @@ fn seeded(name: &str) -> std::path::PathBuf {
 }
 
 fn face(dir: &std::path::Path, ask: &Ask, widen: bool) -> Value {
-    codeeraser::faces::similar(dir, &common::core_bin(), ask, widen).expect("face")
+    codeeraser::faces::doc(codeeraser::faces::similar(
+        dir,
+        &common::core_bin(),
+        ask,
+        widen,
+        Default::default(),
+    ))
+    .expect("face")
 }
 
 fn cli_doc(dir: &std::path::Path, args: &[&str]) -> Value {

@@ -17,6 +17,8 @@ const LINKED: &[(&str, &str)] = &[
     // left for the core with the GUI preview (plan v2.32 step 6)
     ("erase-log", codeeraser::erase::LOG_SCHEMA),
     ("observe", codeeraser::hookio::OBSERVE_SCHEMA),
+    // the pack text every face shows (plan v2.33 step 10)
+    ("query-prelude", codeeraser::faces::PRELUDE_SCHEMA),
     ("setup", codeeraser::setup::SCHEMA_ID),
     ("update", codeeraser::update::SCHEMA_ID),
 ];

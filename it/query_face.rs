@@ -7,6 +7,7 @@
 //! `dead(F)` must name exactly what `ce deadcode` names.
 
 use crate::common;
+use codeeraser::faces;
 use codeeraser::query::PRELUDE;
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -81,7 +82,14 @@ fn values(doc: &Value) -> Vec<Vec<String>> {
 }
 
 fn query_face(dir: &Path, body: &str, why: bool) -> Value {
-    codeeraser::faces::query(dir, &common::core_bin(), body, why, None).expect("face")
+    let answer = faces::query(
+        dir,
+        &common::core_bin(),
+        (body, why),
+        None,
+        Default::default(),
+    );
+    faces::doc(answer).expect("face")
 }
 
 #[test]
@@ -169,6 +177,13 @@ fn sugar_aggregates_arithmetic_and_every_program_error_go_the_same_road() {
     assert_eq!((code, prelude.as_str()), (Some(0), PRELUDE));
 }
 
+/// The rules document the library face answers (the road every face
+/// takes), with the rules file and the derivation switch.
+fn rules_face(dir: &Path, file: Option<&Path>, why: bool) -> Value {
+    let core = common::core_bin();
+    faces::doc(faces::rules(dir, &core, file, why, Default::default())).expect("rules face")
+}
+
 #[test]
 fn rules_is_a_gate_on_the_documents_violations() {
     let dir = seeded("query-rules");
@@ -181,10 +196,7 @@ fn rules_is_a_gate_on_the_documents_violations() {
     std::fs::write(dir.join("ce.rules"), RULES).expect("ce.rules");
     let (code, doc) = json_face(&dir, &["rules"]);
     assert_eq!(code, Some(1));
-    assert_eq!(
-        doc,
-        codeeraser::faces::rules(&dir, &common::core_bin(), None, false).unwrap()
-    );
+    assert_eq!(doc, rules_face(&dir, None, false));
     assert_eq!(doc["schema"], "ce.rules-report/0.1.0");
     assert!(
         doc["program"]["rules_file"]
@@ -271,7 +283,6 @@ fn the_rules_file_is_named_by_flag_config_or_default_and_must_exist() {
 #[test]
 fn the_mcp_tools_relay_the_faces_and_refuse_a_question_that_is_not_one() {
     let dir = seeded("query-mcp");
-    let core = common::core_bin();
     std::fs::write(dir.join("ce.rules"), RULES).expect("ce.rules");
     let mut s = common::McpSession::over(&dir);
     let got = s.call(1, "query", json!({"body": "dead(F)", "why": true}));
@@ -283,16 +294,12 @@ fn the_mcp_tools_relay_the_faces_and_refuse_a_question_that_is_not_one() {
     let rules = s.call(2, "rules", json!({}));
     assert_eq!(
         rules["content"][0]["text"],
-        codeeraser::faces::rules(&dir, &core, None, false)
-            .unwrap()
-            .to_string()
+        rules_face(&dir, None, false).to_string()
     );
     let filed = s.call(3, "rules", json!({"file": "ce.rules", "why": true}));
     assert_eq!(
         filed["content"][0]["text"],
-        codeeraser::faces::rules(&dir, &core, Some(Path::new("ce.rules")), true)
-            .unwrap()
-            .to_string()
+        rules_face(&dir, Some(Path::new("ce.rules")), true).to_string()
     );
     let none = s.call(4, "query", json!({}));
     assert_eq!(none["isError"], true);

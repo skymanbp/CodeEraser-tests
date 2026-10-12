@@ -9,13 +9,17 @@
 //! a claimed face nobody shipped. Deliberate omissions are rows, not
 //! silence. The rows' spine is the core's catalogue (plan v2.32 step
 //! 6): every report family `tables/1` lists sits in exactly one row,
-//! and that row carries the three faces or says why not. The rendered
-//! table is embedded in both READMEs between `<!-- parity:begin -->` /
-//! `<!-- parity:end -->` and compared byte for byte; `CE_BLESS=1` is
-//! the only writer. The table itself lives in face_parity_table.rs.
+//! and that row carries the three faces or a note for each face it
+//! lacks — a note explains the one cell it names (plan v2.33 step 10).
+//! The rendered table is embedded in both READMEs between
+//! `<!-- parity:begin -->` / `<!-- parity:end -->` and compared byte
+//! for byte; `CE_BLESS=1` is the only writer. The table itself lives in
+//! face_parity_table.rs; the option sets, the webview's calls and the
+//! hooks' class legs are gated in face_parity_options.rs and
+//! face_parity_legs.rs.
 
 use crate::common::{repo_root, stub_core};
-use crate::face_parity_table::{Row, rows};
+use crate::face_parity_table::{FACES, Row, rows};
 use crate::facts::read;
 use std::collections::BTreeSet;
 
@@ -147,9 +151,11 @@ fn every_face_is_claimed_by_a_row_and_every_claim_ships() {
 /// The catalogue closes the table (plan v2.32 step 6): the families a
 /// row names are the core's own, each in one row only, every family is
 /// named, and a row that carries a report document has a CLI, a GUI and
-/// a plugin face or a note saying why not. A family the core gains
-/// without a face, or a face that drops out from under a family, is red
-/// here before it is silent on a screen.
+/// a plugin face or a note for each face it lacks. A note exempts the
+/// ONE cell it names, and that cell must be empty (plan v2.33 step 10:
+/// a row-wide note used to excuse every empty cell at once). A family
+/// the core gains without a face, or a face that drops out from under a
+/// family, is red here before it is silent on a screen.
 #[test]
 fn every_catalogue_family_sits_in_one_row_with_its_faces() {
     let catalogue: BTreeSet<String> = stub_core::real_tables()["document"]
@@ -169,13 +175,22 @@ fn every_catalogue_family_sits_in_one_row_with_its_faces() {
         unknown.is_empty(),
         "families the core does not list: {unknown:?}"
     );
-    let faceless: Vec<&str> = table
-        .iter()
-        .filter(|r| !r.docs.is_empty() && r.note.0.is_empty())
-        .filter(|r| [&r.cli, &r.gui, &r.plugin].iter().any(|f| f.is_empty()))
-        .map(|r| r.en.as_str())
-        .collect();
-    assert_eq!(faceless, Vec::<&str>::new(), "a face missing, no note");
+    let mut faceless = Vec::new();
+    for r in &table {
+        let noted = |face: &str| r.notes.iter().any(|(f, ..)| f == face);
+        for (face, cell) in FACES.iter().zip(r.faces()) {
+            if noted(face) {
+                assert!(
+                    cell.is_empty(),
+                    "{}: a note on the filled {face} cell",
+                    r.en
+                );
+            } else if cell.is_empty() && !r.docs.is_empty() {
+                faceless.push(format!("{} ({face})", r.en));
+            }
+        }
+    }
+    assert_eq!(faceless, Vec::<String>::new(), "a face missing, no note");
 }
 
 /// The webview's grants are the documented set and no more: core, the
@@ -230,6 +245,19 @@ fn cell(items: Vec<String>) -> String {
     }
 }
 
+/// A CLI item as the README shows it: `ce <claim>`, and a hook's
+/// class legs after it (`probe --hook [guard+flow+tombstone]` →
+/// `` `ce probe --hook` (guard · flow · tombstone) ``).
+fn cli_word(item: &str) -> String {
+    match item.split_once(" [") {
+        Some((claim, legs)) => {
+            let legs = legs.trim_end_matches(']').replace('+', " · ");
+            format!("`ce {claim}` ({legs})")
+        }
+        None => format!("`ce {item}`"),
+    }
+}
+
 fn render(zh: bool) -> String {
     let mut out = String::from(if zh {
         "| 能力 | 报告文档（核目录） | CLI | GUI（屏 · 命令） | 插件（hooks · MCP · 命令 · skill） |\n"
@@ -240,7 +268,7 @@ fn render(zh: bool) -> String {
     for r in rows() {
         let docs = cell(r.docs.iter().map(|d| format!("`{d}`")).collect());
         let mut cells = [
-            cell(r.cli.iter().map(|c| format!("`ce {c}`")).collect()),
+            cell(r.cli.iter().map(|c| cli_word(c)).collect()),
             cell(
                 r.gui
                     .iter()
@@ -249,11 +277,9 @@ fn render(zh: bool) -> String {
             ),
             cell(r.plugin.iter().map(|p| plugin_word(p)).collect()),
         ];
-        let note = if zh { &r.note.1 } else { &r.note.0 };
-        if !note.is_empty()
-            && let Some(empty) = cells.iter_mut().find(|c| *c == "—")
-        {
-            *empty = format!("— {note}");
+        for (face, en, zhn) in &r.notes {
+            let at = FACES.iter().position(|f| f == face).expect("a face");
+            cells[at] = format!("— {}", if zh { zhn } else { en });
         }
         let name = if zh { &r.zh } else { &r.en };
         out += &format!(

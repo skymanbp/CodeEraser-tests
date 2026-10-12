@@ -12,6 +12,7 @@
 use crate::common::gitio::git;
 use crate::common::{self, commit_all, core_bin, tmp};
 use codeeraser::erase;
+use codeeraser::faces;
 use std::path::Path;
 
 /// 50+ admitted words, byte-identical in both hosts — the verbatim
@@ -215,7 +216,7 @@ fn apply_refuses_by_name_then_converges() {
     written.sort();
     applied.sort();
     assert_eq!(written, applied, "the log names the applied rows");
-    let doc = codeeraser::faces::erase_log(&dir).expect("erase_log face");
+    let doc = faces::doc(faces::erase_log(&dir, &core)).expect("erase_log face");
     let schema = doc["schema"].as_str().unwrap_or("");
     assert!(schema.starts_with("ce.erase-trail-report/"), "{schema}");
     assert_eq!(doc["counts"]["rows"], 3);

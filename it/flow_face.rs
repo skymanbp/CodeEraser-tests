@@ -54,7 +54,13 @@ fn refused(dir: &Path, args: &[&str], needle: &str) {
 }
 
 fn face(dir: &Path, kinds: &[String]) -> Value {
-    codeeraser::faces::flow(dir, &common::core_bin(), kinds).expect("face")
+    codeeraser::faces::doc(codeeraser::faces::flow(
+        dir,
+        &common::core_bin(),
+        kinds,
+        Default::default(),
+    ))
+    .expect("face")
 }
 
 /// The finding rows as `(kind, line, var)`.
@@ -155,7 +161,7 @@ fn the_mcp_tool_relays_the_same_document() {
 fn no_core_is_a_named_refusal_and_exit_2() {
     let dir = seeded("flow-face-degraded");
     let missing = dir.join("no-such-core").display().to_string();
-    common::refused_for_its_core(&dir, &["flow", ".", "--core", &missing], &missing);
-    let err = codeeraser::faces::flow(&dir, &missing, &[]).expect_err("no core");
-    assert!(err.to_string().contains("flow document:"), "{err:#}");
+    common::refused_without_core(&dir, "flow", &missing, |c| {
+        codeeraser::faces::flow(&dir, c, &[], Default::default())
+    });
 }
