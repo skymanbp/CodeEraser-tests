@@ -14,7 +14,7 @@
 /// names the key the member carried on the day it dissolved: the
 /// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
 /// both readers in baseline_bridge.rs share `seated_or_retired`.
-pub const RETIRED: [(u64, &str); 52] = [
+pub const RETIRED: [(u64, &str); 54] = [
     (
         5414355871597516298,
         "v2.32 step 6 2026-10-03: 8.0.0 retired structure/1's `patterns` request key, so CE.Structure imports the named refusal (CE.Wire.Retired) inside the import run it shared with CE.Docdup and StructureProps no longer refuses the pattern table twice - the two blocks this member's pair rode (Docdup.hs:38-43 / Structure.hs:32-37 imports, StructureProps.hs:124-134 / 134-137 refusals) left with the road (ce.toml dedup budget 37 -> 35)",
@@ -226,5 +226,13 @@ pub const RETIRED: [(u64, &str); 52] = [
     (
         10172017980086749569,
         "v2.33 W1 item 3 2026-10-06: the same move - structure/wire.rs's Request no longer rhymes with score/wire.rs's Request (score Request:22-34 / 23-35 <-> structure Request:18-35, 55 / 65 tokens); that member dissolved and the field shape now pairs score/wire.rs's Request with structure/wire.rs's Reply (new member 29619703907010342), clone block count unchanged",
+    ),
+    (
+        9801605542138674801,
+        "v2.33 step 11a 2026-10-13 (defrag, core lane): CE.Erase's row check and CE.Trend's knob check both read CE.Wire.Rows `rowCheck` / `label` (the per-row label prefix, the malformed-row arm and its `where`), so Erase.hs 44-58 no longer rhymes with Trend.hs 53-64 (51 tokens) - the block this member rode (top level on both sides, member id recomputed from (clone, Erase.hs, Trend.hs) through member_id's own fields) left with them (ce.toml dedup budget 33 -> 31)",
+    ),
+    (
+        2642110337326275137,
+        "v2.33 step 11a 2026-10-13 (defrag, core lane): CE.Graph and CE.Verdict each answer degraded and judged through one reply function with the degraded flag, the envelope CE.Wire.Result `resultLine` / `replyLine` and the reason `tooLargeOf`, so Graph.hs 160-173 no longer rhymes with Verdict.hs 199-213 (54 tokens) - the block this member rode (top level on both sides, member id recomputed from (clone, Graph.hs, Verdict.hs)) left with them (ce.toml dedup budget 33 -> 31)",
     ),
 ];
