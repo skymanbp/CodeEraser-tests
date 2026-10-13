@@ -18,6 +18,7 @@ pub const FROZEN: &[&str] = &[
     "docs/CHANGELOG-ARCHIVE-v1.6.md",
     "docs/CHANGELOG-ARCHIVE-v1.7.md",
     "docs/CHANGELOG-ARCHIVE-v1.8.md",
+    "docs/CHANGELOG-ARCHIVE-v1.9-part1.md",
     "docs/EVAL-SET.md",
     "docs/EVAL-SET-M5-3.md",
     "docs/EVAL-SET-M5-CLOSE.md",
