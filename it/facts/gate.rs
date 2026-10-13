@@ -1,5 +1,6 @@
-//! Gate facts: the two CI floors, the two dedup budgets and the
-//! factory hard budget the write-time guard and `ce scan` both read.
+//! Gate facts: the two CI floors, the two dedup budgets, the
+//! factory hard budget the write-time guard and `ce scan` both read,
+//! and the one wire line the core reads (its `limits.caps.line_bytes`).
 
 use super::{Fact, linked, scraped};
 use crate::common::repo_root;
@@ -28,6 +29,11 @@ pub fn facts() -> Vec<Fact> {
             floor(&ci, "check tests "),
             ".github/workflows/ci.yml::--fail-under (check tests)",
             FLOOR_DEBT,
+        ),
+        linked(
+            "gate:wire.line_bytes#digits",
+            codeeraser::tables::get().limits.caps.line_bytes,
+            "core/app/CE/Protocol/Version.hs::maxLineBytes (tables/1 limits.caps.line_bytes)",
         ),
         linked(
             "gate:dedup.main#digits",
