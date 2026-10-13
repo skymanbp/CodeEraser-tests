@@ -65,6 +65,11 @@ pub fn stub(name: &str, proto: &str, tables: Option<&Value>) -> String {
     if let Some(reply) = tables {
         caps.push("tables/1");
         hello["tablesDigest"] = reply["digest"].clone();
+        // the id the stub's one link asks with, not the one the real
+        // reply was answered under: real_tables() may ride a session
+        // this process parked after other requests (corelink/shared.rs)
+        let mut reply = reply.clone();
+        reply["id"] = json!(1);
         std::fs::write(dir.join("tables.json"), format!("{reply}\n")).expect("the package reply");
     }
     hello["capabilities"] = json!(caps);
