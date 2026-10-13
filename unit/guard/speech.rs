@@ -1,5 +1,4 @@
 use super::*;
-use crate::document::Resolve;
 use crate::tombstone::{Kind, Row};
 
 fn site(file: &str, line: usize, kind: Kind) -> Row {
@@ -64,8 +63,7 @@ fn every_rule() -> Vec<Said> {
 
 #[test]
 fn every_rule_is_one_say_row_and_every_string_a_reference() {
-    let s = Strings::of(&every_rule());
-    let body = s.body();
+    let body = Strings::of(&every_rule()).body();
     let rows = serde_json::json!({
         "say": [
             [0, 0, 4, 0, 2, 0, 0],
@@ -87,19 +85,17 @@ fn every_rule_is_one_say_row_and_every_string_a_reference() {
         (Some("guard"), &serde_json::json!({}))
     );
     assert_eq!(body["lang"], lines::lang());
-    let s = s.lists();
-    let names = [
-        ("file", 3, "b.py"),
-        ("match_file", 1, "c.rs"),
-        ("place_file", 1, "s.md"),
-        ("unit", 0, "gone"),
-        ("error", 0, "TOML parse error"),
-    ];
-    for (class, i, want) in names {
-        assert_eq!(s.resolve(class, &[i]).as_deref(), Some(want), "{class} {i}");
-    }
-    assert_eq!(s.resolve("file", &[4]), None);
-    assert_eq!(s.resolve("nosuch", &[0]), None);
+    let strings = serde_json::json!({
+        "file": ["b.rs", "b.rs", "z.rs", "b.py"],
+        "match_file": ["a.rs", "c.rs"],
+        "place_file": ["r.md", "s.md"],
+        "unit": ["gone"],
+        "error": ["TOML parse error"],
+    });
+    assert_eq!(
+        body["strings"], strings,
+        "every string by its reference class"
+    );
 }
 
 #[test]

@@ -1,29 +1,16 @@
 //! The daemon's `document` request (daemon proto 2.3.0, plan v2.32
 //! step 5): a `guard` request body — the rules as integer rows, every
-//! string a reference — forwarded over the daemon-owned core link, and
-//! the raw document.result back, its lines bound through the strings
-//! the caller holds. The guard walks this road on every decision that
-//! speaks (guard_say.rs); this is the road alone, in both languages.
+//! string by its reference class (plan v2.33 W7) — forwarded over the
+//! daemon-owned core link, and the raw document.result back, its lines
+//! spelled by the core. The guard walks this road on every decision
+//! that speaks (guard_say.rs); this is the road alone, in both
+//! languages.
 
 use crate::common;
 use codeeraser::daemon::client;
 use codeeraser::daemon::proto::{Request, Response};
-use codeeraser::document::lines::{Stream, bind_lines};
-use codeeraser::document::{Resolve, at};
+use codeeraser::document::lines::{Stream, spelled_lines};
 use serde_json::json;
-
-/// The strings the request's two reference classes name.
-struct Held;
-
-impl Resolve for Held {
-    fn resolve(&self, class: &str, ints: &[i128]) -> Option<String> {
-        match class {
-            "file" => at(&["src/目录/a.rs".to_string()], ints),
-            "error" => at(&["TOML parse error at line 1".to_string()], ints),
-            _ => None,
-        }
-    }
-}
 
 #[test]
 fn a_guard_request_round_trips_through_the_daemon_in_both_languages() {
@@ -35,12 +22,14 @@ fn a_guard_request_round_trips_through_the_daemon_in_both_languages() {
             "ranges": {"files": 1, "matches": 0, "places": 0, "units": 0, "errors": 1},
             "rows": {"say": [[1, 0, 760, 750, 1, 0, 0], [5, 0, 0, 0, 0, 0, 0]], "matches": [], "places": []},
             "facts": {}, "degraded": null, "lang": lang,
+            "strings": {"file": ["src/目录/a.rs"], "match_file": [], "place_file": [], "unit": [],
+                        "error": ["TOML parse error at line 1"]},
         });
         let reply = match client::request_if_running(&root, &Request::Document { body }) {
             Ok(Response::DocumentReport { reply }) => reply,
             other => panic!("expected a document, got {other:?}"),
         };
-        let (lines, fail) = bind_lines(&reply, &Held).expect("bound");
+        let (lines, fail) = spelled_lines(&reply).expect("spelled");
         assert!(
             !fail && lines.iter().all(|l| l.stream == Stream::Out),
             "{reply}"
