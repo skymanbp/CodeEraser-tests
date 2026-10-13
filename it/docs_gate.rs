@@ -43,15 +43,16 @@ score.weights\tPer-axis weight numerators by axis name (size / complexity / clon
 score.size_penalty_max\tSoft-zone curve: the size-axis penalty of a file AT the hard line (plan v2.6; default 10)
 score.soft_line_k\tRelative soft line: the multiplicative-MAD exponent k in S = clamp(median*r^k, [200,500]) (default 2)
 score.dead_indeg_ceil\tDeadcode axis: a file at or below this in-degree (and unreachable) counts as orphaned
-score.rewrite_num\tChurn axis rewrite-share threshold, ratio numerator (cross-multiplied)
+score.rewrite_num\tChurn axis rewrite-share threshold, ratio numerator (cross-multiplied); ≥ 1 — at 0 every churned entity would read rewrite-heavy, so 0 is refused at load by name
 score.rewrite_den\tChurn axis rewrite-share threshold, ratio denominator
-score.cochange_floor\tCo-change count at which a pair counts as entangled
-score.viol_cost\tPer-mille cost of one weighted violation in the score fold
+score.cochange_floor\tCo-change count at which a pair counts as entangled; ≥ 1 — at 0 every pair would read hot, so 0 is refused at load by name
+score.viol_cost\tThe score fold's strictness dial, relative to its neutral value 10 (`violCostNeutral`): score = scale − ⌊Σ wᵢ·chargeᵢ·viol_cost ⁄ (10·Σ wᵢ)⌋, floored at 0, so at 10 the score is the scale minus the floored weighted mean of the axis charges, above 10 harsher (it may saturate at 0 by choice), below 10 gentler; ≥ 1 — at 0 the score sits at the scale and no floor can fail, so 0 is refused at load by name
 score.default_weight\tWeight of any axis the weights table does not name
 score.score_scale\tThe score's full scale (per-mille by default)
 score.tol_num\tRatchet ratio leg numerator: a ceiling may grow to ceiling*tol_num/tol_den in one edit
 score.tol_den\tRatchet ratio leg denominator
-score.tol_abs\tRatchet absolute leg: or by this many lines, whichever is larger
+score.tol_abs\tRatchet absolute leg on the file-lines rows: or by this many lines, whichever is larger
+score.tol_abs_coc\tRatchet absolute leg on the function cognitive-complexity rows: or by this many points, whichever is larger (9.0.0; default 1 — the +10 lines leg never applied to a complexity row)
 structure.layout\tDeclared directory weights the divergence axis judges against; keys are root-relative directories, \".\" the catch-all bin
 trend.min_points\tHistory points required before a slope is judged
 trend.decline_floor_micro\tDecline floor in micro-per-mille per day; declaring it arms the trend fail bit

@@ -94,6 +94,7 @@ pub fn request(
         redundancy,
         seams: None,
         knobs: Vec::new(),
+        class_knobs: Vec::new(),
     }
 }
 

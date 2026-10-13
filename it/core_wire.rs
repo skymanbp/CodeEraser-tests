@@ -129,6 +129,8 @@ fn knob_default_drift_gate() {
             "deadIndegCeil": 0, "rewriteNum": 50, "rewriteDen": 100,
             "cochangeFloor": 2, "violCost": 10, "defaultWeight": 1,
             "scoreScale": 1000, "tolNum": 102, "tolDen": 100, "tolAbs": 10,
+            // 9.0.0: the complexity rows' absolute leg, points not lines
+            "tolAbsCoc": 1,
             // 2.19.0 (batch-7 slice 1): CE.Dedup.Cost.minDistinct —
             // this pin, the package's `limits.dedup` the report reads
             // (pairs::default_min_distinct, plan v2.33 W3), and the

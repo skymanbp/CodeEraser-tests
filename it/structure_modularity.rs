@@ -85,6 +85,7 @@ fn request(c: &Case) -> wire::Request {
         redundancy: None,
         seams: None,
         knobs: Vec::new(),
+        class_knobs: Vec::new(),
     }
 }
 

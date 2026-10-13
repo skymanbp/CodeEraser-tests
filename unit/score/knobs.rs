@@ -88,7 +88,8 @@ fn the_package_defaults_equal_the_former_mirror() {
         d.tol_num,
         d.tol_den,
         d.tol_abs,
+        d.tol_abs_coc,
     ];
-    let want = [10, 2, 0, 50, 100, 2, 10, 1, 1000, 102, 100, 10].map(Some);
+    let want = [10, 2, 0, 50, 100, 2, 10, 1, 1000, 102, 100, 10, 1].map(Some);
     assert_eq!((core_scc_floor(), got), (2, want));
 }

@@ -158,6 +158,22 @@ fn rulepack_classes_refuse_at_the_load_throat() {
     );
 }
 
+/// The three threshold numerators whose zero makes a predicate
+/// vacuous (9.0.0: the core's thresholds codes 1 / 3 / 4) refuse by
+/// name at the load throat, before any request is built; 1 loads,
+/// and `dead_indeg_ceil` keeps 0 — its default, "dead at indegree 0".
+#[test]
+fn zero_threshold_numerators_refuse_at_the_load_throat() {
+    let fx = common::fixture("config-contract-numerators", &[("src/a.rs", "fn a() {}\n")]);
+    for key in ["rewrite_num", "cochange_floor", "viol_cost"] {
+        let err = load_toml(&fx.dir, &format!("[score]\n{key} = 0\n")).expect_err(key);
+        assert!(err.contains(key) && err.contains("knob below 1"), "{err}");
+        let one = load_toml(&fx.dir, &format!("[score]\n{key} = 1\n"));
+        assert!(one.is_ok(), "{key} = 1 loads: {one:?}");
+    }
+    assert!(load_toml(&fx.dir, "[score]\ndead_indeg_ceil = 0\n").is_ok());
+}
+
 /// O39: the digest a fixed declaration hashes to is a COMPATIBILITY
 /// SURFACE — it sits in downstream repos' committed baselines and is
 /// compared for equality across ce upgrades — so one literal is
