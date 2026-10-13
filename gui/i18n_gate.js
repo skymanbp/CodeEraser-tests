@@ -65,6 +65,67 @@ say(enKeys === zhKeys, "en and zh carry the same key set");
 const shapeSkew = Object.keys(table.en).filter((k) => typeof table.en[k] !== typeof table.zh[k]);
 say(shapeSkew.length === 0, `value shapes agree (skew: ${shapeSkew.join(", ") || "none"})`);
 
+// No key written twice in one language table. The evaluated object
+// cannot show it — a later duplicate silently replaces the earlier one,
+// so every check above passes while the first definition is dead text
+// (hubPaths / hubPathsPlaceholder sat twice in both tables until plan
+// v2.33 step 11a). So this reads the SOURCE: every top-level property
+// name of each language's object literal, with strings, template
+// literals (and the code inside their `${}`), comments and nested
+// brackets skipped.
+const src = ui("i18n.js");
+const OPEN = "{[(";
+const CLOSE = "}])";
+// Index just past a string / template literal starting at i.
+function skipQuoted(i) {
+  const q = src[i];
+  for (let j = i + 1; j < src.length; j++) {
+    if (src[j] === "\\") j++;
+    else if (src[j] === q) return j + 1;
+    else if (q === "`" && src[j] === "$" && src[j + 1] === "{") j = scanCode(j + 2, null) - 1;
+  }
+  throw new Error(`unterminated ${q} at ${i}`);
+}
+// Index just past the bracket that closes the one opened before i;
+// `keys` (when given) collects the property names at this level.
+function scanCode(i, keys) {
+  let expectKey = keys !== null;
+  for (let j = i; j < src.length; ) {
+    const c = src[j];
+    if (c === "/" && src[j + 1] === "/") j = src.indexOf("\n", j);
+    else if (c === "/" && src[j + 1] === "*") j = src.indexOf("*/", j) + 2;
+    else if (c === '"' || c === "'" || c === "`") {
+      const end = skipQuoted(j);
+      if (expectKey && /^\s*:/.test(src.slice(end))) keys.push(src.slice(j + 1, end - 1));
+      expectKey = false;
+      j = end;
+    } else if (OPEN.includes(c)) {
+      j = scanCode(j + 1, null);
+      expectKey = false;
+    } else if (CLOSE.includes(c)) return j + 1;
+    else if (/[A-Za-z_$]/.test(c)) {
+      const word = /^[A-Za-z_$][\w$]*/.exec(src.slice(j))[0];
+      if (expectKey && /^\s*:/.test(src.slice(j + word.length))) keys.push(word);
+      expectKey = false;
+      j += word.length;
+    } else {
+      if (c === ",") expectKey = keys !== null;
+      j++;
+    }
+  }
+  throw new Error(`unclosed bracket before ${i}`);
+}
+for (const lang of ["en", "zh"]) {
+  const at = new RegExp(`\\n  ${lang}: \\{`).exec(src);
+  const keys = [];
+  if (at) scanCode(at.index + at[0].length, keys);
+  const twice = [...new Set(keys.filter((k, i) => keys.indexOf(k) !== i))];
+  // non-vacuity: the names read off the source are the table's names
+  const read = at !== null && new Set(keys).size === Object.keys(table[lang]).length;
+  say(read, `the ${lang} source table was read (${keys.length} keys written)`);
+  say(twice.length === 0, `no ${lang} key written twice (twice: ${twice.join(", ") || "none"})`);
+}
+
 // Non-vacuity: the harvest actually found the UI's keys.
 say(used.size >= 30, `the harvest is real (${used.size} keys found)`);
 

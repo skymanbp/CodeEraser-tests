@@ -3,8 +3,8 @@
 //! road of its own. Here each report pair's Tauri command is read off
 //! its body in `gui/src-tauri/src/commands*.rs` and must reach exactly
 //! one family face in `crate::faces`, the same one the pair's MCP
-//! adapter (`cli/src/mcp/adapters.rs`, minted rows read through the
-//! `plain!` table) reaches: the GUI passes its arguments through to the
+//! adapter (`cli/src/mcp/adapters.rs`, a minted row read off its own
+//! line of the `plain!` table) reaches: the GUI passes its arguments through to the
 //! face the MCP tool calls, so both answer the one document. A face
 //! that answers through a sibling face (the erase preview is the erase
 //! face plus the diff it rendered) is read as that sibling.
@@ -13,7 +13,7 @@ use crate::face_parity_options::{none, pairs};
 use crate::face_parity_sources::src;
 use std::collections::BTreeSet;
 
-const PLUMBING: [&str; 4] = ["doc", "gated_doc", "Plumb", "self"];
+const PLUMBING: [&str; 5] = ["doc", "gated_doc", "Plumb", "self", "core"];
 
 /// The `faces::<fn>` names a body reaches, minus the plumbing, each
 /// read through the sibling face it answers by.
@@ -73,7 +73,7 @@ fn tauri_body(cmd: &str) -> String {
 }
 
 /// An MCP tool's adapter body: the fn its catalog row names, or the
-/// `plain_face` arm of the family a `plain!` row mints it for.
+/// `plain!` row that mints it (the row names its face call).
 fn mcp_body(tool: &str) -> String {
     let catalog = src("cli/src/mcp/tools.rs");
     let row = span(&catalog, &format!("tool!(\n        \"{tool}\","), ",").expect("the tool's row");
@@ -82,9 +82,8 @@ fn mcp_body(tool: &str) -> String {
     if let Some(body) = span(&adapters, &format!("fn {run}("), "\n}\n") {
         return body.to_string();
     }
-    let family = span(&adapters, &format!("    {run} => \""), "\"").expect("a plain! row");
-    span(&adapters, &format!("\"{family}\" =>"), "\n")
-        .expect("the plain_face arm")
+    span(&adapters, &format!("    {run} => "), "\n")
+        .expect("a plain! row")
         .to_string()
 }
 

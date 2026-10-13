@@ -61,6 +61,13 @@ const LITERALS: &[(&str, &str, bool)] = &[
         false,
     ),
     ("site/assets/stack.svg", "GHC {tool:ghc#v}</text>", false),
+    // the GUI card's screen count (a hand-drawn picture, so the count is a
+    // literal the registry owns here)
+    (
+        "site/assets/stack.svg",
+        ">{count:screens#word} screens</text>",
+        false,
+    ),
     (
         "site/assets/stack.svg",
         "floor {gate:floor.main#digits}</text>",
@@ -122,6 +129,11 @@ const LITERALS: &[(&str, &str, bool)] = &[
         true,
     ),
     ("site/assets/stack.zh.svg", "GHC {tool:ghc#v}</text>", true),
+    (
+        "site/assets/stack.zh.svg",
+        ">{count:screens#word}个屏</text>",
+        true,
+    ),
     (
         "site/assets/stack.zh.svg",
         "地板 {gate:floor.main#digits}</text>",

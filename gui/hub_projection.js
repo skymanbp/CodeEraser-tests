@@ -29,7 +29,9 @@ const root = path.join(__dirname, "..", "..", "..");
 // listeners) and for a family that registers its own renderer (an
 // option appended, the chips and tables written) — one element per id,
 // keeping what was written so a custom renderer's output can be read;
-// hubTable is called directly.
+// hubRows (the generic projection) is called directly. app.js is not
+// loaded (it boots the Tauri shell): its `load` road is stubbed as what
+// it does for the document — ask, hand the document to `show`.
 const els = {};
 const stubEl = (id) =>
   (els[id] ??= { addEventListener() {}, appendChild() {}, innerHTML: "", hidden: false, disabled: false, value: "" });
@@ -47,6 +49,12 @@ const sandbox = {
   invoke: async () => ({}),
   setStatus() {},
 };
+const loadStub = (ask) => async (btns, said, cmd, args, show) => {
+  const d = await ask(cmd, args);
+  show(d);
+  return d;
+};
+sandbox.load = loadStub(sandbox.invoke);
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(path.join(root, "gui/ui/reports.js"), "utf8"), sandbox);
 vm.runInContext(fs.readFileSync(path.join(root, "gui/ui/hub_merge.js"), "utf8"), sandbox);
@@ -66,17 +74,17 @@ const row = {
   why: "no other file spells this exported name",
 };
 const headers = (html) => [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
-const cols = headers(sandbox.hubTable(["unmentioned", [row]]));
+const cols = headers(sandbox.hubRows(["unmentioned", [row]]));
 say(cols.includes("symbol") && cols.includes("name"), `symbol and name survive the projection (${cols.join(",")})`);
 say(cols.join(",") === "code,line,name,symbol,why", "all five advisory columns render, in document order");
-const body = sandbox.hubTable(["unmentioned", [row]]);
+const body = sandbox.hubRows(["unmentioned", [row]]);
 say(body.includes(">DedupCfg<"), "the symbol cell carries the name");
 
 // Non-vacuity: the projection IS a cut — a sixth scalar column is
 // dropped, so the five-column survival above is not a vacuous pass
 // on a renderer that keeps everything.
 const wide = { ...row, extra: "sixth" };
-say(!headers(sandbox.hubTable(["wide", [wide]])).includes("extra"), "the projection really cuts at five columns");
+say(!headers(sandbox.hubRows(["wide", [wide]])).includes("extra"), "the projection really cuts at five columns");
 
 // The similar report's candidate row (ce.similar-report/0.1.0, plan
 // v2.29 step 6) was NAMED for this cut: its five leading scalars in
@@ -93,7 +101,7 @@ const candidate = {
   widened: false,
 };
 say(
-  headers(sandbox.hubTable(["candidates", [candidate]])).join(",") === "at,key,nth,role,score",
+  headers(sandbox.hubRows(["candidates", [candidate]])).join(",") === "at,key,nth,role,score",
   "a similar candidate projects to at,key,nth,role,score"
 );
 
@@ -146,6 +154,10 @@ const hub = {
   },
   setStatus() {},
 };
+hub.load = loadStub(hub.invoke);
+hub.Set = Set;
+hub.ceLang = "en";
+hub.document.querySelectorAll = () => [];
 const archDoc = {
   schema: "ce.arch-report/0.1.0",
   counts: { files: 3, dirs: 4, edges: 3, pkgEdges: 0, focus: 1, cuts: 1, clusters: 1, misplaced: 0, impact: 3 },
@@ -158,7 +170,7 @@ const archDoc = {
   degraded: null,
 };
 vm.createContext(hub);
-for (const f of ["reports.js", "hub_arch.js"]) {
+for (const f of ["reports.js", "hub_arch.js", "hub_flow.js"]) {
   vm.runInContext(fs.readFileSync(path.join(root, "gui/ui", f), "utf8"), hub);
 }
 const spec = vm.runInContext("HUB.arch", hub);
@@ -180,5 +192,15 @@ el("hub-paths").value = " a/x.py , ,b/y.py";
   const tables = el("hub-tables").innerHTML;
   say(tables.includes("c/z.py → a/x.py") && tables.includes("archExact()"), "a cut carries its file reference and its exact flag");
   say(tables.includes("archImpact()") && tables.includes(">-<"), "the impact table rides a focus, a null instability reads -");
+  // the flow hub narrows by asking: the shown kinds ride the invoke as
+  // `kind` (the document lists them), every kind shown asks for all
+  el("hub-family").value = "flow";
+  vm.runInContext('flowKinds = [{ name: "dead_store" }, { name: "unreachable" }]; flowShown = new Set(["dead_store"]);', hub);
+  await vm.runInContext("loadHub()", hub);
+  const [fcmd, fargs] = calls[1] ?? [];
+  say(fcmd === "flow_report" && JSON.stringify(fargs.kind) === '["dead_store"]', `the shown kinds reach the invoke as kind (${JSON.stringify(fargs)})`);
+  vm.runInContext('flowShown = new Set(["dead_store", "unreachable"]);', hub);
+  await vm.runInContext("loadHub()", hub);
+  say((calls[2] ?? [])[1]?.kind === null, "every kind shown asks for the whole document");
   process.exit(problems.length === 0 ? 0 : 1);
 })();

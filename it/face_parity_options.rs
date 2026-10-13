@@ -158,8 +158,9 @@ fn every_exempt_flag_is_one_the_cli_takes() {
 }
 
 /// Every GUI command a row claims is called by the webview — an
-/// `invoke("<cmd>"` or a hub entry `cmd: "<cmd>"` in a `gui/ui` script
-/// — not merely registered with Tauri.
+/// `invoke("<cmd>"`, a hub entry `cmd: "<cmd>"`, or the screens' one
+/// load road (app.js `load`, whose call names the command on its first
+/// line) in a `gui/ui` script — not merely registered with Tauri.
 pub fn uncalled_commands() -> Vec<String> {
     let dir = parity_root().join("gui/ui");
     let scripts: String = std::fs::read_dir(&dir)
@@ -176,8 +177,12 @@ pub fn uncalled_commands() -> Vec<String> {
     claimed
         .into_iter()
         .filter(|c| {
-            !scripts.contains(&format!("invoke(\"{c}\""))
-                && !scripts.contains(&format!("cmd: \"{c}\""))
+            let quoted = format!("\"{c}\"");
+            !scripts.contains(&format!("invoke({quoted}"))
+                && !scripts.contains(&format!("cmd: {quoted}"))
+                && !scripts
+                    .lines()
+                    .any(|l| l.contains("load(") && l.contains(&quoted))
         })
         .collect()
 }
