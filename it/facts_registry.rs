@@ -73,6 +73,13 @@ const LITERALS: &[(&str, &str, bool)] = &[
         "floor {gate:floor.main#digits}</text>",
         false,
     ),
+    // the wire card's family count (it still read "twelve" after the
+    // analysis track's four families had shipped; found 2026-10-13)
+    (
+        "site/assets/stack.svg",
+        ">{count:families#word} judgment families: ",
+        false,
+    ),
     (
         "core/app/CE/Protocol/Version.hs",
         "proto = \"{ver:proto#v}\"",
@@ -137,6 +144,11 @@ const LITERALS: &[(&str, &str, bool)] = &[
     (
         "site/assets/stack.zh.svg",
         "地板 {gate:floor.main#digits}</text>",
+        true,
+    ),
+    (
+        "site/assets/stack.zh.svg",
+        ">{count:families#word}个判决家族：",
         true,
     ),
     (
