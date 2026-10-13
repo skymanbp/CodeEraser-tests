@@ -29,10 +29,11 @@ fn a_line_at_the_ceiling_still_arrives() {
 /// replies short.
 #[test]
 fn the_reply_cap_is_at_least_twice_the_protocol_line() {
-    let golden = include_str!(concat!(
+    let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../contracts/fixtures/tables/golden.ndjson"
-    ));
+    );
+    let golden = std::fs::read_to_string(path).expect("the tables golden");
     let reply = golden
         .lines()
         .nth(1)
