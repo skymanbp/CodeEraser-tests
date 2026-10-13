@@ -56,11 +56,33 @@ pub fn daemon_command(root: &Path, stderr: Stdio) -> Command {
 /// connect failure is a loud test failure, not silent process spray.
 /// Daemon stderr is inherited so CI logs show its cold-start lines.
 pub fn spawn_daemon_ready(root: &Path) -> DaemonGuard {
-    use codeeraser::daemon::{client, proto::Request};
     let child = daemon_command(root, Stdio::inherit())
         .spawn()
         .expect("spawn ce daemon");
-    let guard = DaemonGuard::from(child);
+    ready(root, DaemonGuard::from(child))
+}
+
+/// The same daemon with its stderr read into a buffer by a thread, for
+/// the batteries that assert what the daemon said (or did not say) on
+/// it: the lines arrive once the daemon has exited (shutdown_and_wait
+/// first), when the thread's handle is joined.
+pub fn spawn_daemon_ready_heard(root: &Path) -> (DaemonGuard, std::thread::JoinHandle<String>) {
+    use std::io::Read;
+    let mut child = daemon_command(root, Stdio::piped())
+        .spawn()
+        .expect("spawn ce daemon");
+    let mut stderr = child.stderr.take().expect("stderr");
+    let heard = std::thread::spawn(move || {
+        let mut said = String::new();
+        let _ = stderr.read_to_string(&mut said);
+        said
+    });
+    (ready(root, DaemonGuard::from(child)), heard)
+}
+
+/// Wait until the daemon behind `guard` answers a ping.
+fn ready(root: &Path, guard: DaemonGuard) -> DaemonGuard {
+    use codeeraser::daemon::{client, proto::Request};
     // 30 s, not 5: readiness is a liveness wait, not a latency claim,
     // and inside the merged `it` crate a cold daemon start co-runs
     // with the whole suite's thread pool — the old 5 s window blew

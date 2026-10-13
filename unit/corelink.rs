@@ -60,8 +60,7 @@ fn a_dropped_link_parks_its_session_for_the_next_open() {
 /// is not broken and the next request is answered under its own id.
 #[test]
 fn an_overlong_line_is_refused_by_name_and_the_session_survives() {
-    let core = std::env::var("CE_CORE_BIN").expect("the unit tests run with CE_CORE_BIN");
-    let mut link = super::Link::own(&core).expect("the core answers").0;
+    let mut link = own_link();
     let over =
         || serde_json::json!({ "pad": "x".repeat(crate::tables::get().limits.caps.line_bytes) });
     let pass = super::judged::whole_pass::<serde_json::Value>(
@@ -81,7 +80,55 @@ fn an_overlong_line_is_refused_by_name_and_the_session_survives() {
         sent.starts_with("core refused tables.request: too_large: "),
         "{sent}"
     );
-    assert!(!link.session().broken, "the framing held");
+    assert!(!link.is_broken(), "the framing held");
     let next = link.request("tables", serde_json::json!({}));
     assert!(next.is_ok(), "the next request is answered: {next:?}");
+}
+
+/// The other side of `is_broken` (plan v2.33 step 11b item 1): a core
+/// that is gone mid-session fails the next request the way a refusal
+/// does — an `Err` with words — but the link reports it broken, so the
+/// daemon's retry budget and the fourclass batch count it, and a dropped
+/// link never parks it. An own link on a private core copy: the process
+/// killed is this test's own child, by its id.
+#[test]
+fn a_core_gone_mid_session_breaks_the_link() {
+    let mut link = own_link();
+    let pid = link.pid().to_string();
+    let (kill, args): (&str, &[&str]) = match cfg!(windows) {
+        true => ("taskkill", &["/F", "/PID"]),
+        false => ("kill", &["-9"]),
+    };
+    let killed = std::process::Command::new(kill)
+        .args(args)
+        .arg(&pid)
+        .output()
+        .expect("the kill command runs");
+    assert!(killed.status.success(), "{killed:?}");
+    let gone = link.request("tables", serde_json::json!({}));
+    assert!(gone.is_err(), "no core answers: {gone:?}");
+    assert!(link.is_broken(), "a lost framing breaks the link");
+}
+
+/// The session road (resolve/1, bags/1) meets the same line as a whole
+/// pass (plan v2.33 step 11b item 6): a body whose line passes the
+/// ceiling is named and never sent — the resolve family had sent it and
+/// read the core's id-less `too_large` as every core ladder owed.
+#[test]
+fn the_session_road_names_a_line_over_the_ceiling_unsent() {
+    let pad = "x".repeat(crate::tables::get().limits.caps.line_bytes);
+    let refused =
+        super::judged::session_ask(("tables/1", "tables"), serde_json::json!({ "pad": pad }))
+            .expect_err("over the line");
+    assert!(
+        refused.starts_with("tables/1: request line ")
+            && refused.ends_with("line the core reads; not sent"),
+        "{refused}"
+    );
+}
+
+/// An own link on the core the unit tests run with.
+fn own_link() -> super::Link {
+    let core = std::env::var("CE_CORE_BIN").expect("the unit tests run with CE_CORE_BIN");
+    super::Link::own(&core).expect("the core answers").0
 }

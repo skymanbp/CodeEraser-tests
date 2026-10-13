@@ -201,29 +201,30 @@ fn ten_thousand_seeded_pairs_answer_as_the_frozen_rust_did() {
 }
 
 /// The ceilings: consecutive pairs share a body while the running line
-/// and unit counts stay within the core's ceilings (the body starts are
-/// stated over numbers, no text), and a body over a ceiling is the
+/// and unit counts and the serialized bytes stay within the core's
+/// ceilings and the room the protocol's line leaves (plan v2.33 step 11b
+/// item 2; the body starts are stated over numbers, no text), and a body
+/// over a ceiling is the
 /// core's named degradation, which `read` returns as the reason — the
 /// only place the core road differs from the frozen Rust, which had no
 /// ceiling.
 #[test]
 fn the_ceilings_split_requests_and_the_core_names_a_body_over_one() {
-    assert_eq!(super::packing(&[], 10, 10), Vec::<usize>::new());
-    assert_eq!(
-        super::packing(&[(6, 1), (4, 1), (1, 1)], 10, 10),
-        vec![0, 2],
-        "lines: 10 fits, 11 splits"
-    );
-    assert_eq!(
-        super::packing(&[(1, 6), (1, 5)], 10, 10),
-        vec![0, 1],
-        "units: 11 splits"
-    );
-    assert_eq!(
-        super::packing(&[(11, 1), (1, 1), (1, 1)], 10, 10),
-        vec![0, 1],
-        "one pair over the line cap alone"
-    );
+    // each column a ceiling of 10 — lines, units, bytes: nothing; 10
+    // lines fit and 11 split; 11 units split; 10 bytes fit and 11 split;
+    // one pair over the line cap alone; one over the byte room alone
+    let sizes: [&[[usize; 3]]; 6] = [
+        &[],
+        &[[6, 1, 1], [4, 1, 1], [1, 1, 1]],
+        &[[1, 6, 1], [1, 5, 1]],
+        &[[1, 1, 3], [1, 1, 7], [1, 1, 1], [1, 1, 9]],
+        &[[11, 1, 1], [1, 1, 1], [1, 1, 1]],
+        &[[1, 1, 12], [1, 1, 1]],
+    ];
+    let starts: [&[usize]; 6] = [&[], &[0, 2], &[0, 1], &[0, 2], &[0, 1], &[0, 1]];
+    for (s, want) in sizes.into_iter().zip(starts) {
+        assert_eq!(super::packing(s, [10, 10, 10]), want, "{s:?}");
+    }
     let mut link = core_link();
     let cap = crate::tables::get().limits.moves.unit_cap;
     use serde_json::json;

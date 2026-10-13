@@ -45,3 +45,18 @@ fn decode_locks_both_tables_and_names_a_closure_less_core() {
         "a short kept table cannot default"
     );
 }
+
+/// The plan's rows against erase/1's ceiling (plan v2.33 step 11b item
+/// 4): the judgment is one request, so a plan over the cap is refused
+/// by name before it is sent, naming the narrowing a user has — never
+/// the "cap mirror drift" a degraded reply used to be read as.
+#[test]
+fn a_plan_over_the_row_cap_is_refused_before_sending() {
+    within_cap(4096, 4096).expect("at the cap");
+    let why = within_cap(4097, 4096).expect_err("over the cap");
+    assert_eq!(
+        why.to_string(),
+        "erase: 4097 candidates over the core's erase_rows cap 4096; narrow the plan with \
+         `ce erase <subdirectory>` or an `exclude` in ce.toml"
+    );
+}

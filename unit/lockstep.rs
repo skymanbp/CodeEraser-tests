@@ -38,3 +38,31 @@ fn row_columns_decode_and_length_lock() {
         "missing verdicts refuses even for zero rows"
     );
 }
+
+/// The one line planner of every lockstep family (plan v2.33 step 11b
+/// item 3), over a stand-in: a chunk whose body fits is sent whole, one
+/// over the line is halved until each body fits, and one pair whose body
+/// alone passes it is refused by name with nothing sent.
+#[test]
+fn a_chunk_over_the_line_is_halved_until_each_body_fits() {
+    let build = |c: &[u64]| (Vec::new(), json!(c.iter().sum::<u64>()));
+    let fits = |b: &Value| match b.as_u64() <= Some(10) {
+        true => Ok(()),
+        false => Err(format!("{b} over 10")),
+    };
+    let plan = |c: &[u64]| {
+        let mut sent = Vec::new();
+        within_line(c, &build, &fits, &mut |_, body| {
+            sent.push(body);
+            Ok(())
+        })
+        .map(|()| sent)
+    };
+    assert_eq!(plan(&[1, 2]).expect("fits"), [json!(3)], "whole");
+    assert_eq!(
+        plan(&[4, 3, 2, 6, 5]).expect("halved"),
+        [json!(7), json!(2), json!(6), json!(5)]
+    );
+    let alone = plan(&[11]).expect_err("one pair over the line");
+    assert_eq!(alone.to_string(), "11 over 10 (one pair alone)");
+}
