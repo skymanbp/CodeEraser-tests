@@ -155,7 +155,7 @@ fn widen_tags_what_only_the_widened_query_reaches_and_the_ask_is_exactly_one() {
 fn the_mcp_tool_relays_the_face_and_refuses_an_ask_that_is_not_one() {
     let dir = seeded("similar-mcp");
     // warm once so both faces read the same index state (the
-    // mcp_precommit refresh-counter lesson)
+    // mcp_reports refresh-counter lesson)
     codeeraser::dedup::analyze(&dir, None, None, None).expect("warm");
     let mut s = common::McpSession::over(&dir);
     let got = s.call(

@@ -1,6 +1,7 @@
 //! One MCP server session over a project directory — the harness the
-//! catalog round-trip (mcp_precommit.rs) and every per-tool face test
-//! (similar_face.rs) drive. Lifted out of the catalog test when the
+//! catalog round-trip (mcp_precommit.rs), the report-face comparison
+//! (mcp_reports.rs) and every per-tool face test (similar_face.rs)
+//! drive. Lifted out of the catalog test when the
 //! similar face needed the same spawn/ask/finish trio: a second copy
 //! would have been this repo's own clone verdict. The trio itself is
 //! session.rs's `LineSession` since the core's golden regenerator
