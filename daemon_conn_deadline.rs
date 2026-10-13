@@ -19,7 +19,7 @@
 use codeeraser::daemon::client;
 use codeeraser::daemon::proto::{Request, Response};
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 // This binary compiles its own copy of common/ (the one crate's
 // helper tree) and calls a slice of it: the rest is dead here only.
@@ -38,6 +38,13 @@ use common::tmp as project_dir;
 /// integration test, so the capping loop below refuses to proceed if
 /// this copy has drifted low enough to leave a slot free.
 const MAX_CONNS: usize = 64;
+
+/// How long the cap may take to fill: under idle.rs's PRE_HELLO (5 s),
+/// private to the server module like MAX_CONNS, so this is a mirror.
+/// Past the budget the deadline frees slots, and a cap observed after
+/// it would be the deadline's work, not the peers' — polling longer
+/// proves nothing either way.
+const FILL_WINDOW: Duration = Duration::from_millis(4_500);
 
 /// Whether the daemon answers a Ping right now, and why not when it
 /// does not. BOTH ends of the deadline ask through this one predicate
@@ -62,28 +69,42 @@ fn pong(root: &Path) -> Result<(), String> {
 fn silent_peers_stop_pinning_the_connection_cap() {
     let root = project_dir("daemon-silence");
     let child = common::spawn_daemon_ready(&root);
-    // A few more than the cap: a slot still winding down from the
-    // readiness ping would otherwise leave one free and make the
-    // assertions vacuous. Over-cap connections are dropped at accept
-    // and cost the daemon nothing.
-    let parked: Vec<_> = (0..MAX_CONNS + 4)
+    // A few more than the cap. Over-cap connections are dropped at
+    // accept and cost the daemon nothing.
+    let mut parked: Vec<_> = (0..MAX_CONNS + 4)
         .map(|_| common::raw_daemon_connect(&root))
         .collect();
 
     // The accept loop counts each connection on its own thread, so
-    // give it a moment to fill — an un-engaged cap would prove
-    // nothing about the deadline.
+    // give it until FILL_WINDOW to fill — an un-engaged cap would
+    // prove nothing about the deadline. A ping that is still answered
+    // means a free slot: the readiness ping's connection (or the last
+    // probe's) can still hold its slot while the whole storm above
+    // lands, so the extras are dropped at accept and that slot frees
+    // AFTER them (seen locally: 5 drops at the storm, then 4.6 s of
+    // answered pings). Each answered probe therefore parks one more
+    // silent peer; over the cap it is dropped and costs nothing.
+    let fill = Instant::now();
     let mut capped = false;
-    for _ in 0..20 {
+    while fill.elapsed() < FILL_WINDOW {
         if pong(&root).is_err() {
             capped = true;
             break;
         }
+        parked.push(common::raw_daemon_connect(&root));
         std::thread::sleep(Duration::from_millis(100));
     }
-    assert!(capped, "{MAX_CONNS} silent peers never filled the cap");
+    assert!(
+        capped,
+        "{MAX_CONNS} silent peers never filled the cap (polled {:?})",
+        fill.elapsed()
+    );
 
-    // comfortably past the 5 s pre-hello budget and the sweeper tick
+    // Comfortably past the 5 s pre-hello budget and the sweeper tick:
+    // every peer connected before the cap was observed, so each one's
+    // budget began before this point and 8 s from here is at least 8 s
+    // from the last connection, however long the poll took
+    // (≤ FILL_WINDOW).
     std::thread::sleep(Duration::from_secs(8));
     if let Err(e) = pong(&root) {
         panic!("the deadline must have freed the silent peers' slots: {e}");
