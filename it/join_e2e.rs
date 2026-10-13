@@ -7,7 +7,7 @@
 //! run is report-only (no verdicts before 3i).
 
 use crate::common;
-use codeeraser::join;
+use crate::common::bound::JoinReport;
 use std::path::PathBuf;
 
 /// Two commits of a real Cargo layout: without Cargo.toml the rs
@@ -27,7 +27,7 @@ fn fixture() -> PathBuf {
 }
 
 /// Tier F: the one similar pair carries all three legs.
-fn assert_tier_f(r: &join::Report) {
+fn assert_tier_f(r: &JoinReport) {
     let [f] = r.files.as_slice() else {
         panic!("one file pair, got {:?}", r.files);
     };
@@ -47,7 +47,7 @@ fn assert_tier_f(r: &join::Report) {
 /// Tier U: the block's sides attribute to the two work units, and
 /// churn joins on the SAME (path, key, anchor) identity the ledger
 /// wrote — the rewrite lands on work_1, never its twin.
-fn assert_tier_u(r: &join::Report) {
+fn assert_tier_u(r: &JoinReport) {
     let u = r
         .units
         .iter()
@@ -82,7 +82,7 @@ fn three_legs_assemble_on_both_tiers() {
     // code is the core's, CE.Join.Document importGranularity, since
     // plan v2.32 step 4)
     let doc = &r.doc;
-    assert_eq!(doc["schema"], "ce.join-report/0.4.0");
+    assert_eq!(doc["schema"], common::stub_core::catalogue_schema("join"));
     for row in doc["units"].as_array().expect("units") {
         assert!(row["graph"].is_null(), "unit graph leg is null: {row}");
         assert!(row["caveat"].is_null(), "the prose field is gone: {row}");

@@ -56,7 +56,10 @@ fn the_cli_prints_the_library_face_and_the_core_judged_the_pair_same_role() {
     let dir = seeded("similar-cli");
     let doc = cli_doc(&dir, &["--at", "b.rs:2"]);
     assert_eq!(doc, face(&dir, &Ask::at("b.rs:2").unwrap(), false));
-    assert_eq!(doc["schema"], "ce.similar-report/0.1.0");
+    assert_eq!(
+        doc["schema"],
+        common::stub_core::catalogue_schema("similar")
+    );
     assert_eq!(doc["query"]["label"], "b.rs:2-4 load_user_row/1");
     assert!(doc["degraded"].is_null(), "{doc}");
     let top = &doc["candidates"][0];

@@ -28,11 +28,7 @@ fn habitat(dir: &Path) {
             "# Guide\nsee [top](../README.md#conc)\n".into(),
         ),
     ];
-    for (rel, content) in files {
-        let path = dir.join(rel);
-        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-        std::fs::write(path, content).expect(rel);
-    }
+    common::write_all(dir, &files);
 }
 
 /// Row-level convergence digest: per-table counts, the resolve_key,
@@ -102,9 +98,8 @@ fn assert_converged(dir: &Path, want: &str, what: &str) {
 /// throat both writer legs share (the ratchet's second catch here).
 fn race_two(dir: &Path) {
     let spawn = || {
-        std::process::Command::new(env!("CARGO_BIN_EXE_ce"))
+        common::ce_command(dir, &[])
             .args(["dedup", "."])
-            .current_dir(dir)
             .spawn()
             .expect("spawn ce dedup")
     };

@@ -5,6 +5,20 @@
 
 use std::path::{Path, PathBuf};
 
+/// A family's schema id as the core's document catalogue states it
+/// (audit C row 18), asked of the core once: the unit legs read the
+/// id the package carries rather than restate it.
+pub fn catalogue_schema(family: &str) -> serde_json::Value {
+    static TABLES: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+    let tables = TABLES.get_or_init(|| {
+        let core = crate::daemon::judge::core_bin().expect("a core");
+        let (mut link, _) = crate::corelink::Link::open(&core).expect("the core");
+        link.request("tables", serde_json::json!({}))
+            .expect("tables/1")
+    });
+    tables["document"][family]["schema"].clone()
+}
+
 /// Fresh empty scratch dir keyed by tag + pid (parallel-test safe);
 /// callers remove it themselves when the assertion needs a clean end.
 pub fn scratch(tag: &str) -> PathBuf {

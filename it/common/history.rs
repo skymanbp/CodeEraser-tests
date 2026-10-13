@@ -9,14 +9,12 @@
 //! CE_FPR_REPO is read by each instrument's own entry point, so a
 //! synthetic-history test can call the walk on a repository it built.
 
-use super::gitio::git_out;
+use super::gitio::{git_ok, git_out};
 use std::path::Path;
 
 /// A git command's stdout as lines, success asserted.
 pub fn git_lines(repo: &Path, args: &[&str]) -> Vec<String> {
-    let (ok, out) = git_out(repo, args);
-    assert!(ok, "git {args:?} in {}", repo.display());
-    out.lines().map(str::to_string).collect()
+    git_ok(repo, args).lines().map(str::to_string).collect()
 }
 
 /// Git's first-parent order, newest first. Forward replays reverse it.

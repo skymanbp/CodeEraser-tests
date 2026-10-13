@@ -98,7 +98,7 @@ fn the_cli_prints_the_library_face_and_dead_f_is_the_deadcode_verdict() {
     let (code, doc) = json_face(&dir, &["query", "dead(F)"]);
     assert_eq!(code, Some(0));
     assert_eq!(doc, query_face(&dir, "dead(F)", false));
-    assert_eq!(doc["schema"], "ce.query-report/0.1.0");
+    assert_eq!(doc["schema"], common::stub_core::catalogue_schema("query"));
     assert!(
         doc["degraded"].is_null() && doc["errors"] == json!([]),
         "{doc}"
@@ -197,7 +197,7 @@ fn rules_is_a_gate_on_the_documents_violations() {
     let (code, doc) = json_face(&dir, &["rules"]);
     assert_eq!(code, Some(1));
     assert_eq!(doc, rules_face(&dir, None, false));
-    assert_eq!(doc["schema"], "ce.rules-report/0.1.0");
+    assert_eq!(doc["schema"], common::stub_core::catalogue_schema("rules"));
     assert!(
         doc["program"]["rules_file"]
             .as_str()

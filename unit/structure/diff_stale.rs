@@ -75,9 +75,7 @@ fn universe(seed: u64) -> (PathBuf, Vec<String>) {
     for k in 0..20i64 {
         let age = if k < 8 { 40 - k } else { 28 - (k - 8) * 2 };
         for p in paths.iter().filter(|_| d.chance(30)) {
-            let f = root.join(p);
-            std::fs::create_dir_all(f.parent().expect("a parent")).expect("a dir");
-            std::fs::write(&f, format!("{p} {k}\n")).expect("a file");
+            crate::testutil::write_tree(&root, &[(p, &format!("{p} {k}\n"))]);
         }
         git(&root, &["add", "-A"], 0);
         let when = now.as_secs() as i64 - age * 86_400;
@@ -148,8 +146,7 @@ fn blocks(d: &mut Draw, c: &Case) -> crate::dedup::pairs::Blocks {
 #[ignore = "instrument: the item-3 differential, run with a core"]
 fn the_cores_redundancy_rows_answer_what_the_frozen_rust_built() {
     let core = crate::daemon::judge::core_bin().expect("a core");
-    let root = std::env::temp_dir().join(format!("ce-i3-dead-{}", std::process::id()));
-    std::fs::create_dir_all(&root).expect("a temp root");
+    let root = crate::testutil::scratch("i3-dead");
     for seed in SEEDS {
         let one = |link: &mut Link, d: &mut Draw| {
             let c = diff_gen::case(d, None);

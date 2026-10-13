@@ -18,8 +18,7 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-// cli/tests/gui/ → the superproject root (the suite is the cli/tests submodule)
-const root = path.join(__dirname, "..", "..", "..");
+const { root, say, done } = require("./gate");
 const report = JSON.parse(
   fs.readFileSync(path.join(root, "contracts/fixtures/structure/gui-lens.json"), "utf8"),
 );
@@ -78,12 +77,6 @@ const hidden = new Set();
   for (const kid of sandbox.children[tail]) walk(kid);
 })(0);
 
-const problems = [];
-const say = (ok, what) => {
-  console.log(`${ok ? "ok  " : "FAIL"} ${what}`);
-  if (!ok) problems.push(what);
-};
-
 // the fixture's `_why` points back at this gate; the pointer moved
 // with the suite once (gui/tests → cli/tests/gui) and nothing read it
 const selfRel = path.relative(root, __filename).split(path.sep).join("/");
@@ -139,4 +132,4 @@ const shutShallow = [...headOf].filter(
 );
 say(shutShallow.length === 0, "rows whose head sits above level 3 open by default");
 
-process.exit(problems.length === 0 ? 0 : 1);
+done();

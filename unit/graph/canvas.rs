@@ -62,7 +62,10 @@ fn sections_collapse_packages_drop_and_cycles_count() {
         "cycles": [[4, [1, 3]], [5, [2]]],
     });
     let screen = document((&core, Err(String::new())), &w, &judged, &reply).expect("laid out");
-    assert_eq!(screen["schema"], "ce.graph-screen/0.1.0");
+    assert_eq!(
+        screen["schema"],
+        crate::testutil::catalogue_schema("graphscreen")
+    );
     let doc = &screen["canvas"];
     assert_eq!(doc["edges"], json!([[0, 1]]));
     assert_eq!(
@@ -86,6 +89,7 @@ fn sections_collapse_packages_drop_and_cycles_count() {
     );
     assert_eq!(
         (&doc["unresolvedSites"], &doc["degraded"], &doc["schema"]),
+        // the canvas sub-document's own id: no catalogue family names it
         (&json!(7), &Value::Null, &json!("ce.graph-canvas/0.4.0"))
     );
     let outside = json!({ "pos": reply["pos"], "cycles": [[0, [9]]] });

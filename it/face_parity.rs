@@ -23,12 +23,21 @@ use crate::face_parity_table::{FACES, Row, rows};
 use crate::facts::read;
 use std::collections::BTreeSet;
 
+/// The text of the repo file `file` after its first `marker`: the two
+/// source rosters below open the same way.
+fn after(file: &str, marker: &str) -> String {
+    let src = read(&repo_root(), file);
+    let (_, tail) = src
+        .split_once(marker)
+        .unwrap_or_else(|| panic!("{file}: no {marker}"));
+    tail.to_string()
+}
+
 /// clap's subcommand roster: every `Name {` / `Name(Args),` variant
 /// (cli_table.rs closes the README carrier table against it).
 pub(crate) fn cli_subcommands() -> BTreeSet<String> {
-    let src = read(&repo_root(), "cli/src/main_cli.rs");
-    let body = src.split("pub(crate) enum Cmd {").nth(1).expect("Cmd enum");
-    body.lines()
+    after("cli/src/main_cli.rs", "pub(crate) enum Cmd {")
+        .lines()
         .filter_map(|l| l.strip_prefix("    "))
         .filter(|l| l.starts_with(|c: char| c.is_ascii_uppercase()))
         .map(|l| {
@@ -60,10 +69,8 @@ fn gui_tabs() -> BTreeSet<String> {
         .collect()
 }
 
-fn mcp_tools() -> BTreeSet<String> {
-    let src = read(&repo_root(), "cli/src/mcp/tools.rs");
-    let table = src.split("pub const TOOLS").nth(1).expect("TOOLS");
-    table
+pub(crate) fn mcp_tools() -> BTreeSet<String> {
+    after("cli/src/mcp/tools.rs", "pub const TOOLS")
         .split("tool!(")
         .skip(1)
         .map(|s| {

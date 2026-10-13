@@ -13,7 +13,7 @@
 //! declared and vendored packages). Each leg aims a quarter of its sites
 //! at the other rungs.
 
-use super::common::{Tree, World, put};
+use super::common::{Tree, World, write_tree};
 use super::rng::Rng;
 use super::tables::t;
 use super::ts_gen::{package, spec, tsconfig};
@@ -38,7 +38,7 @@ fn configs(
                 std::fs::create_dir_all(p.parent().expect("a parent")).expect("dirs");
                 std::fs::write(p, b"{\"name\": \"\xff\xfe\"}").expect("write");
             } else {
-                put(root, &rel, &text(rng));
+                write_tree(root, &[(&rel, &text(rng))]);
             }
             if rng.chance(85) && !world.configs.contains(&rel) {
                 world.configs.push(rel);
@@ -82,7 +82,10 @@ fn twins(rng: &mut Rng, root: &Path, world: &World) {
         if let Some(stem) = TS_EXTS.iter().find_map(|e| f.strip_suffix(e))
             && rng.chance(20)
         {
-            put(root, &format!("{stem}{}", rng.pick(".js|.mjs|.cjs")), "");
+            write_tree(
+                root,
+                &[(&format!("{stem}{}", rng.pick(".js|.mjs|.cjs")), "")],
+            );
         }
     }
 }
@@ -135,7 +138,7 @@ fn plant(rng: &mut Rng, root: &Path, world: &mut World, rung: usize) {
             _ => rng.pick(t(table)).to_string(),
         };
         world.configs.push(rel.to_string());
-        put(root, rel, &text);
+        write_tree(root, &[(rel, &text)]);
     }
 }
 

@@ -11,8 +11,9 @@
 //! space inside, a quote never closed, over continuation lines that start
 //! with a space or a tab.
 
-use super::files::{bom_texts, on_disk, scratch};
+use super::files::{bom_texts, on_disk};
 use crate::graph::ladder::frozen::description;
+use crate::testutil::scratch;
 use serde_json::json;
 
 /// Lines a DESCRIPTION is drawn from.

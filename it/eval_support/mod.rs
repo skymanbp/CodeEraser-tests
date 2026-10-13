@@ -2,11 +2,7 @@
 //! generator, baselines, commit slice). Extracted when the repo's own
 //! dedup ratchet caught these copied verbatim across the test files —
 //! the exact defect class this project exists to stop.
-//!
-//! Each integration-test binary compiles this module independently and
-//! uses a different subset, so the unused remainder is expected.
-#![allow(dead_code)]
-#![allow(unused_imports)]
+//! Compiled once in the one integration crate (it/main.rs).
 
 pub mod auditgen;
 pub mod corpus;
@@ -29,7 +25,6 @@ pub use graph::*;
 pub use precision::*;
 pub use provenance::*;
 pub use t3c::*;
-pub use t3f::*;
 pub use universe::*;
 
 use codeeraser::scan::lang::Lang;

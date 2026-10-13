@@ -204,9 +204,7 @@ fn every_extraction_recipe_resolves_in_the_parents_history() {
 fn extraction_leaves_the_gitlink_and_checkout_replaces_it() {
     let (sup, child) = (common::tmp("recipes-super"), common::tmp("recipes-child"));
     for (dir, rel) in [(&child, "f.rs"), (&sup, "suite/f.rs")] {
-        let file = dir.join(rel);
-        std::fs::create_dir_all(file.parent().expect("parent")).expect("mkdir");
-        std::fs::write(file, common::rust_fn(1)).expect(rel);
+        common::write_all(dir, &[(rel, &common::rust_fn(1))]);
         common::init_and_commit(dir, "seed");
     }
     let blob_era = git_out(&sup, &["rev-parse", "HEAD"]).1.trim().to_string();

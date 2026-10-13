@@ -10,24 +10,9 @@ use super::draw::{Draw, ODD, real_texts};
 use super::text::{ARGS, ARGV0, chain_json};
 use super::{agree, check, count, inspect, link, questions, table};
 use crate::graph::{compdb, compdb_find, gomod, roots};
+use crate::testutil::{scratch, write_tree};
 use serde_json::{Value, json};
-use std::path::{Path, PathBuf};
-
-/// A clean scratch directory for one leg.
-pub(super) fn scratch(leg: &str) -> PathBuf {
-    let base = std::env::var("CE_RESOLVE_DIFF_SCRATCH")
-        .map_or_else(|_| std::env::temp_dir(), PathBuf::from);
-    let dir = base.join(format!("resolve-diff-{leg}"));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).expect("scratch");
-    dir
-}
-
-pub(super) fn put(root: &Path, rel: &str, text: &str) {
-    let p = root.join(rel);
-    std::fs::create_dir_all(p.parent().expect("a parent")).expect("dirs");
-    std::fs::write(p, text).expect("write");
-}
+use std::path::Path;
 
 /// Every fourth question a real text (mutated) when the trees hold any,
 /// else one drawn.
@@ -96,6 +81,13 @@ fn rel_of(v: &Value) -> &str {
     v.as_str().expect("a string")
 }
 
+/// A `[path, text]` question written under `root`; its two strings back.
+pub(super) fn placed<'q>(root: &Path, q: &'q Value) -> (&'q str, &'q str) {
+    let (rel, text) = (rel_of(&q[0]), rel_of(&q[1]));
+    write_tree(root, &[(rel, text)]);
+    (rel, text)
+}
+
 /// A leg over files: each question's text (`[.., path, text]` from
 /// `at`) written at its path, then read back by `read` (the frozen
 /// reader, its answer spelled for the comparison).
@@ -107,7 +99,7 @@ pub(super) fn on_disk(
     read: impl Fn(&Path, &str) -> Value,
 ) {
     check(leg, qs, |q| {
-        put(root, rel_of(&q[at]), rel_of(&q[at + 1]));
+        write_tree(root, &[(rel_of(&q[at]), rel_of(&q[at + 1]))]);
         read(root, rel_of(&q[at]))
     });
 }
@@ -140,7 +132,7 @@ fn pyprojects_agree() {
     let want: Vec<Value> = texts
         .iter()
         .map(|t| {
-            put(&root, "pyproject.toml", rel_of(t));
+            write_tree(&root, &[("pyproject.toml", rel_of(t))]);
             json!(roots::pyproject(&root).map(|p| (p.source_dirs, p.deps)))
         })
         .collect();
@@ -191,7 +183,7 @@ fn databases_agree() {
     let (mut d, root) = (Draw::seeded(7), scratch("db"));
     for part in table(RESPONSES) {
         let (rel, text) = part.split_once(" ⇒ ").expect("path ⇒ text");
-        put(&root, rel, text);
+        write_tree(&root, &[(rel, text)]);
     }
     let (rsp, args, argv0) = (table(RSP_ARGS), table(ARGS), table(ARGV0));
     let base = compdb_find::root_text(&root);
@@ -203,7 +195,7 @@ fn databases_agree() {
                 .map(|_| db_row(&mut d, &base, [&rsp, &args, &argv0]))
                 .collect::<Vec<_>>()
         );
-        put(&root, "compile_commands.json", &rows.to_string());
+        write_tree(&root, &[("compile_commands.json", &rows.to_string())]);
         let db = compdb::parse(&root, "compile_commands.json").expect("an array");
         let entries: Vec<Value> = db
             .entries

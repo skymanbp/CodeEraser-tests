@@ -13,7 +13,7 @@
 //! its line, a planted crate's among them three times in five; a few sources are on disk only, as a site's own file the
 //! walk does not hold.
 
-use super::common::{Tree, World, put};
+use super::common::{Tree, World, write_tree};
 use super::rng::Rng;
 use super::rs_gen::{manifest, source, workspace};
 use super::tables::t;
@@ -37,7 +37,7 @@ fn packages(rng: &mut Rng, root: &Path, world: &mut World) -> Vec<&'static str> 
         } else {
             manifest(rng)
         };
-        put(root, &rel, &text);
+        write_tree(root, &[(&rel, &text)]);
         if rng.chance(90) {
             world.configs.push(rel);
         }
@@ -100,7 +100,7 @@ fn tree(rng: &mut Rng, root: &Path, rung: usize) -> Tree {
     texts.extend(planted);
     let mut owned = Vec::new();
     for (rel, text) in texts {
-        put(root, &rel, &text);
+        write_tree(root, &[(&rel, &text)]);
         if rng.chance(92) {
             world.files.insert(rel.clone());
         }

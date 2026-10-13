@@ -13,7 +13,6 @@
 use crate::common;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// `HttpServer` is spelled by no other file, but `main.rs` spells
 /// `HTTP_SERVER`, whose fold key `httpserver` is the declaration's —
@@ -31,18 +30,16 @@ fn tree(tag: &str) -> PathBuf {
 
 fn run(root: &Path, extra: &[&str], zh: bool) -> String {
     let db = root.join("scratch-index.db");
-    let mut c = Command::new(env!("CARGO_BIN_EXE_ce"));
-    c.arg("graph")
+    let lang: &[(&str, &str)] = if zh { &[("CE_LANG", "zh")] } else { &[] };
+    let out = common::ce_command(std::path::Path::new(env!("CARGO_MANIFEST_DIR")), lang)
+        .arg("graph")
         .arg("--mentions")
         .arg("--db")
         .arg(&db)
         .args(extra)
         .arg(root)
-        .env_remove("CE_LANG");
-    if zh {
-        c.env("CE_LANG", "zh");
-    }
-    let out = c.output().expect("run ce");
+        .output()
+        .expect("run ce");
     assert!(out.status.success(), "{out:?}");
     String::from_utf8(out.stdout).expect("utf-8")
 }
@@ -59,7 +56,10 @@ fn keys(v: &Value) -> Vec<&str> {
 fn the_json_face_names_every_counter_and_witnesses_the_fold() {
     let root = tree("json");
     let doc: Value = serde_json::from_str(&run(&root, &["--format", "json"], false)).expect("json");
-    assert_eq!(doc["schema"], "ce.mentions-report/0.3.0");
+    assert_eq!(
+        doc["schema"],
+        common::stub_core::catalogue_schema("mentions")
+    );
     let rust = &doc["rates"]["rust"];
     assert_eq!(keys(rust), ["declared", "unmentioned", "vetoed"]);
     assert_eq!(keys(&rust["declared"]), ["all", "exported"]);

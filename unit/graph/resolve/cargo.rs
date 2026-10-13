@@ -14,10 +14,11 @@
 //! table that does not read — each asked over a drawn set of walked
 //! files under and beside the package.
 
-use super::files::{bom_texts, put, scratch};
+use super::files::{bom_texts, placed};
 use super::{agree, inspect, link, table};
 use crate::graph::cargo;
 use crate::graph::oracle_cfg::rust_targets::RustTargets;
+use crate::testutil::scratch;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 
@@ -61,8 +62,7 @@ fn cargo_manifests_agree() {
     let mut d = super::draw::Draw::seeded(16);
     let (mut qs, mut want) = (Vec::new(), Vec::new());
     for q in &texts {
-        let (rel, text) = (q[0].as_str().expect("rel"), q[1].as_str().expect("text"));
-        put(&root, rel, text);
+        let (rel, _) = placed(&root, q);
         let dir = crate::graph::roots::parent_dir(rel);
         let files: BTreeSet<String> = (0..d.under(9))
             .filter_map(|_| crate::graph::roots::join_rel(&dir, d.one(&files_table)))

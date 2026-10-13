@@ -2,7 +2,6 @@
 //! every audit battery needs. Split out of common/mod.rs (which sits
 //! at its own 300-line gate) when the bypass battery joined
 //! audit_stop.rs and both wanted the same seed-and-assert throat.
-#![allow(dead_code)]
 
 use super::fixtures::{commit_all, rust_fn, seed_git_clone_repo, seed_sources, tmp};
 use super::gitio::git;

@@ -80,15 +80,8 @@ accounted standing warn, not maintained prose over budget. -->";
 
 /// One `--help` face off the real binary, language pinned to en.
 fn help_of(sub: Option<&str>) -> String {
-    let mut c = std::process::Command::new(env!("CARGO_BIN_EXE_ce"));
-    if let Some(s) = sub {
-        c.arg(s);
-    }
-    let out = c
-        .arg("--help")
-        .env_remove("CE_LANG")
-        .output()
-        .expect("run ce");
+    let args: Vec<&str> = sub.into_iter().chain(["--help"]).collect();
+    let out = common::run_ce_env(std::path::Path::new(env!("CARGO_MANIFEST_DIR")), &args, &[]);
     assert!(out.status.success(), "`ce {sub:?} --help` exited nonzero");
     String::from_utf8(out.stdout)
         .expect("utf8")

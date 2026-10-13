@@ -42,15 +42,7 @@ pub fn write_doc(dir: &Path, doc: &str) {
             }
         }
     }
-    for (rel, body) in files {
-        if let Some(parent) = Path::new(rel)
-            .parent()
-            .filter(|p| !p.as_os_str().is_empty())
-        {
-            std::fs::create_dir_all(dir.join(parent)).expect("mkdir fixture subdir");
-        }
-        std::fs::write(dir.join(rel), body).expect("write fixture file");
-    }
+    super::write_all(dir, &files);
 }
 
 /// A fixture document written out under a fresh tmp dir — the two
@@ -181,17 +173,11 @@ pub fn seed_clone_pair(dir: &Path) {
     std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("b.rs (T2 clone)");
 }
 
-/// A tree from one text of `--- path` blocks (a block's first line is
-/// its path, the rest its text), committed and warmed once so every
-/// face a test compares reads the same index state.
+/// A fixture document (`write_doc`) committed and warmed once, so
+/// every face a test compares reads the same index state.
 pub fn seeded_tree(name: &str, fixture: &str) -> PathBuf {
     let dir = tmp(name);
-    for block in fixture.split("--- ").filter(|b| !b.is_empty()) {
-        let (path, text) = block.split_once('\n').expect("a fixture file");
-        let at = dir.join(path);
-        std::fs::create_dir_all(at.parent().expect("a parent")).expect(path);
-        std::fs::write(at, text).expect(path);
-    }
+    write_doc(&dir, fixture);
     init_and_commit(&dir, "seed");
     codeeraser::dedup::analyze(&dir, None, None, None).expect("warm");
     dir

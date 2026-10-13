@@ -37,8 +37,7 @@ fn clip_caps_at_budget_and_respects_char_boundaries() {
 /// files, sessions and rules stay unsuppressed.
 #[test]
 fn already_warned_is_per_session_rule_and_file() {
-    let dir = std::env::temp_dir().join(format!("ce-b4-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).expect("mkdir");
+    let dir = crate::testutil::scratch("b4");
     let line = |m: u64| serde_json::json!({"event": "probe", "file": "a.rs", "matches": m});
     observe_append(&dir, Some("s1"), line(0));
     assert!(!already_warned(&dir, "s1", "probe", "a.rs"), "clean probe");

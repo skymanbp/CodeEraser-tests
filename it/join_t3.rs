@@ -6,11 +6,12 @@
 //! JSON document says 0.4.0.
 
 use crate::common;
-use codeeraser::join::{self, churn_unit::UnitSim};
+use crate::common::bound::JoinReport;
+use codeeraser::join::churn_unit::{UnitRow, UnitSim};
 
 /// Tier F: the near-miss pair has no block, a near-miss count and the
 /// lattice's verdict; the block pair keeps its blocks.
-fn assert_tier_f(r: &join::Report) {
+fn assert_tier_f(r: &JoinReport) {
     let row = |a: &str, b: &str| {
         r.files
             .iter()
@@ -36,8 +37,8 @@ fn assert_tier_f(r: &join::Report) {
 /// Tier U: a `t3` row for the pair with the core's distance and both
 /// node counts, churn joined onto scan_1 alone; the block row keeps
 /// its tokens.
-fn assert_tier_u(r: &join::Report) {
-    let is_t3 = |u: &&join::churn_unit::UnitRow| {
+fn assert_tier_u(r: &JoinReport) {
+    let is_t3 = |u: &&UnitRow| {
         matches!(u.sim, UnitSim::T3 { .. }) && u.a.path == "src/c.rs" && u.b.path == "src/d.rs"
     };
     let u = r
@@ -66,11 +67,11 @@ fn assert_tier_u(r: &join::Report) {
     );
 }
 
-/// The document: 0.4.0, every unit row named by kind and carrying its
-/// own family's metric and nothing of the other's.
-fn assert_document(r: &join::Report) {
+/// The document: the catalogue's join id, every unit row named by kind
+/// and carrying its own family's metric and nothing of the other's.
+fn assert_document(r: &JoinReport) {
     let doc = &r.doc;
-    assert_eq!(doc["schema"], "ce.join-report/0.4.0");
+    assert_eq!(doc["schema"], common::stub_core::catalogue_schema("join"));
     let units = doc["units"].as_array().expect("units");
     let own_metric = |u: &serde_json::Value| match u["kind"].as_str() {
         Some("t3") => {

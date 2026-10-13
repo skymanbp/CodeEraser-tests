@@ -18,15 +18,8 @@
 const fs = require("fs");
 const path = require("path");
 
-// cli/tests/gui/ → the superproject root (the suite is the cli/tests submodule)
-const root = path.join(__dirname, "..", "..", "..");
+const { root, say, done } = require("./gate");
 const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
-
-const problems = [];
-function say(ok, what) {
-  console.log(`${ok ? "ok  " : "FAIL"} ${what}`);
-  if (!ok) problems.push(what);
-}
 
 // 1. The bundler actually includes the hook script it names.
 const conf = JSON.parse(read("gui/src-tauri/tauri.conf.json"));
@@ -102,4 +95,4 @@ if (m) {
   }
 }
 
-process.exit(problems.length === 0 ? 0 : 1);
+done();

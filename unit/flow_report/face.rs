@@ -164,6 +164,6 @@ fn a_degraded_judgment_names_its_reason_and_finds_nothing() {
     let (doc, r) = laid_out(&paths, &files, Err("core offers no flow/1".into()), None);
     assert_eq!(r.degraded.as_deref(), Some("core offers no flow/1"));
     assert_eq!((r.counts["units"], r.counts["findings"]), (6, 0));
-    assert_eq!(doc["schema"], "ce.flow-report/0.1.0");
+    assert_eq!(doc["schema"], crate::testutil::catalogue_schema("flow"));
     assert_eq!(doc["findings"], serde_json::json!([]));
 }

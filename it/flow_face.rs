@@ -12,9 +12,6 @@ use codeeraser::scan::lang::Lang;
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
-/// The schema id the core's flow document carries, as observed.
-const SCHEMA_ID: &str = "ce.flow-report/0.1.0";
-
 const PY: &str = "\
 def gone():
     return 1
@@ -86,7 +83,7 @@ fn the_cli_prints_the_library_face_and_kind_narrows_only_the_listing() {
     let (code, doc) = cli(&dir, &[], &core);
     assert_eq!(code, Some(0));
     assert_eq!(doc, face(&dir, &[]));
-    assert_eq!(doc["schema"], SCHEMA_ID);
+    assert_eq!(doc["schema"], common::stub_core::catalogue_schema("flow"));
     assert!(doc["degraded"].is_null(), "{doc}");
     assert_eq!(
         rows(&doc),

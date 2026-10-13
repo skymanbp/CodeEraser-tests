@@ -16,11 +16,7 @@ pub type Walked = (BTreeSet<String>, BTreeSet<String>, Vec<String>);
 /// would hand the resolver (a node_modules is never entered, wherever
 /// it sits — scan/walk.rs).
 pub fn materialize(dir: &Path, tree: &[(&str, &str)]) -> Walked {
-    for (rel, content) in tree {
-        let path = dir.join(rel);
-        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-        std::fs::write(&path, content).expect(rel);
-    }
+    super::write_all(dir, tree);
     let seen = tree
         .iter()
         .map(|(rel, _)| rel.to_string())

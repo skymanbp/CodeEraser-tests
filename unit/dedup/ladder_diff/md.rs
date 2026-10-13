@@ -11,7 +11,7 @@
 //! others) and URLs. The documents are written under the tree root: the
 //! frozen rungs read them, the request's facts too.
 
-use super::common::{Tree, World, legs, put};
+use super::common::{Tree, World, legs, write_tree};
 use super::rng::Rng;
 use super::tables::t;
 use crate::graph::md::is_md_path;
@@ -123,7 +123,7 @@ fn tree(rng: &mut Rng, root: &Path, k: usize) -> Tree {
     let mut wrote: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
     for doc in docs {
         let mut pairs = Vec::new();
-        put(root, &doc, &document(rng, (&doc, &own), &mut pairs));
+        write_tree(root, &[(&doc, &document(rng, (&doc, &own), &mut pairs))]);
         wrote.insert(doc, pairs);
     }
     let kind = ["link", "image", "ref_link", "ref_def", "url"][k];

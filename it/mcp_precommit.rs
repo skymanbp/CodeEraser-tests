@@ -30,33 +30,13 @@ fn mcp_initialize_and_list() {
         .collect();
     // M7-P2 ruling ③: the full read-only report face — and nothing
     // with a write verb (no baseline, no config, no establish; the
-    // trend cache is index-cache bookkeeping, not a write action).
-    assert_eq!(
-        names,
-        [
-            "scan",
-            "check_duplication",
-            "churn",
-            "graph_sites",
-            "deadcode",
-            "clone",
-            "docdup",
-            "join",
-            "structure",
-            "check",
-            "erase",
-            "erase_log",
-            "doctor",
-            "trend",
-            "similar_units",
-            "query",
-            "rules",
-            "flow",
-            "merge_suggestions",
-            "architecture",
-            "update_check",
-        ]
-    );
+    // trend cache is index-cache bookkeeping, not a write action). The
+    // served list is the TOOLS table, each name once (the parity gate
+    // reads that table against every face; no order is promised).
+    let served: std::collections::BTreeSet<String> =
+        names.iter().map(|n| format!("mcp:{n}")).collect();
+    assert_eq!(served.len(), names.len(), "a tool served twice: {names:?}");
+    assert_eq!(served, crate::face_parity::mcp_tools());
     // The write verbs stay absent BY NAME, not by nobody having added
     // them: `erase` reaches the PLAN (read-only) and `apply` has no
     // face at all, so a machine surface cannot delete on its own
@@ -327,7 +307,10 @@ fn mcp_tool_calls_and_unknown_method() {
     }));
     let stext = scan["result"]["content"][0]["text"].as_str().expect("text");
     let sreport: serde_json::Value = serde_json::from_str(stext).expect("scan json");
-    assert_eq!(sreport["schema"], "ce.scan-report/0.2.0");
+    assert_eq!(
+        sreport["schema"],
+        crate::common::stub_core::catalogue_schema("scan")
+    );
     // unknown method gets a JSON-RPC error, not a hang or crash
     let err = s.ask(serde_json::json!({"jsonrpc": "2.0", "id": 5, "method": "nope"}));
     assert_eq!(err["error"]["code"], -32601);

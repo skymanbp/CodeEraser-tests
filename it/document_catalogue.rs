@@ -29,9 +29,10 @@ fn frozen_package() -> Value {
         .expect("a tables.result line")
 }
 
-/// The core's catalogue is the frozen one, twenty-two families (each
-/// stating `pretty`, true for scan and dedup alone), and flow's kind
-/// names and judged languages are the package's own.
+/// The core's catalogue is the frozen one — the golden pins each
+/// family's name and entry — twenty-two families (each stating
+/// `pretty`, true for scan and dedup alone), and flow's kind names and
+/// judged languages are the package's own.
 #[test]
 fn the_catalogue_is_the_frozen_one() {
     assert_eq!(catalogue(), &frozen(), "the package against the golden");
@@ -41,9 +42,7 @@ fn the_catalogue_is_the_frozen_one() {
         .keys()
         .map(String::as_str)
         .collect();
-    let families = "arch check churn clone clone-units deadcode dedup docdup erase erase-trail \
-        flow graphscreen join mentions merge query rules scan similar sites structure trend";
-    assert_eq!(named, families.split_whitespace().collect::<Vec<_>>());
+    assert_eq!(named.len(), 22, "{named:?}");
     let pretty: Vec<&str> = named
         .iter()
         .copied()

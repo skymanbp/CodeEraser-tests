@@ -8,10 +8,11 @@
 //! as texts (a null text: a file that does not read as UTF-8).
 
 use super::draw::{Draw, real_texts};
-use super::files::{real_or, scratch};
+use super::files::real_or;
 use super::ts_gen::{document, package, tsconfig};
 use super::{check, questions, table};
 use crate::graph::{jsonc, roots, roots_ts};
+use crate::testutil::scratch;
 use serde_json::{Value, json};
 use std::path::Path;
 

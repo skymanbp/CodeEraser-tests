@@ -13,8 +13,6 @@
 //! it, so every question shape now runs down all three roads the
 //! i18n charter names: default, the `--lang` flag, and CE_LANG.
 
-use std::process::Command;
-
 /// One argument shape and the words its answer must contain.
 type Question<'a> = (&'a [&'a str], &'a [&'a str]);
 
@@ -33,12 +31,12 @@ const ROADS: &[(&str, &[&str], Option<&str>)] = &[
 /// sets it, so an operator's ambient CE_LANG cannot silently move
 /// which surface the default case measures.
 fn run(args: &[&str], env: Option<&str>) -> std::process::Output {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_ce"));
-    c.env_remove("CE_LANG").args(args);
-    if let Some(v) = env {
-        c.env("CE_LANG", v);
-    }
-    c.output().expect("run ce")
+    let lang: Vec<(&str, &str)> = env.map(|v| ("CE_LANG", v)).into_iter().collect();
+    crate::common::run_ce_env(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        args,
+        &lang,
+    )
 }
 
 /// Both question shapes in one table: a bare `ce`, and a bare

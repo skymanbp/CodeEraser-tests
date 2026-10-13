@@ -63,7 +63,7 @@ pub fn run_expect(dir: &Path, args: &[&str]) -> String {
 
 /// Seed several files at once, parents included — the multi-write
 /// stanza lives once (same census).
-pub fn write_all(dir: &Path, files: &[(&str, &str)]) {
+pub fn write_all<S: AsRef<[u8]>>(dir: &Path, files: &[(&str, S)]) {
     for (rel, content) in files {
         let p = dir.join(rel);
         if let Some(parent) = p.parent() {

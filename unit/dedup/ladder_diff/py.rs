@@ -3,7 +3,7 @@
 //! dependencies, and specifiers with leading dots, empty segments,
 //! slashes and `..` inside a segment, stdlib and dependency names.
 
-use super::common::{Tree, World, leg, put};
+use super::common::{Tree, World, leg, write_tree};
 use super::rng::Rng;
 use super::tables::t;
 use crate::scan::lang::Lang;
@@ -47,7 +47,7 @@ fn spec(rng: &mut Rng) -> String {
 fn tree(rng: &mut Rng, root: &Path) -> Tree {
     let world = World::seeded(rng, (3, 18), t("py DIRS"), t("py BASES"));
     if rng.chance(70) {
-        put(root, "pyproject.toml", &pyproject(rng));
+        write_tree(root, &[("pyproject.toml", &pyproject(rng))]);
     }
     let keep = |f: &str| f.ends_with(".py");
     let owned = world.sites(rng, keep, (t("py DIRS"), "z.py"), |rng, from| {

@@ -3,15 +3,13 @@
 //! across `cli/tests/*.rs` — the tool catching its author's own
 //! stacking (docs/FPR-REPLAY.md).
 //!
-//! Each test binary compiles its own copy of this module and uses a
-//! subset of it, so unused items here are expected — that is the why
-//! for the allow below.
-#![allow(dead_code)]
-// The hooks re-export is likewise unused in binaries that never run
-// hooks — same subset story as dead_code above.
-#![allow(unused_imports)]
+//! The one integration crate compiles this module (it/main.rs,
+//! 2026-08-26), so a helper no leg calls is dead code the compiler
+//! names here. daemon_conn_deadline.rs mounts a second copy and calls
+//! a slice of it; the allow for the rest sits on that mount.
 
 pub mod audit;
+pub mod bound;
 pub mod daemon;
 pub mod fixtures;
 pub mod gates;
@@ -25,6 +23,7 @@ pub mod metric;
 pub mod session;
 pub mod stats;
 pub mod stub_core;
+mod throat;
 pub mod touch;
 // One brace, not five `pub use` lines: the per-line form made this
 // index a byte-shaped twin of eval_support/mod.rs the moment a fifth
@@ -35,7 +34,7 @@ pub use {
 };
 
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::Command;
 
 /// Run the library dedup pipeline on `dir`, assert the pairwise-block
 /// and group counts every caller checks anyway, and return the result
@@ -73,18 +72,13 @@ pub fn judged(dir: &Path) -> codeeraser::score::Outcome {
 }
 
 /// One healthy `ce join` over a fixture's window.
-pub fn join_report(dir: &Path, days: u32) -> codeeraser::join::Report {
+pub fn join_report(dir: &Path, days: u32) -> bound::JoinReport {
     let answer = codeeraser::join::run(dir, None, &core_bin(), days).expect("join");
-    let r: codeeraser::join::Report =
-        codeeraser::report::read_bound(answer.document, "join").expect("a join document");
+    let r: bound::JoinReport = bound::read_bound(answer.document, "join").expect("a join document");
     assert!(r.degraded.is_none(), "healthy graph reply");
     r
 }
 
-/// The repository root — cli/'s parent. Every gate that reads a
-/// tracked file starts here. It lived as seven private copies across
-/// the test binaries until the clone gate pointed at one pair; the
-/// class was all seven, so the definition moved here once.
 /// The `key` strings of a document's `list` rows (no list, or a row
 /// without one, adds nothing): the reading every gate over a listed
 /// document shares.
@@ -93,6 +87,10 @@ pub fn listed<'a>(doc: &'a serde_json::Value, list: &str, key: &str) -> Vec<&'a 
     rows.filter_map(|row| row[key].as_str()).collect()
 }
 
+/// The repository root — cli/'s parent. Every gate that reads a
+/// tracked file starts here. It lived as seven private copies across
+/// the test binaries until the clone gate pointed at one pair; the
+/// class was all seven, so the definition moved here once.
 pub fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -189,16 +187,22 @@ pub fn run_ce(dir: &Path, args: &[&str]) -> std::process::Output {
 /// off unless a leg arms it: no battery reaches the release index by
 /// accident (update/notice.rs).
 pub fn run_ce_env(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_ce"))
-        .args(args)
-        .env_remove("CE_ACCEPT_BASELINE")
+    ce_command(dir, env).args(args).output().expect("run ce")
+}
+
+/// The real `ce` in `dir`, scrubbed as `run_ce_env` says, `env` laid
+/// over — for a leg that spawns rather than waits, or adds what a
+/// `&str` pair cannot carry. No leg builds `Command::new` on the
+/// binary itself (`raw_ce_commands_go_through_the_throat` reads it/).
+pub fn ce_command(dir: &Path, env: &[(&str, &str)]) -> Command {
+    let mut c = Command::new(env!("CARGO_BIN_EXE_ce"));
+    c.env_remove("CE_ACCEPT_BASELINE")
         .env_remove("CE_ACCEPT_FENCE")
         .env_remove("CE_LANG")
         .env("CE_UPDATE_CHECK", "0")
         .envs(env.iter().copied())
-        .current_dir(dir)
-        .output()
-        .expect("run ce")
+        .current_dir(dir);
+    c
 }
 
 /// Build the project index by running the real `ce dedup .` in `dir`.

@@ -13,8 +13,7 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-// cli/tests/gui/ → the superproject root (the suite is the cli/tests submodule)
-const root = path.join(__dirname, "..", "..", "..");
+const { root, say, done } = require("./gate");
 const ui = (f) => fs.readFileSync(path.join(root, "gui/ui", f), "utf8");
 
 // Load the REAL table under a stub sandbox (the lens gate's pattern).
@@ -37,12 +36,6 @@ for (const m of html.matchAll(/data-i18n(?:-ph|-title)?="([^"]+)"/g)) used.add(m
 for (const f of fs.readdirSync(path.join(root, "gui/ui")).filter((f) => f.endsWith(".js"))) {
   for (const m of ui(f).matchAll(/\btr\(\s*"([^"]+)"/g)) used.add(m[1]);
 }
-
-const problems = [];
-const say = (ok, what) => {
-  console.log(`${ok ? "ok  " : "FAIL"} ${what}`);
-  if (!ok) problems.push(what);
-};
 
 // Direction 1: every used key exists in BOTH languages.
 for (const lang of ["en", "zh"]) {
@@ -129,4 +122,4 @@ for (const lang of ["en", "zh"]) {
 // Non-vacuity: the harvest actually found the UI's keys.
 say(used.size >= 30, `the harvest is real (${used.size} keys found)`);
 
-process.exit(problems.length === 0 ? 0 : 1);
+done();

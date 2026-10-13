@@ -13,7 +13,7 @@
 
 use crate::common;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::Output;
 
 fn repo(name: &str) -> PathBuf {
     let root = common::tmp(name);
@@ -25,13 +25,9 @@ fn repo(name: &str) -> PathBuf {
 /// to a terminal test: a TTY-only feature cannot be observed by CI,
 /// and a feature nothing observes is one nobody notices breaking.
 fn churn(root: &Path, progress: &str, lang: &str, format: &str) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_ce"))
-        .args(["churn", ".", "--days", "30", "--format", format])
-        .current_dir(root)
-        .env("CE_PROGRESS", progress)
-        .env("CE_LANG", lang)
-        .output()
-        .expect("run ce churn")
+    let env = [("CE_PROGRESS", progress), ("CE_LANG", lang)];
+    let args = ["churn", ".", "--days", "30", "--format", format];
+    common::run_ce_env(root, &args, &env)
 }
 
 fn stderr_of(out: Output) -> String {

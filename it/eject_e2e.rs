@@ -8,8 +8,6 @@
 //! ownership boundary battery was eject_ownership.rs until the
 //! v0.5.0 test consolidation folded it in here.
 
-use std::process::Command;
-
 use crate::common;
 use crate::common::tmp;
 
@@ -53,8 +51,7 @@ fn eject_with_data(
     data: &std::path::Path,
     args: &[&str],
 ) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_ce"))
-        .current_dir(dir)
+    common::ce_command(dir, &[])
         .env("CLAUDE_PLUGIN_DATA", data)
         .args(args)
         .output()

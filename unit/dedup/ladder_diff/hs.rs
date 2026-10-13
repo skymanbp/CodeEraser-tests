@@ -14,7 +14,7 @@
 //! an empty one, a quote never closed). Every tree's cabal mains and
 //! cabal privacy are compared too (beside.rs).
 
-use super::common::{Tree, World, put};
+use super::common::{Tree, World, write_tree};
 use super::rng::Rng;
 use super::tables::t;
 use crate::graph::roots::join_dir;
@@ -150,7 +150,7 @@ fn cabals(rng: &mut Rng, root: &Path, world: &mut World) {
             let name = format!("{}.cabal", rng.pick(t("hs CABAL_NAMES")));
             let rel = join_dir(dir, &name);
             if !world.configs.contains(&rel) {
-                put(root, &rel, &cabal(rng, &own));
+                write_tree(root, &[(&rel, &cabal(rng, &own))]);
                 world.configs.push(rel);
             }
         }
@@ -201,7 +201,7 @@ fn plant(rng: &mut Rng, root: &Path, world: &mut World) -> Vec<String> {
     let library = format!("library\n  hs-source-dirs: lib\n  exposed-modules: {exposed}\n");
     let mut depends = vec!["base", "other"];
     let mut write = |rel: &str, text: String| {
-        put(root, rel, &text);
+        write_tree(root, &[(rel, &text)]);
         world.configs.push(rel.to_string());
     };
     write("other/other.cabal", format!("name: other\n{library}"));

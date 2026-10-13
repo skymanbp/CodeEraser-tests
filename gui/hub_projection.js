@@ -22,8 +22,7 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-// cli/tests/gui/ → the superproject root (the suite is the cli/tests submodule)
-const root = path.join(__dirname, "..", "..", "..");
+const { root, say, done } = require("./gate");
 
 // Just enough DOM for the module's boot IIFE (a select it fills, two
 // listeners) and for a family that registers its own renderer (an
@@ -59,13 +58,7 @@ vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(path.join(root, "gui/ui/reports.js"), "utf8"), sandbox);
 vm.runInContext(fs.readFileSync(path.join(root, "gui/ui/hub_merge.js"), "utf8"), sandbox);
 
-const problems = [];
-const say = (ok, what) => {
-  console.log(`${ok ? "ok  " : "FAIL"} ${what}`);
-  if (!ok) problems.push(what);
-};
-
-// One advisory row exactly as ce.deadcode-report/0.3.0 emits it.
+// One advisory row exactly as the deadcode report document emits it.
 const row = {
   code: "public_unmentioned",
   line: 84,
@@ -202,5 +195,5 @@ el("hub-paths").value = " a/x.py , ,b/y.py";
   vm.runInContext('flowShown = new Set(["dead_store", "unreachable"]);', hub);
   await vm.runInContext("loadHub()", hub);
   say((calls[2] ?? [])[1]?.kind === null, "every kind shown asks for the whole document");
-  process.exit(problems.length === 0 ? 0 : 1);
+  done();
 })();

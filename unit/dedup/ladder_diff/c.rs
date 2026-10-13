@@ -8,7 +8,7 @@
 //! forms with `..`, `./`, empty and framework spellings. The forced-
 //! include arcs are compared per tree too.
 
-use super::common::{Tree, World, leg, put};
+use super::common::{Tree, World, leg, write_tree};
 use super::rng::Rng;
 use super::tables::t;
 use crate::graph::compdb::root_text;
@@ -112,13 +112,18 @@ fn databases(rng: &mut Rng, root: &Path, world: &World) {
             } else {
                 "build/compile_commands.json"
             };
-            put(root, &join_dir(dir, name), &Value::Array(rows).to_string());
+            write_tree(
+                root,
+                &[(&join_dir(dir, name), &Value::Array(rows).to_string())],
+            );
         }
         if rng.chance(30) {
-            put(
+            write_tree(
                 root,
-                &join_dir(dir, "compile_flags.txt"),
-                &flags(rng, &abs, false).join("\n"),
+                &[(
+                    &join_dir(dir, "compile_flags.txt"),
+                    &flags(rng, &abs, false).join("\n"),
+                )],
             );
         }
     }

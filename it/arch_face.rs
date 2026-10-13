@@ -13,9 +13,6 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// The schema id the core's arch document carries, as observed.
-const SCHEMA_ID: &str = "ce.arch-report/0.1.0";
-
 /// The ring past CE.Arch.Cost.exactVertexCap (14).
 const RING: usize = 15;
 
@@ -129,7 +126,7 @@ fn the_cli_prints_the_library_face_and_both_cut_roads_are_live() {
     let (_, d) = judged("arch-cli", &[]);
     assert_eq!(
         (d["schema"].as_str(), d["degraded"].is_null()),
-        (Some(SCHEMA_ID), true)
+        (common::stub_core::catalogue_schema("arch").as_str(), true)
     );
     let counts = (&d["counts"]["pkgEdges"], &d["counts"]["cuts"]);
     assert_eq!(counts, (&json!(1), &json!(2)), "{}", d["counts"]);

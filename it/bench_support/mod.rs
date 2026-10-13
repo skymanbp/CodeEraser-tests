@@ -7,8 +7,6 @@
 //! failed measurement reported by name and never recorded as a
 //! number (the trend measure() stance).
 
-#![allow(dead_code)] // shared across the bench targets; each binary uses its slice
-
 pub mod frozen;
 pub mod joins;
 pub mod render;
@@ -40,21 +38,13 @@ pub fn release_only() {
     }
 }
 
-/// A git command that MUST succeed, run from the cli/ test cwd.
-///
-/// The joining rule (`joins`) reads "nothing changed" from an empty
-/// stdout, so a git that failed — a missing rev, a shallow clone —
-/// would be indistinguishable from a release that brings nothing new,
-/// and the series would quietly stop growing. It is a named refusal
-/// instead.
+/// A git command that MUST succeed (`common::git_ok`), run from the
+/// cli/ test cwd, its stdout trimmed: the joining rule (`joins`) reads
+/// "nothing changed" from an empty one.
 pub fn git_out(args: &[&str]) -> String {
-    let out = Command::new("git").args(args).output().expect("git");
-    assert!(
-        out.status.success(),
-        "git {args:?} failed: {}",
-        String::from_utf8_lossy(&out.stderr).trim()
-    );
-    String::from_utf8_lossy(&out.stdout).trim().to_string()
+    crate::common::git_ok(Path::new("."), args)
+        .trim()
+        .to_string()
 }
 
 /// contracts/bench/bench.json relative to the cli/ test cwd.

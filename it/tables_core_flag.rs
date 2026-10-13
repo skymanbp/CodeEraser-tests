@@ -15,7 +15,7 @@
 // --sites` both read it
 use crate::tables_package::seeded;
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Output;
 
 /// The core the positive legs name, as an absolute path.
 fn named_core() -> String {
@@ -30,14 +30,11 @@ fn named_core() -> String {
 fn bare(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> Output {
     let empty = dir.join("empty-path");
     std::fs::create_dir_all(&empty).expect("empty PATH dir");
-    Command::new(env!("CARGO_BIN_EXE_ce"))
+    crate::common::ce_command(dir, &[])
         .args(args)
         .env_remove("CE_CORE_BIN")
-        .env_remove("CE_LANG")
         .env("PATH", &empty)
-        .env("CE_UPDATE_CHECK", "0")
         .envs(env.iter().copied())
-        .current_dir(dir)
         .output()
         .expect("run ce")
 }

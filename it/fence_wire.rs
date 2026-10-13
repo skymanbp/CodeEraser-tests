@@ -77,7 +77,10 @@ fn an_ignored_file_drops_its_rows_and_a_deleted_file_removes_them() {
     let check = ["check", ".", "--core", &core];
     establish(&dir, &core);
     let clean = report(&dir, "check", &core, 0);
-    assert_eq!(clean["schema"], "ce.check-report/0.5.0");
+    assert_eq!(
+        clean["schema"],
+        common::stub_core::catalogue_schema("check")
+    );
     assert_eq!(clean["ratchet"]["dropped"], serde_json::json!([]));
     assert_eq!(clean["ratchet"]["failed"], serde_json::json!([]));
 
@@ -153,7 +156,10 @@ fn scan_judges_the_config_fence_and_names_it() {
         "unfenced: the summary line keeps its bytes: {out}"
     );
     let unfenced = report(&dir, "scan", &core, 0);
-    assert_eq!(unfenced["schema"], "ce.scan-report/0.2.0");
+    assert_eq!(
+        unfenced["schema"],
+        common::stub_core::catalogue_schema("scan")
+    );
     assert_eq!(unfenced["failed"], serde_json::json!([]));
 
     common::seed_budget(&dir, 41);

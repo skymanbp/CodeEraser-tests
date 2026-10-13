@@ -9,6 +9,7 @@ use crate::graph::ladder::java_header::Header;
 use crate::graph::ladder::lua_path::Template;
 use crate::graph::ladder::{self, Memo, Outcome, Scope, Site};
 use crate::scan::lang::Lang;
+pub(super) use crate::testutil::write_tree;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
@@ -174,7 +175,7 @@ impl World {
         for dir in dirs.split('|') {
             if rng.chance(pct) {
                 let rel = crate::graph::roots::join_dir(dir, name);
-                put(root, &rel, &text(rng));
+                write_tree(root, &[(&rel, &text(rng))]);
                 self.configs.push(rel);
             }
         }
@@ -247,15 +248,6 @@ fn texts(root: &Path, dir: &Path, out: &mut Vec<String>) {
             out.push(format!("{rel}: {text}"));
         }
     }
-}
-
-/// Write a file under a tree root, parents made.
-pub(super) fn put(root: &Path, rel: &str, text: &str) {
-    let p = root.join(rel);
-    let parent = p.parent().expect("a joined path has a parent");
-    std::fs::create_dir_all(parent)
-        .and_then(|()| std::fs::write(&p, text))
-        .expect("write");
 }
 
 /// A site's owned text (Site borrows): lang, kind, from, spec.

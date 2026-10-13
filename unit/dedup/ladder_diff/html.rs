@@ -14,7 +14,7 @@
 //! (userinfo, port, host case, empty path). The pages are written under
 //! the tree root: the frozen rungs read them, the request's facts too.
 
-use super::common::{Tree, World, legs, put};
+use super::common::{Tree, World, legs, write_tree};
 use super::rng::Rng;
 use super::tables::t;
 use crate::scan::lang::Lang;
@@ -184,19 +184,19 @@ fn tree(rng: &mut Rng, root: &Path, aim: usize) -> Tree {
 fn write(rng: &mut Rng, root: &Path, world: &World, own: &[String]) {
     for f in &world.files {
         if is_html(f) {
-            put(root, f, &page(rng, f, own));
+            write_tree(root, &[(f, &page(rng, f, own))]);
         } else if is_md(f) {
             let heads: Vec<String> = (0..rng.below(4))
                 .map(|_| format!("# {}\n", rng.pick(t("html MD_HEADS"))))
                 .collect();
-            put(root, f, &heads.concat());
+            write_tree(root, &[(f, &heads.concat())]);
         }
     }
     for dir in t("html DIRS").split('|') {
         if rng.chance(15) {
             let f = format!("{dir}/zz.html");
             let f = f.trim_start_matches('/');
-            put(root, f, &page(rng, f, own));
+            write_tree(root, &[(f, &page(rng, f, own))]);
         }
     }
 }

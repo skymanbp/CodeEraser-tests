@@ -21,6 +21,9 @@ use codeeraser::daemon::proto::{Request, Response};
 use std::path::Path;
 use std::time::Duration;
 
+// This binary compiles its own copy of common/ (the one crate's
+// helper tree) and calls a slice of it: the rest is dead here only.
+#[allow(dead_code, unused_imports)]
 #[path = "it/common/mod.rs"]
 mod common;
 // common's golden comparator reads the bless switch through the one

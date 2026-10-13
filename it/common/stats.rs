@@ -34,23 +34,14 @@ fn binom_cdf(k: usize, n: usize, p: f64) -> f64 {
 }
 
 /// The Clopper–Pearson 95 % UPPER bound on the rate, in parts per
-/// million: the largest p whose lower binomial tail still holds
-/// 2.5 % of the mass. Bisected on integer ppm over the whole
-/// [0, 1e6] range — deterministic, and exact to one ppm.
+/// million, floored: the p whose lower binomial tail holds 2.5 % of
+/// the mass — the upper half of `clopper_pearson`, through the one
+/// bisection (`solve`).
 pub fn cp_upper_ppm(k: usize, n: usize) -> u64 {
     if n == 0 || k >= n {
         return 1_000_000;
     }
-    let (mut lo, mut hi) = (0u64, 1_000_000u64);
-    while lo < hi {
-        let mid = lo + (hi - lo).div_ceil(2);
-        if binom_cdf(k, n, mid as f64 / 1_000_000.0) >= 0.025 {
-            lo = mid;
-        } else {
-            hi = mid - 1;
-        }
-    }
-    lo
+    (solve(n, k, 0.025, 0.0, 1.0) * 1_000_000.0).floor() as u64
 }
 
 /// Exact integer per-mille — the rate the ledger states, beside the

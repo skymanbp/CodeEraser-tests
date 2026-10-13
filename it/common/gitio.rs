@@ -16,6 +16,27 @@ pub fn git(dir: &Path, args: &[&str]) {
     assert!(out.status.success(), "git {args:?}: {out:?}");
 }
 
+/// Run git in `dir` and READ it, success asserted (the stderr named):
+/// stdout as git wrote it. For a reader whose empty stdout is an
+/// answer — the bench joining rule reads "nothing changed" from one —
+/// a git that failed (a missing rev, a shallow clone) must not pass as
+/// that answer; it is a named refusal instead.
+pub fn git_ok(dir: &Path, args: &[&str]) -> String {
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .output()
+        .expect("git");
+    assert!(
+        out.status.success(),
+        "git {args:?} in {} failed: {}",
+        dir.display(),
+        String::from_utf8_lossy(&out.stderr).trim()
+    );
+    String::from_utf8_lossy(&out.stdout).into_owned()
+}
+
 /// Run git in `dir` and READ it: `(succeeded, stdout)`. The identity is
 /// the caller's, because every user of this form interrogates history
 /// rather than writing it. Both halves are answers: `merge-base

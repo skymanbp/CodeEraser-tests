@@ -23,6 +23,16 @@ pub fn real_tables() -> &'static Value {
     })
 }
 
+/// A family's schema id as the core's document catalogue states it
+/// (audit C rows 17-18): the legs read the id the package carries
+/// rather than restate it; document_catalogue.rs pins the catalogue
+/// itself against the frozen tables golden.
+pub fn catalogue_schema(family: &str) -> Value {
+    let id = &real_tables()["document"][family]["schema"];
+    assert!(id.is_string(), "the catalogue names no schema for {family}");
+    id.clone()
+}
+
 /// A stub that offers nothing but `hello` and the real package: the
 /// advisory families' legs, where the core has no such family, which
 /// must come back named absent, never read as an empty answer.

@@ -17,9 +17,10 @@
 //! `exposes(m)`: the core's set is asked of it word by word over every
 //! word the text spells and every word the core names.
 
-use super::files::{bom_texts, scratch};
+use super::files::{bom_texts, placed};
 use super::{agree, inspect, link};
 use crate::graph::cabal;
+use crate::testutil::scratch;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 
@@ -95,8 +96,7 @@ fn cabals_agree() {
     let got = inspect(&mut link(), "cabal", &qs);
     let (mut want, mut core) = (Vec::new(), Vec::new());
     for (q, g) in qs.iter().zip(&got) {
-        let (rel, text) = (q[0].as_str().expect("rel"), q[1].as_str().expect("text"));
-        super::files::put(&root, rel, text);
+        let (rel, text) = placed(&root, q);
         let c = cabal::parse(&root, rel).expect("readable");
         let mut words = vocabulary(text);
         let named = g[6]

@@ -126,7 +126,7 @@ fn the_cli_prints_the_library_face_and_every_group_shape_is_judged() {
         codeeraser::faces::doc(codeeraser::faces::merge(&dir, &core, Default::default()))
             .expect("face")
     );
-    assert_eq!(doc["schema"], "ce.merge-report/0.1.0");
+    assert_eq!(doc["schema"], common::stub_core::catalogue_schema("merge"));
     assert!(doc["degraded"].is_null(), "{doc}");
     let whole = group(&doc, "t1t2", false);
     assert_eq!(

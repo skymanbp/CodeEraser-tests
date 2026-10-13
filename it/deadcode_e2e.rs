@@ -179,7 +179,10 @@ fn the_report_document_carries_the_advisory_only_when_asked() {
         "the orphan dies beside the advisory"
     );
     let asked = &report.doc;
-    assert_eq!(asked["schema"], "ce.deadcode-report/0.4.0");
+    assert_eq!(
+        asked["schema"],
+        common::stub_core::catalogue_schema("deadcode")
+    );
     assert_eq!(
         (&asked["unmentioned_dropped"], &asked["unmentioned_cut"]),
         (&serde_json::json!(false), &serde_json::json!(false))
@@ -200,7 +203,10 @@ fn the_report_document_carries_the_advisory_only_when_asked() {
     // the same tree judged off a wire built without the advisory
     let (_idx, w) = common::graph_wire(&dir, deadcode::Advisory::No);
     let quiet = deadcode::judge_report(&dir, &core, &w).expect("judged").doc;
-    assert_eq!(quiet["schema"], "ce.deadcode-report/0.4.0");
+    assert_eq!(
+        quiet["schema"],
+        common::stub_core::catalogue_schema("deadcode")
+    );
     assert!(
         ["unmentioned", "unmentioned_dropped", "unmentioned_cut"]
             .iter()

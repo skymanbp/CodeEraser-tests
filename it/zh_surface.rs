@@ -32,7 +32,7 @@
 //! — and that is fixed by making the producer emit a code, not by
 //! teaching this rule to read half a line.
 
-use std::process::{Command, Output};
+use std::process::Output;
 
 /// A command shape under test, named as a reader would type it. The
 /// mention census road refreshes a mention pass over the repository,
@@ -53,13 +53,6 @@ const SHAPES: &[&[&str]] = &[
     &["--help"],
 ];
 
-fn repo_root() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("cli/ has a parent")
-        .to_path_buf()
-}
-
 fn run(args: &[&str], zh: bool) -> Output {
     // one scratch dir PER LEG: the two legs run in parallel, and `tmp`
     // wipes its directory on every call — a shared name put one leg's
@@ -71,18 +64,16 @@ fn run(args: &[&str], zh: bool) -> Output {
     let msg_path = scratch.join("COMMIT_EDITMSG");
     std::fs::write(&msg_path, "Tidy the surface.\n").expect("message");
     let msg = msg_path.to_string_lossy().into_owned();
-    let mut c = Command::new(env!("CARGO_BIN_EXE_ce"));
-    c.current_dir(repo_root())
-        .env_remove("CE_LANG")
-        .args(args.iter().map(|a| match *a {
+    let args: Vec<&str> = args
+        .iter()
+        .map(|a| match *a {
             "{db}" => db.as_str(),
             "{msg}" => msg.as_str(),
             _ => a,
-        }));
-    if zh {
-        c.env("CE_LANG", "zh");
-    }
-    c.output().expect("run ce")
+        })
+        .collect();
+    let lang: &[(&str, &str)] = if zh { &[("CE_LANG", "zh")] } else { &[] };
+    crate::common::run_ce_env(&crate::common::repo_root(), &args, lang)
 }
 
 fn text(o: &Output) -> String {

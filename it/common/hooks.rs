@@ -2,7 +2,6 @@
 //! contract, the hook runner, and observe-feed readers. Split from
 //! common/mod.rs when the §4.2 step-2 helpers pushed it past the
 //! 300-line budget (E01: split before exemption).
-#![allow(dead_code)]
 
 use std::path::Path;
 use std::process::{Command, Stdio};
