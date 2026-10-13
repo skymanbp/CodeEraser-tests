@@ -110,6 +110,12 @@ int c(int a, bool b) {
     return 0;
 }
 ====
+cpp @@ cc=4 coc=2 nesting=1 lines=1 @@ p.8 a run of like operators: `and` IS `&&` (ISO C++ [lex.digraph]), one operator class, so `a && b and c` is one run and pays +1 beside the if's +1, where cc still counts both operators (register D19)
+int ma(bool a, bool b, bool c) { if (a && b and c) return 1; return 0; }
+====
+cpp @@ cc=4 coc=2 nesting=1 lines=1 @@ the symmetric row: `or` IS `||`, so `a || b or c` is one run, +1 (register D19)
+int mo(bool a, bool b, bool c) { if (a || b or c) return 1; return 0; }
+====
 cpp @@ units=K::~K/0, K::operator==/1, K::operator bool/0, K::b/0, In::m/0, ns::In::out/0, K::K/0, maker/1, hidden/0, refret/1, trailing/1, spec/1, Box::b/0, local/0, L::m/0, one/1 @@ every declarator shape the probe transcripts hold, with the name the chain spells for it and the arity it reads: in-body members carry their class chain, out-of-class definitions carry the qualifier they spell (the two meet in owner_of), a namespace is not part of the chain, a local struct's method is a unit of its own, the innermost function_declarator owns the parameter list, `(void)` is an empty list (register D12) where `void *p` is one, a conversion operator names its type, and template arguments are not part of a name — `spec<int>` and `Box<T>::b` spell `spec` and `Box::b` (the crosscheck read a partial specialization's three-line argument list into a member's name before the rule existed)
 struct K { K(); ~K() {} bool operator==(const K&) const { return true; } operator bool() const { return true; } };
 void K::b() {}

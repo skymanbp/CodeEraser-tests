@@ -157,6 +157,11 @@ function f(a: number): number {
   return (a > 5 ? a : 0) > 0 ? 2 : 1;
 }
 ====
+cpp @@ 0 -1 h PL 0 ops=0,0,1,1 | 1 0 h PD 0 | 2 1 h PD 0 | 3 2 h PD 0 @@ the C family's coc_operators are operator classes: `&&` and `and` carry id 0, `||` and `or` id 1, so the chain reads two runs, not four (register D19)
+bool f(bool a, bool b, bool c, bool d, bool e) {
+  return a && b and c || d or e;
+}
+====
 c @@ 0 -1 h NIK 0 @@ the `#if` condition is an opaque field: its `&&` never reaches the stream, while the if under the directive does, under the unit itself
 int f(int a) {
 #if defined(X) && defined(Y)
