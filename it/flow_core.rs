@@ -162,3 +162,25 @@ fn a_refused_unit_leaves_the_batch_and_the_rest_are_judged() {
     assert_eq!(rows(&dirty), rows(&clean));
     assert!(!rows(&clean).is_empty(), "the python corpus holds findings");
 }
+
+/// The judged bit the core states per finding (9.0.0, plan v2.33 step
+/// 11a A17) against the rule the measuring side used to apply itself —
+/// the kind not advisory by the catalogue and the language past the
+/// precision gate by the package — over every finding of the nine
+/// corpora; both values occur, so the comparison is not vacuous.
+#[test]
+fn the_cores_judged_bit_is_the_catalogue_rule_on_every_finding() {
+    use codeeraser::flow_report::{advisory, lang_judged};
+    let (mut link, _) = Link::open(&core_bin()).expect("open core");
+    let mut seen = [false; 2];
+    for name in CORPORA {
+        let (paths, files) = corpus(name);
+        let v: Verdict = wire::judge(&mut link, &files).expect("a judgment");
+        for (f, _, x) in &v.findings {
+            let rule = !advisory(x.kind) && lang_judged(files[*f].lang);
+            assert_eq!(x.judged, rule, "{:?}: {x:?}", paths[*f]);
+            seen[usize::from(x.judged)] = true;
+        }
+    }
+    assert_eq!(seen, [true, true], "both bits occur across the corpora");
+}

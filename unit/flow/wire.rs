@@ -101,11 +101,11 @@ fn the_plan_is_greedy_under_the_cap_and_refuses_a_unit_heavier_than_it() {
     assert!(none.is_empty() && nothing.is_empty());
 }
 
-/// A healthy reply to two_files(): a dead store on the local, the
-/// unused parameter, one dynamic unit.
+/// A healthy reply to two_files(): a dead store on the local (judged),
+/// the unused parameter (advisory, not judged), one dynamic unit.
 fn healthy() -> Value {
     json!({
-        "findings": [[0, 1, 1, 1, 1], [0, 3, -1, 0, -1]],
+        "findings": [[0, 1, 1, 1, 1, 1], [0, 3, -1, 0, -1, 0]],
         "counts": {"units": 2, "stmts": 3, "vars": 2, "uses": 2, "findings": 2, "dynamicUnits": 1},
         "degraded": false,
     })
@@ -122,6 +122,7 @@ fn consume_types_a_healthy_reply_and_refuses_a_degraded_one_as_drift() {
         seq: 1,
         v: 1,
         seq_end: 1,
+        judged: true,
     };
     let param = Finding {
         u: 0,
@@ -129,6 +130,7 @@ fn consume_types_a_healthy_reply_and_refuses_a_degraded_one_as_drift() {
         seq: -1,
         v: 0,
         seq_end: -1,
+        judged: false,
     };
     assert_eq!(j.findings, vec![dead, param]);
     assert_eq!(j.counts["dynamicUnits"], 1);
@@ -158,12 +160,14 @@ const SKEWED: &str = "\
 /findings/0/4 0
 /findings/1/2 0
 /findings/1/3 1
-/findings/1 [0,1,1,1,1]
-/findings/0 [0,0,0,0,1]
-/findings/0 [0,0,1,-1,0]
-/findings/0 [0,0,0,-1,2]
-/findings/0 [0,2,0,1,0]
-/findings/0 [0,1,1,1]";
+/findings/0/5 2
+/findings/1/5 -1
+/findings/1 [0,1,1,1,1,1]
+/findings/0 [0,0,0,0,1,1]
+/findings/0 [0,0,1,-1,0,1]
+/findings/0 [0,0,0,-1,2,1]
+/findings/0 [0,2,0,1,0,1]
+/findings/0 [0,1,1,1,1]";
 
 #[test]
 fn consume_refuses_every_skew_by_name() {

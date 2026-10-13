@@ -183,7 +183,7 @@ fn a_knob_declared_at_its_default_is_silence() {
             "the graph's floor spelled out",
             Config {
                 graph: GraphCfg {
-                    scc_floor: Some(crate::score::knobs::CORE_SCC_FLOOR),
+                    scc_floor: Some(crate::score::knobs::core_scc_floor()),
                     ..GraphCfg::default()
                 },
                 ..Config::default()

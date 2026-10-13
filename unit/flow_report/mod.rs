@@ -11,21 +11,20 @@ fn finding(kind: u8, seq: i64, v: i64) -> Finding {
         seq,
         v,
         seq_end: seq,
+        judged: kind != 3,
     }
 }
 
 /// An unused parameter (kind 3, as observed) is advisory in every
-/// language by the package's catalogue; the others are judged exactly
-/// when the precision gate admitted the language.
+/// language by the package's catalogue, and a language is admitted
+/// exactly when the precision gate's mask carries it. Which finding is
+/// judged is the core's bit (`Finding::judged`; it/flow_core.rs holds
+/// it to these two reads over the corpora).
 #[test]
-fn the_advisory_kind_is_never_judged_and_the_mask_decides_the_rest() {
+fn the_catalogue_marks_the_advisory_kind_and_the_mask_the_languages() {
     let py = Lang::Python;
     let marked: Vec<u8> = (0..5).filter(|k| advisory(*k)).collect();
     assert_eq!(marked, [3]);
-    assert!(!judged(py, 3));
-    for kind in 0..3 {
-        assert_eq!(judged(py, kind), lang_judged(py), "kind {kind}");
-    }
     let admitted = crate::flow::judged_mask() & (1 << py as i64) != 0;
     assert_eq!(lang_judged(py), admitted);
 }
@@ -43,8 +42,14 @@ fn a_finding_is_placed_through_its_units_legend() {
     assert_eq!(names, [(0, "gone"), (1, "overwritten"), (2, "ignores")]);
     let run = place(&file, 0, &finding(0, 1, -1)).expect("a statement of gone");
     assert_eq!(
-        (run.unit.as_str(), run.line, run.line_end, run.var),
-        ("gone", 3, 3, None)
+        (
+            run.unit.as_str(),
+            run.line,
+            run.line_end,
+            run.var,
+            run.judged
+        ),
+        ("gone", 3, 3, None, true)
     );
     let param = place(&file, 2, &finding(3, -1, 0)).expect("a parameter of ignores");
     assert_eq!((param.line, param.var.as_deref()), (12, Some("a")));

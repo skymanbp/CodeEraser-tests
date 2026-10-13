@@ -188,7 +188,7 @@ fn the_rust_mirror_of_the_core_defaults_matches_the_echo() {
 /// cycle.
 #[test]
 fn the_trend_and_graph_mirrors_match_their_echoes() {
-    use codeeraser::score::knobs::CORE_SCC_FLOOR;
+    use codeeraser::score::knobs::core_scc_floor;
     let (mut link, _) = codeeraser::corelink::Link::open(&core_bin()).expect("open");
     let trend = link
         .request("trend", serde_json::json!({"rows": [[86400, 900, 1000]]}))
@@ -200,7 +200,7 @@ fn the_trend_and_graph_mirrors_match_their_echoes() {
     );
     let mut graph = |floor: Option<u32>| {
         let mut req = serde_json::json!({
-            "nodes": [[0, 0, 0]], "edges": [[0, 0, 0, 0]], "pos": []
+            "nodes": [[0, 0, 0]], "edges": [[0, 0, 0, 0]], "pos": [], "unres": []
         });
         if let Some(f) = floor {
             req["sccFloor"] = serde_json::json!(f);
@@ -209,7 +209,7 @@ fn the_trend_and_graph_mirrors_match_their_echoes() {
     };
     assert_eq!(
         graph(None),
-        graph(Some(CORE_SCC_FLOOR)),
+        graph(Some(core_scc_floor())),
         "graph floor mirror"
     );
     assert_ne!(graph(None), graph(Some(1)), "and 1 is not that floor");

@@ -67,3 +67,28 @@ fn class_knob_rows_shadow_the_ceiling_codes_in_order() {
     );
     assert!(class_knob_rows(&RulesCfg::default()).is_empty());
 }
+
+/// The defaults the config digest reads come from the package
+/// (`limits.graph.scc_floor`, `limits.score_defaults`), and equal the
+/// values the Rust mirror once spelled; core_wire's drift gate holds
+/// them to the core's echo.
+#[test]
+fn the_package_defaults_equal_the_former_mirror() {
+    let d = core_defaults();
+    let got = [
+        d.size_penalty_max,
+        d.soft_line_k,
+        d.dead_indeg_ceil,
+        d.rewrite_num,
+        d.rewrite_den,
+        d.cochange_floor,
+        d.viol_cost,
+        d.default_weight,
+        d.score_scale,
+        d.tol_num,
+        d.tol_den,
+        d.tol_abs,
+    ];
+    let want = [10, 2, 0, 50, 100, 2, 10, 1, 1000, 102, 100, 10].map(Some);
+    assert_eq!((core_scc_floor(), got), (2, want));
+}

@@ -105,7 +105,7 @@ fn the_cli_prints_the_library_face_and_dead_f_is_the_deadcode_verdict() {
     );
     assert_eq!(
         doc["goals"],
-        json!([{"goal": 0, "kind": "query", "name": null, "columns": ["F"], "sorts": ["node"]}])
+        json!([{"goal": 0, "answers": [0], "kind": "query", "name": null, "columns": ["F"], "sorts": ["node"]}])
     );
     assert_eq!(values(&doc), [["src/c.rs"]]);
     assert_eq!(doc["program"]["prelude"], 8);

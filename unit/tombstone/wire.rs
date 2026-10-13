@@ -103,3 +103,12 @@ fn consume_refuses_a_reply_that_is_not_this_core_s_shape() {
         );
     }
 }
+
+/// The site kinds' names are the package's, by the code the wire sends
+/// (`kind as u64`): the three names the Rust match once spelled.
+#[test]
+fn kind_names_read_the_package_by_wire_code() {
+    use crate::tombstone::Kind;
+    let names = [Kind::Bracketed, Kind::Bare, Kind::Prose].map(|k| (k as u64, k.name()));
+    assert_eq!(names, [(0, "bracketed"), (1, "bare"), (2, "prose")]);
+}

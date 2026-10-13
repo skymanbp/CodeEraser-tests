@@ -8,6 +8,7 @@ fn p(unit: &str, kind: u8, line: u32, var: Option<&str>) -> Placed {
         line,
         line_end: line,
         var: var.map(String::from),
+        judged: kind != 3,
     }
 }
 

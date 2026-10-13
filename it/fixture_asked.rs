@@ -52,7 +52,46 @@ pub fn asked(rel: &str, filed: &str) -> String {
     if rel == "structure/golden.ndjson" && !line.contains("\"patternShapes\":") {
         line = as_shapes(&line);
     }
-    line
+    with_required(rel, &line)
+}
+
+/// Request keys the 9.0.0 major made required (plan v2.33 step 11a: the
+/// core refuses a request without one by name, `<key>: required at
+/// 9.0.0`): a filed family request without one is asked with it — the
+/// graph's `unres` ledger empty, the erase target table one entry per
+/// fact row in key order, a whole file (`[i,0,0]`) or, for a
+/// verbatim_doc row (class 1), a one-line span (`[i,1,1]`). A line
+/// without a `rows` table, or one already carrying the key, comes back
+/// as is.
+fn with_required(rel: &str, line: &str) -> String {
+    let add = match rel {
+        "graph/golden.ndjson" if !line.contains("\"unres\":") => "\"unres\":[]".to_string(),
+        "erase/golden.ndjson" if !line.contains("\"targets\":") => match targets_for(line) {
+            Some(table) => format!("\"targets\":{table}"),
+            None => return line.to_string(),
+        },
+        _ => return line.to_string(),
+    };
+    let body = line.strip_suffix('}').expect("a closed object");
+    let out = format!("{body},{add}}}");
+    serde_json::from_str::<serde_json::Value>(&out).expect("still one json object");
+    out
+}
+
+/// The erase target table a filed request's fact rows name.
+fn targets_for(line: &str) -> Option<String> {
+    let v: serde_json::Value = serde_json::from_str(line).ok()?;
+    let rows = v.get("rows")?.as_array()?;
+    let table: Vec<[u64; 3]> = (0..)
+        .zip(rows)
+        .map(
+            |(i, r)| match r.get(0).and_then(serde_json::Value::as_i64) {
+                Some(1) => [i, 1, 1],
+                _ => [i, 0, 0],
+            },
+        )
+        .collect();
+    serde_json::to_string(&table).ok()
 }
 
 /// One stem's shape bits per retired pattern code (CE.Structure.Shape):

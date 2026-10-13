@@ -10,7 +10,7 @@ type Boundary = (
     Option<(usize, &'static str)>,
 );
 
-/// The map's boundaries, under the compiled mirror and under a
+/// The map's boundaries, under the core's pair and under a
 /// baseline-authored pair: below S is silence, S+1 opens the zone,
 /// both cut points are inclusive on the warn side, H itself is still
 /// inside the zone, past H the position keeps climbing (the
@@ -44,15 +44,15 @@ fn the_map_partitions_the_zone_at_its_two_cut_points() {
         assert_eq!(got, want, "landing({lines}, {soft}, {cap}, {tiers:?})");
     }
     assert_eq!(
-        DECLARED_TIERS,
+        declared_tiers(),
         (250, 750),
-        "the compiled mirror of the core"
+        "the core's tier lines, as the package carries them"
     );
 }
 
 /// The baseline document's two zone keys, read the way the hook reads
 /// them: a sound pair is taken, an unsound one falls back to the
-/// compiled mirror rather than opening the zone on a nonsense cut,
+/// core's pair rather than opening the zone on a nonsense cut,
 /// and a zero softLine falls back the same way — a zero the core
 /// would refuse must not open the zone on every file.
 #[test]

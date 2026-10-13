@@ -127,3 +127,11 @@ fn skew_is_refused() {
     swapped["holes"].as_array_mut().unwrap().swap(0, 1);
     assert!(consume(&swapped, &[&g]).is_err(), "rows out of order");
 }
+
+/// The reason codes read the merge document's catalogue entry: six
+/// names, the last (code 5) the one that says no line is saved — the
+/// two values the Rust constants once spelled.
+#[test]
+fn reason_codes_read_the_catalogue() {
+    assert_eq!((reasons().len(), reason_no_savings()), (6, Some(5)));
+}

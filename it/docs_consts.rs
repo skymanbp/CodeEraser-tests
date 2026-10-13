@@ -18,7 +18,7 @@ use std::path::Path;
 /// of the chip and not of the parser (v2.24 emptied the label cases —
 /// see `label_binding`; v2.25 bound the six that named a constant
 /// under a display name: `kgram` / `window` are `Params` defaults,
-/// `scale` is `structScale`, `row + knob cap` is `trendRowCap`, `feed
+/// `scale` is `scoreScale`, `row + knob cap` is `trendRowCap`, `feed
 /// schema` is `OBSERVE_SCHEMA`, and each family's `schema` chip is
 /// that family's `SCHEMA_ID`, routed by file in `collision`). Three
 /// kinds and nothing else:
@@ -61,7 +61,7 @@ fn label_binding(name: &str) -> Vec<&str> {
         // allowlisted as "prose" while a binding sat one hop away)
         "kgram" => vec!["Params::kgram"],
         "window" => vec!["Params::window"],
-        "scale" => vec!["structScale"],
+        "scale" => vec!["scoreScale"],
         "row + knob cap" => vec!["trendRowCap"],
         "feed schema" => vec!["OBSERVE_SCHEMA"],
         _ => vec![name],
@@ -169,27 +169,19 @@ fn assert_source(defs: &[Def], family: &str, chip: &str, want: &str, shown: &str
 }
 
 /// K46: the producer's cut of the `unmentioned` table and the core's
-/// soft cap are ONE number, pinned source to source (neither is a
-/// page chip): a smaller Rust value would truncate silently, a larger
-/// one would resurrect a table the core drops.
+/// soft cap are ONE number (neither is a page chip): the producer reads
+/// it from the package (`limits.graph.unmentioned_cap`), and the read
+/// equals the core's source definition — a smaller cap would truncate
+/// silently, a larger one would resurrect a table the core drops.
 #[test]
 fn the_unmentioned_soft_cap_is_one_number_on_both_sides() {
     let root = repo_root();
-    let one = |defs: Vec<Def>, name: &str| {
-        let found: Vec<&Def> = defs.iter().filter(|d| d.name == name).collect();
-        assert_eq!(found.len(), 1, "{name}: exactly one definition");
-        normalize(first_number(&found[0].value).expect("numeric value"))
-    };
-    assert_eq!(
-        one(
-            defs_in(&root, "cli/src", "rs", rust_line),
-            "UNMENTIONED_SOFT_CAP"
-        ),
-        one(
-            defs_in(&root, "core/app", "hs", haskell_line),
-            "unmentionedCap"
-        )
-    );
+    let defs = defs_in(&root, "core/app", "hs", haskell_line);
+    let found: Vec<&Def> = defs.iter().filter(|d| d.name == "unmentionedCap").collect();
+    assert_eq!(found.len(), 1, "unmentionedCap: exactly one definition");
+    let core = normalize(first_number(&found[0].value).expect("numeric value"));
+    let read = codeeraser::mention::unmentioned_soft_cap();
+    assert_eq!((read.to_string(), read), (core, 131_072));
 }
 
 #[test]

@@ -42,6 +42,7 @@ fn at(u: usize, kind: u8, seq: i64, v: i64) -> Finding {
         seq,
         v,
         seq_end: seq,
+        judged: kind != 3,
     }
 }
 
