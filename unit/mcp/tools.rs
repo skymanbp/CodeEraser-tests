@@ -21,6 +21,22 @@ fn trend_window_default_is_the_shared_one() {
     );
 }
 
+/// The churn window has ONE default (churn::DEFAULT_DAYS, read by clap,
+/// the adapters and the structure seams): the `days` row churn and join
+/// declare names that number, so the prose cannot drift alone (the
+/// structure / check `days` is an optional axis window, no default).
+#[test]
+fn the_churn_days_row_names_the_shared_default() {
+    let named = format!("(default {})", crate::churn::DEFAULT_DAYS);
+    assert!(DAYS.2.contains(&named), "tools/list says: {}", DAYS.2);
+    let carriers: Vec<_> = TOOLS
+        .iter()
+        .filter(|t| t.extra.contains(&DAYS))
+        .map(|t| t.name)
+        .collect();
+    assert_eq!(carriers, ["churn", "join"]);
+}
+
 /// The update row is the CHECK alone (the read-only charter): `path`
 /// rides its schema like every row's and nothing else does, and the
 /// description says what the tool does not do.

@@ -15,14 +15,23 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const REVIEW_SCHEMA: &str = "ce.eval-merge-review/1.0.0";
-/// The six reason names an audited row answers (merge/face.rs).
-pub const REASONS: [&str; 6] = codeeraser::merge::face::REASONS;
 /// A note's length bound, in characters.
 pub const NOTE_MAX: usize = 200;
 /// The fields of an answer line and of a review row, exactly.
 const FIELDS: [&str; 5] = ["id", "feasible", "reason", "params", "note"];
 /// The envelope's keys, exactly.
 const ENVELOPE: [&str; 5] = ["schema", "generated_from", "auditor", "batches", "rows"];
+/// The six reason names an audited row answers — the names the merge
+/// document spells by code (CE.Merge.Document `reasons`); the product
+/// reads only the codes, so this copy is the review instrument's.
+pub const REASONS: [&str; 6] = [
+    "ok",
+    "position",
+    "type",
+    "spans_statements",
+    "too_many_params",
+    "no_savings",
+];
 
 fn keys(v: &Value) -> BTreeSet<&str> {
     v.as_object()

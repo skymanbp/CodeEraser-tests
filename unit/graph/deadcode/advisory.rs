@@ -70,5 +70,8 @@ fn rows_name_back_and_the_mirror_legs_refuse_skew() {
     let mut empty = names(false);
     empty.names.insert([1, 3, 0], Vec::new());
     assert!(refusal(&unoffered, &empty).contains("names no local candidate"));
-    assert!(refusal(&json!({"degraded": false, "dead": []}), &n).contains("pre-6.2.0"));
+    assert!(
+        refusal(&json!({"degraded": false, "dead": []}), &n)
+            .contains("offers no exportUnmentioned")
+    );
 }

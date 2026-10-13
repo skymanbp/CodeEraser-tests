@@ -29,8 +29,8 @@ pub(super) fn ranges(p: impl Fn(char) -> bool) -> Vec<[u32; 2]> {
 #[ignore = "needs a core: the differential gate"]
 fn chars_agree_on_every_scalar_value() {
     let body = json!({ "inspect": { "chars": true } });
-    let reply = crate::corelink::judged::ask(&mut link(), "resolve/1", "9.0.0", "resolve", body)
-        .expect("core");
+    let reply =
+        crate::corelink::judged::ask(&mut link(), "resolve/1", "resolve", body).expect("core");
     let got = &reply["inspected"]["chars"];
     let want =
         json!({ "white": ranges(char::is_whitespace), "alnum": ranges(char::is_alphanumeric) });

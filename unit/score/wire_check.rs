@@ -120,7 +120,7 @@ fn every_reply_law_is_named() {
         (
             req(|r| r.present = Some(Vec::new())),
             rep(|_| {}),
-            "pre-6.4.0 core",
+            "offers no ratchet.dropped",
         ),
         (
             req(|_| {}),
@@ -232,7 +232,7 @@ fn knob_echoes_are_asked_of_judged_replies_only() {
         (
             req(|r| r.present = Some(vec![3])),
             degraded(),
-            "pre-6.4.0 core",
+            "offers no ratchet.dropped",
         ),
         (req(|_| {}), held(&["knobs_digest"]), "held knobs_digest"),
     ]);

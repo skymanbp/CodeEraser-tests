@@ -105,11 +105,10 @@ fn no_args(name: &'static str, text: String) -> Row {
 
 /// The four faces whose measurement no judgment reads.
 fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
-    use codeeraser::{dedup, graph, scan};
+    use codeeraser::{graph, scan};
     let core = common::core_bin();
     let row = no_args;
     let scan = scan::judged(dir, &core).expect("scan").document;
-    let (found, dsum) = dedup::analyze(dir, None, None, None).expect("dedup");
     vec![
         row(
             "scan",
@@ -117,7 +116,14 @@ fn measured_reports(dir: &std::path::Path) -> Vec<Row> {
         ),
         row(
             "check_duplication",
-            dedup::report_json(&found, &dsum).expect("dj").to_string(),
+            faces::gated_doc(faces::dedup(
+                dir,
+                &core,
+                (None, None),
+                faces::Plumb::default(),
+            ))
+            .expect("dedup")
+            .to_string(),
         ),
         row(
             "churn",

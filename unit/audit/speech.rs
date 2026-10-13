@@ -65,7 +65,7 @@ fn the_request_carries_the_verdicts_as_rows_and_the_paths_as_references() {
         ..Said::bare(Face::Precommit)
     };
     assert!(said.blocked());
-    let mut body = body(&said);
+    let mut body = request(&said).body();
     body["lang"] = serde_json::json!(0);
     let want = serde_json::json!({
         "family": "audit", "degraded": null, "lang": 0,
@@ -91,7 +91,7 @@ fn a_degraded_leg_is_state_two_and_names_its_error() {
         git: true,
         ..Said::bare(Face::Stop)
     };
-    let body = body(&said);
+    let body = request(&said).body();
     assert_eq!(
         body["strings"]["error"],
         serde_json::json!(["core unavailable"])

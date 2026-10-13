@@ -67,7 +67,7 @@ fn inspect(link: &mut Link, key: &str, questions: &[Value]) -> Vec<Value> {
     let mut out = Vec::new();
     for batch in questions.chunks(BATCH) {
         let body = json!({ "inspect": { key: batch } });
-        let reply = judged::ask(link, "resolve/1", "9.0.0", "resolve", body)
+        let reply = judged::ask(link, "resolve/1", "resolve", body)
             .unwrap_or_else(|e| panic!("resolve/1 inspect {key}: {e}"));
         let answers = reply["inspected"][key]
             .as_array()

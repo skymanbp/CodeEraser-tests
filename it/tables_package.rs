@@ -74,8 +74,8 @@ fn a_run_without_the_package_is_refused_by_name() {
         ),
         (
             stub_core::stub("tables-old-core", codeeraser::corelink::PROTO, None),
-            "pre-7.7.0 core",
-            "no tables/1",
+            "out of step",
+            "offers no tables/1",
         ),
         (
             stub_core::stub("tables-short", codeeraser::corelink::PROTO, Some(&short)),

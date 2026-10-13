@@ -87,9 +87,7 @@ fn a_reply_without_lines_or_exit_names_the_proto_it_needs() {
         json!({"document": {}, "exit": {"fail": false}}),
         json!({"lines": []}),
     ] {
-        let err = bind_lines(&r, &Strings)
-            .expect_err("pre-7.10.0")
-            .to_string();
-        assert!(err.contains("pre-7.10.0 core"), "{err}");
+        let err = bind_lines(&r, &Strings).expect_err("skew").to_string();
+        assert!(err.contains("offers no `lines` / `exit`"), "{err}");
     }
 }

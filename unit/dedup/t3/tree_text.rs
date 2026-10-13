@@ -1,4 +1,5 @@
 use super::*;
+use crate::dedup::tokens::fnv1a;
 use crate::scan::lang::Lang;
 
 /// The first node of `kind` in preorder, with the source it was parsed

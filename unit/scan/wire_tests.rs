@@ -105,24 +105,25 @@ fn no_request_carries_the_retired_judged_mask() {
 
 /// Both echoed tables are lifted the same way and required the same
 /// way: a chunk's `[rowIndex, value]` rows come back on the request's
-/// indices, and a reply without the key is a core older than the
-/// table — refused by the version it lacks, never read as "no
-/// complexity anywhere" or "no cycles".
+/// indices, and a reply without the key is skew — refused by the key
+/// it lacks (corelink::skew), never read as "no complexity anywhere"
+/// or "no cycles".
 #[test]
-fn an_echoed_table_is_lifted_by_the_chunk_base_or_refused_by_its_version() {
+fn an_echoed_table_is_lifted_by_the_chunk_base_or_refused_by_its_name() {
     let grades = grade_rows(&Thresholds::default()).expect("coherent defaults");
     let (blocks, rows) = ([2usize, 2], [[0u64, 1]; 4]);
     let cuts = chunk::plan(&bare(&rows, &grades, &blocks), 2).expect("one file per chunk");
     assert_eq!(cuts.len(), 2);
-    for (key, since) in [("derived", "7.2.0"), ("cocBumped", "6.5.0")] {
+    for key in ["derived", "cocBumped"] {
         let mut reply = json!({});
         reply[key] = json!([[1, 7]]);
         assert_eq!(
-            lifted(&reply, key, since, &cuts[1]).expect("the table rides back"),
+            lifted(&reply, key, &cuts[1]).expect("the table rides back"),
             vec![[3, 7]],
             "{key}: row 1 of the second chunk is row 3 of the request"
         );
-        let silent = lifted(&json!({}), key, since, &cuts[0]).expect_err("no key = an older core");
-        assert!(silent.to_string().contains(since), "{key}: {silent}");
+        let silent = lifted(&json!({}), key, &cuts[0]).expect_err("no key = skew");
+        let named = format!("offers no scan/1 `{key}`");
+        assert!(silent.to_string().contains(&named), "{key}: {silent}");
     }
 }

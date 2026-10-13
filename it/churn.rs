@@ -20,7 +20,7 @@ fn churn_classifies_append_rewrite_cochange_and_survival() {
 
 /// Attack review F12 (minimal surviving-root case): a root commit
 /// inside the window must count its additions via the empty-tree
-/// base. Before the fix `sha^..sha` failed, added_in_window stayed 0,
+/// base. Before the fix `sha^..sha` failed, the window's additions stayed 0,
 /// and blame still counted every surviving root line.
 #[test]
 fn root_commit_additions_are_counted() {
@@ -30,8 +30,8 @@ fn root_commit_additions_are_counted() {
     common::commit_all(&root, "seed");
     let r = churn::run(&root, 30).expect("churn");
     assert_eq!(r.commits, 1);
-    assert!(r.added_in_window() > 0, "root additions counted");
-    assert_eq!(r.added_in_window(), r.surviving, "everything survives");
+    assert!(added(&r) > 0, "root additions counted");
+    assert_eq!(added(&r), r.surviving, "everything survives");
     // the whole seed lands in ONE ledger row: a.rs's work_1 unit
     assert_eq!(r.units.len(), 1, "rows: {:?}", r.units);
     let row = &r.units[0];
@@ -40,7 +40,7 @@ fn root_commit_additions_are_counted() {
         row.anchor.ends_with("#0"),
         "a top-level unit's chain: {row:?}"
     );
-    assert_eq!(row.appended, r.added_in_window());
+    assert_eq!(row.appended, added(&r));
     assert_eq!(row.rewrote, 0, "an empty before side cannot rewrite");
 }
 
@@ -135,10 +135,10 @@ fn assert_report(r: &churn::Report) {
         r.cochange
     );
     assert!(
-        r.surviving < r.added_in_window(),
+        r.surviving < added(r),
         "b.rs's emptied function must count as churned: {} of {}",
         r.surviving,
-        r.added_in_window()
+        added(r)
     );
     let json = laid_out(r);
     assert_eq!(json["schema"], common::stub_core::catalogue_schema("churn"));
@@ -151,6 +151,11 @@ fn assert_report(r: &churn::Report) {
 
 /// The report as the core lays it out (plan v2.32 step 5: the churn
 /// document is the core's, this side sends the window's integers).
+/// Every line the window added: appended plus rewritten.
+fn added(r: &churn::Report) -> usize {
+    r.append_lines() + r.rewrite_lines()
+}
+
 fn laid_out(r: &churn::Report) -> serde_json::Value {
     churn::answer(&common::core_bin(), r, 30)
         .expect("laid out")

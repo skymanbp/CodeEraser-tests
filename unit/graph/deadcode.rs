@@ -28,8 +28,8 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
         node("docs/x.md", "Intro", super::super::wire::GRAN_SECTION),
         node("pkg", "", super::super::wire::GRAN_PACKAGE),
     ];
-    // the confidence road: a 3-column dead row carries the trust
-    // column, a 2-column (legacy) row rides as it came
+    // a dead row carries the trust column: request_body always sends
+    // `unres`, so the core always answers three columns
     let reply = json!({
         "dead": [[0, 1, 2]], "reported": [[1, 3], [2, 1]],
         "fail": true, "counts": {"kept": 7}
@@ -39,30 +39,28 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
     assert_eq!(j.dead, vec![vec![0, 1, 2]]);
     assert_eq!(j.reported, vec![[1, 3], [2, 1]]);
     assert!(j.fail && j.kept == Some(7) && j.degraded.is_none());
-    let skew = json!({"dead": [[2, 1]], "counts": {}});
-    let err = super::consume(&skew, &nodes, None).expect_err("aggregate in dead");
-    assert!(err.to_string().contains("wire skew"), "{err}");
-    let outside = json!({"dead": [[0, 5]], "reported": [], "fail": true});
-    let err = super::consume(&outside, &nodes, None).expect_err("verdict 5");
-    assert!(err.to_string().contains("verdict 5 out of range"), "{err}");
-    // a reply without the 2.18.0 keys is wire skew, not an older
-    // core to accommodate: no pre-2.18 core passes the handshake,
-    // and the conjunction that used to stand in is retired (O62)
-    for (reply, key) in [
-        (
-            json!({"dead": [[0, 1]], "reported": [], "counts": {}}),
-            "fail",
-        ),
-        (
-            json!({"dead": [[0, 1]], "fail": true, "counts": {}}),
-            "reported",
-        ),
-    ] {
-        let err = super::consume(&reply, &nodes, None).expect_err("absent key");
+    // each refused by name: an aggregate in the failing table, a row
+    // without its trust column, a verdict outside the code range, and
+    // a reply without a 2.18.0 key — skew (corelink::skew), not an
+    // older core to accommodate: none passes the handshake, and the
+    // conjunction that used to stand in is retired (O62)
+    let skewed = [
+        json!({"dead": [[2, 1, 0]], "reported": [], "fail": true, "counts": {}}),
+        json!({"dead": [[0, 1]], "reported": [], "fail": true, "counts": {}}),
+        json!({"dead": [[0, 5, 0]], "reported": [], "fail": true}),
+        json!({"dead": [[0, 1, 0]], "reported": [], "counts": {}}),
+        json!({"dead": [[0, 1, 0]], "fail": true, "counts": {}}),
+    ];
+    let says = [
+        "wire skew",
+        "dead row of arity 2",
+        "verdict 5 out of range",
+        "offers no graph/1 `fail`",
+        "offers no graph/1 `reported`",
+    ];
+    for (reply, says) in skewed.iter().zip(says) {
+        let err = super::consume(reply, &nodes, None).expect_err(says);
         let text = format!("{err:#}");
-        assert!(
-            text.contains("wire skew") && text.contains(&format!("`{key}`")),
-            "the absent key is refused by name: {text}"
-        );
+        assert!(text.contains(says), "refused by name: {text}");
     }
 }

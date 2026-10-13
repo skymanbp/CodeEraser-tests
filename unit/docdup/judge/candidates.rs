@@ -146,7 +146,7 @@ fn frozen_row(a: &[u64], b: &[u64]) -> (u64, u64, u64, bool) {
 fn ten_thousand_seeded_pairs_measure_runs_and_verdicts_as_the_frozen_rust_did() {
     let core = crate::daemon::judge::core_bin().expect("a core");
     let fam = super::super::wire::family(&core);
-    let mut link = crate::lockstep::open_family(fam.core, fam.cap).expect("open core");
+    let mut link = crate::corelink::judged::open(fam.core, fam.cap).expect("open core");
     let mut rng = Lcg(0x5EED_0006);
     let alphabet = [SHINGLES[0], SHINGLES[4], SHINGLES[7], 42];
     let (mut compared, mut round) = (0usize, 0usize);

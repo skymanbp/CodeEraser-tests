@@ -35,8 +35,8 @@ fn lowercase_agrees_on_every_scalar_value() {
         "after": ranges(|c| sigma("A", c)),
     });
     let body = json!({ "inspect": { "lower": true } });
-    let reply = crate::corelink::judged::ask(&mut link(), "resolve/1", "9.0.0", "resolve", body)
-        .expect("core");
+    let reply =
+        crate::corelink::judged::ask(&mut link(), "resolve/1", "resolve", body).expect("core");
     agree(
         "lower",
         &[json!("every scalar value")],

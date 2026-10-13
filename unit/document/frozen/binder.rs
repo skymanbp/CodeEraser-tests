@@ -5,9 +5,12 @@
 //! here so it reads the copied items' private fields) holds the core to it.
 #![allow(dead_code)]
 
-use crate::document::SINCE;
 use anyhow::{Result, anyhow, bail};
 use serde_json::Value;
+
+/// The frozen binder's own refusal text: the proto its reply shape
+/// needs (document.rs named it until the skew refusal, step 11a).
+const SINCE: &str = "7.8.0";
 
 #[path = "../spelled/binder.rs"]
 mod spelled;

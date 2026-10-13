@@ -144,6 +144,11 @@ fn marks_are_counted_per_occurrence_and_overlapping_phrases_both_count() {
     assert_eq!(marks("the previously_seen set"), 0);
 }
 
+/// A word that belongs to a frame, never to a name.
+fn frame_word(w: &str) -> bool {
+    has(v().en_prefix, w) || has(v().en_suffix, w) || has(v().zh_prefix, w) || has(v().zh_suffix, w)
+}
+
 #[test]
 fn frame_words_come_from_every_table() {
     let verdicts: Vec<bool> = ["without", "free", "无", "已移除", "cache"]

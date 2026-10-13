@@ -189,7 +189,7 @@ fn docdup_rev_bump_invalidates_index() {
 #[test]
 fn markdown_is_graph_cache_not_fingerprints() {
     let p = Params::default();
-    let (_dir, mut idx) = open_idx("md-graph", "index.db");
+    let (dir, mut idx) = open_idx("md-graph", "index.db");
     assert!(
         idx.refresh_file("doc.md", b"[x](./a.rs)\n", Lang::Markdown, p, false)
             .expect("md")
@@ -204,7 +204,8 @@ fn markdown_is_graph_cache_not_fingerprints() {
         idx.all_instances().expect("instances").is_empty(),
         "below-threshold code + markdown must add zero fingerprints"
     );
-    assert_eq!(idx.file_count().expect("count"), 2, "markdown is indexed");
+    let (files, _) = codeeraser::dedup::index::peek(&dir.join("index.db"), p).expect("peek");
+    assert_eq!(files, 2, "markdown is indexed");
     let mut specs: Vec<String> = Vec::new();
     assert!(
         idx.ensure_edges_resolved(

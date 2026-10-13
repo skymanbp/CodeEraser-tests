@@ -106,6 +106,4 @@ fn a_parameter_reads_its_first_hole_on_every_member() {
     );
     assert_eq!(far["family"], "t3");
     assert_eq!(face["members"][0]["run"], json!([1, 1]));
-    assert_eq!((REASONS[1], REASONS[5]), ("position", "no_savings"));
-    assert_eq!(REASONS.len(), 6);
 }

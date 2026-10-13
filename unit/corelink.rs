@@ -66,7 +66,7 @@ fn an_overlong_line_is_refused_by_name_and_the_session_survives() {
         || serde_json::json!({ "pad": "x".repeat(crate::tables::get().limits.caps.line_bytes) });
     let pass = super::judged::whole_pass::<serde_json::Value>(
         &mut link,
-        ("tables/1", "7.7.0", "tables"),
+        ("tables/1", "tables"),
         over(),
         ("probe pass", &[]),
     );

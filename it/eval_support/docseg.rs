@@ -8,6 +8,10 @@ use codeeraser::docdup::{self, exempt, spec};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
+/// The exemption classes by their frozen position code
+/// (docdup::exempt::EXEMPT_LIVE / _LICENSE / _ALLOW).
+const EXEMPT_NAMES: [&str; 3] = ["live", "license_header", "inline_allow"];
+
 /// The frozen pair identity every docdup instrument echoes verbatim
 /// (D5): the segment geometry IS the identity — spans were frozen by
 /// the 3d extraction, so no key/nth resolution is ever re-derived.
@@ -29,7 +33,7 @@ pub fn docdup_constants() -> Value {
         "license_head_lines": t.license_head_lines,
         "doc_line_cap": t.doc_line_cap,
         "kinds": t.kind_names,
-        "exempt": exempt::EXEMPT_NAMES,
+        "exempt": EXEMPT_NAMES,
         "docdup_rev": docdup::DOCDUP_REV,
         // the exemption routes with structurally-zero counts state
         // WHY here (3d exit: nonzero or explained, never silent)
@@ -57,7 +61,7 @@ pub fn docdup_row(path: &str, code: &str, text: &str) -> Value {
             live += 1;
         } else {
             *exempt_by
-                .entry(exempt::EXEMPT_NAMES[s.exempt as usize])
+                .entry(EXEMPT_NAMES[s.exempt as usize])
                 .or_insert(0) += 1;
         }
     }

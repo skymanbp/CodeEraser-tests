@@ -111,7 +111,7 @@ fn tombstone_replay() {
         .ok()
         .and_then(|s| s.parse().ok());
     let shas = commits(&root, limit);
-    let mut link: Link = codeeraser::lockstep::open_family(&crate::common::core_bin(), wire::CAP)
+    let mut link: Link = codeeraser::corelink::judged::open(&crate::common::core_bin(), wire::CAP)
         .expect("a core offering tombstone/1");
     let (mut walked, mut fired, mut label, mut prose, mut exempt, mut seg) =
         (0usize, 0usize, 0usize, 0usize, 0usize, 0usize);
