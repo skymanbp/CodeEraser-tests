@@ -23,12 +23,15 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 
 /// What a precision doc's answers come from besides the lowering: the
 /// unit extraction, the walk that picks the universe, the language
-/// registry and the pinned grammars. The lockfile is read by its pins
-/// (LOCK); the rest as history.
-const ANSWERED_BY: [&str; 4] = [
+/// registry, the core's per-language flow tables the lowering reads off
+/// tables/1 (CE.Lang.<Language>.Flow since plan v2.32 step 2) and the
+/// pinned grammars. The lockfile is read by its pins (LOCK); the rest as
+/// history.
+const ANSWERED_BY: [&str; 5] = [
     "cli/src/scan/functions.rs",
     "cli/src/scan/walk.rs",
     "cli/src/scan/lang.rs",
+    "core/app/CE/Lang/*/Flow.hs",
     LOCK,
 ];
 
