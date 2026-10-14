@@ -15,20 +15,12 @@ fn explicit_core_wins_and_default_routes_through_the_one_resolver() {
 /// One core session per process (plan v2.33 W2-text Z1): a link dropped
 /// healthy parks its session and the next `open` of that core takes it
 /// back — a refusal leaves it whole; an `own` link neither takes nor
-/// parks. On a private copy of the core, so no other test of this
+/// parks. On a private core of its own, so no other test of this
 /// process shares the slot's key.
 #[test]
 fn a_dropped_link_parks_its_session_for_the_next_open() {
-    let real = std::env::var("CE_CORE_BIN").expect("the unit tests run with CE_CORE_BIN");
-    let dir = crate::testutil::scratch("z1-slot");
-    let copy = dir.join(if cfg!(windows) {
-        "ce-core.exe"
-    } else {
-        "ce-core"
-    });
-    std::fs::copy(&real, &copy).expect("copy the core");
-    let core = copy.display().to_string();
-    let open = || super::Link::open(&core).expect("the copy answers").0;
+    let core = private_core().display().to_string();
+    let open = || super::Link::open(&core).expect("the core answers").0;
     let first = open();
     let pid = first.pid();
     drop(first);
@@ -51,6 +43,32 @@ fn a_dropped_link_parks_its_session_for_the_next_open() {
         pid,
         "the refusal kept it; the own link never parked"
     );
+}
+
+/// The real core under a path of its own — the slot key is the canonical
+/// path, so a hard link is its own slot. A link and not a copy: Linux
+/// refuses to exec an image any process holds open for writing
+/// (ETXTBSY), and a child another test thread forks mid-copy inherits
+/// the copy's write fd until its own exec. Into the scratch dir, else
+/// (temp on another volume) beside the real core; never a copy.
+fn private_core() -> std::path::PathBuf {
+    let real = std::path::PathBuf::from(
+        std::env::var("CE_CORE_BIN").expect("the unit tests run with CE_CORE_BIN"),
+    );
+    let name = real.file_name().expect("CE_CORE_BIN names a file");
+    let link = crate::testutil::scratch("z1-slot").join(name);
+    if std::fs::hard_link(&real, &link).is_ok() {
+        return link;
+    }
+    let beside = real
+        .parent()
+        .expect("the core sits in a directory")
+        .join(format!("ce-z1-slot-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&beside);
+    std::fs::create_dir_all(&beside).expect("mkdir beside the core");
+    let link = beside.join(name);
+    std::fs::hard_link(&real, &link).expect("link the core beside itself");
+    link
 }
 
 /// A line over the core's byte ceiling (plan v2.33 legacy item 1). A

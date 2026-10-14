@@ -94,7 +94,10 @@ fn a_run_without_the_package_is_refused_by_name() {
 /// Legs 3 and 4: the cache is written on first read and read back
 /// without the core after; a changed core binary, a damaged file and a
 /// file another `ce` or proto wrote are fetched again; a hello naming
-/// another digest than the package read refuses.
+/// another digest than the package read refuses. The core is a copy,
+/// not a hard link (its mtime moves): still exposed to ETXTBSY through a
+/// sibling's child holding the copy's write fd, but ce's own startup
+/// separates the copy from the core's exec.
 #[test]
 fn the_cache_holds_until_its_identity_moves() {
     let dir = seeded("tables-cache");
