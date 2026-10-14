@@ -54,7 +54,6 @@ project daemon | 项目 daemon | | daemon, ping | | | gui: started lazily by eve
 read-only report server | 只读报告服务器 | | mcp | | mcpjson | gui: the plugin registers it | gui: 插件自行注册
 uninstall | 卸载 | | eject | | | gui: CLI only | gui: 只在 CLI
 Claude Code wiring | Claude Code 接线 | | setup, setup --unwire | | | gui: CLI only: the Windows installer calls it, AppImage / dmg users run it once | gui: 只在 CLI：Windows 安装包调用它，AppImage / dmg 用户装后跑一次
-bench dashboard | 实测仪表盘 | | | tab:bench, bench_doc | | cli: compiled-in series; README and site carry the same block | cli: 编译内置序列；README 与官网带同一块
 root anchoring | 根锚定 | | | default_root, resolve_root | | cli: every command and hook anchors through `root` | cli: 每条命令与钩子都经 `root` 锚定
 ";
 

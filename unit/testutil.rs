@@ -79,8 +79,9 @@ pub fn sections(table: &str) -> impl Iterator<Item = (&str, &str)> {
 /// with — `{LF}` `{CR}` `{TAB}` `{NUL}` `{BOM}` — expanded, so a row
 /// keeps its own backslashes literal (the reader tables of cmdline.rs,
 /// compdb.rs and c_head.rs). One table over a fold rather than a chain
-/// of `replace` calls: the clone gate reads that chain as the bench
-/// dashboard's HTML escaper, and the write guard refused it.
+/// of `replace` calls: the clone gate read that chain as the (since
+/// retired) bench dashboard's HTML escaper, and the write guard
+/// refused it.
 pub fn unmarked(text: &str) -> String {
     const MARKS: [(&str, &str); 5] = [
         ("{LF}", "\n"),

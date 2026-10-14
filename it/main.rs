@@ -3,7 +3,7 @@
 //! grammar — thirteen since plan v2.30 step 1), and the link bill
 //! dominated the CI test step. Every former root
 //! file is a module here; shared dirs (common/, eval_support/,
-//! bench_support/, *_parts/) are crate-level mods their consumers
+//! *_parts/) are crate-level mods their consumers
 //! reach via `use crate::…`. Two files stay separate root binaries,
 //! each for a stated isolation need: corelink_deadline.rs mutates
 //! process env under thread-level parallelism, and
@@ -18,13 +18,6 @@ mod baseline_ledgers;
 mod baseline_policy;
 mod baseline_reanchored;
 mod baseline_retired;
-mod bench;
-mod bench_backfill;
-mod bench_frozen_sources;
-mod bench_render;
-mod bench_render_dashboard;
-mod bench_seat;
-mod bench_support;
 mod bless_guard;
 mod check_sim_table;
 mod churn;

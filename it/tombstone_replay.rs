@@ -3,7 +3,7 @@
 //! is one changeset — parent blob before, child blob after, the same
 //! `measure` the hooks run, the same tombstone/1 judgment over one
 //! core link — and every seated site is printed for arbitration. A
-//! git-history instrument like bench_backfill, so it stays as a
+//! git-history instrument, so it stays as a
 //! standing ignored leg under the EVAL-SET retirement rule.
 //!
 //!   cargo test --release --test it -- --ignored tombstone_replay --nocapture

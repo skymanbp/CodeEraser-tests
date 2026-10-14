@@ -119,11 +119,11 @@ fn is_rev(rev: &str) -> bool {
 fn a_recipe_ends_at_its_closing_backtick_in_either_language() {
     let hit = |p: &str| vec![("6da4463".to_string(), p.to_string())];
     for line in [
-        "英文之外：`git show 6da4463:contracts/bench/bench.json`），同一个 tag。",
-        "reproduce with `git show 6da4463:contracts/bench/bench.json` and diff.",
-        "| `git show 6da4463:contracts/bench/bench.json` | one cell |",
+        "英文之外：`git show 6da4463:contracts/docs-facts.json`），同一个 tag。",
+        "reproduce with `git show 6da4463:contracts/docs-facts.json` and diff.",
+        "| `git show 6da4463:contracts/docs-facts.json` | one cell |",
     ] {
-        assert_eq!(recipes(line), hit("contracts/bench/bench.json"), "{line}");
+        assert_eq!(recipes(line), hit("contracts/docs-facts.json"), "{line}");
     }
     assert_eq!(recipes("`git archive 6da4463 docs`）打包"), hit("docs"));
 }

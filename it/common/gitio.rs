@@ -18,7 +18,7 @@ pub fn git(dir: &Path, args: &[&str]) {
 
 /// Run git in `dir` and READ it, success asserted (the stderr named):
 /// stdout as git wrote it. For a reader whose empty stdout is an
-/// answer — the bench joining rule reads "nothing changed" from one —
+/// answer — a "nothing changed" reading, say —
 /// a git that failed (a missing rev, a shallow clone) must not pass as
 /// that answer; it is a named refusal instead.
 pub fn git_ok(dir: &Path, args: &[&str]) -> String {

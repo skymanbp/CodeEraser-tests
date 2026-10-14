@@ -1,7 +1,8 @@
 //! The marked-block channel: `<!-- name:begin -->` … `<!-- name:end -->`
-//! around a GENERATED region of an authored page — the bench
-//! dashboard, the parity table, the site's bench strip. ONE splicer:
-//! the three writers each carried their own split-compare-or-write
+//! around a GENERATED region of an authored page — the parity
+//! table, the homepage roast block. ONE splicer: the writers (three
+//! until the bench suite retired on 2026-10-14) each carried their
+//! own split-compare-or-write
 //! stanza (plan v2.21 S5), and a fourth would have been a fourth
 //! copy. The page outside the block is authored and never touched;
 //! the block is byte-compared on a plain run and rewritten under

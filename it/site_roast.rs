@@ -5,8 +5,8 @@
 //! had moved to 953 with five different axes, a different candidate
 //! count and a different note line — the page stated a measurement it
 //! was no longer making. A version-varying documentation fact belongs
-//! on the derived channel (`docs-generated-facts`), the one the bench
-//! strip and the demo table already ride.
+//! on the derived channel (`docs-generated-facts`), the one the demo
+//! table already rides.
 //!
 //! The run is the real binary against this repository into a SCRATCH
 //! index (baseline_bridge's shape — the project's own `.ce/index.db`

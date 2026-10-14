@@ -28,13 +28,11 @@ pub const SURFACES: &[(&str, bool)] = &[
     ("site/how/analysis/index.html", false),
     ("site/math/index.html", false),
     ("site/stack/index.html", false),
-    ("site/bench/index.html", false),
     ("site/zh/index.html", true),
     ("site/zh/how/index.html", true),
     ("site/zh/how/analysis/index.html", true),
     ("site/zh/math/index.html", true),
     ("site/zh/stack/index.html", true),
-    ("site/zh/bench/index.html", true),
 ];
 
 /// The language-switch strings an English page carries, exactly.

@@ -82,8 +82,8 @@ use Want::{C, Nothing, Refused};
 const SHAPES: &[(&str, Want)] = &[
     // a page cited from a doc comment: span and anchor
     (
-        "//! (docs/BENCH·md:31-40 ˋjoins onlyˋ)",
-        C("docs/BENCH.md", 31, 40, "joins only"),
+        "//! (docs/FPR-REPLAY·md:31-40 ˋjoins onlyˋ)",
+        C("docs/FPR-REPLAY.md", 31, 40, "joins only"),
     ),
     // a single line is a span of one
     ("// (X·md:107 ˋpost/putˋ)", C("X.md", 107, 107, "post/put")),

@@ -1,7 +1,7 @@
 //! The ignored half of the edge-coverage instrument (O48): replay the
 //! REAL pipeline over each commit the reviewed edge register names and
 //! freeze what it relocated. A git-history instrument like
-//! bench_backfill and tombstone_replay, so it stays a standing ignored
+//! tombstone_replay, so it stays a standing ignored
 //! leg under the EVAL-SET retirement rule.
 //!
 //!   CE_CORE_BIN=… cargo test --release --test it -- --ignored eval_l2_edges --nocapture

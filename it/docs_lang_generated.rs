@@ -3,7 +3,8 @@
 //! `docs_lang` cuts every generated block before it judges a page —
 //! a block's language belongs to its renderer — and that leaves a hole
 //! exactly the size of a renderer never given a language. The
-//! benchmark renderers were three of them: the frozen evaluation
+//! benchmark renderers (retired with the bench suite on 2026-10-14)
+//! were three of them: the frozen evaluation
 //! points went out as `17/17 scoped (100%)`,
 //! `0/600 flagged (gate <= 1%)` and `overall gate >= 0.90 held` on
 //! every Chinese surface, release after release, with every byte gate

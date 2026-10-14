@@ -225,3 +225,44 @@ pub fn two_commits(tag: &str, seed: &[(&str, &str)], then: &[(&str, &str)]) -> P
     commit_all(&repo, "second");
     repo
 }
+
+/// today, YYYY-MM-DD (UTC): the date a measured ledger row is
+/// stamped with — provenance, not a comparability key.
+pub fn today() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    // civil-date conversion (Howard Hinnant's days algorithm), no deps
+    let days = (secs / 86400) as i64;
+    let (mut y, mut doy) = (1970i64, days);
+    loop {
+        let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+        let len = if leap { 366 } else { 365 };
+        if doy < len {
+            break;
+        }
+        doy -= len;
+        y += 1;
+    }
+    let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    let ml = [
+        31,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+    let mut m = 0usize;
+    while doy >= ml[m] {
+        doy -= ml[m];
+        m += 1;
+    }
+    format!("{y:04}-{:02}-{:02}", m + 1, doy + 1)
+}

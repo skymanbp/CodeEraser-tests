@@ -21,8 +21,7 @@
 //! there instead (common::ledger::out_file), so the ten runs leave the
 //! measured tree clean and the doc is copied in once all ten are in.
 
-use crate::bench_support::today;
-use crate::common::ledger::WINDOW;
+use crate::common::ledger::{WINDOW, today};
 use crate::common::{chain_of, core_bin, repo_root};
 use crate::eval_flow_parts::batches::clone_base;
 use crate::eval_flow_parts::exam;

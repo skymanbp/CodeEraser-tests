@@ -163,8 +163,8 @@ pub(crate) fn harvest(root: &std::path::Path) -> (Vec<Cite>, Vec<String>) {
 }
 
 /// The tracked file a citation names, by unique path suffix — the
-/// four PERF-BUDGET sites write it bare, one writes `docs/BENCH.md`,
-/// and the calibration one lives under contracts/. A source target
+/// PERF-BUDGET sites write it bare and the calibration one lives
+/// under contracts/. A source target
 /// spells as much of its path as uniqueness needs: unit tests mirror
 /// `cli/src` under `cli/tests/unit`, so a bare file name may be two.
 pub(crate) fn resolve(root: &std::path::Path, target: &str) -> Result<String, String> {
