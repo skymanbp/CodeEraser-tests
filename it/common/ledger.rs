@@ -18,6 +18,47 @@ use std::path::{Path, PathBuf};
 /// (fpr_lang_replay) and the flow one (fpr_flow_replay).
 pub const WINDOW: usize = 400;
 
+/// today, YYYY-MM-DD (UTC): the date a measured ledger row is
+/// stamped with — provenance, not a comparability key.
+pub fn today() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    // civil-date conversion (Howard Hinnant's days algorithm), no deps
+    let days = (secs / 86400) as i64;
+    let (mut y, mut doy) = (1970i64, days);
+    loop {
+        let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+        let len = if leap { 366 } else { 365 };
+        if doy < len {
+            break;
+        }
+        doy -= len;
+        y += 1;
+    }
+    let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    let ml = [
+        31,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+    let mut m = 0usize;
+    while doy >= ml[m] {
+        doy -= ml[m];
+        m += 1;
+    }
+    format!("{y:04}-{:02}-{:02}", m + 1, doy + 1)
+}
+
 /// Where a frozen doc is read and written: the directory `var` names
 /// when it is set (the doc under its file name there), else `home`.
 /// Three readers: CE_FLOW_OUT for the flow exams' universe, sample and
@@ -224,45 +265,4 @@ pub fn two_commits(tag: &str, seed: &[(&str, &str)], then: &[(&str, &str)]) -> P
     write_all(&repo, then);
     commit_all(&repo, "second");
     repo
-}
-
-/// today, YYYY-MM-DD (UTC): the date a measured ledger row is
-/// stamped with — provenance, not a comparability key.
-pub fn today() -> String {
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs());
-    // civil-date conversion (Howard Hinnant's days algorithm), no deps
-    let days = (secs / 86400) as i64;
-    let (mut y, mut doy) = (1970i64, days);
-    loop {
-        let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
-        let len = if leap { 366 } else { 365 };
-        if doy < len {
-            break;
-        }
-        doy -= len;
-        y += 1;
-    }
-    let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
-    let ml = [
-        31,
-        if leap { 29 } else { 28 },
-        31,
-        30,
-        31,
-        30,
-        31,
-        31,
-        30,
-        31,
-        30,
-        31,
-    ];
-    let mut m = 0usize;
-    while doy >= ml[m] {
-        doy -= ml[m];
-        m += 1;
-    }
-    format!("{y:04}-{:02}-{:02}", m + 1, doy + 1)
 }
