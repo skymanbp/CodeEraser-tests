@@ -104,14 +104,20 @@ fn precommit_broken_index_is_visible_not_silent() {
     assert_eq!(line["degraded"], true);
 }
 
-#[test]
-fn precommit_blocks_staged_duplication_in_deny() {
-    let dir = tmp("precommit");
+/// A deny-tier repository with one function committed.
+fn seeded_deny(tag: &str) -> std::path::PathBuf {
+    let dir = tmp(tag);
     std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("a.rs");
     std::fs::write(dir.join("ce.toml"), "[guard]\nmode = \"deny\"\n").expect("ce.toml");
     git(&dir, &["init", "-q"]);
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-qm", "seed"]);
+    dir
+}
+
+#[test]
+fn precommit_blocks_staged_duplication_in_deny() {
+    let dir = seeded_deny("precommit");
     // clean staged change passes
     std::fs::write(dir.join("c.rs"), "fn fresh(n: u8) -> u8 { n / 2 }\n").expect("c.rs");
     git(&dir, &["add", "c.rs"]);
@@ -124,4 +130,31 @@ fn precommit_blocks_staged_duplication_in_deny() {
     assert!(!blocked.status.success(), "deny mode must block");
     let text = String::from_utf8_lossy(&blocked.stdout);
     assert!(text.contains("b.rs"), "report names the clone: {text}");
+}
+
+/// No reachable core is the documented skip (1.9.2 D2; `ce precommit
+/// --help`: FAIL-OPEN): exit 0, the fallback sentence on stderr and one
+/// degraded feed line per face — never the measuring code's exit 2,
+/// which as a git hook aborts the commit. The staged twin above would
+/// block in deny with a core; here nothing can judge it.
+#[test]
+fn no_reachable_core_is_the_documented_skip_for_both_git_faces() {
+    let dir = seeded_deny("precommit-nocore");
+    std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("b.rs");
+    git(&dir, &["add", "b.rs"]);
+    std::fs::write(dir.join("msg.txt"), "Add b\n").expect("msg.txt");
+    let nothing = dir.join("no-core-here").display().to_string();
+    for (face, tail) in [("precommit", None), ("commitmsg", Some("msg.txt"))] {
+        let args: Vec<&str> = ["--core", &nothing, face].into_iter().chain(tail).collect();
+        let out = common::run_ce(&dir, &args);
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert_eq!(out.status.code(), Some(0), "{face}: {err}");
+        let said = format!("ce {face}: the core could not phrase the verdict: core unavailable");
+        assert!(err.contains(&said), "{face}: {err}");
+        let line = common::last_observe(&dir);
+        assert_eq!(line["event"], face, "{line}");
+        assert_eq!(line["degraded"], true, "{line}");
+        let reason = line["reason"].as_str().unwrap_or_default();
+        assert!(reason.contains("no-core-here"), "{line}");
+    }
 }
