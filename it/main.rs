@@ -225,6 +225,7 @@ mod structure_modularity;
 mod symbol_visibility;
 mod t3_cache;
 mod tables_core_flag;
+mod tables_locate;
 mod tables_package;
 mod tombstone_audit;
 mod tombstone_commitmsg;

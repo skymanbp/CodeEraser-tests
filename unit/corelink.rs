@@ -145,6 +145,22 @@ fn the_session_road_names_a_line_over_the_ceiling_unsent() {
     );
 }
 
+/// `locate` reads a given path as the spawner does (1.9.2 D1): the literal
+/// file, else on Windows the path with `.exe` appended — Git Bash's
+/// `command -v ce-core` answers without it, and the plugin stamped that.
+/// Bare names keep the PATH walk.
+#[test]
+fn a_given_path_without_exe_is_located_as_the_spawner_runs_it() {
+    let dir = crate::testutil::scratch("locate-exe");
+    std::fs::write(dir.join("core.exe"), b"").expect("an empty core.exe");
+    let at = |name: &str| super::locate(&dir.join(name).display().to_string());
+    let exe = std::path::absolute(dir.join("core.exe")).expect("absolute");
+    assert_eq!(at("core"), cfg!(windows).then(|| exe.clone()));
+    assert_eq!(at("core.exe"), Some(exe));
+    assert_eq!(at("missing"), None);
+    assert_eq!(super::locate("ce-no-such-core-on-path"), None);
+}
+
 /// An own link on the core the unit tests run with.
 fn own_link() -> super::Link {
     let core = std::env::var("CE_CORE_BIN").expect("the unit tests run with CE_CORE_BIN");

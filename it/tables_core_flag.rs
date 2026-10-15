@@ -18,7 +18,7 @@ use std::path::Path;
 use std::process::Output;
 
 /// The core the positive legs name, as an absolute path.
-fn named_core() -> String {
+pub(crate) fn named_core() -> String {
     let core = std::env::var("CE_CORE_BIN").expect("it legs run with CE_CORE_BIN");
     std::path::absolute(&core)
         .expect("absolute core path")
@@ -27,7 +27,7 @@ fn named_core() -> String {
 }
 
 /// `ce <args>` in `dir` with no core anywhere but what `env` adds.
-fn bare(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> Output {
+pub(crate) fn bare(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> Output {
     let empty = dir.join("empty-path");
     std::fs::create_dir_all(&empty).expect("empty PATH dir");
     crate::common::ce_command(dir, &[])
@@ -44,7 +44,7 @@ fn stderr(out: &Output) -> String {
 }
 
 /// Exit 0, or the stderr that says why not.
-fn passed(out: &Output) {
+pub(crate) fn passed(out: &Output) {
     assert_eq!(out.status.code(), Some(0), "{}", stderr(out));
 }
 
@@ -104,7 +104,7 @@ fn a_command_that_never_had_the_flag() {
 }
 
 /// Exit 2, and stderr names every one of `words`.
-fn refused(out: &Output, words: &[&str]) {
+pub(crate) fn refused(out: &Output, words: &[&str]) {
     let why = stderr(out);
     assert_eq!(out.status.code(), Some(2), "{why}");
     assert!(words.iter().all(|w| why.contains(w)), "{words:?}: {why}");
