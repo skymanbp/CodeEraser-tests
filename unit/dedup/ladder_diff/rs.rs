@@ -130,25 +130,70 @@ fn rs_random_trees_agree() {
 /// `pubuse_hash`, rewritten over the surface fact's reading in stage F)
 /// against the frozen one (oracle/rs_reexport.rs) over ten thousand
 /// drawn sources, a fifth of them cut short: equal hashes, source by
-/// source.
+/// source — but for one named divergence. Since 3710e509 (v2.35 G8) the
+/// live `use … as` reader drops a trailing `self` segment (`use
+/// a::{self as b}` binds module `a`) while the frozen reader keeps
+/// `a::self`; the live side is right, because the alias names the module
+/// the path leads to and `self` is not a path segment of the target. So
+/// a mismatch is allowed only on a source carrying that mark
+/// (`self_alias`), at least one marked source must still mismatch (else
+/// this note is stale), and any mismatch on an unmarked source fails.
 #[test]
 #[ignore = "instrument: run with --ignored --nocapture"]
 fn rs_surface_hash_agrees() {
     let mut rng = Rng::ladder(36);
-    let mut misses = 0;
+    let (mut marked, mut misses, mut unmarked) = (0, 0, 0);
     for i in 0..10_000 {
         let mut text = source(&mut rng, i % 5);
         if rng.chance(20) {
             text = text.chars().take(rng.below(text.len().max(1))).collect();
         }
+        let mark = self_alias(&text);
+        marked += usize::from(mark);
         let live = crate::graph::ladder::rs_cst::pubuse_hash(&text);
         if live != crate::graph::ladder::rs_reexport::pubuse_hash(&text) {
             misses += 1;
-            if misses <= 5 {
-                println!("MISMATCH surface hash:\n{text}");
+            if !mark {
+                unmarked += 1;
+                println!("MISMATCH surface hash on an unmarked source:\n{text}");
             }
         }
     }
-    println!("== ladder_diff rs surface hash: sources 10000 mismatches {misses} ==");
-    assert_eq!(misses, 0, "the live and frozen surface hashes disagree");
+    println!(
+        "== ladder_diff rs surface hash: sources 10000 marked {marked} mismatches {misses} =="
+    );
+    assert_eq!(
+        unmarked, 0,
+        "the live and frozen surface hashes disagree on a source without the self-alias mark"
+    );
+    assert!(
+        misses > 0,
+        "no marked source diverges any more: the 3710e509 self-alias note is stale"
+    );
+}
+
+/// The 3710e509 divergence's mark: a whitespace-separated token ending
+/// in `self` immediately followed by the token `as` (`use self as Z;`,
+/// `a::{self as b}`, `a::self as b`).
+fn self_alias(text: &str) -> bool {
+    let tokens: Vec<&str> = text.split_whitespace().collect();
+    tokens
+        .windows(2)
+        .any(|w| w[0].ends_with("self") && w[1] == "as")
+}
+
+/// The divergence itself on one fixed source, on every push and without
+/// a core: the live and frozen surface hashes differ on a `self` alias
+/// and agree on a plain re-export.
+#[test]
+fn the_self_alias_divergence_is_pinned() {
+    use crate::graph::ladder::{rs_cst, rs_reexport};
+    let (marked, plain) = ("pub use a::{self as b};\n", "pub use a::b;\n");
+    assert!(self_alias(marked) && !self_alias(plain));
+    assert_ne!(
+        rs_cst::pubuse_hash(marked),
+        rs_reexport::pubuse_hash(marked),
+        "the live reader binds module a, the frozen one a::self"
+    );
+    assert_eq!(rs_cst::pubuse_hash(plain), rs_reexport::pubuse_hash(plain));
 }
