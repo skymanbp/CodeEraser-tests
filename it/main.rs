@@ -70,6 +70,7 @@ mod document_catalogue;
 mod document_number_format;
 mod dynamic_loads;
 mod eject_e2e;
+mod erase_chunked;
 mod erase_e2e;
 mod erase_hunks_apply;
 mod eval_arch_self;

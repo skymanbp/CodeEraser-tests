@@ -46,17 +46,31 @@ fn decode_locks_both_tables_and_names_a_closure_less_core() {
     );
 }
 
-/// The plan's rows against erase/1's ceiling (plan v2.33 step 11b item
-/// 4): the judgment is one request, so a plan over the cap is refused
-/// by name before it is sent, naming the narrowing a user has — never
-/// the "cap mirror drift" a degraded reply used to be read as.
+/// The request split (plan v2.35 T5): greedy runs of whole paths, each
+/// at most `cap` rows — a path's rows never straddle a request, a run
+/// that would pass the cap opens the next request, and one path over
+/// the cap alone is refused by name before anything is sent.
 #[test]
-fn a_plan_over_the_row_cap_is_refused_before_sending() {
-    within_cap(4096, 4096).expect("at the cap");
-    let why = within_cap(4097, 4096).expect_err("over the cap");
+fn requests_split_between_paths_and_never_inside_one() {
+    let cands = [
+        cand("a.md", None),
+        cand("a.md", Some((4, 9))),
+        cand("b.py", None),
+        cand("c.py", None),
+        cand("c.py", Some((1, 2))),
+        cand("d.py", None),
+    ];
+    assert_eq!(chunks(&cands, 6).expect("one"), vec![0..6]);
+    assert_eq!(chunks(&cands, 3).expect("two"), vec![0..3, 3..6]);
+    assert_eq!(
+        chunks(&cands, 2).expect("four"),
+        vec![0..2, 2..3, 3..5, 5..6]
+    );
+    let why = chunks(&cands, 1).expect_err("a.md alone is over");
     assert_eq!(
         why.to_string(),
-        "erase: 4097 candidates over the core's erase_rows cap 4096; narrow the plan with \
-         `ce erase <subdirectory>` or an `exclude` in ce.toml"
+        "erase: a.md alone has 2 candidates over the core's erase_rows cap 1; a path's rows \
+         are judged in one request — narrow the plan with an `exclude` in ce.toml"
     );
+    assert_eq!(targets_of(&cands[3..5]), vec![[0, 0, 0], [0, 1, 2]]);
 }
