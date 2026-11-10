@@ -31,6 +31,10 @@
 //! and rs_reexport back at `ladder::rs_tree` / `ladder::rs_reexport`,
 //! where rs_use.rs reads them, and rs_use.rs reads the frozen Cargo
 //! reader (../oracle_cfg/cargo.rs) at `crate::graph::cargo`.
+//! One named divergence from that snapshot (v2.35 G8, R1-7): the live
+//! surface reads `use a::{self as b}` as binding `b` to the module `a`,
+//! where the frozen rs_surface.rs binds it to the path `a::self`; the
+//! seeded Rust trees write no `self as`, so the gate never meets it.
 //! oracle/md.rs is a byte copy of ladder/md.rs at 3b7234eb, before stage
 //! G (its edits: the head and slug modules and the unit-test mount
 //! dropped — it reads the live slug module, ladder/md_slug.rs, which

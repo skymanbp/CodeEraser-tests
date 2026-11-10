@@ -73,3 +73,17 @@ fn hash_moves_exactly_when_the_bound_surface_moves() {
         assert_eq!(pubuse_hash(a) == pubuse_hash(b), *same, "{why}");
     }
 }
+
+/// v2.35 G8 (R1-7): `{self as b}` binds the module itself under `b` —
+/// the same surface entry as `a as b`, never a path ending in `self`.
+#[test]
+fn a_self_alias_binds_the_module_itself() {
+    let surface_of = |src: &str| {
+        let grammar = crate::scan::lang::Lang::Rust.grammar().expect("rust");
+        let tree = crate::scan::ast::parse(src, &grammar).expect("parses");
+        super::surface(&tree, src)["uses"].clone()
+    };
+    let braced = surface_of("pub use crate::a::{self as b};\n");
+    assert_eq!(braced, surface_of("pub use crate::a as b;\n"));
+    assert!(!braced.to_string().contains("self"), "{braced}");
+}
