@@ -13,7 +13,8 @@
 //! followed by the file's text (a tuple table rhymes under the clone
 //! gate).
 
-use crate::common::{core_bin, init_and_commit, tmp};
+use crate::common::core_bin;
+use crate::common::trees::{dead_sets_hold, seeded};
 use codeeraser::erase;
 use codeeraser::graph::deadcode;
 use std::path::Path;
@@ -110,48 +111,6 @@ def run():
     print("ok")
 "#;
 
-/// A tree's files, `(path, text)`.
-type Files = Vec<(String, String)>;
-
-/// The trees: (name, dead files expected, files).
-fn trees() -> Vec<(String, Vec<String>, Files)> {
-    // a CRLF checkout (Windows) must read the same trees
-    TREES
-        .replace("\r\n", "\n")
-        .split("====\n")
-        .map(|block| {
-            let (head, body) = block.split_once('\n').expect("header line");
-            let (name, dead) = head.split_once('|').expect("name|dead");
-            let owned = |s: &str| s.to_string();
-            let files = body
-                .split('@')
-                .filter(|f| !f.is_empty())
-                .map(|f| {
-                    let (path, text) = f.split_once('\n').expect("path line");
-                    (owned(path), owned(text))
-                })
-                .collect();
-            let dead = dead
-                .split(',')
-                .filter(|d| !d.is_empty())
-                .map(owned)
-                .collect();
-            (owned(name), dead, files)
-        })
-        .collect()
-}
-
-fn seeded(name: &str, files: &[(String, String)]) -> std::path::PathBuf {
-    let dir = tmp(&format!("pyimports-{name}"));
-    for (path, text) in files {
-        let at = dir.join(path);
-        std::fs::create_dir_all(at.parent().expect("parent")).expect("dirs");
-        std::fs::write(at, text).expect("write");
-    }
-    init_and_commit(&dir, "seed");
-    dir
-}
-
 fn dead_paths(dir: &Path, core: &str) -> Vec<String> {
     let report = deadcode::run(dir, None, core).expect("deadcode");
     report.dead.iter().map(|d| d.path.clone()).collect()
@@ -161,11 +120,7 @@ fn dead_paths(dir: &Path, core: &str) -> Vec<String> {
 /// but for the control).
 #[test]
 fn a_python_program_that_runs_keeps_its_modules_alive() {
-    let core = core_bin();
-    for (name, want, files) in trees() {
-        let dir = seeded(&name, &files);
-        assert_eq!(dead_paths(&dir, &core), want, "{name}");
-    }
+    dead_sets_hold("pyimports", TREES, &core_bin());
 }
 
 /// `ce erase` never plans a live module: a package whose `__init__.py`
@@ -191,7 +146,7 @@ fn erase_plans_no_live_module() {
             ),
             ("pkg/hooks.py".to_string(), body.to_string()),
         ];
-        let dir = seeded(&format!("erase{i}"), &files);
+        let dir = seeded(&format!("pyimports-erase{i}"), &files);
         assert!(dead_paths(&dir, &core).is_empty(), "variant {i}: dead set");
         let plan = erase::plan(&dir, None, &core).expect("plan");
         assert!(

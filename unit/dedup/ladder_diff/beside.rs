@@ -73,6 +73,7 @@ pub(super) fn compare_declared(
         descriptions: &descriptions,
         cabals: &cabals,
         cargo: &manifests,
+        packages: &BTreeSet::new(),
     };
     let got = match crate::graph::resolve::declared(root, files, &found) {
         Ok(got) => got,

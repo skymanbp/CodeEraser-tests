@@ -20,9 +20,9 @@
 //! followed by the file's text (a tuple table rhymes under the clone
 //! gate).
 
-use crate::common::{core_bin, init_and_commit, tmp};
+use crate::common::core_bin;
+use crate::common::trees::{dead_sets_hold, reasons, seeded, trees};
 use codeeraser::erase;
-use codeeraser::graph::deadcode;
 
 const TREES: &str = r#"r_source_filepath|lib/more.R
 @app.R
@@ -112,64 +112,20 @@ export function f(x: number): number {
 entry_globs = ["main.ts"]
 "#;
 
-/// A tree's files, `(path, text)`.
-type Files = Vec<(String, String)>;
-
-/// The trees: (name, dead files expected, files).
-fn trees() -> Vec<(String, Vec<String>, Files)> {
-    // a CRLF checkout (Windows) must read the same trees
-    TREES
-        .replace("\r\n", "\n")
-        .split("====\n")
-        .map(|block| {
-            let (head, body) = block.split_once('\n').expect("header line");
-            let (name, dead) = head.split_once('|').expect("name|dead");
-            let files = body
-                .split('@')
-                .filter(|f| !f.is_empty())
-                .map(|f| {
-                    let (path, text) = f.split_once('\n').expect("path line");
-                    (path.to_string(), text.to_string())
-                })
-                .collect();
-            let dead = dead
-                .split(',')
-                .filter(|d| !d.is_empty())
-                .map(str::to_string)
-                .collect();
-            (name.to_string(), dead, files)
-        })
-        .collect()
-}
-
-fn seeded(name: &str, files: &[(String, String)]) -> std::path::PathBuf {
-    let dir = tmp(&format!("dynload-{name}"));
-    for (path, text) in files {
-        let at = dir.join(path);
-        std::fs::create_dir_all(at.parent().expect("parent")).expect("dirs");
-        std::fs::write(at, text).expect("write");
-    }
-    init_and_commit(&dir, "seed");
-    dir
-}
-
 /// Every tree: the dead set is exactly the expected one, each dead row
 /// unvouched (confidence 0), and the erase plan offers none of them.
 #[test]
 fn a_computed_load_keeps_its_language_from_vouching() {
     let core = core_bin();
-    for (name, want, files) in trees() {
-        let dir = seeded(&name, &files);
-        let report = deadcode::run(&dir, None, &core).expect("deadcode");
-        let dead: Vec<&str> = report.dead.iter().map(|d| d.path.as_str()).collect();
-        assert_eq!(dead, want, "{name}: dead set");
-        for row in &report.dead {
-            assert_eq!(row.conf, Some(0), "{name}: {} is not unvouched", row.path);
+    for tree in dead_sets_hold("dynload", TREES, &core) {
+        for (path, conf) in &tree.dead {
+            assert_eq!(*conf, Some(0), "{}: {path} is not unvouched", tree.name);
         }
-        let plan = erase::plan(&dir, None, &core).expect("plan");
+        let plan = erase::plan(&tree.dir, None, &core).expect("plan");
         assert!(
             plan.rows.iter().all(|r| !r.eraseable),
-            "{name}: the plan offers a file only a computed load reaches"
+            "{}: the plan offers a file only a computed load reaches",
+            tree.name
         );
     }
 }
@@ -180,13 +136,14 @@ fn a_computed_load_keeps_its_language_from_vouching() {
 #[test]
 fn erase_names_the_unresolved_language() {
     let core = core_bin();
-    for (name, _, files) in trees() {
-        if !matches!(name.as_str(), "lua_dofile_concat" | "py_dunder_import_concat") {
+    for (name, _, files) in trees(TREES) {
+        if !matches!(
+            name.as_str(),
+            "lua_dofile_concat" | "py_dunder_import_concat"
+        ) {
             continue;
         }
-        let dir = seeded(&format!("{name}-erase"), &files);
-        let plan = erase::plan(&dir, None, &core).expect("plan");
-        let reasons: Vec<&str> = plan.rows.iter().map(|r| r.reason).collect();
-        assert_eq!(reasons, ["language_unresolved"], "{name}");
+        let dir = seeded(&format!("dynload-{name}-erase"), &files);
+        assert_eq!(reasons(&dir, &core), ["language_unresolved"], "{name}");
     }
 }
