@@ -1,16 +1,24 @@
 use super::*;
 
 /// The intake is bounded: an envelope under the cap still parses,
-/// one over it takes the fail-open None instead of being
-/// materialized whole. Without the cap the over-cap case parses
-/// fine and this asserts nothing — that WAS the hole.
+/// one over it is a NAMED refusal (v2.35 G4: the gate writes it to the
+/// feed) instead of being materialized whole, and garbage is ignored.
+/// Without the cap the over-cap case parses fine and this asserts
+/// nothing — that WAS the hole.
 #[test]
 fn envelope_intake_is_capped() {
-    let small: Option<serde_json::Value> = parse_envelope(&br#"{"pad":"x"}"#[..]);
-    assert_eq!(small.expect("under cap parses")["pad"], "x");
+    let small: Result<serde_json::Value, Intake> = parse_envelope(&br#"{"pad":"x"}"#[..]);
+    assert_eq!(small.ok().expect("under cap parses")["pad"], "x");
     let huge = format!(r#"{{"pad":"{}"}}"#, "x".repeat(ENVELOPE_CAP as usize));
-    let over: Option<serde_json::Value> = parse_envelope(huge.as_bytes());
-    assert!(over.is_none(), "over-cap envelope must fail open");
+    match parse_envelope::<serde_json::Value>(huge.as_bytes()) {
+        Err(Intake::Refused(why)) => assert!(why.contains("cap"), "{why}"),
+        _ => panic!("over-cap envelope must be a named refusal"),
+    }
+    let junk = parse_envelope::<serde_json::Value>(&b"not json"[..]);
+    assert!(
+        matches!(junk, Err(Intake::Ignored)),
+        "garbage is no hook call"
+    );
 }
 
 /// B4 acceptance half 1: the clip is identity under budget, caps
