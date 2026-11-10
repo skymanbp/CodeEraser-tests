@@ -3,10 +3,12 @@
 //! table a core could not have written is refused by name — absent (a
 //! core before 9.1.0: reading it as empty would drop the edges it
 //! carries), out of order, naming no site, or repeating the site's own
-//! answer.
+//! answer. The `opaque` table beside it (lane v235_graphtrust) marks its
+//! sites, and is refused by name when absent, out of order or naming no
+//! site.
 
 use super::super::also_rows;
-use crate::graph::ladder::{Outcome, Reason};
+use crate::graph::ladder::{Also, Outcome, Reason};
 use serde_json::json;
 
 fn outs() -> Vec<Outcome> {
@@ -21,13 +23,18 @@ fn outs() -> Vec<Outcome> {
 
 #[test]
 fn also_rows_group_by_site_in_order() {
-    let reply = json!({"also": [[0, "pkg/a.py", 2], [0, "pkg/b.py", 2], [1, "ns/m.py", 2]]});
+    let reply =
+        json!({"also": [[0, "pkg/a.py", 2], [0, "pkg/b.py", 2], [1, "ns/m.py", 2]], "opaque": [1]});
     let got = also_rows(&reply, &outs()).expect("well formed");
+    let also = |rows: &[(&str, u8)], opaque| Also {
+        rows: rows.iter().map(|(t, r)| (t.to_string(), *r)).collect(),
+        opaque,
+    };
     assert_eq!(
         got,
         vec![
-            vec![("pkg/a.py".to_string(), 2), ("pkg/b.py".to_string(), 2)],
-            vec![("ns/m.py".to_string(), 2)],
+            also(&[("pkg/a.py", 2), ("pkg/b.py", 2)], false),
+            also(&[("ns/m.py", 2)], true),
         ]
     );
 }
@@ -40,12 +47,21 @@ fn a_table_no_core_writes_is_refused_by_name() {
     };
     refused(json!({}), "a core before proto 9.1.0");
     refused(
-        json!({"also": [[1, "a.py", 2], [0, "b.py", 2]]}),
+        json!({"also": [[1, "a.py", 2], [0, "b.py", 2]], "opaque": []}),
         "also 1: not after the row before it",
     );
-    refused(json!({"also": [[2, "a.py", 2]]}), "also names site 2");
     refused(
-        json!({"also": [[0, "pkg/__init__.py", 2]]}),
+        json!({"also": [[2, "a.py", 2]], "opaque": []}),
+        "also names site 2",
+    );
+    refused(
+        json!({"also": [[0, "pkg/__init__.py", 2]], "opaque": []}),
         "repeats site 0's answer",
     );
+    refused(json!({"also": []}), "no `opaque` table");
+    refused(
+        json!({"also": [], "opaque": [1, 0]}),
+        "opaque rows not ascending",
+    );
+    refused(json!({"also": [], "opaque": [2]}), "opaque names site 2");
 }

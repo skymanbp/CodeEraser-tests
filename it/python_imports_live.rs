@@ -7,14 +7,20 @@
 //! the ancestor packages a dotted import executes (`import pkg.sub`) —
 //! and `ce erase` planned to delete a live module. The one dead file
 //! left is the control: `pkg/sub.py` that nothing imports stays dead
-//! (an attribute name, `helper`, draws no edge).
+//! (an attribute name, `helper`, draws no edge). A star import (lane
+//! v235_graphtrust, T3) imports the submodules its package's literal
+//! `__all__` names — absolute and relative; an attribute-only `__all__`
+//! is the second control — and an `__all__` no literal reads leaves its
+//! package's unnamed module dead but unvouched, never eraseable; a
+//! literal list augmented by what no literal reads keeps the literal
+//! names' modules live and unvouches the rest.
 //!
 //! One literal per tree: a header `name|dead,…` then `@path` lines, each
 //! followed by the file's text (a tuple table rhymes under the clone
 //! gate).
 
 use crate::common::core_bin;
-use crate::common::trees::{dead_sets_hold, seeded};
+use crate::common::trees::{dead_sets_hold, judged, reasons, seeded};
 use codeeraser::erase;
 use codeeraser::graph::deadcode;
 use std::path::Path;
@@ -109,6 +115,65 @@ cli.run()
 @pkg/cli.py
 def run():
     print("ok")
+====
+star_literal_all|
+@__main__.py
+from pkg import *
+print(sub.VALUE)
+@pkg/__init__.py
+__all__ = ['sub']
+@pkg/sub.py
+VALUE = 1
+====
+star_relative_literal_all|
+@__main__.py
+import pkg.inner
+print(pkg.inner.sub.VALUE)
+@pkg/__init__.py
+__all__ = ('sub', 'helper')
+helper = 1
+@pkg/inner.py
+from . import *
+@pkg/sub.py
+VALUE = 1
+====
+star_attribute_only|pkg/sub.py
+@__main__.py
+from pkg import *
+print(helper)
+@pkg/__init__.py
+__all__ = ['helper']
+helper = 1
+@pkg/sub.py
+VALUE = 1
+"#;
+
+/// A star import whose package's `__all__` no literal reads: the names
+/// it imports are unknown, so the module it may import is dead but
+/// unvouched, and the plan refuses it for the language's unresolved row.
+/// A literal `__all__` augmented by what no literal reads keeps its
+/// literal names' edges (`pkg/sub.py` is live) and still unvouches the
+/// rest (`pkg/other.py`, which the comprehension imports).
+const OPAQUE: &str = r#"star_opaque_all|pkg/sub.py
+@__main__.py
+from pkg import *
+print(sub.VALUE)
+@pkg/__init__.py
+__all__ = ['s' + 'ub']
+@pkg/sub.py
+VALUE = 1
+====
+star_augmented_all|pkg/other.py
+@__main__.py
+from pkg import *
+print(sub.VALUE, other.VALUE)
+@pkg/__init__.py
+__all__ = ['sub']
+__all__ += [n for n in ('other',)]
+@pkg/sub.py
+VALUE = 1
+@pkg/other.py
+VALUE = 2
 "#;
 
 fn dead_paths(dir: &Path, core: &str) -> Vec<String> {
@@ -152,6 +217,26 @@ fn erase_plans_no_live_module() {
         assert!(
             plan.rows.iter().all(|r| r.path != "pkg/hooks.py"),
             "variant {i}: the plan names the live module"
+        );
+    }
+}
+
+/// The opaque `__all__`: dead, unvouched, refused by name.
+#[test]
+fn an_opaque_all_unvouches_its_star_import() {
+    let core = core_bin();
+    for tree in judged("pyimports", OPAQUE, &core) {
+        assert_eq!(
+            tree.dead,
+            [(tree.want[0].clone(), Some(0))],
+            "{}",
+            tree.name
+        );
+        assert_eq!(
+            reasons(&tree.dir, &core),
+            ["language_unresolved"],
+            "{}",
+            tree.name
         );
     }
 }

@@ -47,6 +47,7 @@ fn one_tree(root: &Path, db: &Path, tally: &mut Tally) {
         java: &walked.java,
         lua: &walked.lua,
         includes: &walked.includes,
+        py_all: &walked.py_all,
     };
     let (core, oracle) = (scope(&m1), scope(&m2));
     let ctx = || format!("  tree {}", root.display());

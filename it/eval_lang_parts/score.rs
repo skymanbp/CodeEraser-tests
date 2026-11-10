@@ -75,6 +75,8 @@ pub fn tree(root: &Path, texts: &[(String, String)], read: Vec<String>) -> Fixtu
         java,
         lua,
         includes,
+        // no exam is Python: no package `__all__` to read
+        py_all: Default::default(),
     }
 }
 

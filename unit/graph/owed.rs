@@ -34,6 +34,7 @@ fn absent(sites: &[CachedSite]) -> Result<Resolved> {
             reason: "no core named".into(),
             files: sites.iter().map(|s| s.file.clone()).collect(),
         }),
+        ledger: vec![0; sites.len()],
     })
 }
 

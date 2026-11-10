@@ -3,7 +3,9 @@
 //! the allows in mod.rs are module-level and cover this file too).
 
 use codeeraser::graph::compdb_find;
-use codeeraser::graph::ladder::{self, Outcome, Reason, Scope, c_head, java_header, lua_path};
+use codeeraser::graph::ladder::{
+    self, Outcome, Reason, Scope, c_head, java_header, lua_path, py_all,
+};
 use codeeraser::scan::lang::Lang;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -71,6 +73,9 @@ pub struct Fixture {
     /// reads it (c_head::read) — the compile database's include
     /// closure walks these (plan v2.30 step 5b, item 14).
     pub includes: BTreeMap<String, Vec<String>>,
+    /// Every in-scope `__init__.py`'s `__all__`, read as the walk reads
+    /// it (py_all::read).
+    pub py_all: BTreeMap<String, py_all::All>,
 }
 
 pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
@@ -90,6 +95,9 @@ pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
     let includes = of(compdb_find::is_c)
         .map(|(rel, text)| (rel.to_string(), c_head::read(text)))
         .collect();
+    let py_all = of(py_all::is_init)
+        .filter_map(|(rel, text)| Some((rel.to_string(), py_all::read(text)?)))
+        .collect();
     Fixture {
         dir,
         files,
@@ -101,6 +109,7 @@ pub fn fixture(tag: &str, tree: &[(&str, &str)]) -> Fixture {
         java,
         lua,
         includes,
+        py_all,
     }
 }
 
@@ -117,6 +126,7 @@ impl Fixture {
             java: &self.java,
             lua: &self.lua,
             includes: &self.includes,
+            py_all: &self.py_all,
         }
     }
 }

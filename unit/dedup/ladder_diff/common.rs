@@ -132,6 +132,8 @@ pub(super) struct World {
     pub lua: BTreeSet<Template>,
     pub includes: BTreeMap<String, Vec<String>>,
     pub java: BTreeMap<String, Header>,
+    /// Each package's `__all__` (none in a random world).
+    pub py_all: BTreeMap<String, ladder::py_all::All>,
     /// The declared Rust crate roots (`[graph] crate_roots`).
     pub crate_roots: BTreeSet<String>,
     /// Each site's line, by its place in the tree's sites (absent: 1).
@@ -217,6 +219,7 @@ impl World {
             java: &self.java,
             lua: &self.lua,
             includes: &self.includes,
+            py_all: &self.py_all,
         };
         let oracle = Scope { memo: &m2, ..core };
         compare(sites, &core, &oracle, tally, &|| self.describe(root));
