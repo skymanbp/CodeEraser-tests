@@ -64,3 +64,15 @@ fn kinds_are_counted_under_their_names() {
         json!({"unreachable": 1, "dead_store": 0, "unused_local": 0, "unused_param": 2})
     );
 }
+
+/// v2.35 G6 (R3-10): a run's `lineEnd` is its last statement's LAST
+/// line — the legend's `stmt_end` — not the line that statement starts
+/// on: here the unreachable call spans lines 3–6.
+#[test]
+fn a_run_ends_where_its_last_statement_ends() {
+    let src =
+        "def gone():\n    return 1\n    print(\n        \"never\",\n        \"ever\",\n    )\n";
+    let file = lower_file(src, Lang::Python).expect("python lowers");
+    let run = place(&file, 0, &finding(0, 1, -1)).expect("the unreachable call");
+    assert_eq!((run.line, run.line_end), (3, 6));
+}

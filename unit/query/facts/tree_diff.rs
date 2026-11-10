@@ -38,6 +38,7 @@ fn sink(wanted: &BTreeSet<u32>) -> Sink {
         codes: tables().map(|(n, c, _)| (n.to_string(), c)).collect(),
         wanted: wanted.clone(),
         tables: wanted.iter().map(|c| (*c, BTreeSet::new())).collect(),
+        skew: Default::default(),
     }
 }
 
@@ -46,7 +47,7 @@ fn expected(nodes: &Nodes, wanted: &BTreeSet<u32>) -> Value {
     let (mut s, mut labels) = (sink(wanted), Labels::default());
     tree_tables(nodes, &mut s, &mut labels);
     let names: Vec<(u64, String)> = labels.names.into_iter().collect();
-    json!({"tables": s.finish(), "dirs": labels.dirs, "names": names})
+    json!({"tables": s.finish().expect("the schema"), "dirs": labels.dirs, "names": names})
 }
 
 /// The core's: one question per table read, its answers as the table.
@@ -60,7 +61,7 @@ fn answered(link: &mut Link, nodes: &Nodes, wanted: &BTreeSet<u32>) -> Value {
     let text: String = read.iter().map(|(_, q)| format!("?- {q}.\n")).collect();
     let body = crate::query::wire::body(
         &json!({"texts": ["", null, text]}),
-        (&s.finish(), Some(&tree)),
+        (&s.finish().expect("the schema"), Some(&tree)),
         false,
         false,
     );

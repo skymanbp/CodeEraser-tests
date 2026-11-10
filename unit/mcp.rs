@@ -80,3 +80,22 @@ fn newline_free_flood_is_refused_at_the_ceiling() {
     input.extend_from_slice(b"\n{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/list\"}\n");
     served(&input, 1, -32600, "the tail must not be parsed as a frame");
 }
+
+/// v2.35 G6 (R3-40): a `path` outside the served root is the call's
+/// named refusal — it used to become the whole root in silence; an
+/// inside path and no path both resolve.
+#[test]
+fn a_path_outside_the_root_is_refused_by_name() {
+    let root = crate::testutil::scratch("mcp-resolve");
+    std::fs::create_dir_all(root.join("sub")).expect("sub");
+    assert_eq!(super::resolve(&root, None).expect("no path"), root);
+    assert_eq!(
+        super::resolve(&root, Some("sub")).expect("inside"),
+        root.join("sub")
+    );
+    let why = super::resolve(&root, Some("../elsewhere")).expect_err("outside");
+    assert!(
+        format!("{why}").contains("outside the served root"),
+        "{why}"
+    );
+}

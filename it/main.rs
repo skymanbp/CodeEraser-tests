@@ -70,6 +70,7 @@ mod document_catalogue;
 mod document_number_format;
 mod eject_e2e;
 mod erase_e2e;
+mod erase_hunks_apply;
 mod eval_arch_self;
 mod eval_commit_review;
 mod eval_dedup_distinct;

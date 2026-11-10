@@ -135,3 +135,20 @@ fn skew_is_refused() {
 fn reason_codes_read_the_catalogue() {
     assert_eq!((reasons().len(), reason_no_savings()), (6, Some(5)));
 }
+
+/// v2.35 G6 (R3-42): every parameter 0..params is some hole's — a
+/// reply naming parameters {0, 2} of three skips one, and `max + 1`
+/// alone read that as whole.
+#[test]
+fn a_skipped_parameter_is_refused() {
+    let g = group(3, 4);
+    let mut reply = healthy();
+    *reply.pointer_mut("/suggestions/0/1").expect("params") = json!(3);
+    for row in 3..6 {
+        *reply
+            .pointer_mut(&format!("/holes/{row}/2"))
+            .expect("param") = json!(2);
+    }
+    let err = consume(&reply, &[&g]).expect_err("a skipped parameter");
+    assert!(err.contains("holes name 2 of 3 parameters"), "{err}");
+}
