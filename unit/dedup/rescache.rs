@@ -103,3 +103,28 @@ fn an_unparseable_slot_is_a_miss_not_an_error() {
     assert!(load(idx.raw(), 7, f).unwrap().is_none());
     let _ = std::fs::remove_dir_all(&root);
 }
+
+/// v2.35 G2 (R2-4): the slot key moves with the definition package's
+/// digest and with `hot_cap`, and only with them — the same files
+/// under the same seed key the same slot.
+#[test]
+fn the_slot_key_moves_with_the_package_and_the_hot_cap() {
+    let root = seeded("rescache-seed");
+    let idx = {
+        analyze(&root, None, None, None).unwrap();
+        open(&root)
+    };
+    let key = |seed| digest_under(idx.raw(), seed).unwrap();
+    // same seed, same key; a moved package; a moved hot cap
+    let moved = [(7, 64), (8, 64), (7, 65)].map(|seed| key(seed) != key((7, 64)));
+    assert_eq!(moved, [false, true, true], "the key follows its seed only");
+    let pack = crate::tables::get();
+    let product = digest(idx.raw()).unwrap();
+    assert_eq!(
+        product,
+        key((pack.digest, pack.limits.dedup.hot_cap)),
+        "the package's seed"
+    );
+    drop(idx);
+    let _ = std::fs::remove_dir_all(&root);
+}
