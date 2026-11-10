@@ -312,3 +312,20 @@ fn unwire_removes_exactly_what_setup_added() {
     assert_eq!(out.status.code(), Some(0));
     assert!(String::from_utf8_lossy(&out.stdout).contains("not wired by `ce setup`"));
 }
+
+/// v2.35 G7 (R3-12): a fresh wiring whose marker cannot be written
+/// (here a directory already sits at the marker's name) is still exit
+/// 0 — the plugin IS wired, and the installer reads every other code as
+/// "not wired" — but the console line says the marker is missing and
+/// how to undo the wiring by hand, and the document carries the error.
+#[test]
+fn an_unwritten_marker_is_said_on_the_wired_line() {
+    let (dir, marker) = (tmp("setup-marker-fails"), NAMES.marker);
+    let f = fake(&dir, &[], 0, 0);
+    std::fs::create_dir_all(dir.join(marker)).expect("a directory in the marker's place");
+    let out = run_setup(&f.bin, &dir, &[], &[]);
+    let said = String::from_utf8_lossy(&out.stdout);
+    let named = ["marker not written", "claude plugin uninstall"].map(|w| said.contains(w));
+    assert_eq!((out.status.code(), named), (Some(0), [true; 2]), "{said}");
+    std::fs::remove_dir_all(&dir).ok();
+}

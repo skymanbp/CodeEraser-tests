@@ -154,8 +154,11 @@ fn the_check_reads_the_tags_pins_and_exits_with_the_verdict() {
     assert!(String::from_utf8_lossy(&zh.stdout).contains("有更新"));
 }
 
+/// An install that is current has nothing to apply: `--yes` answers
+/// the check and exits 0 (v2.35 G7, R3-11 — it was exit 2, the code
+/// the check gives "unknown"), placing nothing.
 #[test]
-fn the_same_version_is_up_to_date_and_yes_is_a_named_refusal() {
+fn the_same_version_is_up_to_date_and_yes_answers_the_check() {
     let tag = format!("v{}", env!("CARGO_PKG_VERSION"));
     let r = release("update-same", &tag, false);
     let (d, code) = check(&r.dir, &[("CE_UPDATE_BASE", &r.base)]);
@@ -164,8 +167,8 @@ fn the_same_version_is_up_to_date_and_yes_is_a_named_refusal() {
         (Some(0), &Value::from(0), &Value::from(0))
     );
     let target = tmp("update-same-target");
-    let err = refused(&r, &target);
-    assert!(err.contains("already up to date"), "{err}");
+    let out = apply(&r, &target, &[]);
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
     assert!(!target.join(format!("ce{}", plat().ext)).exists());
 }
 
