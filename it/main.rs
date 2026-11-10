@@ -191,6 +191,7 @@ mod packaging;
 mod pin_release;
 mod probe_gate;
 mod progress_face;
+mod python_imports_live;
 mod query_face;
 mod query_golden;
 mod refusal_text;

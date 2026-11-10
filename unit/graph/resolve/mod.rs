@@ -13,8 +13,11 @@
 //! of the evaluation corpora mutated (a byte-order mark, CRLF, comments,
 //! continuations, malformed lines, non-ASCII, empty); the character
 //! classes are compared over every scalar value. A leg prints its tally
-//! and fails on the first disagreement count above zero.
+//! and fails on the first disagreement count above zero. Beside them,
+//! `also` reads the reply's `also` table this side maps (proto 9.1.0) —
+//! no core needed, so it runs in every lib pass.
 
+mod also;
 mod cabal;
 mod cargo;
 mod description;

@@ -35,7 +35,7 @@ fn old_index(db: &Path) -> Index {
             "INSERT INTO trend VALUES ('commit', 123, 987, 1000, '[[1,13]]', 'old');
          INSERT INTO mention_files VALUES (1, 'note.md', 1);
          INSERT INTO mentions VALUES (1, 42, 42);
-         INSERT INTO edges SELECT id, 'ast.rs', '', 0, 0, 0, 0 FROM sites LIMIT 1;
+         INSERT INTO edges SELECT id, 'ast.rs', '', 0, 0, 0, 0, 0 FROM sites LIMIT 1;
          INSERT OR IGNORE INTO resolve_pending VALUES ('ast.rs');
          INSERT INTO result_cache VALUES (1, 1, 50, 7, '[]');
          INSERT INTO meta VALUES ('full_build', 1), ('resolve_key', 1), ('mention_rev', 1);

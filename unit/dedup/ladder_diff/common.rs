@@ -3,7 +3,7 @@
 //! rng.rs; the comparisons beside the sites: beside.rs; the frozen
 //! dispatcher: unit/graph/ladder/frozen.rs).
 
-use super::beside::{compare_declared, compare_forced, compare_private};
+use super::beside::{compare_declared, compare_forced, compare_private, names_never_move};
 use super::rng::Rng;
 use crate::graph::ladder::java_header::Header;
 use crate::graph::ladder::lua_path::Template;
@@ -105,6 +105,7 @@ pub(super) fn compare(
         Ok(a) => a,
         Err(e) => return tally.miss(format!("core refused the batch: {e}\n{}", ctx())),
     };
+    names_never_move(&batch, &answered, core, tally, ctx);
     for ((lang, site), got) in sites.iter().zip(answered) {
         let want = ladder::frozen::resolve(*lang, site, oracle);
         let name = lang.name();

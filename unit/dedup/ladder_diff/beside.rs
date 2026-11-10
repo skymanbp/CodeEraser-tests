@@ -129,3 +129,29 @@ pub(super) fn compare_private(
     tally.private.0 += owners.len() + rust.len();
     tally.private.1 += want.len();
 }
+
+/// Proto 9.1.0: the names a Python `from M import …` carries feed only
+/// its `also` rows, never its answer — the same batch with every such
+/// site naming stems the trees hold and miss answers alike, so the
+/// frozen oracle keeps standing for the answers.
+pub(super) fn names_never_move(
+    batch: &[(Lang, &ladder::Site)],
+    answered: &[ladder::Outcome],
+    core: &ladder::Scope,
+    tally: &mut Tally,
+    ctx: &dyn Fn() -> String,
+) {
+    let stems: Vec<String> = ["m", "n", "b", "z", "x"].map(String::from).to_vec();
+    let names: Vec<&[String]> = batch
+        .iter()
+        .map(|(lang, site)| match (lang, site.kind) {
+            (Lang::Python, "import_from") => stems.as_slice(),
+            _ => &[],
+        })
+        .collect();
+    match ladder::resolve_all_also(batch, &names, core) {
+        Ok(with) if with.iter().map(|(o, _)| o).eq(answered.iter()) => {}
+        Ok(_) => tally.miss(format!("names moved an answer\n{}", ctx())),
+        Err(e) => tally.miss(format!("core refused the named batch: {e}\n{}", ctx())),
+    }
+}

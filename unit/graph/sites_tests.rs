@@ -135,6 +135,26 @@ fn per_language_kinds_specs_and_line_substrings() {
     }
 }
 
+/// The names a site's statement imports (proto 9.1.0), one Python
+/// source and one `spec:names` line per site: an alias is read by its
+/// target, a parenthesized list over lines with comments and a trailing
+/// comma reads every name, `*`, `__future__` and a plain `import` read
+/// none; a language whose table has no names source reads none either.
+#[test]
+fn imported_names_follow_the_table() {
+    let text = "from pkg import sub as s, other\nfrom . import (\n    a,  # the first\n    # a comment line\n    b as bee,\n)\nfrom m import *\nfrom __future__ import annotations\nimport a.b as x, c.d\n";
+    let got: Vec<String> = detect(text, Lang::Python)
+        .iter()
+        .map(|s| format!("{}:{}", s.spec, s.names.join(",")))
+        .collect();
+    assert_eq!(
+        got.join("|"),
+        "pkg:sub,other|.:a,b|m:|__future__:|a.b:|c.d:"
+    );
+    let ts = detect("import { a, b } from './x';\n", Lang::TypeScript);
+    assert!(ts.iter().all(|s| s.names.is_empty()), "TS reads no names");
+}
+
 /// Self-ownership is filtered (Opus review): a `mod foo;` site's
 /// one-line unit is the site itself, so its owner is None, while
 /// a use inside a real function keeps its owner. Same-line sites

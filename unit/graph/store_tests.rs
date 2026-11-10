@@ -41,14 +41,7 @@ fn two_phase_lifecycle() {
         7,
         each(|s| {
             seen += 1;
-            vec![EdgeRow {
-                dst_path: s.file.clone(),
-                dst_unit: String::new(),
-                kind: s.kind,
-                rung: 1,
-                granularity: 0,
-                via_reexport: 0,
-            }]
+            one_edge(s)
         }),
     )
     .expect("sweep");
@@ -102,7 +95,50 @@ fn one_edge(s: &CachedSite) -> Vec<EdgeRow> {
         rung: 1,
         granularity: 0,
         via_reexport: 0,
+        also: 0,
     }]
+}
+
+/// A Python `from M import …` keeps its imported names through the
+/// store (`sites.names`, GRAPH_REV 24) — phase 2 resolves from stored
+/// rows without a re-parse, so a name lost here is an edge lost — and an
+/// `also` row lands with its flag beside the site's own answer.
+#[test]
+fn imported_names_and_also_edges_round_trip() {
+    let mut conn = mem_db();
+    conn.execute(
+        "INSERT INTO files (path, content_hash, token_count, has_tokens) VALUES ('m.py', 1, 0, 1)",
+        [],
+    )
+    .expect("file row");
+    let tx = conn.transaction().expect("tx");
+    let text = "from pkg import (\n    sub,  # first\n    other as o,\n)\nimport os\n";
+    refresh_graph(&tx, 1, text, Lang::Python).expect("phase 1");
+    tx.commit().expect("commit");
+    let mut names = Vec::new();
+    ensure_resolved(
+        &mut conn,
+        7,
+        each(|s| {
+            names.push(s.names.clone());
+            let mut also = one_edge(s);
+            also[0].also = 1;
+            one_edge(s).into_iter().chain(also).collect()
+        }),
+    )
+    .expect("sweep");
+    assert_eq!(
+        names,
+        [vec!["sub".to_string(), "other".to_string()], vec![]]
+    );
+    let flags: Vec<i64> = conn
+        .prepare("SELECT also FROM edges ORDER BY site_id, also")
+        .expect("prepare")
+        .query_map([], |r| r.get(0))
+        .expect("query")
+        .collect::<rusqlite::Result<_>>()
+        .expect("rows");
+    assert_eq!(flags, [0, 1, 0, 1]);
 }
 
 /// The nightly-CI interleaving (run 31991997431), projected onto one
