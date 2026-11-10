@@ -143,3 +143,34 @@ fn a_declared_submodule_roots_at_its_superproject() {
     assert_eq!(project_root(&deep), repo, "checkout-invariant");
     std::fs::remove_dir_all(&dir).ok();
 }
+
+/// v2.35 G9 (P-A5): `.ce/` gets its `.gitignore` whenever it has none —
+/// fresh, or an existing `.ce/` from before the rule — and a file
+/// already there is never rewritten; a directory outside `.ce/` is
+/// only created.
+#[test]
+fn the_state_dir_ignores_itself_whenever_the_file_is_missing() {
+    let dir = crate::testutil::scratch("state-dir");
+    let ignore = dir.join(".ce/.gitignore");
+    let read = || std::fs::read_to_string(&ignore).ok();
+    make_state_dir(&dir.join(".ce/scope/a")).expect("fresh");
+    let fresh = read();
+    std::fs::remove_file(&ignore).unwrap();
+    make_state_dir(&dir.join(".ce")).expect("existing .ce, no file");
+    let existing = read();
+    std::fs::write(&ignore, "index.db\n").unwrap();
+    make_state_dir(&dir.join(".ce/scope/b")).expect("existing file");
+    let kept = read();
+    make_state_dir(&dir.join("elsewhere")).expect("plain");
+    let outside = dir.join("elsewhere/.gitignore").exists();
+    assert_eq!(
+        (fresh, existing, kept, outside),
+        (
+            Some("*\n".into()),
+            Some("*\n".into()),
+            Some("index.db\n".into()),
+            false
+        )
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

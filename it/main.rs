@@ -180,6 +180,7 @@ mod l2_fpr_replay;
 mod l2_fpr_replay_parts;
 mod lang_provenance;
 mod layout_tree;
+mod mcp_console_free;
 mod mcp_precommit;
 mod mcp_reports;
 mod mention_universe;
