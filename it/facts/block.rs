@@ -14,8 +14,9 @@ use crate::common::repo_root;
 /// Splice `rendered` into the `marker` block of the repo-relative
 /// `rel`. Returns the drift note when the block is behind and no
 /// bless ran; `None` when it is current or was just rewritten. The
-/// page is CRLF-normalized for the compare (the site pages carry no
-/// EOL attribute until S9), and a missing marker is a refusal.
+/// page is CRLF-normalized for the compare (site/ and docs/ are pinned
+/// LF by .gitattributes, a README or plugin page is not), and a
+/// missing marker is a refusal.
 pub fn splice(rel: &str, marker: &str, rendered: &str) -> Option<String> {
     let path = repo_root().join(rel);
     let page = std::fs::read_to_string(&path)

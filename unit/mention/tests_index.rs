@@ -165,7 +165,10 @@ fn file_symlinks_enter_once_and_never_escape() {
     let outside = scratch("mention-k39-outside");
     put(&outside, "secret.txt", b"escaped_name\n");
     if link(&dir.join("target.txt"), &dir.join("link.txt"), false).is_err() {
-        return; // no symlink privilege on this platform: the leg is conditional
+        // no symlink privilege on this platform: the leg is conditional,
+        // and says so, so a local green is not read as a checked one
+        eprintln!("K39 symlink leg skipped: no symlink privilege on this platform");
+        return;
     }
     link(&outside.join("secret.txt"), &dir.join("escape.txt"), false).expect("second link");
     link(&dir.join("sub"), &dir.join("dirlink"), true).expect("directory link");

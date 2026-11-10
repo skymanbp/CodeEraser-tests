@@ -18,8 +18,8 @@ extracted with `git filter-repo`; nothing was rewritten but the paths.
 ## Running
 
 The suite is white-box: every file under `unit/` is a module of the
-`codeeraser` crate and 44 of the 80 integration files call its library
-API directly, so it only builds inside the superproject:
+`codeeraser` crate and most integration files call its library API
+directly, so it only builds inside the superproject:
 
 ```bash
 git clone --recurse-submodules https://github.com/skymanbp/CodeEraser

@@ -82,7 +82,7 @@ fn want_hits(hits: &[oracle::Hit]) -> Got {
 #[test]
 fn ten_thousand_seeded_queries_rank_as_the_frozen_rust_did() {
     let mut link = core_link();
-    let mut rng = Lcg(0x5EED_0007);
+    let mut rng = Lcg::new(0x5EED_0007);
     // [score ties among the kept, an expansion, a widened hit, a role,
     // exactly k kept]
     let mut met = [0u32; 5];

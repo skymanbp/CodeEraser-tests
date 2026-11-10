@@ -16,19 +16,19 @@ pub(crate) fn core_link() -> crate::corelink::Link {
     crate::corelink::Link::open(&core).expect("open core").0
 }
 
-/// A fixed-seed linear congruential generator (no dependency, no clock).
-pub(crate) struct Lcg(pub u64);
+/// The differentials' fixed-seed stream (crate::testutil::Draw).
+pub(crate) struct Lcg(crate::testutil::Draw);
 
 impl Lcg {
+    pub(crate) fn new(seed: u64) -> Lcg {
+        Lcg(crate::testutil::Draw::new(seed, 0))
+    }
+
     pub(crate) fn next(&mut self, n: usize) -> usize {
-        self.0 = self
-            .0
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1442695040888963407);
-        ((self.0 >> 33) % n.max(1) as u64) as usize
+        self.0.below(n)
     }
 
     pub(crate) fn pick<T: Copy>(&mut self, xs: &[T]) -> T {
-        xs[self.next(xs.len())]
+        self.0.pick_from(xs)
     }
 }

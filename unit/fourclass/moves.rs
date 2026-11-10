@@ -157,7 +157,7 @@ fn fields(c: &Classification) -> Fields {
 #[test]
 fn ten_thousand_seeded_pairs_answer_as_the_frozen_rust_did() {
     let mut link = core_link();
-    let mut rng = Lcg(0x5EED_0004);
+    let mut rng = Lcg::new(0x5EED_0004);
     let (mut case, mut compared) = (0usize, 0usize);
     // [a move, a relocated unit, a one-sided declaration, a duplicated
     // span, a side with two or more leftover runs]

@@ -1,40 +1,29 @@
-//! The seeded draws the reader legs share: a splitmix64 stream, picks
+//! The seeded draws the reader legs share: the crate's one stream
+//! (crate::testutil::Draw), picks
 //! from a word list, strings over an alphabet, and the mutations a real
 //! configuration text goes through (a byte-order mark, CRLF, a comment,
 //! a continuation, a non-ASCII or White_Space character, a cut, a
 //! doubled or dropped line).
 
-pub(super) struct Draw {
-    state: u64,
-}
+pub(super) struct Draw(crate::testutil::Draw);
 
 impl Draw {
     pub(super) fn seeded(leg: u64) -> Draw {
-        let seed = std::env::var("CE_RESOLVE_DIFF_SEED")
-            .ok()
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(0x7e47_2033);
-        Draw {
-            state: seed.rotate_left(17) ^ leg.wrapping_mul(0xbf58_476d_1ce4_e5b9),
-        }
-    }
-
-    fn step(&mut self) -> u64 {
-        self.state = self.state.wrapping_add(0x9e37_79b9_7f4a_7c15);
-        let mut z = self.state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-        z ^ (z >> 31)
+        Draw(crate::testutil::Draw::seeded(
+            "CE_RESOLVE_DIFF_SEED",
+            0x7e47_2033,
+            leg,
+        ))
     }
 
     /// A number in `0..n`.
     pub(super) fn under(&mut self, n: usize) -> usize {
-        (self.step() % n.max(1) as u64) as usize
+        self.0.below(n)
     }
 
     /// True `pct` times in a hundred.
     pub(super) fn chance(&mut self, pct: usize) -> bool {
-        self.under(100) < pct
+        self.0.chance(pct)
     }
 
     pub(super) fn one<'a>(&mut self, words: &[&'a str]) -> &'a str {

@@ -1,6 +1,6 @@
 // K44 (plan v2.17 L round, sealed criterion §7): the diagnostics
 // hub renders a report's row arrays generically, keeping the first
-// five scalar columns of row 0 — so a 0.3.0 advisory row of the
+// five scalar columns of row 0 — so an advisory row of the
 // deadcode report must keep its `symbol` (and `name`) through that
 // projection, or the symbol-level face shows a file with no symbol.
 // serde_json emits the row's keys in BTreeMap order (alphabetical:

@@ -14,7 +14,7 @@
 /// names the key the member carried on the day it dissolved: the
 /// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
 /// both readers in baseline_bridge.rs share `seated_or_retired`.
-pub const RETIRED: [(u64, &str); 54] = [
+pub const RETIRED: [(u64, &str); 49] = [
     (
         5414355871597516298,
         "v2.32 step 6 2026-10-03: 8.0.0 retired structure/1's `patterns` request key, so CE.Structure imports the named refusal (CE.Wire.Retired) inside the import run it shared with CE.Docdup and StructureProps no longer refuses the pattern table twice - the two blocks this member's pair rode (Docdup.hs:38-43 / Structure.hs:32-37 imports, StructureProps.hs:124-134 / 134-137 refusals) left with the road (ce.toml dedup budget 37 -> 35)",
@@ -176,36 +176,12 @@ pub const RETIRED: [(u64, &str); 54] = [
         "v2.32 step 2 2026-10-01: docdup/spec.rs's const table of numbers and markers moved into the core (CE.Docdup.Cost, CE.Lang.Common.Prose) and the file kept only its readers, so it no longer rhymes with graph/wire.rs's const table",
     ),
     (
-        12441163793521289489,
-        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
-    ),
-    (
-        14066198317823549133,
-        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
-    ),
-    (
-        15283346326385119323,
-        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
-    ),
-    (
         16409031450442344353,
-        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
-    ),
-    (
-        17679470848269995785,
-        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
-    ),
-    (
-        18074344538836094835,
         "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
     ),
     (
         18120040199708299305,
         "v2.32 step 4B 2026-10-02: the join console moved onto the bound document (report::Bound) and join/report.rs no longer spells the file-row loop trend/report.rs rhymed with - the block left with it (ce.toml dedup budget 42 -> 41)",
-    ),
-    (
-        18190675168993883734,
-        "v2.32 step 2 2026-10-01: the scan LangSpec tables moved into the core's CE.Lang modules and scan/spec_{c,launch,lua,r}.rs were deleted - the table-to-table rhyme this member rode left with them",
     ),
     (
         1890265009673430078,
@@ -234,5 +210,9 @@ pub const RETIRED: [(u64, &str); 54] = [
     (
         2642110337326275137,
         "v2.33 step 11a 2026-10-13 (defrag, core lane): CE.Graph and CE.Verdict each answer degraded and judged through one reply function with the degraded flag, the envelope CE.Wire.Result `resultLine` / `replyLine` and the reason `tooLargeOf`, so Graph.hs 160-173 no longer rhymes with Verdict.hs 199-213 (54 tokens) - the block this member rode (top level on both sides, member id recomputed from (clone, Graph.hs, Verdict.hs)) left with them (ce.toml dedup budget 33 -> 31)",
+    ),
+    (
+        5221156939305294370,
+        "v2.35 cleanup lane 2026-11-10 (one helper, one home): CE.Verdict.Score exports `classOf` and CE.Verdict.Join imports it instead of keeping its own, so the export heads of Join.hs 26-38 and Score.hs 15-27 no longer rhyme (58 tokens) - the one block that left, and this anchored member (REANCHORED successor of 4721657295879003918) the one member the main baseline lost with it (ce.toml dedup budget 31 -> 30)",
     ),
 ];

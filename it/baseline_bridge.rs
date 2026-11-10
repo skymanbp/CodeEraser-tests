@@ -3,8 +3,8 @@
 //! set holds unit-pair MEMBERS, and the two spaces are welded by one
 //! exact accounting — members + collapsed == blocks == budget — so
 //! neither gate can drift silently while the §7.2 identity keeps its
-//! deliberate move-stability (57 of the self repo's 97 blocks share
-//! a unit pair with an earlier block; that collapse is REPORTED).
+//! deliberate move-stability (a block that shares a unit pair with an
+//! earlier block collapses into its member; that collapse is REPORTED).
 //! Plus the ADR-006 independence pair: the --fail-under floor and
 //! the ratchet each fail ALONE.
 
@@ -36,9 +36,9 @@ fn bridge_conserves_blocks_into_members_and_gates_agree() {
         found.blocks.len(),
         "every block lands in exactly one member (new or collapsed)"
     );
+    // the scalar gate's own equality, so `dedup --check` passes: the two
+    // gates judge the same repo the same way
     assert_eq!(found.blocks.len(), budget, "the scalar gate's own equality");
-    // the two gates judge the same repo the same way
-    assert!(found.blocks.len() <= budget, "dedup --check passes");
     assert!(!o.reply.fail, "ce check passes: {:?}", o.reply.added);
     assert!(o.reply.degraded.is_none(), "healthy judgment");
 }
@@ -115,6 +115,28 @@ fn anchored(id: u64) -> u64 {
     present(reanchored(id).unwrap_or_else(|| panic!("member {id} has no REANCHORED successor")))
 }
 
+/// A frozen (not retired) member's road to the present: the successor a
+/// path move gave it (REKEYED), that successor's suite key if it moved
+/// into the suite (REKEYED_SUITE), and the anchored key both baselines
+/// are asked under.
+fn route(m: u64) -> (Option<u64>, Option<u64>, u64) {
+    let rekeyed = rekeyed_pairs()
+        .into_iter()
+        .find(|(id, _)| *id == m)
+        .map(|(_, n)| n);
+    let suite_key = rekeyed.and_then(|n| {
+        suite_pairs()
+            .into_iter()
+            .find(|(id, _)| *id == n)
+            .map(|(_, sk)| sk)
+    });
+    (
+        rekeyed,
+        suite_key,
+        anchored(suite_key.or(rekeyed).unwrap_or(m)),
+    )
+}
+
 /// One frozen member followed to the present. A retirement made before
 /// 7.0.0 exits under the frozen key itself; every other key is looked
 /// up under `anchored` and is seated there or retired by that name; a
@@ -127,38 +149,31 @@ fn survives(m: u64, now: &HashSet<u64>, suite: &HashSet<u64>) {
         );
         return;
     }
-    let rekeyed = rekeyed_pairs()
-        .into_iter()
-        .find(|(id, _)| *id == m)
-        .map(|(_, n)| n);
+    let (rekeyed, suite_key, key) = route(m);
     assert!(
         rekeyed.is_none() || !now.contains(&m),
         "re-keyed member {m} is back under its pre-move key — stale REKEYED entry"
     );
-    let moved = rekeyed.and_then(|n| suite_pairs().into_iter().find(|(id, _)| *id == n));
-    let (home, key, missing) = match (rekeyed, moved) {
+    let (home, missing) = match (rekeyed, suite_key) {
         (None, _) => (
             now,
-            anchored(m),
             format!(
                 "pre-Haskell member {m} vanished from the committed baseline without a named retirement — corpus growth must never rewrite the pre-generation set"
             ),
         ),
         (Some(new), None) => (
             now,
-            anchored(new),
             format!(
                 "re-keyed member {m}'s successor {new} is missing — the rename ledger promised the duplication survived the move"
             ),
         ),
-        (Some(new), Some((_, sk))) => {
+        (Some(new), Some(sk)) => {
             assert!(
                 !now.contains(&new),
                 "member {new} moved to the suite yet is back in the superproject's baseline — stale REKEYED_SUITE entry"
             );
             (
                 suite,
-                anchored(sk),
                 format!(
                     "member {new}'s suite key {sk} is missing from the suite's baseline — the second-generation ledger promised the duplication survived the move"
                 ),
@@ -166,6 +181,39 @@ fn survives(m: u64, now: &HashSet<u64>, suite: &HashSet<u64>) {
         }
     };
     seated_or_retired(home, key, &missing);
+}
+
+/// The ledger read the other way: every RETIRED key must be one the two
+/// readers above look up — a frozen member, the anchored key a frozen
+/// member is asked under, or a REANCHORED / RELOCATED successor. A row
+/// no reader reaches asserts nothing, and its stale-entry check could
+/// never fire.
+#[test]
+fn every_retired_key_is_one_the_gate_reaches() {
+    let frozen: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string("../contracts/eval/pre-haskell-members-v1.json").expect("frozen"),
+    )
+    .expect("frozen json");
+    let mut reached = HashSet::new();
+    for m in frozen["members"].as_array().expect("members") {
+        let m = m.as_u64().expect("member id");
+        reached.insert(m);
+        if !RETIRED.iter().any(|(id, _)| *id == m) {
+            reached.insert(route(m).2);
+        }
+    }
+    for (_, new, _) in reanchored_rows().into_iter().chain(relocated_rows()) {
+        reached.insert(present(new));
+    }
+    let unreached: Vec<u64> = RETIRED
+        .iter()
+        .map(|(id, _)| *id)
+        .filter(|id| !reached.contains(id))
+        .collect();
+    assert!(
+        unreached.is_empty(),
+        "RETIRED rows no reader of the gate consults: {unreached:?}"
+    );
 }
 
 /// The anchored-space documents can only describe the present: no key

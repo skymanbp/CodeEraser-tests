@@ -34,7 +34,7 @@ const TRUTHS: [&str; 3] = ["same_role", "related", "unrelated"];
 /// (plan v2.30 step 5b: grouped parameters, package-level const / var)
 /// re-read them as 39/59, 75/118, 100/165 and 29/57, 69/115, 89/179;
 /// both floors stand.
-const GENERATIONS: [(u32, u64); 2] = [(1, 60), (2, 40)];
+pub(crate) const GENERATIONS: [(u32, u64); 2] = [(1, 60), (2, 40)];
 
 fn oracle(generation: u32) -> Value {
     load(&eval_doc_v("similar-oracle", generation))

@@ -181,7 +181,7 @@ fn moved_counters(t: &Tally) -> [u64; 11] {
 #[test]
 fn ten_thousand_seeded_passes_answer_as_the_frozen_rust_did() {
     let mut link = core();
-    let mut rng = Lcg(0x5EED_0003);
+    let mut rng = Lcg::new(0x5EED_0003);
     let mut seen = [0u64; 11];
     for n in 0..10_000 {
         let (units, instances, near, exhaustive) = case(&mut rng, n);
@@ -210,7 +210,7 @@ fn ten_thousand_seeded_passes_answer_as_the_frozen_rust_did() {
 #[test]
 fn the_clone_verdict_answers_as_the_frozen_mirror_did() {
     let mut link = core();
-    let mut rng = Lcg(0x5EED_0001);
+    let mut rng = Lcg::new(0x5EED_0001);
     let sizes = [1i64, 2, 3, 17, 20, 24, 85, 99, 100, 101, 1 << 20, 1 << 31];
     let rows: Vec<[i64; 3]> = (0..10_000)
         .map(|_| {
@@ -246,7 +246,7 @@ fn the_label_bound_reads_the_frozen_intersection() {
     // two units that differ only in their histograms are kept or cut
     // exactly where the frozen verdict keeps or cuts them
     let mut link = core();
-    let mut rng = Lcg(0x5EED_0002);
+    let mut rng = Lcg::new(0x5EED_0002);
     let (mut kept, mut cut) = (0, 0);
     for n in 0..2_000 {
         let mut a = unit(&mut rng, true);

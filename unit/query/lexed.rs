@@ -13,21 +13,16 @@ use crate::query::PRELUDE;
 use crate::query::oracle::{columns, legend as frozen_legend, program};
 use serde_json::{Value, json};
 
-/// Knuth's MMIX linear congruential step, the high half folded down:
-/// the leg's seeded stream.
-struct Mix(u64);
+/// The leg's seeded stream (crate::testutil::Draw).
+struct Mix(crate::testutil::Draw);
 
 impl Mix {
-    fn draw(&mut self) -> u64 {
-        self.0 = self
-            .0
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1_442_695_040_888_963_407);
-        self.0 ^ (self.0 >> 32)
+    fn new(seed: u64) -> Mix {
+        Mix(crate::testutil::Draw::new(seed, 0))
     }
 
     fn under(&mut self, n: usize) -> usize {
-        (self.draw() % n as u64) as usize
+        self.0.below(n)
     }
 }
 
@@ -146,7 +141,7 @@ fn mismatches(cases: &[[Option<String>; 3]]) -> Vec<String> {
 /// One seed's 10,000 programs: the prelude, a random rules text or none,
 /// a random query or none — or, one time in eight, a random prelude.
 fn seeded(seed: u64) -> Vec<[Option<String>; 3]> {
-    let mut rng = Mix(seed);
+    let mut rng = Mix::new(seed);
     (0..10_000)
         .map(|_| {
             let prelude = if rng.under(8) == 0 {

@@ -3,30 +3,18 @@
 //! splitter cuts on, identifiers in camel / snake / capital runs, and
 //! source files of six languages whose units carry them.
 
-/// splitmix64 over the seed: three seeds, three distinct streams.
-pub(super) struct Draw(u64);
+/// The crate's one stream (crate::testutil::Draw): three seeds, three
+/// distinct streams.
+pub(super) struct Draw(crate::testutil::Draw);
 
 impl Draw {
     pub(super) fn new(seed: u64, salt: u64) -> Draw {
-        Draw(seed.wrapping_mul(0x0100_0000_01b3) ^ salt)
+        Draw(crate::testutil::Draw::new(seed, salt))
     }
 
-    /// The next word: the state steps by the golden gamma, then the
-    /// finaliser's three xor-shift rounds (the last multiplies by one).
-    fn word(&mut self) -> u64 {
-        self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
-        [
-            (30, 0xbf58_476d_1ce4_e5b9),
-            (27, 0x94d0_49bb_1331_11eb),
-            (31, 1),
-        ]
-        .iter()
-        .fold(self.0, |z, &(s, m)| (z ^ (z >> s)).wrapping_mul(m))
-    }
-
-    /// A draw below `n` (usize is 64 bits wherever the tests run).
+    /// A draw below `n`.
     pub(super) fn below(&mut self, n: usize) -> usize {
-        self.word() as usize % n
+        self.0.below(n)
     }
 
     /// One word of a table: its words sit between spaces and line breaks.

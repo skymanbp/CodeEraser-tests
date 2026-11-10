@@ -131,23 +131,24 @@ fn readings(g: &Generation, set: &Value, sample: &Value, review: &Value) -> Valu
     json!({"schema": PRECISION_SCHEMA, "from": [g.set, g.sample, g.review], "readings": shown})
 }
 
-/// In every generation the audit, once filed, is a review of the sample
-/// (answers.rs) and answers every sampled row; the precision doc, once
-/// filed, is what the three docs read.
+/// In every generation the audit is a review of the sample (answers.rs)
+/// and answers every sampled row; the precision doc is what the three
+/// docs read. Every generation is filed: a missing doc is a failure,
+/// never a skip.
 #[test]
 fn the_review_scores_when_filed() {
     for g in &GENERATIONS {
-        let Some(review) = load(g.review) else {
-            println!("eval_merge_review: {} not filed yet — skipped", g.review);
-            continue;
-        };
-        let (set, sample) = (load(g.set).expect("set"), load(g.sample).expect("sample"));
+        let filed = |rel: &str| load(rel).unwrap_or_else(|| panic!("{rel} is not filed"));
+        let review = filed(g.review);
+        let (set, sample) = (filed(g.set), filed(g.sample));
         verify_review(&sample, &review);
         let read = readings(g, &set, &sample, &review);
-        match load(g.precision) {
-            Some(doc) => assert_eq!(doc, read, "{} reads what the docs read", g.precision),
-            None => println!("eval_merge_review: {} not filed yet — skipped", g.precision),
-        }
+        assert_eq!(
+            filed(g.precision),
+            read,
+            "{} reads what the docs read",
+            g.precision
+        );
     }
 }
 
@@ -174,15 +175,11 @@ fn flip_feasible(doc: &mut Value) {
 /// reason, a forged batch count and an empty auditor through the
 /// forgery frame. Every edit is on a copy: the filed doc is read again
 /// after the battery and must be byte for byte what it was. The battery
-/// reads the newest generation whose review is filed.
+/// reads the newest generation, whose review must be filed.
 #[test]
 fn the_review_refuses_tampering() {
-    let filed = GENERATIONS.iter().rev().find(|g| load(g.review).is_some());
-    let Some(g) = filed else {
-        println!("eval_merge_review: no review filed yet — skipped");
-        return;
-    };
-    let pristine = load(g.review).expect("the filed review");
+    let g = &EXAM;
+    let pristine = load(g.review).unwrap_or_else(|| panic!("{} is not filed", g.review));
     let before = std::fs::read(repo_file(g.review)).expect("the filed review");
     let sample = load(g.sample).expect("sample");
     let check = |doc: &Value| verify_review(&sample, doc);

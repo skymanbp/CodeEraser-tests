@@ -64,7 +64,7 @@ impl Leg {
     pub(super) fn new(name: &'static str, salt: u64) -> Leg {
         let core = crate::daemon::judge::core_bin().expect("a core (CE_CORE_BIN)");
         let (link, _) = Link::open(&core).expect("the core answers");
-        let rng = Rng::new(salt);
+        let rng = Rng::ladder(salt);
         let (asked, spelled, missed, misses) = (0, 0, 0, Vec::new());
         Leg {
             name,

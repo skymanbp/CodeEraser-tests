@@ -22,27 +22,21 @@ pub fn cases() -> usize {
     n.and_then(|s| s.parse().ok()).unwrap_or(10_000)
 }
 
-/// Marsaglia's xorshift64, one stream per case.
-pub struct Draw(u64);
+/// One stream per case (crate::testutil::Draw).
+pub struct Draw(crate::testutil::Draw);
 
 impl Draw {
-    /// Case `i` of `seed`'s run (the multiplier is the golden ratio's
-    /// 64-bit fraction; the `| 1` keeps the state off xorshift's zero).
+    /// Case `i` of `seed`'s run: the case number is the stream's salt.
     pub fn case(seed: u64, i: usize) -> Draw {
-        Draw((seed ^ (i as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15)) | 1)
+        Draw(crate::testutil::Draw::new(seed, i as u64))
     }
 
     pub fn under(&mut self, n: usize) -> usize {
-        let mut x = self.0;
-        x ^= x << 13;
-        x ^= x >> 7;
-        x ^= x << 17;
-        self.0 = x;
-        (x % n.max(1) as u64) as usize
+        self.0.below(n)
     }
 
     pub fn chance(&mut self, percent: usize) -> bool {
-        self.under(100) < percent
+        self.0.chance(percent)
     }
 
     /// One of a table's `|`-separated words.

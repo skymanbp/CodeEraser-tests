@@ -270,7 +270,7 @@ pub(super) fn leg(
     forced: bool,
     mut tree: impl FnMut(&mut Rng, &Path) -> Tree,
 ) {
-    let mut rng = Rng::new(salt);
+    let mut rng = Rng::ladder(salt);
     let mut tally = Tally::default();
     let n = std::env::var("CE_LADDER_DIFF_N")
         .ok()

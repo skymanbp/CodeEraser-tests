@@ -134,7 +134,7 @@ fn rs_random_trees_agree() {
 #[test]
 #[ignore = "instrument: run with --ignored --nocapture"]
 fn rs_surface_hash_agrees() {
-    let mut rng = Rng::new(36);
+    let mut rng = Rng::ladder(36);
     let mut misses = 0;
     for i in 0..10_000 {
         let mut text = source(&mut rng, i % 5);

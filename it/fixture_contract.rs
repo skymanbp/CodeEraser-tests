@@ -157,8 +157,8 @@ fn tally() -> (usize, Vec<String>) {
 /// session scratchpad): one core at CE_CORE_BIN answers every request
 /// line in Spec.hs's order and the reply lines are rewritten from its
 /// answers, each request asked as the current major reads it (`asked`:
-/// the handshake at PROTO, lines a major left behind at ANCHOR, retired
-/// keys lifted out of the family goldens). `CE_BLESS=1`
+/// the handshake at PROTO, lines a major left behind at ANCHOR).
+/// `CE_BLESS=1`
 /// writes the files; without it the leg is the dry run and fails
 /// naming every pair that would move. `--ignored`: it runs on
 /// purpose, at a proto bump, never by accident under a bless.

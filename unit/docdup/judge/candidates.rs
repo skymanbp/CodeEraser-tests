@@ -88,7 +88,7 @@ fn segs(rng: &mut Lcg, n: usize) -> Vec<SegRow> {
 #[test]
 fn ten_thousand_seeded_coarse_passes_answer_as_the_frozen_rust_did() {
     let mut link = core_link();
-    let mut rng = Lcg(0x5EED_0005);
+    let mut rng = Lcg::new(0x5EED_0005);
     for n in 0..10_000 {
         let segs = segs(&mut rng, n);
         let (want, wt) = oracle::coarse(&segs);
@@ -147,7 +147,7 @@ fn ten_thousand_seeded_pairs_measure_runs_and_verdicts_as_the_frozen_rust_did() 
     let core = crate::daemon::judge::core_bin().expect("a core");
     let fam = super::super::wire::family(&core);
     let mut link = crate::corelink::judged::open(fam.core, fam.cap).expect("open core");
-    let mut rng = Lcg(0x5EED_0006);
+    let mut rng = Lcg::new(0x5EED_0006);
     let alphabet = [SHINGLES[0], SHINGLES[4], SHINGLES[7], 42];
     let (mut compared, mut round) = (0usize, 0usize);
     // [verbatim-only dup, run 46..=49 without Jaccard, Jaccard dup]

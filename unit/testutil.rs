@@ -188,3 +188,61 @@ pub fn check_word_case(
         .collect();
     assert_eq!(measure(src, lang), want, "{src:?}");
 }
+
+/// The one seeded stream every differential leg draws from: splitmix64
+/// (Steele, Lea and Flood 2014) over the seed mixed with the leg's salt
+/// — no dependency, no clock, the same words on every toolchain. Each
+/// generator module keeps its own word tables and draws through this.
+pub struct Draw(u64);
+
+impl Draw {
+    /// The stream of `seed` under the leg's `salt`.
+    pub fn new(seed: u64, salt: u64) -> Draw {
+        Draw(seed ^ salt.wrapping_mul(0x9e37_79b9_7f4a_7c15))
+    }
+
+    /// The seed the environment variable `env` names (a decimal u64),
+    /// else `default`, under the leg's `salt`.
+    pub fn seeded(env: &str, default: u64, salt: u64) -> Draw {
+        let seed = std::env::var(env).ok().and_then(|s| s.parse().ok());
+        Draw::new(seed.unwrap_or(default), salt)
+    }
+
+    /// The ladder and document differentials' stream: the seed
+    /// `CE_LADDER_DIFF_SEED` names, under the leg's salt.
+    pub fn ladder(salt: u64) -> Draw {
+        Draw::seeded("CE_LADDER_DIFF_SEED", 0x5eed_2033, salt)
+    }
+
+    /// The next word: the state steps by the golden gamma, then the
+    /// finaliser's three xor-shift rounds.
+    pub fn word(&mut self) -> u64 {
+        self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        z ^ (z >> 31)
+    }
+
+    /// A draw in `0..n` (0 when `n` is 0).
+    pub fn below(&mut self, n: usize) -> usize {
+        (self.word() % n.max(1) as u64) as usize
+    }
+
+    /// True `percent` times in a hundred.
+    pub fn chance(&mut self, percent: usize) -> bool {
+        self.below(100) < percent
+    }
+
+    /// One element of a slice.
+    pub fn pick_from<T: Copy>(&mut self, xs: &[T]) -> T {
+        xs[self.below(xs.len())]
+    }
+
+    /// One word of a table whose words are joined by `|` (an empty word
+    /// allowed).
+    pub fn pick<'t>(&mut self, table: &'t str) -> &'t str {
+        let k = self.below(table.split('|').count());
+        table.split('|').nth(k).unwrap_or_default()
+    }
+}
