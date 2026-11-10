@@ -14,7 +14,7 @@ use crate::common::Fixture;
 use crate::eval_graph_precision_parts::{ratio, rescore, verdict_of};
 use crate::eval_lang_parts::review::ECHO;
 use crate::eval_lang_parts::{Exam, PRECISION_DOCS, Stage};
-use crate::eval_support::{lang_of, tally_add};
+use crate::eval_support::{asked, lang_of, tally_add};
 use codeeraser::graph::ladder::{Scope, Site, c_head, java_header, lua_path};
 use codeeraser::graph::sites::{RawSite, detect};
 use codeeraser::scan::lang::Lang;
@@ -149,7 +149,8 @@ pub fn summary(rows: &[Value]) -> Value {
 /// The ledger over EVERY site of the frozen universe, not the sample
 /// (the M5-2 three numbers): answers per (lang, kind, rung), refusals
 /// per (lang, kind, reason). Its resolution rate is a recall ceiling —
-/// what the detector cannot see is in no denominator.
+/// what the detector cannot see is in no denominator, and neither is a
+/// site no ladder is asked about (`eval_support::asked`).
 pub fn universe(texts: &[(String, String)], lang: &str, scope: &Scope) -> Value {
     let (mut by, mut refused) = (BTreeMap::new(), BTreeMap::new());
     let sites: Vec<(&str, RawSite)> = texts
@@ -157,6 +158,7 @@ pub fn universe(texts: &[(String, String)], lang: &str, scope: &Scope) -> Value 
         .flat_map(|(path, text)| {
             detect(text, lang_of(lang))
                 .into_iter()
+                .filter(asked)
                 .map(move |s| (path.as_str(), s))
         })
         .collect();

@@ -68,6 +68,7 @@ mod docs_nav;
 mod doctor_face;
 mod document_catalogue;
 mod document_number_format;
+mod dynamic_loads;
 mod eject_e2e;
 mod erase_e2e;
 mod erase_hunks_apply;

@@ -66,13 +66,24 @@ pub fn content_sha(text: &str) -> String {
     h.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// Per-kind site counts, the shape frozen in every graph-slice file
-/// row (same relocation as content_sha).
+/// Whether a detected site is one a ladder is asked about — the sites
+/// every frozen universe counts (graph slices, the language exams'
+/// slices and their precision ledgers). A `dynamic` site (a load whose
+/// target is no literal, lane v235_graphtrust) spells no target, never
+/// reaches a rung and is no question of a precision exam, so the
+/// universes frozen before it existed still read the same; the product
+/// counts it unresolved in its own reports.
+pub fn asked(site: &codeeraser::graph::sites::RawSite) -> bool {
+    site.kind != "dynamic"
+}
+
+/// Per-kind counts of the asked sites, the shape frozen in every
+/// graph-slice file row (same relocation as content_sha).
 pub fn kind_counts(
     sites: &[codeeraser::graph::sites::RawSite],
 ) -> std::collections::BTreeMap<&'static str, u64> {
     let mut kinds = std::collections::BTreeMap::new();
-    for s in sites {
+    for s in sites.iter().filter(|s| asked(s)) {
         *kinds.entry(s.kind).or_insert(0) += 1;
     }
     kinds

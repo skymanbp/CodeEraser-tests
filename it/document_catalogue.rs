@@ -102,7 +102,8 @@ fn every_bound_document_carries_its_catalogue_schema() {
 
 /// The sites document names each site's kind from the package's
 /// `store` table (plan v2.32 step 4A rulings, booklet §13 item 29): the
-/// frozen one, twenty-three kinds, none twice.
+/// frozen one, twenty-four kinds (`dynamic` since lane v235_graphtrust),
+/// none twice.
 #[test]
 fn the_site_kinds_are_the_frozen_store_table() {
     let kinds = &stub_core::real_tables()["store"]["site_kinds"];
@@ -114,5 +115,5 @@ fn the_site_kinds_are_the_frozen_store_table() {
         .map(|k| k.as_str().expect("a name"))
         .collect();
     let distinct: std::collections::BTreeSet<&str> = names.iter().copied().collect();
-    assert_eq!((names.len(), distinct.len()), (23, 23));
+    assert_eq!((names.len(), distinct.len()), (24, 24));
 }
