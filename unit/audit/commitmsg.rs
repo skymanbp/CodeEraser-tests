@@ -33,6 +33,27 @@ x # y
 
 ; d
 ====
+fixed-scissors-cut @@ #
+subject
+
+x is no longer used.
+# Please enter the commit message for your changes. Lines starting
+# ------------------------ >8 ------------------------
+# Do not modify or remove the line above.
+diff --git a/f b/f
+-x is no longer used
++v
+----
+subject
+
+x is no longer used.
+
+
+
+
+
+
+====
 auto-status-block @@ auto
 # heading first
 subject

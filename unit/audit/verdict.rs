@@ -47,3 +47,25 @@ fn display_caps_at_ten_but_the_count_stays_true() {
     assert_eq!(v.dups, 12);
     assert_eq!(v.shown.len(), 10);
 }
+
+/// v2.35 G5 (R3-8): the module promises the verdict "can never
+/// silently pass", so an absent or garbled `fail` is no verdict, and
+/// every convicted index is checked — not only the ten shown.
+#[test]
+fn an_unreadable_fail_bit_and_a_late_skewed_index_answer_none() {
+    let blocks = vec![block("a.rs", "b.rs"); 12];
+    let late: Vec<usize> = (0..11).chain([99]).collect();
+    for (why, reply) in [
+        ("no fail bit", json!({"dups": [0], "degraded": false})),
+        (
+            "a string is no bit",
+            json!({"dups": [0], "fail": "true", "degraded": false}),
+        ),
+        (
+            "the twelfth index names no block",
+            json!({"dups": late, "fail": true, "degraded": false}),
+        ),
+    ] {
+        assert!(consume(&reply, &blocks).is_none(), "{why}");
+    }
+}
