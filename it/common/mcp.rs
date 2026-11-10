@@ -18,13 +18,32 @@ pub struct McpSession(LineSession);
 
 impl McpSession {
     pub fn over(dir: &std::path::Path) -> McpSession {
+        Self::over_env(dir, &[])
+    }
+
+    /// The same server under extra environment (a core that is not
+    /// there, say).
+    pub fn over_env(dir: &std::path::Path, env: &[(&str, &str)]) -> McpSession {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_ce"));
         cmd.arg("mcp").arg(dir).stderr(Stdio::null());
+        cmd.envs(env.iter().copied());
         McpSession(LineSession::spawn(cmd, "mcp"))
     }
 
     pub fn ask(&mut self, req: serde_json::Value) -> serde_json::Value {
         self.0.ask(req)
+    }
+
+    /// The handshake every session opens with — the server's name.
+    pub fn initialize(&mut self) -> String {
+        let init = self.ask(serde_json::json!({
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2024-11-05", "capabilities": {}}
+        }));
+        init["result"]["serverInfo"]["name"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string()
     }
 
     /// One `tools/call` — the reply's `result` object.

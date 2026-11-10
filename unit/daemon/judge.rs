@@ -34,3 +34,23 @@ fn backoff_doubles_to_the_cap_and_recovery_reopens() {
     assert_eq!(b.recovered(), None, "the count is reported once");
     assert_eq!(b.failed(t0), BACKOFF_BASE, "a fresh streak starts over");
 }
+
+/// v2.35 G3 (R3-5): a core that would not open says WHY on every
+/// degraded reply until an open succeeds — a bare `core_unavailable`
+/// hid the "present but refused" class behind the null stderr of a
+/// lazily spawned daemon. The budget is closed first, so no spawn runs.
+#[test]
+fn a_failed_open_rides_the_degraded_reason() {
+    let mut j = Judge::default();
+    j.budget.failed(Instant::now());
+    assert_eq!(
+        j.document(serde_json::json!({}))["reason"],
+        "core_unavailable"
+    );
+    j.open_error = Some("cannot start `x`".into());
+    let reply = j.document(serde_json::json!({}));
+    assert_eq!(reply["degraded"], true);
+    assert_eq!(reply["reason"], "core_unavailable: cannot start `x`");
+    let batch = j.judge_changeset(&[]);
+    assert_eq!(batch.degraded.as_deref(), Some("no_link: cannot start `x`"));
+}

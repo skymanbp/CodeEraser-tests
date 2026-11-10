@@ -185,6 +185,7 @@ mod mentions_face;
 mod merge_face;
 mod metrics;
 mod moves_line;
+mod no_core_faces;
 mod notice_gate;
 mod observe_feed;
 mod packaging;
