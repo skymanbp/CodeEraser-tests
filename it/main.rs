@@ -204,6 +204,7 @@ mod rules_face;
 mod rules_pack;
 mod sarif_face;
 mod scan_classes;
+mod scoped_index;
 mod settle_hook;
 mod setup_e2e;
 mod similar_face;

@@ -114,7 +114,14 @@ fn cli_page() -> String {
         "{GEN_BANNER}\n\n# `ce` command reference\n\nEvery block below is \
          the binary's own `--help` output (English face; `--lang zh`, \
          `CE_LANG=zh` or the project's `[ui] lang = \"zh\"` in ce.toml switches \
-         the console at runtime, in that order of precedence).\n\n## ce\n\n```text\n{root}```\n"
+         the console at runtime, in that order of precedence).\n\nA `[ROOT]` names the \
+         analysis SCOPE; the project's state (`ce.toml`, `ce-baseline.json`, `.ce/`) belongs \
+         to the nearest ancestor holding a `ce.toml` or a `.git`. A scope below that project \
+         keeps its own index at `.ce/scope/<scope>/index.db` and its report paths stay \
+         relative to the scope; the project's shared `.ce/index.db`, the one the hooks read, \
+         is written only by a run rooted at the project. Every path git answers is read \
+         relative to the root, so a `ce.toml` project below git's toplevel sees its own \
+         history.\n\n## ce\n\n```text\n{root}```\n"
     );
     for sub in subcommands(&root) {
         let h = help_of(Some(&sub));

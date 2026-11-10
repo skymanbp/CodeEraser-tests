@@ -24,13 +24,24 @@ fn project_with_subdir(tag: &str, rel: &str) -> (PathBuf, PathBuf) {
 /// the project anchor, while the walk still scopes to what was named.
 /// What "answering to the project" means, for a plain subdirectory
 /// and for a declared submodule alike: the project's declaration is
-/// the one loaded, and an analyze rooted below mints the project's
-/// index, never a `.ce` beside the subdirectory.
+/// the one loaded, and an analyze rooted below keeps its scoped index
+/// under the project's `.ce/scope/` (v2.35 G1: the shared index is
+/// the hooks' and a scoped walk never writes it), never a `.ce`
+/// beside the subdirectory.
 fn answers_to_the_project(dir: &Path, sub: &Path) {
     let cfg = Config::load(sub).expect("load from the project");
     assert_eq!(cfg.dedup.budget, Some(41), "the project's declaration wins");
     dedup::analyze(sub, None, None, None).expect("analyze");
-    assert!(dir.join(".ce/index.db").is_file(), "the project's index");
+    let rel = sub.strip_prefix(dir).expect("sub below dir");
+    let scoped = dir.join(".ce/scope").join(rel).join("index.db");
+    assert!(
+        scoped.is_file(),
+        "the scope's index under the project's .ce"
+    );
+    assert!(
+        !dir.join(".ce/index.db").exists(),
+        "the shared index is not written"
+    );
     assert!(
         !sub.join(".ce").exists(),
         "no stray beside the subdirectory"
