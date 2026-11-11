@@ -5,7 +5,7 @@
 //! computed target argument opens (lane v235_graphtrust) — through
 //! detect() itself, so the table is what the graph stores.
 
-use super::super::detect;
+use crate::graph::sites::detect;
 use crate::testutil::blocks;
 
 /// Each block: a header `ext @@ kind=spec@line|… @@ why` over a source.
