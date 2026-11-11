@@ -8,10 +8,11 @@
 
 use super::*;
 use crate::testutil::blocks;
+use tree_sitter::Node;
 
-/// The 1-based lines of the statements `is_load` admits, over every
-/// statement list of the tree.
-fn admitted(body: &str, lang: Lang) -> String {
+/// The 1-based lines of the nodes `keep` admits over the whole tree;
+/// `keep` sees the node and its parent's kind.
+fn lines_where(body: &str, lang: Lang, keep: impl Fn(Node, &str, &LangSpec) -> bool) -> String {
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&lang.grammar().expect("a grammar"))
@@ -21,9 +22,8 @@ fn admitted(body: &str, lang: Lang) -> String {
     let mut lines = Vec::new();
     let mut stack = vec![tree.root_node()];
     while let Some(node) = stack.pop() {
-        let lists = spec.loads.statement_lists.contains(&node.kind());
         for child in ast::children(node) {
-            if lists && is_load(child, body.as_bytes(), lang, spec) {
+            if keep(child, node.kind(), spec) {
                 lines.push(child.start_position().row + 1);
             }
             stack.push(child);
@@ -35,6 +35,14 @@ fn admitted(body: &str, lang: Lang) -> String {
         .map(usize::to_string)
         .collect::<Vec<_>>()
         .join(",")
+}
+
+/// The lines of the statements `is_load` admits, over every statement
+/// list of the tree.
+fn admitted(body: &str, lang: Lang) -> String {
+    lines_where(body, lang, |node, parent, spec| {
+        spec.loads.statement_lists.contains(&parent) && is_load(node, body.as_bytes(), lang, spec)
+    })
 }
 
 /// Each block: `ext @@ admitted lines @@ why` over a source.
@@ -105,29 +113,10 @@ use std::io;
 fn f() {}
 "#;
 
-/// The 1-based lines of the nodes `import_declaration` admits, over the
-/// whole tree.
+/// The lines of the nodes `import_declaration` admits (the root is a
+/// file, never a declaration).
 fn declared(body: &str, lang: Lang) -> String {
-    let mut parser = tree_sitter::Parser::new();
-    parser
-        .set_language(&lang.grammar().expect("a grammar"))
-        .expect("set_language");
-    let tree = parser.parse(body, None).expect("parse");
-    let spec = crate::scan::spec::spec(lang);
-    let mut lines = Vec::new();
-    let mut stack = vec![tree.root_node()];
-    while let Some(node) = stack.pop() {
-        if import_declaration(node, spec) {
-            lines.push(node.start_position().row + 1);
-        }
-        stack.extend(ast::children(node));
-    }
-    lines.sort_unstable();
-    lines
-        .iter()
-        .map(usize::to_string)
-        .collect::<Vec<_>>()
-        .join(",")
+    lines_where(body, lang, |node, _, spec| import_declaration(node, spec))
 }
 
 /// Each block: `ext @@ admitted lines @@ why` over a source.
