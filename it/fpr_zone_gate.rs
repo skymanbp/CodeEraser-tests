@@ -46,6 +46,7 @@ fn coherent(c: &Value) {
     let (k, events) = (n("false_asks") as usize, n("events") as usize);
     assert!(events > 0 && n("events_shared") <= n("events"));
     assert!(n("in_zone") <= n("events") && hidden <= n("ask"));
+    assert!(n("carried") <= n("observe"), "a carried landing fires no tier");
     let soft_events: u64 = c["soft_lines"]
         .as_object()
         .expect("soft lines")
@@ -79,7 +80,8 @@ const TABLE: &str = "[thresholds]\nfile_lines_warn = 10\nfile_lines_fail = 30\n"
 /// S = 10 and H = 30, a 26-line write is 800‰ in (ask), a 16-line
 /// write is 300‰ (warn), and a 40-line write is past H — the
 /// hard-budget class fires there, so the zone's ask is shadowed and
-/// is not this rule's false intercept.
+/// is not this rule's false intercept. A 26-line file rewritten at 26
+/// lines does not grow: carried, its tier does not fire (GD1).
 #[test]
 fn a_synthetic_history_lands_one_ask_one_warn_and_one_shadowed() {
     let repo = two_commits(
@@ -89,17 +91,20 @@ fn a_synthetic_history_lands_one_ask_one_warn_and_one_shadowed() {
             ("a.rs", &filler(1)),
             ("b.rs", &filler(1)),
             ("c.rs", &filler(1)),
+            ("d.rs", &filler(26)),
         ],
         &[
             ("a.rs", &filler(26)),
             ("b.rs", &filler(16)),
             ("c.rs", &filler(40)),
+            ("d.rs", &format!("// changed
+{}", filler(25))),
         ],
     );
     let c = replay(&repo, &tmp("fpr-zone-e2e-shadow"), "e2e");
     assert_eq!(
         (c.commits, c.events, c.rows.len()),
-        (1, 3, 3),
+        (1, 4, 4),
         "one event per changed in-scope file, each of them in the zone"
     );
     let seen: Vec<(&str, usize, bool)> = c
@@ -112,7 +117,8 @@ fn a_synthetic_history_lands_one_ask_one_warn_and_one_shadowed() {
         [
             ("ask", 800, false),
             ("warn", 300, false),
-            ("ask", 1500, true)
+            ("ask", 1500, true),
+            ("observe", 800, false)
         ]
     );
     assert_eq!(

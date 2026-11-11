@@ -1,15 +1,18 @@
 //! O21 (plan v2.29 step 8): the PreToolUse hard-budget rule is Rust
-//! arithmetic with no wire — `guard/budget.rs::budget_breach` passes a
-//! write iff `cap == 0 || lines <= cap` — while the CI wall is the
-//! core's `gradeWith` over scan/1. Nothing proved the two agree, and a
-//! hook that denied a write the wall would pass (or the reverse) would
-//! be a silent policy fork. This leg proves the agreement through the
-//! real binary, cell by cell: for every (declared table, target, written
-//! length) the hook's decision on the write equals `ce scan`'s exit on
-//! the same bytes once written — under the global table, a
-//! `[[rules.class]]` table, and cap 0 (no hard line). The table has to
-//! straddle the line on both sides for the leg to mean anything, and it
-//! asserts that it does.
+//! arithmetic with no wire — `guard::zone::budget_kind` refuses a write
+//! iff `cap != 0 && after > cap && after > before` (v2.35 GD1: the
+//! write is judged for what it ADDS) — while the CI wall is the core's
+//! `gradeWith` over scan/1. Nothing proved the two agree, and a hook
+//! that denied a write the wall would pass (or the reverse) would be a
+//! silent policy fork. This leg proves the agreement through the real
+//! binary, cell by cell: for every (declared table, target, size on disk
+//! before, written length) the hook denies exactly when `ce scan` fails
+//! on the bytes once written AND the write grew the file — under the
+//! global table, a `[[rules.class]]` table, and cap 0 (no hard line). A
+//! file already past the line that the write keeps or shrinks is the
+//! wall's failure, never the write's. The table has to straddle the
+//! line on both sides for the leg to mean anything, and it asserts that
+//! it does.
 
 use crate::common;
 use crate::common::pretooluse_envelope_at as envelope;
@@ -64,31 +67,41 @@ fn scan_fails(dir: &Path, rel: &str, text: &str, core: &str) -> bool {
 #[test]
 fn the_hook_budget_and_the_scan_wall_agree_cell_by_cell() {
     let core = core_bin();
-    let cells: [(&str, &str, &str, usize); 7] = [
-        ("global-at", GLOBAL, "a.rs", 30),
-        ("global-over", GLOBAL, "a.rs", 31),
-        ("class-at", CLASSED, "pkg/b.rs", 20),
-        ("class-over", CLASSED, "pkg/b.rs", 21),
-        ("class-unclassed", CLASSED, "a.rs", 25),
-        ("no-line-huge", NO_LINE, "a.rs", 5000),
-        ("no-line-warn-only", NO_LINE, "a.rs", 400),
+    // tag, table, target, lines on disk before (0 = absent), written
+    let cells: [(&str, &str, &str, usize, usize); 10] = [
+        ("global-at", GLOBAL, "a.rs", 0, 30),
+        ("global-over", GLOBAL, "a.rs", 0, 31),
+        ("class-at", CLASSED, "pkg/b.rs", 0, 20),
+        ("class-over", CLASSED, "pkg/b.rs", 0, 21),
+        ("class-unclassed", CLASSED, "a.rs", 0, 25),
+        ("no-line-huge", NO_LINE, "a.rs", 0, 5000),
+        ("no-line-warn-only", NO_LINE, "a.rs", 0, 400),
+        ("global-carried", GLOBAL, "a.rs", 40, 40),
+        ("global-shrinks", GLOBAL, "a.rs", 40, 35),
+        ("global-grows", GLOBAL, "a.rs", 40, 41),
     ];
     let mut verdicts = Vec::new();
-    for (tag, toml, rel, lines) in cells {
+    for (tag, toml, rel, before, lines) in cells {
         let dir = tmp(&format!("budget-parity-{tag}"));
         declare(&dir, toml);
+        if before > 0 {
+            write_all(&dir, &[(rel, &source(before))]);
+        }
         common::build_index(&dir);
         let text = source(lines);
         let denied = hook_denies(&dir, rel, &text);
         let failed = scan_fails(&dir, rel, &text, &core);
         assert_eq!(
-            denied, failed,
-            "{tag}: hook denies = {denied}, scan fails = {failed} ({rel}, {lines} lines)"
+            denied,
+            failed && lines > before,
+            "{tag}: hook denies = {denied}, scan fails = {failed} ({rel}, {before} -> {lines} lines)"
         );
-        verdicts.push(denied);
+        verdicts.push((denied, failed));
     }
     assert!(
-        verdicts.contains(&true) && verdicts.contains(&false),
-        "the table straddles the line: {verdicts:?}"
+        verdicts.contains(&(true, true))
+            && verdicts.contains(&(false, false))
+            && verdicts.contains(&(false, true)),
+        "the table straddles the line, and holds a failing file the write did not grow: {verdicts:?}"
     );
 }

@@ -110,8 +110,28 @@ fn scenes() -> Vec<Scene> {
             ..scene(
                 "guard-say-budget",
                 "deny",
-                "past the hard budget of 750",
-                "越过 750 行的硬预算",
+                "at 751 lines, past the hard budget of 750",
+                "共 751 行，越过 750 行的硬预算",
+            )
+        },
+        Scene {
+            declare: vec![("b.rs", filler(749))],
+            write: filler(751),
+            ..scene(
+                "guard-say-budget-cross",
+                "deny",
+                "from 749 to 751 lines, past the hard budget of 750",
+                "从 749 行变成 751 行，越过 750 行的硬预算",
+            )
+        },
+        Scene {
+            declare: vec![("b.rs", filler(800))],
+            write: filler(801),
+            ..scene(
+                "guard-say-budget-growth",
+                "deny",
+                "is already past the hard budget of 750 at 800 lines; this write grows it to 801",
+                "已越过 750 行的硬预算，现有 800 行；这次写入会让它长到 801 行",
             )
         },
         Scene {

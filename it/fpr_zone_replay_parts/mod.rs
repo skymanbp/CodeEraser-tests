@@ -12,25 +12,29 @@ use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 
 pub const DOC: &str = "contracts/eval/fpr-zone-v1.json";
-pub const SCHEMA: &str = "ce.eval-fpr-zone/1.0.0";
+pub const SCHEMA: &str = "ce.eval-fpr-zone/1.1.0";
 /// The plan §4.2 / §6 M4 admission line as parts per million of
 /// events: one false intercept per hundred real normal edits.
 pub const GATE_PPM: u64 = 10_000;
 
-/// One in-zone landing: the write, the two lines it was measured
-/// against, its position and the tier the map gave it. `shadowed` =
-/// the write also crossed H, so guard.rs never reaches `zone_assess`
-/// at all — the hard-budget class decides and the zone's ask is moot.
+/// One in-zone landing: the write, the file's size before it, the two
+/// lines it was measured against, its position and the tier the hook
+/// gives it — `observe` for a carried write (1.1.0, GD1: it does not
+/// grow the file, so its tier does not fire). `shadowed` = the write
+/// also lands past H, so guard.rs never reaches `zone_assess` at all —
+/// the hard-budget class decides and the zone's ask is moot.
 #[derive(serde::Serialize)]
 pub struct Landed {
     pub sha: String,
     #[serde(rename = "file")]
     pub rel: String,
+    pub before: usize,
     pub lines: usize,
     pub soft: usize,
     pub hard: usize,
     pub permille: usize,
     pub tier: &'static str,
+    pub carried: bool,
     pub shadowed: bool,
 }
 
@@ -86,6 +90,7 @@ impl Corpus {
             "observe": count(&self.rows, "observe"),
             "warn": count(&self.rows, "warn"),
             "ask": count(&self.rows, "ask"),
+            "carried": self.rows.iter().filter(|r| r.carried).count(),
             "ask_shadowed": shadowed(&self.rows),
             "false_asks": k,
             "rate_ppm": rate_ppm(k, self.events),

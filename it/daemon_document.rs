@@ -20,7 +20,8 @@ fn a_guard_request_round_trips_through_the_daemon_in_both_languages() {
         let body = json!({
             "family": "guard",
             "ranges": {"files": 1, "matches": 0, "places": 0, "units": 0, "errors": 1},
-            "rows": {"say": [[1, 0, 760, 750, 1, 0, 0], [5, 0, 0, 0, 0, 0, 0]], "matches": [], "places": []},
+            "rows": {"say": [[1, 0, 760, 750, 1, 0, 2], [1, 0, 760, 750, 0, 740, 0], [1, 0, 800, 750, 0, 790, 1],
+                             [1, 0, 812, 750, 0, 0, 3], [5, 0, 0, 0, 0, 0, 0]], "matches": [], "places": []},
             "facts": {}, "degraded": null, "lang": lang,
             "strings": {"file": ["src/目录/a.rs"], "match_file": [], "place_file": [], "unit": [],
                         "error": ["TOML parse error at line 1"]},
@@ -42,6 +43,12 @@ fn a_guard_request_round_trips_through_the_daemon_in_both_languages() {
             "ce: this write leaves src/目录/a.rs at 760 lines, past the hard budget of 750 (plan §4.1). \
              Split the file instead of growing it. (ce.toml drifted from the fenced baseline: judged \
              with the shipped budgets)",
+            "ce: this write takes src/目录/a.rs from 740 to 760 lines, past the hard budget of 750 \
+             (plan §4.1). Split the file instead of growing it.",
+            "ce: src/目录/a.rs is already past the hard budget of 750 at 790 lines; this write grows \
+             it to 800 (plan §4.1). A write that keeps or shrinks it passes: split it step by step.",
+            "ce: this write creates src/目录/a.rs at 812 lines, past the hard budget of 750 (plan §4.1). \
+             Split it into smaller files.",
             "(ce.toml unreadable, guard degraded to observe: TOML parse error at line 1)",
         ]
     );
@@ -50,6 +57,12 @@ fn a_guard_request_round_trips_through_the_daemon_in_both_languages() {
         [
             "ce：这次写入会让 src/目录/a.rs 达到 760 行，越过 750 行的硬预算（计划 §4.1）。\
              请拆分文件，而不是继续让它长大。 （ce.toml 已偏离围栏基线：改按出厂预算判决）",
+            "ce：这次写入会让 src/目录/a.rs 从 740 行变成 760 行，越过 750 行的硬预算（计划 §4.1）。\
+             请拆分文件，而不是继续让它长大。",
+            "ce：src/目录/a.rs 已越过 750 行的硬预算，现有 790 行；这次写入会让它长到 800 行（计划 §4.1）。\
+             不增加行数的写入可以通过：请一步步拆分它。",
+            "ce：这次写入会新建 src/目录/a.rs，共 812 行，越过 750 行的硬预算（计划 §4.1）。\
+             请把它拆成更小的文件。",
             "（ce.toml 不可读，守卫已降级为 observe：TOML parse error at line 1）",
         ]
     );

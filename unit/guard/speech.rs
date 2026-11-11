@@ -1,4 +1,5 @@
 use super::*;
+use crate::guard::zone::Budget;
 use crate::tombstone::{Kind, Row};
 
 fn site(file: &str, line: usize, kind: Kind) -> Row {
@@ -33,6 +34,8 @@ fn every_rule() -> Vec<Said> {
             lines: 760,
             cap: 750,
             fence: Fence::Drifted,
+            before: Some(740),
+            kind: Budget::Crossing,
         },
         Said::Zone {
             file: "z.rs".into(),
@@ -67,7 +70,7 @@ fn every_rule_is_one_say_row_and_every_string_a_reference() {
     let rows = serde_json::json!({
         "say": [
             [0, 0, 4, 0, 2, 0, 0],
-            [1, 1, 760, 750, 1, 0, 0],
+            [1, 1, 760, 750, 1, 740, 0],
             [2, 2, 600, 666, 300, 750, 0],
             [3, 3, 0, 2, 0, 2, 0],
             [4, 3, 2, 0, 1, 3, 0],
@@ -105,4 +108,20 @@ fn the_fallback_names_every_rule_and_why() {
         "ce: rule duplicate, over_budget, graded_zone, tombstone_over, flow_novel, \
          config_unreadable fired; the core could not phrase the reason: core_unavailable"
     );
+}
+
+/// The budget row's kind column (CE.Guard.Document): which sentence the
+/// core picks — a crossing of an existing file, a growth, an unread
+/// size before (the one-number sentence), a crossing by a new file.
+#[test]
+fn the_budget_kind_column_names_the_sentence() {
+    let codes: Vec<i64> = [
+        (Budget::Crossing, true),
+        (Budget::Growth, true),
+        (Budget::Unread, true),
+        (Budget::Crossing, false),
+    ]
+    .map(|(k, existed)| budget_code(k, existed))
+    .to_vec();
+    assert_eq!(codes, [0, 1, 2, 3]);
 }

@@ -18,6 +18,7 @@ mod history;
 pub mod hooks;
 pub mod ladder;
 pub mod ledger;
+pub mod policy;
 pub mod mcp;
 pub mod metric;
 pub mod session;

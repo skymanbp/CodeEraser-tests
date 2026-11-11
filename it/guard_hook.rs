@@ -225,8 +225,12 @@ fn exclusion_model_agrees_across_a_vcs_boundary() {
             "{rel} is not this tree's to guard, so its hook is inert: {out}"
         );
     }
-    // rooted inside it, the undeclared repository is its own project
-    common::expect_write_denied(&dir.join("cut"), "hidden.rs", &big, "751 lines");
+    // rooted inside it, the undeclared repository is its own project;
+    // its file already sits past the line, so the write that GROWS it is
+    // the refused one (v2.35 GD1)
+    let grown = "// filler
+".repeat(752);
+    common::expect_write_denied(&dir.join("cut"), "hidden.rs", &grown, "grows it to 752");
 }
 
 /// The rulepack's hook half (plan v2.13 ① P4, zero wire): the hard

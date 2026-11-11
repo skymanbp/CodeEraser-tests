@@ -104,3 +104,45 @@ fn the_class_table_owns_its_paths_and_a_refused_glob_falls_to_the_global_one() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// The hard-budget rule (GD1) over one text table: `before after cap
+/// → kind`, `-` = an unread before, `none` = no refusal and no record.
+/// Under or at the line, or no line at all, is nothing; past it a
+/// write that does not grow is carried, one that crosses or grows is
+/// refused, and an unread size before is refused as the rule stood.
+#[test]
+fn the_budget_rule_judges_what_the_write_adds() {
+    const ROWS: &str = "\
+        0 750 750 none | 749 751 750 crossing | 0 812 750 crossing | 750 751 750 crossing | \
+        800 800 750 carried | 800 795 750 carried | 800 801 750 growth | 751 752 750 growth | \
+        - 751 750 unread | - 700 750 none | 5000 9000 0 none | 900 10 750 none";
+    for row in ROWS.split('|') {
+        let f: Vec<&str> = row.split_whitespace().collect();
+        let before = f[0].parse::<usize>().map_err(|_| ());
+        let (after, cap) = (f[1].parse().expect("after"), f[2].parse().expect("cap"));
+        let got = match budget_kind(before, after, cap) {
+            None => "none",
+            Some(Budget::Crossing) => "crossing",
+            Some(Budget::Growth) => "growth",
+            Some(Budget::Carried) => "carried",
+            Some(Budget::Unread) => "unread",
+        };
+        assert_eq!(got, f[3], "row `{}`", row.trim());
+    }
+}
+
+/// `before` is a line count of BYTES (REVIEW-1 Q10): the value
+/// `str::lines().count()` gives, with no size cap and no UTF-8
+/// requirement — a large or a Latin-1 file is not unread.
+#[test]
+fn a_line_count_is_read_off_the_bytes() {
+    let count = |b: &[u8]| count_lines_in(b).expect("a slice reads");
+    let samples: [&[u8]; 6] = [b"", b"a", b"a\n", b"a\nb", b"a\r\nb\r\n", b"caf\xe9\n"];
+    assert_eq!(samples.map(count), [0, 1, 1, 2, 2, 1]);
+    for text in ["", "a", "a\n", "a\nb", "a\r\nb\r\n", "\n\n", "x\r"] {
+        assert_eq!(count(text.as_bytes()), text.lines().count(), "{text:?}");
+    }
+    let big = "0123456789abcdef\n".repeat(5 << 16); // 5 MiB + change, 64 KiB reads
+    assert_eq!(count(big.as_bytes()), 5 << 16);
+    assert!(!grows(Ok(800), 800) && grows(Ok(800), 801) && grows(Err(()), 1));
+}
