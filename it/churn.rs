@@ -24,10 +24,7 @@ fn churn_classifies_append_rewrite_cochange_and_survival() {
 /// and blame still counted every surviving root line.
 #[test]
 fn root_commit_additions_are_counted() {
-    let root = common::tmp("churn-root");
-    common::git(&root, &["init", "-q"]);
-    std::fs::write(root.join("a.rs"), common::rust_fn(1)).expect("a.rs");
-    common::commit_all(&root, "seed");
+    let root = one_fn_repo("churn-root", 0);
     let r = churn::run(&root, 30).expect("churn");
     assert_eq!(r.commits, 1);
     assert!(added(&r) > 0, "root additions counted");
@@ -109,6 +106,126 @@ fn a_sibling_deleted_later_in_the_window_leaves_the_survivors_ledger_identity() 
         row.rewrote >= 1,
         "the commit-2 edit is impl B's rewrite: {row:?}"
     );
+}
+
+/// v2.35 V1: one parent rule on both sides of the window. A feature
+/// branch's 100 lines merged `--no-ff`, then half of them rewritten on
+/// the main line, read as their linear twin: the merge's first-parent
+/// diff is what it brought (it read 0 under `--no-merges` while blame
+/// still counted every merged survivor, churn clamped to 0).
+#[test]
+fn a_merge_workflow_reads_as_its_linear_twin() {
+    let lines = |odd: &str| -> String {
+        (0..100)
+            .map(|i| format!("v{i} = {i} * {} + 1\n", if i % 2 == 0 { odd } else { "7" }))
+            .collect()
+    };
+    let seeded = |name: &str| {
+        let root = common::tmp(name);
+        common::git(&root, &["init", "-q"]);
+        std::fs::write(root.join("a.py"), "x = 0\n").expect("a.py");
+        common::commit_all(&root, "seed");
+        root
+    };
+    let merged = seeded("churn-merged");
+    common::git(&merged, &["checkout", "-q", "-b", "feat"]);
+    common::append(&merged.join("a.py"), &lines("7"));
+    common::commit_all(&merged, "feature adds 100");
+    common::git(&merged, &["checkout", "-q", "-"]);
+    let linear = seeded("churn-linear");
+    common::append(&linear.join("a.py"), &lines("7"));
+    common::commit_all(&linear, "adds 100");
+    let mut sums = Vec::new();
+    for root in [&merged, &linear] {
+        std::fs::write(root.join("b.py"), "y = 1\n").expect("b.py");
+        common::commit_all(root, "one line elsewhere");
+        if root == &merged {
+            common::git(
+                root,
+                &["merge", "-q", "--no-ff", "feat", "-m", "merge feat"],
+            );
+        }
+        std::fs::write(root.join("a.py"), format!("x = 0\n{}", lines("9"))).expect("rewrite");
+        common::commit_all(root, "rewrite 50 lines");
+        let r = churn::run(root, 30).expect("churn");
+        sums.push((added(&r), r.surviving, laid_out(&r)["churned"].clone()));
+    }
+    assert_eq!(sums[0], (152, 102, serde_json::json!(50)), "merged");
+    assert_eq!(sums[0], sums[1], "the merge reads as its linear twin");
+}
+
+/// v2.35 V1 review: the ledger splits lines and does not see a CR or a
+/// missing final newline; blame compares bytes and gives such a line to
+/// the commit that only turned its end. An old commit outside the
+/// window, then one window commit: the newline-only and CRLF → LF
+/// commits read 0 survivors with the lines counted beyond the ledger
+/// (they refused the whole report before), the control is unmoved, and
+/// a mixed commit caps its survivors at the two lines it added.
+/// Columns: old text, window text, [added, surviving, beyond_ledger].
+#[test]
+fn lines_blame_gives_past_the_ledger_are_counted_not_refused() {
+    let three = [
+        "fn one() -> i64 { 1 }",
+        "fn two() -> i64 { 2 }",
+        "fn three() -> i64 { 3 }",
+    ];
+    let (lf, crlf) = (three.join("\n") + "\n", three.join("\r\n") + "\r\n");
+    let more = format!("{lf}fn four() -> i64 {{ 4 }}\nfn five() -> i64 {{ 5 }}\n");
+    let cases = [
+        ("newline", three.join("\n"), lf.clone(), [0, 0, 1]),
+        ("crlf", crlf.clone(), lf.clone(), [0, 0, 3]),
+        ("control", format!("{}\n", three[0]), lf.clone(), [2, 2, 0]),
+        ("mixed", crlf, more, [2, 2, 3]),
+    ];
+    for (name, old, new, want) in cases {
+        let root = common::tmp(&format!("churn-beyond-{name}"));
+        common::git(&root, &["init", "-q"]);
+        std::fs::write(root.join("m.rs"), old).expect("old");
+        commit_bytes(&root, "old", 100);
+        std::fs::write(root.join("m.rs"), new).expect("new");
+        commit_bytes(&root, "window", 0);
+        let r = churn::run(&root, 30).expect("churn");
+        let doc = laid_out(&r);
+        assert_eq!([added(&r), r.surviving, r.beyond_ledger], want, "{name}");
+        assert_eq!(doc["beyond_ledger"], want[2], "{name}: the document's");
+    }
+}
+
+/// A rename inside the window: blame names each line's path in its own
+/// commit, so the two lines added to `a.rs` survive in `b.rs` under the
+/// (commit, `a.rs`) the ledger counted them by.
+#[test]
+fn survivors_follow_a_rename_inside_the_window() {
+    let root = one_fn_repo("churn-rename", 100);
+    common::append(&root.join("a.rs"), "// one\n// two\n");
+    commit_bytes(&root, "two lines", 0);
+    common::git(&root, &["mv", "a.rs", "b.rs"]);
+    commit_bytes(&root, "rename", 0);
+    let r = churn::run(&root, 30).expect("churn");
+    assert_eq!((r.surviving, r.beyond_ledger), (2, 0), "{:?}", r.units);
+}
+
+/// A fresh repository whose one commit, `days_ago` days back, seeds
+/// `a.rs` with one function.
+fn one_fn_repo(name: &str, days_ago: u64) -> std::path::PathBuf {
+    let root = common::tmp(name);
+    common::git(&root, &["init", "-q"]);
+    std::fs::write(root.join("a.rs"), common::rust_fn(1)).expect("a.rs");
+    commit_bytes(&root, "seed", days_ago);
+    root
+}
+
+/// Stage every byte as written (no line-end conversion on add) and
+/// commit, dated `days_ago` days back.
+fn commit_bytes(root: &std::path::Path, msg: &str, days_ago: u64) {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("clock")
+        .as_secs();
+    let when = format!("@{} +0000", now - days_ago * 86_400);
+    let env = [("GIT_AUTHOR_DATE", &*when), ("GIT_COMMITTER_DATE", &*when)];
+    common::git_env(root, &["-c", "core.autocrlf=false", "add", "."], &env);
+    common::git_env(root, &["commit", "-qm", msg], &env);
 }
 
 fn assert_report(r: &churn::Report) {

@@ -6,11 +6,17 @@ use std::process::Command;
 
 /// Run git in `dir` with a throwaway identity; panic on failure.
 pub fn git(dir: &Path, args: &[&str]) {
+    git_env(dir, args, &[]);
+}
+
+/// `git` with extra environment for the one call — a commit's dates.
+pub fn git_env(dir: &Path, args: &[&str], env: &[(&str, &str)]) {
     let out = Command::new("git")
         .arg("-C")
         .arg(dir)
         .args(["-c", "user.email=t@t", "-c", "user.name=t"])
         .args(args)
+        .envs(env.iter().copied())
         .output()
         .expect("git");
     assert!(out.status.success(), "git {args:?}: {out:?}");
