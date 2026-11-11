@@ -11,8 +11,16 @@
 //! the CI gate (eval_deadfile.rs): constants, summary, draw. No RNG, no
 //! clock. Stage Sampled: no review or precision doc exists yet.
 
+pub mod audit;
+pub mod classes;
 pub mod features;
+pub mod gate;
 pub mod generate;
+pub mod k0_sets;
+pub mod k1;
+pub mod k1_bind;
+pub mod k1_lang;
+pub mod k1_tables;
 
 use crate::eval_lang_parts::draw::{quotas, ranked_by};
 use crate::eval_support::UniverseFamily;
