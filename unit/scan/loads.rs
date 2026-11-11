@@ -121,18 +121,18 @@ fn declared(body: &str, lang: Lang) -> String {
 
 /// Each block: `ext @@ admitted lines @@ why` over a source.
 const DECLARATIONS: &str = r#"
-rs @@ 1,2,3,4,5,7 @@ every `use`, `extern crate` and the module mount without a body (`mod_item !body`) in every visibility — the attribute above a mount is its sibling and is no declaration; a module with a body, even an empty one, stays code
-use std::io;
-pub use crate::a::b;
-extern crate alloc;
-mod a;
-pub(crate) mod b;
-#[path = "x/c.rs"]
-mod c;
-mod d {
-    fn f() {}
-}
-mod e {}
+rs @@ 1,2,3,4,5,7 @@ every `use`, `extern crate` and the module mount without a body (`mod_item !body`) in every visibility — the attribute above a mount is its sibling and is no declaration; a module with a body, even an empty one, stays code (the sample is indented so unit_mounts' child scan never reads it as a module of this file)
+    use std::io;
+    pub use crate::a::b;
+    extern crate alloc;
+    mod a;
+    pub(crate) mod b;
+    #[path = "x/c.rs"]
+    mod c;
+    mod d {
+        fn f() {}
+    }
+    mod e {}
 ====
 ts @@ 1,2,3,4,5 @@ an import and every re-export (`export_statement source`: `*`, `* as`, a list, a type list); `export const`, `export default` and a local export list have no source and stay code
 import x from "m";

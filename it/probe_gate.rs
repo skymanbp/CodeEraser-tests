@@ -5,7 +5,8 @@
 
 use codeeraser::daemon::client;
 use codeeraser::daemon::proto::{Request, Response};
-use codeeraser::dedup::{Params, cover, index::Index, pairs, probe};
+use codeeraser::dedup::pairs::cover;
+use codeeraser::dedup::{Params, index::Index, pairs, probe};
 use codeeraser::scan::lang::Lang;
 use std::path::{Path, PathBuf};
 
