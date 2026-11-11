@@ -10,26 +10,26 @@ use crate::common::repo_root;
 use crate::facts::{chip, read};
 use std::collections::BTreeMap;
 
-pub const FROZEN: &[&str] = &[
-    "CHANGELOG.md",
-    "docs/CHANGELOG-ARCHIVE.md",
-    "docs/CHANGELOG-ARCHIVE-v1.4.md",
-    "docs/CHANGELOG-ARCHIVE-v1.5.md",
-    "docs/CHANGELOG-ARCHIVE-v1.6.md",
-    "docs/CHANGELOG-ARCHIVE-v1.7.md",
-    "docs/CHANGELOG-ARCHIVE-v1.8.md",
-    "docs/CHANGELOG-ARCHIVE-v1.9-part1.md",
-    "docs/EVAL-SET.md",
-    "docs/EVAL-SET-M5-3.md",
-    "docs/EVAL-SET-M5-CLOSE.md",
-    "docs/EVAL-SET-SIMILAR.md",
-    "docs/EVAL-SET-LANGS.md",
-    "docs/EVAL-SET-LANGS-REGEN.md",
-    "docs/EVAL-SET-FLOW.md",
-    "docs/EVAL-SET-FLOW-GEN1.md",
-    "docs/EVAL-SET-MERGE.md",
-    "docs/FIELD-TEST.md",
-];
+/// The frozen pages, one path per line.
+const FROZEN: &str = "CHANGELOG.md
+docs/CHANGELOG-ARCHIVE.md
+docs/CHANGELOG-ARCHIVE-v1.4.md
+docs/CHANGELOG-ARCHIVE-v1.5.md
+docs/CHANGELOG-ARCHIVE-v1.6.md
+docs/CHANGELOG-ARCHIVE-v1.7.md
+docs/CHANGELOG-ARCHIVE-v1.8.md
+docs/CHANGELOG-ARCHIVE-v1.9-part1.md
+docs/EVAL-SET.md
+docs/EVAL-SET-M5-3.md
+docs/EVAL-SET-M5-CLOSE.md
+docs/EVAL-SET-SIMILAR.md
+docs/EVAL-SET-LANGS.md
+docs/EVAL-SET-LANGS-REGEN.md
+docs/EVAL-SET-FLOW.md
+docs/EVAL-SET-FLOW-GEN1.md
+docs/EVAL-SET-MERGE.md
+docs/EVAL-SET-DEADFILE.md
+docs/FIELD-TEST.md";
 
 /// A marker spelled on a frozen page may only DESCRIBE one (inside a
 /// code span, so preceded by a backtick) — never open one.
@@ -49,12 +49,12 @@ fn the_frozen_pages_are_never_scanned_or_written() {
         serde_json::from_str(&read(&root, "contracts/docs-citations-optout.json"))
             .expect("parse citation opt-outs");
     let chipped = crate::facts_chips::surfaces();
-    for rel in FROZEN {
+    for rel in FROZEN.lines() {
         let text = read(&root, rel);
         describes_only(rel, &text, chip::OPEN);
         describes_only(rel, &text, ":begin -->");
         assert!(
-            optout.contains_key(*rel),
+            optout.contains_key(rel),
             "{rel}: frozen but not opted out of the citation gate"
         );
         assert!(
@@ -64,7 +64,7 @@ fn the_frozen_pages_are_never_scanned_or_written() {
     }
     for page in optout.keys() {
         assert!(
-            FROZEN.contains(&page.as_str()),
+            FROZEN.lines().any(|p| p == page.as_str()),
             "{page}: opted out of the citation gate but not frozen — name it here or take the opt-out back"
         );
     }

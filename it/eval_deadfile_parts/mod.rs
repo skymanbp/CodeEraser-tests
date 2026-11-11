@@ -9,7 +9,8 @@
 //! Per language a hash-ranked sample (`deadfile-sample-<lang>`). ONE
 //! binding for the `#[ignore]` generator (generate.rs, features.rs) and
 //! the CI gate (eval_deadfile.rs): constants, summary, draw. No RNG, no
-//! clock. Stage Sampled: no review or precision doc exists yet.
+//! clock. Stage Reviewed: one review doc per sample language is filed
+//! (part 3A, the gate is eval_deadfile_review.rs); no precision doc exists.
 
 pub mod audit;
 pub mod classes;
@@ -61,8 +62,8 @@ pub const SCHEMAS: (&str, &str) = (
 );
 /// The per-language sample family.
 pub const SAMPLES: &str = "deadfile-sample";
-/// The doc families the exam files later, absent at stage Sampled.
-pub const LATER: [&str; 2] = ["deadfile-review", "deadfile-precision"];
+/// The doc family the exam files later, absent at stage Reviewed.
+pub const LATER: [&str; 1] = ["deadfile-precision"];
 
 /// Pre-registered: per language at most TOTAL primary rows by the
 /// language exams' quota rule over corpora (lang draw `quotas`: each

@@ -83,6 +83,7 @@ mod eval_deadfile_class;
 mod eval_deadfile_k1;
 mod eval_deadfile_parts;
 mod eval_deadfile_positions;
+mod eval_deadfile_review;
 mod eval_dedup_distinct;
 mod eval_docdup_precision;
 mod eval_docdup_universe;

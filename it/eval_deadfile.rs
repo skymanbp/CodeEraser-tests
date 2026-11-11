@@ -1,13 +1,13 @@
 //! The dead-file exam's CI gate (lane v235_licence, item L3; family and
-//! constants in eval_deadfile_parts): at stage Sampled. Every corpus of
+//! constants in eval_deadfile_parts): at stage Reviewed. Every corpus of
 //! the exam table has exactly one frozen universe at the exam's
 //! generation, its envelope re-derived (summary from its own rows,
 //! constants, pinned tip, embedded name, sorted rows); every language of
 //! the universes has exactly one frozen sample, and it IS the draw the
 //! pre-registered sampler makes from those universes — allocation,
-//! primary rows, reserve, both hashes; no review or precision doc exists
-//! yet (the blind audit comes after the sample, the precision docs on a
-//! later commit). No git, no corpus clone.
+//! primary rows, reserve, both hashes; every sample language has exactly
+//! one review doc (its rows are held by eval_deadfile_review.rs) and no
+//! precision doc exists. No git, no corpus clone.
 
 use crate::eval_deadfile_parts::generate::{pools, sample_doc};
 use crate::eval_deadfile_parts::{
@@ -44,7 +44,19 @@ fn every_language_sample_is_the_pre_registered_draw() {
 }
 
 #[test]
-fn the_exam_is_at_stage_sampled() {
+fn the_exam_is_at_stage_reviewed() {
+    let languages: BTreeSet<String> = pools().0.into_keys().collect();
+    let reviewed: BTreeSet<String> = frozen_docs("deadfile-review-")
+        .into_iter()
+        .filter_map(|p| {
+            p.rsplit('/')
+                .next()
+                .and_then(|n| n.strip_prefix("deadfile-review-"))
+                .and_then(|n| n.strip_suffix("-v1.json"))
+                .map(String::from)
+        })
+        .collect();
+    assert_eq!(reviewed, languages, "one review doc per sample language");
     for family in LATER {
         let filed = frozen_docs(&format!("{family}-"));
         assert!(

@@ -9,7 +9,6 @@
 //! mechanism, evidence, searched}` (the auditor brief's format).
 
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
 
 /// The three answer words.
 pub const WORDS: [&str; 3] = ["in_use", "unused", "unsure"];
@@ -20,6 +19,17 @@ pub const DOUBLE_READ: (&str, u32, f64) = ("ce-deadfile-doubleread-v1", 5, 0.90)
 
 /// The text of a file at a pinned tip, by (corpus, commit, path).
 pub type Tip<'a> = &'a dyn Fn(&str, &str, &str) -> Option<String>;
+
+/// The two facts of one answer on one row that need the pinned tree:
+/// BARS §1's check and addendum 1 B's tag. The review docs' generator
+/// reads them off the clones (`clone_facts`); the CI gate reads them
+/// off the filed review docs and rebuilds every other field.
+pub type Facts<'a> = &'a dyn Fn(&Value, &Value) -> (String, Value);
+
+/// The facts read off the clones.
+pub fn clone_facts<'a>(tip: Tip<'a>) -> impl Fn(&Value, &Value) -> (String, Value) + 'a {
+    move |row, a| (check(tip, row, a), json!(tag(tip, row, a)))
+}
 
 /// A file reader over clones under `root` (`git show <tip>:<path>`).
 pub fn clone_reader(root: String) -> impl Fn(&str, &str, &str) -> Option<String> {
@@ -165,9 +175,10 @@ pub fn twice_reasons(row: &Value, first: &Value, candidate: bool) -> Vec<&'stati
 }
 
 /// One answer as the review table stores it.
-fn reading(tip: Tip, row: &Value, a: &Value) -> Value {
+fn reading(facts: Facts, row: &Value, a: &Value) -> Value {
+    let (check, tag) = facts(row, a);
     json!({
-        "answer": field(a, "answer"), "check": check(tip, row, a), "tag": tag(tip, row, a),
+        "answer": field(a, "answer"), "check": check, "tag": tag,
         "mechanism": field(a, "mechanism"), "evidence": field(a, "evidence"), "searched": field(a, "searched"),
     })
 }
@@ -205,7 +216,7 @@ pub struct Readings<'a> {
 }
 
 /// One review row: the primary sample row, its readings, final answer.
-pub fn review_row(tip: Tip, row: &Value, given: Readings) -> Value {
+pub fn review_row(facts: Facts, row: &Value, given: Readings) -> Value {
     let Readings {
         first,
         second,
@@ -215,8 +226,8 @@ pub fn review_row(tip: Tip, row: &Value, given: Readings) -> Value {
     let Some(first) = first else {
         return json!({"corpus": row["corpus"], "commit": row["commit"], "path": row["path"], "status": "blocked: no first reading"});
     };
-    let one = reading(tip, row, first);
-    let two = second.map(|s| reading(tip, row, s));
+    let one = reading(facts, row, first);
+    let two = second.map(|s| reading(facts, row, s));
     let (answer, status) = settle(&one, two.as_ref(), settled);
     let tag = if answer == "in_use" {
         two.as_ref()
@@ -254,45 +265,4 @@ pub fn agreement(rows: &[Value]) -> Value {
         "first_not_in_use": share(&|r| r["first"]["answer"] != "in_use"),
         "every_row_twice": below,
     })
-}
-
-/// One answer and where it stands: (file, 1-based row, answer).
-pub type Line = (String, usize, Value);
-
-/// Every answer of a directory's `*.jsonl` files, in file then row
-/// order; an unreadable directory or line is refused.
-pub fn answer_lines(dir: &str) -> Vec<Line> {
-    let mut files: Vec<_> = std::fs::read_dir(dir)
-        .expect(dir)
-        .flatten()
-        .map(|e| e.path())
-        .collect();
-    files.retain(|p| p.extension().is_some_and(|x| x == "jsonl"));
-    files.sort();
-    let mut out = Vec::new();
-    for p in files {
-        let name = p
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        let text = std::fs::read_to_string(&p).expect("answers file");
-        for (i, line) in text
-            .lines()
-            .enumerate()
-            .filter(|(_, l)| !l.trim().is_empty())
-        {
-            out.push((
-                name.clone(),
-                i + 1,
-                serde_json::from_str(line).expect("answer line"),
-            ));
-        }
-    }
-    out
-}
-
-/// Answers by (corpus, path).
-pub fn by_row(lines: &[Line]) -> BTreeMap<(String, String), Value> {
-    let key = |a: &Value| (field(a, "corpus").to_string(), field(a, "path").to_string());
-    lines.iter().map(|(_, _, a)| (key(a), a.clone())).collect()
 }

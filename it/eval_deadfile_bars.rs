@@ -6,7 +6,7 @@
 
 use crate::eval_deadfile_parts::audit::conventions::{Docs, evaluate};
 use crate::eval_deadfile_parts::audit::review::{
-    Readings, agreement, check, citations, review_row, tag, twice_reasons,
+    Readings, agreement, check, citations, clone_facts, review_row, tag, twice_reasons,
 };
 use crate::eval_deadfile_positions::{RULES, docs};
 use serde_json::{Value, json};
@@ -122,7 +122,7 @@ fn readings_settle_by_check_and_settlement_never_by_hand() {
             settled: (g[2] != "-").then_some(g[2]),
             candidate: false,
         };
-        let got = review_row(&tip, &row("tool.py"), readings);
+        let got = review_row(&clone_facts(&tip), &row("tool.py"), readings);
         let read = format!(
             "{} | {}",
             got["answer"].as_str().unwrap_or("-"),

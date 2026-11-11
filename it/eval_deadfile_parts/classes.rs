@@ -57,7 +57,7 @@ pub fn constants() -> Value {
 
 /// (corpus, path) → membership, from the language's frozen sample.
 fn membership(lang: &str) -> BTreeMap<(String, String), &'static str> {
-    let sample = load(&doc_path(SAMPLES, lang));
+    let sample = load(&out_file("CE_DEADFILE_OUT", &doc_path(SAMPLES, lang)));
     let mut out = BTreeMap::new();
     for (key, word) in [("rows", "primary"), ("reserve", "reserve")] {
         for r in sample[key].as_array().expect(key) {

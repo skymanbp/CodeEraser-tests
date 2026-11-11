@@ -6,6 +6,7 @@
 
 use crate::eval_deadfile_bars::{answer, tip};
 use crate::eval_deadfile_parts::audit::bars::{Row, evaluate, render};
+use crate::eval_deadfile_parts::audit::review::clone_facts;
 use crate::eval_deadfile_parts::audit::tables::{ByRow, bars_rows, review_doc};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
@@ -140,7 +141,13 @@ fn the_builder_blocks_until_every_row_is_settled() {
     ]
     .into();
     let second: ByRow = [(key("lib.py"), used)].into();
-    let doc = review_doc(&tip, &class_doc(), &first, &second, &ByRow::new());
+    let doc = review_doc(
+        &clone_facts(&tip),
+        &class_doc(),
+        &first,
+        &second,
+        &ByRow::new(),
+    );
     assert_eq!(
         doc["rows"].as_array().map(Vec::len),
         Some(2),
@@ -149,7 +156,7 @@ fn the_builder_blocks_until_every_row_is_settled() {
     let blocked = bars_rows(&[doc], &[class_doc()]).expect_err("lib.py is unsettled");
     assert_eq!(blocked, ["p1 lib.py: unsettled: two different answers"]);
     let settled: ByRow = [(key("lib.py"), json!({"answer": "unsure"}))].into();
-    let doc = review_doc(&tip, &class_doc(), &first, &second, &settled);
+    let doc = review_doc(&clone_facts(&tip), &class_doc(), &first, &second, &settled);
     let got = bars_rows(&[doc], &[class_doc()]).expect("settled");
     let read: Vec<String> = got
         .iter()

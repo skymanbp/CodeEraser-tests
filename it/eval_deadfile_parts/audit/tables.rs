@@ -1,21 +1,28 @@
-//! The review table builder (lane v235_licence, phase 2A (b)): one
-//! language's `deadfile-review-<lang>` body from its class doc, the
-//! first and second readings and the main session's settlements; the
-//! evaluator's rows from the review tables and the class docs. The real
-//! run is real.rs; the builder's tests use a synthetic fixture
-//! (eval_deadfile_bars_four.rs).
+//! The review table builder (lane v235_licence, phase 2A (b), part 3A):
+//! one language's `deadfile-review-<lang>` body from its class doc, the
+//! committed first and second readings and the main session's
+//! settlement; the evaluator's rows from the review tables and the class
+//! docs; the facts the filed review docs recorded. The builder's
+//! synthetic tests are eval_deadfile_bars_four.rs; the generator and the
+//! CI gate over the committed record are derived.rs and
+//! eval_deadfile_review.rs.
 
 use super::bars::Row;
 use super::conventions::{Docs, candidates, carries, drawn_for_second_reading};
-use super::review::{Line, Readings, Tip, agreement, answer_lines, by_row, review_row};
+use super::record::{readings, settlement};
+use super::review::{Facts, Readings, agreement, review_row};
+use crate::common::ledger::out_file;
 use crate::eval_deadfile_parts::{classes::FAMILY, doc_path, generate::pools};
-use crate::{eval_lang_parts::generate::env, eval_support::load};
+use crate::eval_support::load;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Answers or settlements by (corpus, path).
 pub type ByRow = BTreeMap<(String, String), Value>;
 type Id = (String, String);
+
+/// The review docs' family name.
+pub const REVIEW: &str = "deadfile-review";
 
 fn id(r: &Value) -> Id {
     let s = |k: &str| r[k].as_str().unwrap_or("").to_string();
@@ -26,7 +33,7 @@ fn id(r: &Value) -> Id {
 /// in stored order, a reserve row only where its first reading exists
 /// (it replaced a primary row the auditor could not find).
 pub fn review_doc(
-    tip: Tip,
+    facts: Facts,
     class_doc: &Value,
     first: &ByRow,
     second: &ByRow,
@@ -47,7 +54,7 @@ pub fn review_doc(
                 settled: settled.get(&k).and_then(|s| s["answer"].as_str()),
                 candidate: drawn_for_second_reading(&k.1),
             };
-            let mut row = review_row(tip, r, given);
+            let mut row = review_row(facts, r, given);
             row["substitute"] = json!(r["sample"] == "reserve");
             row
         })
@@ -55,35 +62,57 @@ pub fn review_doc(
     json!({"lang": class_doc["lang"], "agreement": agreement(&rows), "rows": rows})
 }
 
-/// Every language's class doc and its review table, languages in order.
-pub fn reviewed(
-    tip: Tip,
-    first: &ByRow,
-    second: &ByRow,
-    settled: &ByRow,
-) -> (Vec<Value>, Vec<Value>) {
-    let classes: Vec<Value> = pools()
+/// A doc of the dead-file family by language, from `CE_DEADFILE_OUT`
+/// when it is set (a generator's output), else from the tree.
+pub fn per_language(family: &str) -> Vec<Value> {
+    pools()
         .0
         .keys()
-        .map(|lang| load(&doc_path(FAMILY, lang)))
-        .collect();
+        .map(|lang| load(&out_file("CE_DEADFILE_OUT", &doc_path(family, lang))))
+        .collect()
+}
+
+/// Every language's class doc and its review table built from the
+/// committed record, languages in order.
+pub fn reviewed(facts: Facts) -> (Vec<Value>, Vec<Value>) {
+    let classes = per_language(FAMILY);
+    let ([first, second], settled) = (readings(), settlement());
     let reviews = classes
         .iter()
-        .map(|c| review_doc(tip, c, first, second, settled))
+        .map(|c| review_doc(facts, c, &first, &second, &settled))
         .collect();
     (classes, reviews)
 }
 
-/// The real answers of both readings (`CE_DEADFILE_ANSWERS`,
-/// `CE_DEADFILE_ANSWERS2`) and the review tables they make with the
-/// settlement: (both readings' lines, class docs, review tables).
-pub fn opened(tip: Tip) -> ([Vec<Line>; 2], Vec<Value>, Vec<Value>) {
-    let lines = [
-        answer_lines(&env("CE_DEADFILE_ANSWERS")),
-        answer_lines(&env("CE_DEADFILE_ANSWERS2")),
-    ];
-    let (classes, reviews) = reviewed(tip, &by_row(&lines[0]), &by_row(&lines[1]), &settlements());
-    (lines, classes, reviews)
+/// The check and tag a filed review recorded for each reading, keyed by
+/// (corpus, path) and the answer's four fields: the facts the CI gate
+/// rebuilds the review docs from. An answer the filed docs never read is
+/// refused by name.
+pub fn recorded(filed: &[Value]) -> impl Fn(&Value, &Value) -> (String, Value) {
+    let four = |r: &Value| {
+        ["answer", "mechanism", "evidence", "searched"]
+            .map(|k| r[k].as_str().unwrap_or("").to_string())
+    };
+    let mut seen = BTreeMap::new();
+    for r in filed
+        .iter()
+        .flat_map(|d| d["rows"].as_array().cloned().unwrap_or_default())
+    {
+        for reading in [&r["first"], &r["second"]]
+            .into_iter()
+            .filter(|x| x.is_object())
+        {
+            let fact = (
+                reading["check"].as_str().unwrap_or("").to_string(),
+                reading["tag"].clone(),
+            );
+            seen.insert((id(&r), four(reading)), fact);
+        }
+    }
+    move |row: &Value, a: &Value| {
+        let found = seen.get(&(id(row), four(a))).cloned();
+        found.unwrap_or_else(|| panic!("{:?}: an answer the filed review docs never read", id(row)))
+    }
 }
 
 /// Per row its (language, k1, k1_strict); per (language, corpus) its
@@ -147,12 +176,6 @@ pub fn bars_rows(reviews: &[Value], classes: &[Value]) -> Result<Vec<Row>, Vec<S
     }
 }
 
-/// A JSON file named by an environment variable, or None when unset.
-pub fn input(var: &str) -> Option<Value> {
-    let path = std::env::var(var).ok()?;
-    Some(serde_json::from_str(&std::fs::read_to_string(&path).expect(var)).expect(var))
-}
-
 /// The audited rows carrying a §3 convention that passes.
 pub fn passing_rows(rows: &[Value], table: &[Value], docs: &Docs) -> BTreeSet<Id> {
     let names: Vec<&str> = table
@@ -167,14 +190,5 @@ pub fn passing_rows(rows: &[Value], table: &[Value], docs: &Docs) -> BTreeSet<Id
     rows.iter()
         .map(id)
         .filter(|(c, p)| passing.iter().any(|k| carries(k, docs, c, p)))
-        .collect()
-}
-
-/// The main session's settlement rows, by (corpus, path).
-pub fn settlements() -> ByRow {
-    let rows = input("CE_DEADFILE_SETTLED").and_then(|v| v.as_array().cloned());
-    rows.unwrap_or_default()
-        .into_iter()
-        .map(|s| (id(&s), s))
         .collect()
 }
