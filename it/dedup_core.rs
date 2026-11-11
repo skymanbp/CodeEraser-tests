@@ -2,15 +2,14 @@
 //! winnowing correctness bounds (SIGMOD'03: every match of >= t
 //! tokens is caught; nothing below the k-gram noise floor is).
 
-use crate::common;
 use codeeraser::dedup::{Params, tokens, winnow};
-use codeeraser::scan::{lang::Lang, spec};
+use codeeraser::scan::lang::Lang;
 use std::collections::BTreeSet;
 
-fn toks(lang: Lang, src: &str) -> Vec<u64> {
-    let sp = spec::spec(lang);
-    let tree = common::parse(lang, src);
-    tokens::tokenize(tree.root_node(), sp)
+/// The normalized hashes of a source (dedup_imports.rs reads it too).
+pub(crate) fn toks(lang: Lang, src: &str) -> Vec<u64> {
+    tokens::stream(src.as_bytes(), lang)
+        .expect("stream")
         .iter()
         .map(|t| t.hash)
         .collect()

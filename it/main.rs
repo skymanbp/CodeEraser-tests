@@ -51,6 +51,7 @@ mod deadcode_fragment_links;
 mod declared_domain;
 mod dedup_core;
 mod dedup_groups;
+mod dedup_imports;
 mod dedup_index;
 mod dedup_pairs;
 mod dedup_property;

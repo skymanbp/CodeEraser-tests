@@ -65,6 +65,17 @@ fn a_moved_definition_package_refreshes_measurements_without_losing_history() {
     refreshes_without_losing_history("package-history", moved);
 }
 
+/// v2.35 imports lane: the tokenizer revision and the package digest
+/// moving in one build (a new rev beside a package with a new key) take
+/// ONE invalidation — the first open refreshes, and the reopen after the
+/// remeasure keeps its rows, so neither key is left behind for a second.
+#[test]
+fn both_keys_moving_together_refresh_once() {
+    let both = "UPDATE meta SET v = 4 WHERE k = 'tokenizer_rev';
+                UPDATE meta SET v = v + 1 WHERE k = 'tables_digest';";
+    refreshes_without_losing_history("both-keys", both);
+}
+
 /// An unchanged package keeps every row: the key is read, not bumped.
 #[test]
 fn an_unchanged_definition_package_keeps_the_rows() {
