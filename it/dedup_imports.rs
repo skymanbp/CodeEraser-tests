@@ -120,17 +120,30 @@ import fs = require("fs");
 const p = require("path");
 require("effect");
 import("dyn");
+export * from "./a";
+export * as ns from "./b";
+export { a, b as d } from "./c";
+export type { T } from "./d";
 ----
 export function f(y: number): number {
   return y * 2;
 }
 ====
-rs @@ `use` in every visibility, `pub use` included, and `extern crate`
+tsx @@ the re-export in TSX
+export * from "./a";
+export { a } from "./c";
+----
+const e = <div />;
+====
+rs @@ `use` in every visibility, `pub use` included, `extern crate`, and the module mount in every visibility
 extern crate alloc;
 pub extern crate core as c2;
 use std::collections::{BTreeMap, BTreeSet};
 pub use crate::a::b;
 pub(crate) use super::*;
+mod a;
+pub(crate) mod b;
+pub mod c;
 ----
 fn f(x: u32) -> u32 {
     x + 1
@@ -220,9 +233,14 @@ fn the_import_family_leaves_the_stream_as_if_absent() {
 /// Each line: `ext @@ source`: a form that stays code keeps its tokens.
 const CODE: &str = r#"
 java @@ @Deprecated class A {}
-rs @@ mod x;
-ts @@ export * from "./a";
-ts @@ export { a } from "./c";
+rs @@ mod x { fn f() {} }
+rs @@ pub(crate) mod x {}
+rs @@ #[path = "y.rs"] mod y;
+ts @@ export const k = 1;
+ts @@ export default k;
+ts @@ export { a, b };
+ts @@ export { k as j };
+tsx @@ export default function F() { return <div />; }
 ts @@ const w = require("w").default;
 ts @@ let s = require("s"), u = 3;
 cpp @@ using namespace std;

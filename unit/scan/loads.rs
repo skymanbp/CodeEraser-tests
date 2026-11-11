@@ -1,9 +1,10 @@
 //! Load statements read off the package's `[scan] loads` (v2.35 imports
 //! lane): every statement of every statement list in a source, and which
 //! of them the shapes admit — the admitted forms of each language beside
-//! the forms that stay code. Plus the table against its grammar: every
-//! import kind, statement list and shape step names something the pinned
-//! grammar has.
+//! the forms that stay code; the declarations `[scan] import_kinds` admits,
+//! each spelling beside the ones that stay code. Plus the table against
+//! its grammar: every import kind (its kind word and its field), statement
+//! list and shape step names something the pinned grammar has.
 
 use super::*;
 use crate::testutil::blocks;
@@ -104,6 +105,97 @@ use std::io;
 fn f() {}
 "#;
 
+/// The 1-based lines of the nodes `import_declaration` admits, over the
+/// whole tree.
+fn declared(body: &str, lang: Lang) -> String {
+    let mut parser = tree_sitter::Parser::new();
+    parser
+        .set_language(&lang.grammar().expect("a grammar"))
+        .expect("set_language");
+    let tree = parser.parse(body, None).expect("parse");
+    let spec = crate::scan::spec::spec(lang);
+    let mut lines = Vec::new();
+    let mut stack = vec![tree.root_node()];
+    while let Some(node) = stack.pop() {
+        if import_declaration(node, spec) {
+            lines.push(node.start_position().row + 1);
+        }
+        stack.extend(ast::children(node));
+    }
+    lines.sort_unstable();
+    lines
+        .iter()
+        .map(usize::to_string)
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+/// Each block: `ext @@ admitted lines @@ why` over a source.
+const DECLARATIONS: &str = r#"
+rs @@ 1,2,3,4,5,7 @@ every `use`, `extern crate` and the module mount without a body (`mod_item !body`) in every visibility — the attribute above a mount is its sibling and is no declaration; a module with a body, even an empty one, stays code
+use std::io;
+pub use crate::a::b;
+extern crate alloc;
+mod a;
+pub(crate) mod b;
+#[path = "x/c.rs"]
+mod c;
+mod d {
+    fn f() {}
+}
+mod e {}
+====
+ts @@ 1,2,3,4,5 @@ an import and every re-export (`export_statement source`: `*`, `* as`, a list, a type list); `export const`, `export default` and a local export list have no source and stay code
+import x from "m";
+export * from "./a";
+export * as ns from "./b";
+export { a } from "./c";
+export type { T } from "./d";
+export const k = 1;
+export default k;
+export { k as j };
+export { a, b };
+====
+tsx @@ 1,2 @@ TSX reads TypeScript's table
+export * from "./a";
+export { a } from "./c";
+export const e = <div />;
+====
+hs @@ 1 @@ the named `import`; a `foreign import` keyword is an unnamed node of the same kind
+import Data.List (sort)
+foreign import ccall "sin" c_sin :: Double -> Double
+====
+java @@ 1,2 @@ the package and the import; an annotation stays code
+package a.b;
+import java.util.List;
+@Deprecated
+class A {}
+====
+cpp @@ 1 @@ `#include`; `using` and `#define` stay code
+#include <vector>
+using namespace std;
+#define X 1
+====
+py @@ 1,2,3 @@ the three import declarations; `__all__` stays code
+from __future__ import annotations
+import os
+from a import b
+__all__ = ["b"]
+"#;
+
+#[test]
+fn the_import_kinds_admit_declarations_and_nothing_else() {
+    for (lang, [want, why], body) in blocks(DECLARATIONS) {
+        assert_eq!(
+            declared(body, lang),
+            want.trim(),
+            "{lang:?}: {why}
+--- source ---
+{body}"
+        );
+    }
+}
+
 #[test]
 fn the_shapes_admit_load_statements_and_nothing_else() {
     for (lang, [want, why], body) in blocks(CASES) {
@@ -125,18 +217,28 @@ fn every_import_kind_and_shape_step_is_in_the_grammar() {
     for lang in Lang::with_grammar().filter(|l| l.fingerprints()) {
         let grammar = lang.grammar().expect("a grammar");
         let spec = crate::scan::spec::spec(lang);
+        let words = |s: &&'static str| s.split(' ').next();
         let named = spec
             .import_kinds
             .iter()
-            .chain(spec.loads.statement_lists)
-            .copied()
-            .chain(spec.loads.shapes.iter().filter_map(|s| s.split(' ').next()));
+            .filter_map(words)
+            .chain(spec.loads.statement_lists.iter().copied())
+            .chain(spec.loads.shapes.iter().filter_map(words));
         for kind in named {
             let at = "is no named kind of its grammar";
             assert!(
                 grammar.id_for_node_kind(kind, true) != 0,
                 "{lang:?}: `{kind}` {at}"
             );
+        }
+        for entry in spec.import_kinds {
+            if let Some((_, field)) = entry.split_once(' ') {
+                let field = field.strip_prefix('!').unwrap_or(field);
+                assert!(
+                    grammar.field_id_for_name(field).is_some(),
+                    "{lang:?}: `{entry}` names no field of its grammar"
+                );
+            }
         }
         for step in spec.loads.shapes.iter().flat_map(|s| s.split(' ').skip(1)) {
             assert!(
