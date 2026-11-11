@@ -87,3 +87,13 @@ x 2 1 0
 fn the_accesses_run_as_the_table_says() {
     run_table(TABLE);
 }
+
+/// v2.35 V9 (R3-41): braces pair left to right — `{{` is a literal —
+/// so `{{{x}}}` reads `x`, `{{x}}` reads nothing, `{x}{{` reads `x`.
+#[test]
+fn an_escaped_brace_before_a_field_still_reads_it() {
+    use crate::flow::access_write::braced;
+    assert_eq!(braced("{{{x}}}"), ["x"]);
+    assert_eq!(braced("{{x}}"), Vec::<String>::new());
+    assert_eq!(braced("{x}{{ {y.z} }}"), ["x", "y.z"]);
+}
