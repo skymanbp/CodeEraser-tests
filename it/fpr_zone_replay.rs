@@ -29,7 +29,7 @@
 //! CE_FPR_OUT naming a directory the doc is read and written there
 //! instead (common::ledger::out_file), so the measured tree stays clean.
 
-use crate::common::policy::{Write, each_write, lines_at};
+use crate::common::policy::{Blobs, Write, each_write};
 use crate::common::{chain, repo_root, tmp};
 use crate::fpr_zone_replay_parts::{Corpus, LEDGER, Landed, table};
 use codeeraser::guard::zone;
@@ -49,14 +49,14 @@ struct Tally {
 /// One event: the child blob's line count against the two lines the
 /// hook would have read, through the product's own `zone::landing`, and
 /// whether it grew the file (`zone::grows` on the parent's size).
-fn measure(repo: &Path, shadow: &Path, w: &Write, t: &mut Tally) {
+fn measure(shadow: &Path, w: &Write, blobs: &mut Blobs, t: &mut Tally) {
     let p = w.policy;
     let table = zone::table_for(shadow, &p.cfg, w.rel);
     let (soft, hard) = (
         p.soft.unwrap_or(table.file_lines_warn),
         table.file_lines_fail,
     );
-    let lines = lines_at(repo, w.commit, w.rel);
+    let lines = blobs.lines(w.commit, w.rel);
     t.events += 1;
     *t.softs.entry(soft).or_default() += 1;
     if Lang::judged_path(Path::new(w.rel)).is_some_and(|l| l.fingerprints()) {
@@ -65,7 +65,7 @@ fn measure(repo: &Path, shadow: &Path, w: &Write, t: &mut Tally) {
     let Some(l) = zone::landing(lines, soft, hard, p.tiers) else {
         return;
     };
-    let before = if w.status == 'A' { 0 } else { lines_at(repo, w.parent, w.rel) };
+    let before = if w.status == 'A' { 0 } else { blobs.lines(w.parent, w.rel) };
     let carried = !zone::grows(Ok(before), lines);
     t.rows.push(Landed {
         sha: w.commit[..8].to_string(),
@@ -85,7 +85,7 @@ fn measure(repo: &Path, shadow: &Path, w: &Write, t: &mut Tally) {
 pub fn replay(repo: &Path, shadow: &Path, name: &str) -> Corpus {
     let commits = chain(repo);
     let mut t = Tally::default();
-    let unreadable = each_write(repo, shadow, &commits, |w| measure(repo, shadow, w, &mut t));
+    let unreadable = each_write(repo, shadow, &commits, |w, b| measure(shadow, w, b, &mut t));
     let tip = commits.last().expect("a tip");
     Corpus {
         name: name.to_string(),

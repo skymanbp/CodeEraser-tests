@@ -13,7 +13,12 @@
 //! the commit is whole it probes the child AGAIN against the child
 //! state, so a run gone by then (the write-first split, fold or rename
 //! the guard teaches the safe ordering for) is told from duplication
-//! that landed. The twin's fate in the same commit rides along.
+//! that landed. The twin's fate in the same commit rides along, and
+//! since v2.35 the relocation channel (fpr_replay_parts/channel.rs):
+//! whether the product's relocation stage credits the event at its
+//! moment in the walk, whether the commit as a whole is count-neutral
+//! for the row's runs, and whether the twin was born earlier in the same
+//! commit (the channel the PostToolUse re-measure, GD7, opens).
 //!
 //! Every changed judged-language file of every first-parent commit is
 //! one edit event: the child blob probed against the PARENT-state
@@ -30,8 +35,10 @@
 //! with the graded-zone ledger so the two instruments walk exactly
 //! the same commits.
 
-use crate::common::{blob, chain, changed, git_lines, repo_root, tmp};
+use crate::common::{blob, chain, changed, core_bin, git_lines, repo_root, tmp};
+use crate::fpr_replay_parts::channel::{self, CommitStreams};
 use crate::fpr_replay_parts::{Class, Intercept, pair, report};
+use codeeraser::corelink::Link;
 use codeeraser::dedup::pairs::{Filter, default_min_distinct};
 use codeeraser::dedup::probe::{self, Match, Target};
 use codeeraser::dedup::{Params, index::Index};
@@ -118,6 +125,8 @@ struct Commit<'a> {
     parent: &'a str,
     commit: &'a str,
     touched: BTreeMap<&'a str, char>,
+    /// The commit's files the walk applied before the current event.
+    done: BTreeSet<String>,
 }
 
 /// One edit event's rows: the child probed against the parent state,
@@ -138,8 +147,19 @@ fn read_event(
         Vec::new()
     };
     let (before, after) = (shared(&base), shared(&child));
-    for (twin, novel_tokens) in shared(&novel(child, &base)) {
+    let fresh = novel(child, &base);
+    let own = if fresh.is_empty() {
+        Vec::new()
+    } else {
+        channel::hashes(bytes, lang)
+    };
+    for (twin, novel_tokens) in shared(&fresh) {
         let (pt, ct) = (before.get(&twin).copied().unwrap_or(0), after[&twin]);
+        let runs = fresh
+            .iter()
+            .filter(|m| m.file == twin)
+            .map(|m| own[m.at..m.at + m.tokens].to_vec())
+            .collect();
         rows.push(Intercept {
             commit: c.commit[..8].to_string(),
             rel: rel.to_string(),
@@ -151,6 +171,11 @@ fn read_event(
             refire: !fired.insert(pair(rel, &twin)),
             twin_status: c.touched.get(twin.as_str()).copied(),
             landed: false,
+            relocated: false,
+            count_neutral: false,
+            born_together: c.done.contains(&twin),
+            runs,
+            applied_before: c.done.clone(),
         });
     }
 }
@@ -179,7 +204,7 @@ fn settle(
 /// them when none is named) is an event.
 fn replay_commit(
     w: &Walk,
-    idx: &mut Index,
+    (idx, link): (&mut Index, &mut Link),
     (parent, commit): (&str, &str),
     live: &mut BTreeSet<String>,
     fired: &mut BTreeSet<(String, String)>,
@@ -189,10 +214,11 @@ fn replay_commit(
         .into_iter()
         .filter(|(_, rel)| judged(rel).is_some())
         .collect();
-    let c = Commit {
+    let mut c = Commit {
         parent,
         commit,
         touched: ch.iter().map(|(s, r)| (r.as_str(), *s)).collect(),
+        done: BTreeSet::new(),
     };
     let (first, mut events) = (rows.len(), 0);
     let mut children = BTreeMap::new();
@@ -200,6 +226,7 @@ fn replay_commit(
         if *status == 'D' {
             live.remove(rel);
             let _ = std::fs::remove_file(w.shadow.join(rel));
+            c.done.insert(rel.clone());
             continue;
         }
         let lang = judged(rel).expect("judged");
@@ -214,9 +241,14 @@ fn replay_commit(
         }
         apply(w.shadow, idx, rel, &bytes, lang, w.p);
         live.insert(rel.clone());
+        c.done.insert(rel.clone());
     }
     let seen = idx.indexed_paths().expect("indexed paths");
     idx.remove_missing(live, &seen).expect("reap");
+    if rows.len() > first {
+        let streams = CommitStreams::load(w.repo, (parent, commit), &c.touched);
+        channel::read(link, &streams, &mut rows[first..]);
+    }
     settle(w, idx, &children, &mut rows[first..]);
     events
 }
@@ -244,12 +276,13 @@ pub fn replay(
         lang,
     };
     let mut idx = Index::open(&shadow.join(".ce/index.db"), p).expect("open index");
+    let (mut link, _) = Link::own(&core_bin()).expect("a core for relocate/1");
     let mut live = seed(repo, shadow, &mut idx, &commits[0], p);
     let (mut fired, mut rows, mut events) = (BTreeSet::new(), Vec::new(), 0usize);
     for step in commits.windows(2) {
         events += replay_commit(
             &w,
-            &mut idx,
+            (&mut idx, &mut link),
             (&step[0], &step[1]),
             &mut live,
             &mut fired,

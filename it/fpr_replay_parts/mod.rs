@@ -7,6 +7,8 @@
 
 use std::collections::BTreeSet;
 
+pub mod channel;
+
 /// What the parent baseline says about one intercept.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum Class {
@@ -48,6 +50,22 @@ pub struct Intercept {
     /// `false` is the write-first move mid-state — split, fold, rename
     /// — the K round arbitrated pair by pair with two-file fixtures.
     pub landed: bool,
+    /// The product's relocation stage credited the event at its moment
+    /// in the walk (v2.35 GD4, channel.rs): the hook would not refuse it.
+    pub relocated: bool,
+    /// The commit as a whole did not raise the count of this row's runs
+    /// (order-free, channel.rs).
+    pub count_neutral: bool,
+    /// The twin is a file this commit wrote EARLIER in the walk's order —
+    /// two copies born in one commit, the channel the PostToolUse
+    /// re-measure (GD7) makes the product see.
+    pub born_together: bool,
+    /// The matched runs with this twin (the channel's input; not frozen).
+    #[serde(skip)]
+    pub runs: Vec<Vec<u64>>,
+    /// The commit's files applied before this event (not frozen).
+    #[serde(skip)]
+    pub applied_before: BTreeSet<String>,
 }
 
 impl Intercept {
@@ -66,6 +84,11 @@ impl Intercept {
                 .map(|s| format!(" twin:{s}"))
                 .unwrap_or_default(),
             if self.landed { "landed" } else { "mid-state" },
+        ) + &format!(
+            "{}{}{}",
+            if self.relocated { " relocated" } else { "" },
+            if self.count_neutral { " count-neutral" } else { "" },
+            if self.born_together { " born-together" } else { "" },
         )
     }
 }
@@ -113,6 +136,15 @@ pub fn report(events: usize, rows: &[Intercept]) {
         n(&|r| !r.landed && r.twin_status.is_some()),
         n(&|r| !r.landed && r.refire),
         hit.len() - landed_events.len(),
+    );
+    let events_where = |pred: &dyn Fn(&Intercept) -> bool| {
+        rows.iter().filter(|r| pred(r)).map(event_of).collect::<BTreeSet<_>>().len()
+    };
+    println!(
+        "relocation channel (v2.35 GD4): {} events the product's stage credits at their moment in the walk; {} rows count-neutral over the whole commit; {} rows born together with their twin in one commit",
+        events_where(&|r| r.relocated),
+        n(&|r| r.count_neutral),
+        n(&|r| r.born_together),
     );
     let per500 = |k: usize| k as f64 * 500.0 / events.max(1) as f64;
     println!(

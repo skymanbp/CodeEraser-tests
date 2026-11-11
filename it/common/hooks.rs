@@ -171,6 +171,26 @@ pub fn run_hook(dir: &Path, args: &[&str], stdin: &str) -> String {
 /// shape): the leg that arms the SessionStart update notice overrides
 /// the harness's default opt-out here, and nothing else does.
 pub fn run_hook_env(dir: &Path, args: &[&str], stdin: &str, env: &[(&str, &str)]) -> String {
+    let out = hook_output(dir, args, stdin, env);
+    // confirmed gone at every root the hook could have judged (a
+    // delegated write's daemon lives under the nested project), and
+    // inert for daemon-free hooks (request_if_running never spawns);
+    // before the assert so a red test cannot leak
+    shutdown_daemon(dir);
+    assert!(out.status.success(), "hook must always exit 0 (fail-open)");
+    String::from_utf8_lossy(&out.stdout).to_string()
+}
+
+/// One hook run that leaves the daemon alone — for a leg whose daemon a
+/// `DaemonGuard` already holds across several hooks (the PostToolUse
+/// re-measure reaches a RUNNING daemon only), which then tears it down.
+pub fn run_hook_alive(dir: &Path, args: &[&str], stdin: &str) -> String {
+    let out = hook_output(dir, args, stdin, &[]);
+    assert!(out.status.success(), "hook must always exit 0 (fail-open)");
+    String::from_utf8_lossy(&out.stdout).to_string()
+}
+
+fn hook_output(dir: &Path, args: &[&str], stdin: &str, env: &[(&str, &str)]) -> std::process::Output {
     use std::io::Write as _;
     let mut child = Command::new(env!("CARGO_BIN_EXE_ce"))
         .args(args)
@@ -195,14 +215,7 @@ pub fn run_hook_env(dir: &Path, args: &[&str], stdin: &str, env: &[(&str, &str)]
         .expect("stdin")
         .write_all(stdin.as_bytes())
         .expect("write envelope");
-    let out = child.wait_with_output().expect("wait");
-    // confirmed gone at every root the hook could have judged (a
-    // delegated write's daemon lives under the nested project), and
-    // inert for daemon-free hooks (request_if_running never spawns);
-    // before the assert so a red test cannot leak
-    shutdown_daemon(dir);
-    assert!(out.status.success(), "hook must always exit 0 (fail-open)");
-    String::from_utf8_lossy(&out.stdout).to_string()
+    child.wait_with_output().expect("wait")
 }
 
 /// The project's whole observe feed, parsed line by line (no feed =

@@ -70,15 +70,67 @@ pub struct Write<'a> {
     pub policy: &'a Policy,
 }
 
-/// A blob's line count, through the hook's counter.
-pub fn lines_at(repo: &Path, rev: &str, rel: &str) -> usize {
-    zone::count_lines_in(&blob(repo, rev, rel)[..]).expect("a slice reads")
+/// Blob line counts through ONE `git cat-file --batch` per walk — a
+/// `git show` per event made a full self-history walk a two-hour run on
+/// a loaded machine — counted by the hook's own counter.
+pub struct Blobs {
+    child: std::process::Child,
+    out: std::io::BufReader<std::process::ChildStdout>,
+}
+
+impl Blobs {
+    pub fn new(repo: &Path) -> Blobs {
+        use std::process::{Command, Stdio};
+        let mut child = Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(["cat-file", "--batch"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("git cat-file --batch");
+        let out = std::io::BufReader::new(child.stdout.take().expect("stdout"));
+        Blobs { child, out }
+    }
+
+    /// `rev:rel`'s line count; the blob must exist.
+    pub fn lines(&mut self, rev: &str, rel: &str) -> usize {
+        use std::io::{BufRead, Read, Write};
+        let stdin = self.child.stdin.as_mut().expect("stdin");
+        writeln!(stdin, "{rev}:{rel}").expect("ask cat-file");
+        stdin.flush().expect("flush");
+        let mut header = String::new();
+        self.out.read_line(&mut header).expect("header");
+        let size: u64 = header
+            .trim_end()
+            .rsplit(' ')
+            .next()
+            .and_then(|n| n.parse().ok())
+            .unwrap_or_else(|| panic!("{rev}:{rel}: {header}"));
+        let n = zone::count_lines_in((&mut self.out).take(size)).expect("a blob reads");
+        let mut nl = [0u8; 1];
+        self.out.read_exact(&mut nl).expect("trailing newline");
+        n
+    }
+}
+
+impl Drop for Blobs {
+    fn drop(&mut self) {
+        drop(self.child.stdin.take());
+        let _ = self.child.wait();
+    }
 }
 
 /// Every sized write of the chain, oldest first, against the policy the
 /// shadow holds at its parent. Returns the commits whose ce.toml today's
 /// `ce` cannot read (their writes are not handed out).
-pub fn each_write(repo: &Path, shadow: &Path, commits: &[String], mut f: impl FnMut(&Write)) -> usize {
+pub fn each_write(
+    repo: &Path,
+    shadow: &Path,
+    commits: &[String],
+    mut f: impl FnMut(&Write, &mut Blobs),
+) -> usize {
+    let mut blobs = Blobs::new(repo);
     for rel in git_lines(repo, &["ls-tree", "-r", "--name-only", &commits[0]]) {
         if is_policy(&rel) {
             put(shadow, repo, &commits[0], &rel, true);
@@ -96,7 +148,7 @@ pub fn each_write(repo: &Path, shadow: &Path, commits: &[String], mut f: impl Fn
                     let path = Path::new(rel.as_str());
                     if *status != 'D' && Lang::sized_path(path).is_some() && scope.contains(path) {
                         let (status, rel, policy) = (*status, rel.as_str(), &policy);
-                        f(&Write { parent, commit, status, rel, policy });
+                        f(&Write { parent, commit, status, rel, policy }, &mut blobs);
                     }
                 }
             }

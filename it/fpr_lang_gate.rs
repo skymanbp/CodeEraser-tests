@@ -11,7 +11,7 @@
 use crate::common::ledger::{closes, count, intercepts, rate_pair, two_commits};
 use crate::common::{chain_of, tmp};
 use crate::eval_support::lang_of;
-use crate::fpr_lang_replay::{Fold, GATE_PPM, LEDGER, Reading, corpora, fold, table};
+use crate::fpr_lang_replay::{Fold, GATE_PPM, LEDGER, Reading, channel, corpora, fold, table};
 use crate::fpr_replay::replay;
 use codeeraser::scan::lang::Lang;
 use serde_json::Value;
@@ -96,6 +96,21 @@ fn coherent(c: &Value) {
         c,
         &rate_pair(f.mid_state(), events, ("strict_ppm", "strict_cp_upper_ppm")),
     );
+    let flag = |r: &Value, k: &str| r[k] == true;
+    let [moved, neutral, born] = channel(intercepts(c).iter().map(|r| {
+        let flags = [flag(r, "landed"), flag(r, "relocated"), flag(r, "count_neutral"), flag(r, "born_together")];
+        (cell(r, "commit"), cell(r, "file"), flags)
+    }));
+    closes(
+        c,
+        &[
+            ("relocated", moved as u64),
+            ("neutral", neutral as u64),
+            ("born_together", born as u64),
+        ],
+    );
+    let keys = ("strict_neutral_ppm", "strict_neutral_cp_upper_ppm");
+    closes(c, &rate_pair(f.mid_state() - neutral, events, keys));
 }
 
 /// A C function past the probe's guarantee (t = 50 tokens), copied
@@ -151,5 +166,40 @@ fn a_synthetic_history_reads_only_the_named_language() {
         (all.events, all.rows.len()),
         (2, 1),
         "unnamed, both files are events"
+    );
+}
+
+/// The relocation channel over two synthetic histories (v2.35 GD4 /
+/// GD7): a rename that writes its new name first is a write-first
+/// mid-state the product's stage does not credit at that moment, yet
+/// the commit as a whole is count-neutral; two copies added by one
+/// commit make the second one's twin a file born in the same commit.
+#[test]
+fn the_relocation_channel_reads_a_rename_and_two_copies_born_together() {
+    let rename = tmp("fpr-lang-rename");
+    crate::common::write_all(&rename, &[("z.c", FOLD)]);
+    crate::common::init_and_commit(&rename, "seed");
+    std::fs::remove_file(rename.join("z.c")).expect("rename's source");
+    crate::common::write_all(&rename, &[("a.c", FOLD)]);
+    crate::common::commit_all(&rename, "rename");
+    let commits = chain_of(&rename, "HEAD", None);
+    let (_, rows) = replay(&rename, &tmp("fpr-lang-rename-shadow"), Some(Lang::C), &commits);
+    let last = rows.last().expect("the rename's new name is intercepted");
+    assert_eq!(
+        (last.twin.as_str(), last.landed, last.relocated, last.count_neutral),
+        ("z.c", false, false, true),
+        "write-first: no credit at its moment, count-neutral as a commit"
+    );
+    let born = two_commits(
+        "fpr-lang-born",
+        &[("seed.c", "int one(void) { return 1; }\n")],
+        &[("a.c", FOLD), ("b.c", FOLD)],
+    );
+    let commits = chain_of(&born, "HEAD", None);
+    let (_, rows) = replay(&born, &tmp("fpr-lang-born-shadow"), Some(Lang::C), &commits);
+    assert_eq!(rows.len(), 1, "the second copy is the one intercept");
+    assert_eq!(
+        (rows[0].rel.as_str(), rows[0].twin.as_str(), rows[0].born_together, rows[0].landed),
+        ("b.c", "a.c", true, true)
     );
 }

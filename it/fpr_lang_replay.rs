@@ -38,6 +38,16 @@
 //! standing ledger's habit (双口径并记), never folded into one number.
 //! HTML never fingerprints (lang.rs `fingerprints`), so its row reads
 //! zero events by construction and the gate admits it by name.
+//!
+//! 1.1.0 (v2.35 guard lane, REVIEW-1 Q7): the relocation channel rides
+//! every row (fpr_replay_parts/channel.rs) — `relocated` (events the
+//! product's relocation stage credits at their moment in the walk),
+//! `neutral` (mid-state events whose every row the whole commit left
+//! count-neutral: the order-free "this commit did not raise the tree's
+//! count of that run"), `born_together` (events with a twin the same
+//! commit wrote earlier, the GD7 channel), and the strict reading with
+//! the count-neutral mid-states taken out (`strict_neutral_ppm`) beside
+//! the strict one, which keeps counting every mid-state.
 
 use crate::common::ledger::{self, Ledger, corpus_at};
 use crate::common::stats::{cp_upper_ppm, rate_ppm};
@@ -50,7 +60,7 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 pub const DOC: &str = "contracts/eval/fpr-lang-v1.json";
-pub const SCHEMA: &str = "ce.eval-fpr-lang/1.0.0";
+pub const SCHEMA: &str = "ce.eval-fpr-lang/1.1.0";
 /// The newest first-parent commits each corpus is read over — the
 /// window the flow ledger shares (common/ledger.rs).
 pub use crate::common::ledger::WINDOW;
@@ -110,6 +120,23 @@ impl Fold {
     }
 }
 
+/// The channel's event counts over `(commit, file, landed, relocated,
+/// count_neutral, born_together)` rows: events credited, mid-state
+/// events whose every row is count-neutral, events with a twin born in
+/// the same commit — one owner for the instrument and its gate.
+pub fn channel(rows: impl Iterator<Item = (String, String, [bool; 4])>) -> [usize; 3] {
+    let mut events: BTreeMap<(String, String), [bool; 4]> = BTreeMap::new();
+    for (commit, rel, [landed, moved, neutral, born]) in rows {
+        let e = events.entry((commit, rel)).or_insert([false, false, true, false]);
+        e[0] |= landed;
+        e[1] |= moved;
+        e[2] &= neutral;
+        e[3] |= born;
+    }
+    let n = |f: &dyn Fn(&[bool; 4]) -> bool| events.values().filter(|e| f(e)).count();
+    [n(&|e| e[1]), n(&|e| !e[0] && e[2]), n(&|e| e[3])]
+}
+
 /// Over `(commit, file, landed, twin touched)` rows: the distinct
 /// events intercepted, those with a row standing once the commit was
 /// whole, and those with none standing whose every twin was touched
@@ -146,11 +173,20 @@ impl Reading {
         }))
     }
 
+    /// The relocation channel's three event counts (channel()).
+    pub fn channel(&self) -> [usize; 3] {
+        channel(self.rows.iter().map(|r| {
+            let flags = [r.landed, r.relocated, r.count_neutral, r.born_together];
+            (r.commit.clone(), r.rel.clone(), flags)
+        }))
+    }
+
     /// The frozen row. Every derived number is recomputed by the gate
     /// from the rows, so a hand-edited doc reddens.
     pub fn json(&self, lang: &str, name: &str, tip: &str, commits: usize) -> Value {
         let f = self.folded();
         let (k, strict, n) = (f.false_events(), f.mid_state(), self.events);
+        let [moved, neutral, born] = self.channel();
         json!({
             "name": name,
             "lang": lang,
@@ -165,6 +201,11 @@ impl Reading {
             "cp_upper_ppm": cp_upper_ppm(k, n),
             "strict_ppm": rate_ppm(strict, n),
             "strict_cp_upper_ppm": cp_upper_ppm(strict, n),
+            "relocated": moved,
+            "neutral": neutral,
+            "born_together": born,
+            "strict_neutral_ppm": rate_ppm(strict - neutral, n),
+            "strict_neutral_cp_upper_ppm": cp_upper_ppm(strict - neutral, n),
             "intercepts": self.rows,
         })
     }
@@ -174,9 +215,9 @@ impl Reading {
 /// language, printed by the instrument for the maintainer to paste.
 pub fn table(corpora: &[Value]) -> String {
     ledger::table(
-        "| 语言 | 语料 | 提交 | 事件 | 被拦事件 | 落地 | 孪生被动 | 误拦 | 率 | CP 95 % 上界 | 严格率 | 严格 CP 95 % 上界 |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n",
+        "| 语言 | 语料 | 提交 | 事件 | 被拦事件 | 落地 | 孪生被动 | 误拦 | 率 | CP 95 % 上界 | 严格率 | 严格 CP 95 % 上界 | 搬移放行 | 计数不增 | 同提交孪生 | 严格率（去计数不增） |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n",
         |c| format!("{} | {}", c["lang"].as_str().unwrap_or("?"), corpus_at(c)),
-        "commits events intercepted landed touched false_events %rate_ppm %cp_upper_ppm %strict_ppm %strict_cp_upper_ppm",
+        "commits events intercepted landed touched false_events %rate_ppm %cp_upper_ppm %strict_ppm %strict_cp_upper_ppm relocated neutral born_together %strict_neutral_ppm",
         corpora,
     )
 }

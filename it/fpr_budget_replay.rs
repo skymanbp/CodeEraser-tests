@@ -22,7 +22,7 @@
 //! with CE_FPR_OUT the doc is read and written there instead.
 
 use crate::common::ledger::WINDOW;
-use crate::common::policy::{Write, each_write, lines_at};
+use crate::common::policy::{Blobs, Write, each_write};
 use crate::common::{chain, chain_of, repo_root, tmp};
 use crate::eval_lang_parts::exam_of_corpus;
 use crate::eval_support::pinned_at;
@@ -32,10 +32,10 @@ use codeeraser::guard::zone::{self, Budget};
 use std::path::{Path, PathBuf};
 
 /// One write: its row when it lands past the line.
-fn measure(repo: &Path, shadow: &Path, w: &Write) -> Option<Over> {
+fn measure(shadow: &Path, w: &Write, blobs: &mut Blobs) -> Option<Over> {
     let cap = zone::table_for(shadow, &w.policy.cfg, w.rel).file_lines_fail;
-    let after = lines_at(repo, w.commit, w.rel);
-    let before = if w.status == 'A' { 0 } else { lines_at(repo, w.parent, w.rel) };
+    let after = blobs.lines(w.commit, w.rel);
+    let before = if w.status == 'A' { 0 } else { blobs.lines(w.parent, w.rel) };
     let kind = match zone::budget_kind(Ok(before), after, cap)? {
         Budget::Crossing => "crossing",
         Budget::Growth => "growth",
@@ -55,9 +55,9 @@ fn measure(repo: &Path, shadow: &Path, w: &Write) -> Option<Over> {
 /// One corpus replayed end to end over `commits`.
 pub fn replay(repo: &Path, shadow: &Path, name: &str, commits: &[String]) -> Corpus {
     let (mut events, mut rows) = (0, Vec::new());
-    let unreadable = each_write(repo, shadow, commits, |w| {
+    let unreadable = each_write(repo, shadow, commits, |w, b| {
         events += 1;
-        rows.extend(measure(repo, shadow, w));
+        rows.extend(measure(shadow, w, b));
     });
     let tip = commits.last().expect("a tip");
     Corpus {
