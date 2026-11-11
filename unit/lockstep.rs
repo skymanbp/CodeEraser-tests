@@ -52,7 +52,7 @@ fn a_chunk_over_the_line_is_halved_until_each_body_fits() {
     };
     let plan = |c: &[u64]| {
         let mut sent = Vec::new();
-        within_line(c, &build, &fits, &mut |_, body| {
+        within_line(c, &build, &fits, &mut |_: &[u64], _, body| {
             sent.push(body);
             Ok(())
         })
@@ -65,4 +65,43 @@ fn a_chunk_over_the_line_is_halved_until_each_body_fits() {
     );
     let alone = plan(&[11]).expect_err("one pair over the line");
     assert_eq!(alone.to_string(), "11 over 10 (one pair alone)");
+}
+
+/// The planner by pair count and by work (plan v2.35 C3), the weight
+/// being the item itself: consecutive, order kept, nothing dropped,
+/// both ceilings held, a pair heavier than the work ceiling alone.
+#[test]
+fn chunks_by_work_hold_both_ceilings_and_drop_nothing() {
+    let fam = Family::new("core", "cap", "kind", 3);
+    let plan = |items: &[u64], work| -> Vec<Vec<u64>> {
+        by_work(&fam, items, work, |&w| w)
+            .into_iter()
+            .map(<[u64]>::to_vec)
+            .collect()
+    };
+    assert_eq!(plan(&[], 10), Vec::<Vec<u64>>::new(), "nothing to send");
+    assert_eq!(
+        plan(&[1, 1, 1, 1], 10),
+        [vec![1, 1, 1], vec![1]],
+        "pair count"
+    );
+    assert_eq!(
+        plan(&[4, 5, 2, 9, 1], 10),
+        [vec![4, 5], vec![2], vec![9, 1]],
+        "work"
+    );
+    assert_eq!(
+        plan(&[3, 12, 3], 10),
+        [vec![3], vec![12], vec![3]],
+        "heavy alone"
+    );
+    let items: Vec<u64> = (0..200).map(|i| i % 7 + 1).collect();
+    let chunks = plan(&items, 11);
+    assert_eq!(chunks.concat(), items, "order kept, nothing dropped");
+    assert!(
+        chunks
+            .iter()
+            .all(|c| c.len() <= 3 && c.iter().sum::<u64>() <= 11),
+        "both ceilings"
+    );
 }

@@ -94,11 +94,12 @@ impl Seed {
     }
 
     /// Remember the core's answer for `sent` over what the table holds,
-    /// every built tree live — the shape judge.rs calls it in.
+    /// every built tree live — the shape judge.rs calls it in: `put` for
+    /// the answered request, `sweep` once at the end.
     fn remember(&self, sent: &[&PairRow]) {
         let held = load(self.conn()).unwrap();
-        let rows = fresh(&self.keys, sent, &SCORED);
-        remember(self.conn(), &rows, &self.keys.live(), &held).unwrap();
+        put(self.conn(), &fresh(&self.keys, sent, &SCORED)).unwrap();
+        sweep(self.conn(), &self.keys.live(), &held).unwrap();
     }
 
     fn done(self) {
@@ -138,7 +139,90 @@ fn another_generation_empties_and_a_sweep_drops_the_departed() {
     s.remember(&s.sendable());
     let mut live = s.keys.live();
     live.remove(&tree_key(&tree(&[6], &[0])));
-    remember(s.conn(), &[], &live, &load(s.conn()).unwrap()).unwrap();
+    sweep(s.conn(), &live, &load(s.conn()).unwrap()).unwrap();
     assert_eq!(s.held(), 1, "the row whose tree left is swept");
     s.done();
+}
+
+/// A 200-node chain whose first label is `t`'s own: every tree its own
+/// key, so every pair its own slot.
+fn chain(t: u64) -> UnitTree {
+    let lab: Vec<u64> = (0..200)
+        .map(|i| if i == 0 { 100 + t } else { i % 5 })
+        .collect();
+    tree(&lab, &[0; 200])
+}
+
+/// Plan v2.35 C3 and C4, over the product's own judge and a real core:
+/// the pairs are planned by work into several requests, the last one
+/// holding the only pair of tree `g`. Built with tree `g` malformed (a
+/// label too many), the core refuses that request by name — after the
+/// first request was answered and remembered. Rebuilt well-formed, the
+/// next judgment replays the first request's pairs and sends only the
+/// rest.
+/// The leg's pairs over trees 0 ..= g: every pair of 0 .. g, then the
+/// only pair of g, (g − 1, g), last in the ascending order the candidate
+/// pass hands over; `g` the least count whose pairs pass one request's
+/// work. Returns g, the pairs, and how many pairs ride before the last
+/// request of the judge's own plan over the malformed tree g (201 nodes).
+fn interrupted_plan(fam: &crate::lockstep::Family<'_>) -> (usize, Vec<PairRow>, u64) {
+    let per_chunk = (limits().work_cap / (200 * 200)) as usize;
+    let g = (2..).find(|g| g * (g - 1) / 2 > per_chunk).unwrap();
+    let pair = |a, b| PairRow { a, b, sources: 1 };
+    let mut pairs: Vec<PairRow> = (0..g)
+        .flat_map(|a| (a + 1..g).map(move |b| pair(a, b)))
+        .collect();
+    pairs.push(pair(g - 1, g));
+    let send: Vec<&PairRow> = pairs.iter().collect();
+    let size = |t: usize| if t == g { 201 } else { 200 };
+    let chunks = crate::lockstep::by_work(fam, &send, limits().work_cap, |p| size(p.a) * size(p.b));
+    let last = chunks.last().expect("a plan");
+    assert!(
+        chunks.len() >= 2 && last.iter().any(|p| p.b == g),
+        "tree {g} rides the last request"
+    );
+    let first = (send.len() - last.len()) as u64;
+    (g, pairs, first)
+}
+
+#[test]
+fn an_answered_request_is_remembered_before_the_next_is_asked() {
+    let core = crate::daemon::judge::core_bin().expect("a core");
+    let fam = super::super::wire::family(&core);
+    let (g, pairs, first) = interrupted_plan(&fam);
+    let send: Vec<&PairRow> = pairs.iter().collect();
+    let built = |g_tree: UnitTree| -> Vec<Outcome> {
+        (0..g as u64)
+            .map(|t| Outcome::Tree(chain(t)))
+            .chain([Outcome::Tree(g_tree)])
+            .collect()
+    };
+    let mut bad = chain(g as u64);
+    bad.lab.push(0);
+    let root = scratch("t3cache-interrupted");
+    std::fs::create_dir_all(root.join(".ce")).unwrap();
+    let idx = Index::open(&root.join(".ce/index.db"), Params::default()).unwrap();
+    let open = || crate::corelink::judged::open(fam.core, fam.cap).expect("open core");
+    let cut = super::super::judge::judge(open(), &core, idx.raw(), &built(bad), &send);
+    let refused = cut
+        .err()
+        .expect("the request holding the malformed tree is refused")
+        .to_string();
+    assert!(refused.contains("lab/lld length mismatch"), "{refused}");
+    assert_eq!(
+        load(idx.raw()).unwrap().len() as u64,
+        first,
+        "the first request's pairs are held"
+    );
+    let (_, [judged, prefiltered, cached], _, _) =
+        super::super::judge::judge(open(), &core, idx.raw(), &built(chain(g as u64)), &send)
+            .expect("judge");
+    assert_eq!(cached, first, "the answered request is replayed");
+    assert_eq!(
+        judged + prefiltered,
+        pairs.len() as u64 - first,
+        "only the rest is sent"
+    );
+    drop(idx);
+    let _ = std::fs::remove_dir_all(&root);
 }

@@ -161,9 +161,12 @@ fn ten_thousand_seeded_pairs_measure_runs_and_verdicts_as_the_frozen_rust_did() 
         let (rows, ..) = crate::lockstep::lockstep_scores(
             &mut link,
             &fam,
-            &pairs,
-            |chunk| super::super::wire::chunk_request(chunk, |g| &seqs[g]),
-            super::super::wire::parse_result,
+            crate::lockstep::by_count(&fam, &pairs),
+            (
+                |chunk: &[(usize, usize)]| super::super::wire::chunk_request(chunk, |g| &seqs[g]),
+                super::super::wire::parse_result,
+            ),
+            |_, _| Ok(()),
         )
         .expect("the core judges");
         for (a, b, (inter, union, run, verdict)) in rows {

@@ -22,6 +22,11 @@ fn a_core_that_never_answers_is_reaped_within_the_deadline() {
         .expect_err("a silent core must not hand back a live link");
     let waited = t0.elapsed();
     assert!(err.contains("deadline"), "names the deadline: {err}");
+    // plan v2.35 C5: what it waited on, and the variable that sets the wait
+    assert!(
+        err.contains("waiting on hello") && err.contains("CE_CORE_DEADLINE_SECS"),
+        "names the request and the knob: {err}"
+    );
     assert!(
         waited < std::time::Duration::from_secs(30),
         "reaped in bounded time, not a hung read: {waited:?}"

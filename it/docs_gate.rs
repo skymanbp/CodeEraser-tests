@@ -126,7 +126,9 @@ fn cli_page() -> String {
          relative to the scope; the project's shared `.ce/index.db`, the one the hooks read, \
          is written only by a run rooted at the project. Every path git answers is read \
          relative to the root, so a `ce.toml` project below git's toplevel sees its own \
-         history.\n\n## ce\n\n```text\n{root}```\n"
+         history.\n\nA core that sends no reply line within `CE_CORE_DEADLINE_SECS` seconds \
+         (default 60) is killed; the command fails naming the request it waited on (its kind \
+         and its line's bytes).\n\n## ce\n\n```text\n{root}```\n"
     );
     for sub in subcommands(&root) {
         let h = help_of(Some(&sub));
