@@ -122,8 +122,7 @@ fn golden_requests(root: &Path) -> usize {
 
 /// Counts off the tree and the contract JSONs.
 /// Capabilities the hello reply offers that are no judgment family.
-const NOT_FAMILIES: &str =
-    "hello tables/1 document/1 resolve/1 candidates/1 rank/1 docpairs/1 moves/1 bags/1 relocate/1";
+const NOT_FAMILIES: &str = "hello tables/1 document/1 resolve/1 candidates/1 rank/1 docpairs/1 moves/1 bags/1 relocate/1 cover/1";
 
 fn tree(root: &Path) -> Vec<Fact> {
     let hooks = json(root, "plugin/hooks/hooks.json");
@@ -141,13 +140,14 @@ fn tree(root: &Path) -> Vec<Fact> {
             // here (W2a resolve/1 the graph judgment; W3 candidates/1 and
             // docpairs/1 the clone and docdup judgments, rank/1 similar/1,
             // moves/1 fourclass/2; W6 bags/1 the similar index's bags; v2.35
-            // relocate/1 a stage of the duplicate-write probe)
+            // relocate/1 a stage of the duplicate-write probe, cover/1 the
+            // clone judgment's coverage rule)
             capabilities
                 .iter()
                 .filter(|c| !NOT_FAMILIES.split(' ').any(|n| Some(n) == c.as_str()))
                 .count(),
             "contracts/fixtures/handshake/hello-ok.ndjson::capabilities (minus hello, tables/1, document/1, \
-             the W2a stage resolve/1 and the W3 stages candidates/1, rank/1, docpairs/1, moves/1 the W6 stage bags/1 and the v2.35 stage relocate/1)",
+             the W2a stage resolve/1 and the W3 stages candidates/1, rank/1, docpairs/1, moves/1 the W6 stage bags/1 and the v2.35 stages relocate/1, cover/1)",
         ),
         linked(
             "count:golden_requests#digits",

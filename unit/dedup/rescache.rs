@@ -105,25 +105,54 @@ fn an_unparseable_slot_is_a_miss_not_an_error() {
 }
 
 /// v2.35 G2 (R2-4): the slot key moves with the definition package's
-/// digest and with `hot_cap`, and only with them — the same files
-/// under the same seed key the same slot.
+/// digest, with `hot_cap` and with the selection rule (imports lane, R2:
+/// the capability that kept the blocks), and only with them — the same
+/// files under the same seed key the same slot, and a slot stored under
+/// another rule is a miss.
 #[test]
-fn the_slot_key_moves_with_the_package_and_the_hot_cap() {
+fn the_slot_key_moves_with_the_package_the_hot_cap_and_the_rule() {
     let root = seeded("rescache-seed");
     let idx = {
         analyze(&root, None, None, None).unwrap();
         open(&root)
     };
     let key = |seed| digest_under(idx.raw(), seed).unwrap();
-    // same seed, same key; a moved package; a moved hot cap
-    let moved = [(7, 64), (8, 64), (7, 65)].map(|seed| key(seed) != key((7, 64)));
-    assert_eq!(moved, [false, true, true], "the key follows its seed only");
+    // same seed, same key; a moved package; a moved hot cap; another rule
+    let base = (7, 64, cover::CAP);
+    let moved = [
+        base,
+        (8, 64, cover::CAP),
+        (7, 65, cover::CAP),
+        (7, 64, "lines/0"),
+    ]
+    .map(|seed| key(seed) != key(base));
+    assert_eq!(
+        moved,
+        [false, true, true, true],
+        "the key follows its seed only"
+    );
     let pack = crate::tables::get();
     let product = digest(idx.raw()).unwrap();
     assert_eq!(
         product,
-        key((pack.digest, pack.limits.dedup.hot_cap)),
-        "the package's seed"
+        key((pack.digest, pack.limits.dedup.hot_cap, cover::CAP)),
+        "the package's seed under this rule"
+    );
+    // a slot another rule filled is a miss: the single slot now holds it
+    // under its own key, and this rule's key finds nothing
+    let f = Filter {
+        min_tokens: 50,
+        min_distinct: pack.limits.dedup.min_distinct,
+    };
+    let other = key((pack.digest, pack.limits.dedup.hot_cap, "lines/0"));
+    store(idx.raw(), other, f, &poison()).unwrap();
+    assert!(
+        load(idx.raw(), product, f).unwrap().is_none(),
+        "another rule's slot"
+    );
+    assert!(
+        load(idx.raw(), other, f).unwrap().is_some(),
+        "under its own key"
     );
     drop(idx);
     let _ = std::fs::remove_dir_all(&root);

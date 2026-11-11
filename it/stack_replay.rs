@@ -56,7 +56,10 @@ pub fn stack_runs(
         min_distinct: default_min_distinct(),
     };
     let mut out = Vec::new();
-    for b in pairs::clone_blocks(&instances, &streams, f).blocks {
+    for b in pairs::clone_blocks(&instances, &streams, f)
+        .expect("cover/1")
+        .blocks
+    {
         // the run's tokens: the offset whose first token sits on the
         // block's first line and whose last ends on its last line
         let fits = |at: &usize| {

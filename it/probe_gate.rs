@@ -5,7 +5,7 @@
 
 use codeeraser::daemon::client;
 use codeeraser::daemon::proto::{Request, Response};
-use codeeraser::dedup::{Params, index::Index, pairs, probe};
+use codeeraser::dedup::{Params, cover, index::Index, pairs, probe};
 use codeeraser::scan::lang::Lang;
 use std::path::{Path, PathBuf};
 
@@ -58,14 +58,32 @@ fn silent(name: &str, rel: &'static str, content: &[u8], why: &str) {
     assert!(m.is_empty(), "{why}, got {m:?}");
 }
 
+/// The probe finds the clone — and asks the core no cover/1 question
+/// (v2.35 imports lane, R2: the write-time probe reads its own verified
+/// runs; the report path's selection is the core's). The counter is this
+/// thread's, so the leg also watches the report path move it.
 #[test]
 fn probe_finds_t2_clone_of_indexed_file() {
     let (dir, idx) = seeded("probe-hit");
+    let asked = cover::sent_on_this_thread();
     // new file whose content T2-clones a.rs (renamed ids, new literals)
     let m = probed(&idx, &dir, "b.rs", &rust_fn(2).into_bytes());
     assert!(!m.is_empty(), "T2 clone of a.rs must be flagged");
     assert_eq!(m[0].file, "a.rs");
     assert!(m[0].tokens >= Params::default().guarantee());
+    assert_eq!(
+        cover::sent_on_this_thread(),
+        asked,
+        "the probe sends no cover request"
+    );
+    std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("write b.rs");
+    let found = codeeraser::dedup::analyze(&dir, None, None, None)
+        .expect("analyze")
+        .0;
+    assert!(
+        !found.blocks.is_empty() && cover::sent_on_this_thread() > asked,
+        "the report path asks it"
+    );
 }
 
 #[test]
