@@ -67,6 +67,14 @@ entry_globs = ["gui/", "unit/"]
 # Measured on the formatted tree. The tuning instrument and its mount
 # retired later in the same wave (coordinator ruling 2026-10-04, the
 # it_reads_unit rule): 90 measured again, no row gone, none new.
+# 90 -> 89 (v2.35 licence lane, item L1): one row left with the erase
+# acceptance file's split, none bought. it/erase_e2e.rs's two test
+# heads rhymed (53 tokens, 103-111 against 170-179: a fresh tmp dir,
+# the seed, the core, the plan) until both — and two more tests the
+# lane wrote — read one `planned(name)` helper; the hand-built row two
+# refusal tests push is one `hand_built` helper, and the refusal tests
+# moved to it/erase_refusals.rs at the file's 300-line soft line. Row
+# set diffed against the 6a85feb tree: that row gone, none new.
 # Ratchet DOWN with every cleanup.
 [dedup]
-budget = 90
+budget = 89

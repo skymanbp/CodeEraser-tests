@@ -14,7 +14,7 @@
 /// names the key the member carried on the day it dissolved: the
 /// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
 /// both readers in baseline_bridge.rs share `seated_or_retired`.
-pub const RETIRED: [(u64, &str); 49] = [
+pub const RETIRED: [(u64, &str); 51] = [
     (
         5414355871597516298,
         "v2.32 step 6 2026-10-03: 8.0.0 retired structure/1's `patterns` request key, so CE.Structure imports the named refusal (CE.Wire.Retired) inside the import run it shared with CE.Docdup and StructureProps no longer refuses the pattern table twice - the two blocks this member's pair rode (Docdup.hs:38-43 / Structure.hs:32-37 imports, StructureProps.hs:124-134 / 134-137 refusals) left with the road (ce.toml dedup budget 37 -> 35)",
@@ -214,5 +214,13 @@ pub const RETIRED: [(u64, &str); 49] = [
     (
         5221156939305294370,
         "v2.35 cleanup lane 2026-11-10 (one helper, one home): CE.Verdict.Score exports `classOf` and CE.Verdict.Join imports it instead of keeping its own, so the export heads of Join.hs 26-38 and Score.hs 15-27 no longer rhyme (58 tokens) - the one block that left, and this anchored member (REANCHORED successor of 4721657295879003918) the one member the main baseline lost with it (ce.toml dedup budget 31 -> 30)",
+    ),
+    (
+        12166497122174400483,
+        "v2.35 licence lane 2026-11-10 (item L1): the erase battery's header names the 9.1.0 rule it carries (no whole-file row eraseable) and imports `reasonNames`, so core/test/AuditProps.hs 3-21 and core/test/EraseProps.hs 3-23 no longer rhyme (55 tokens) - the one block that left, and this anchored member (REANCHORED successor of 772956878816100071) the one member the main baseline lost with it (ce.toml dedup budget 30 -> 29)",
+    ),
+    (
+        6900582664555111166,
+        "v2.35 licence lane 2026-11-10 (item L1): it/erase_e2e.rs's two test heads (a fresh tmp dir, the seed, the core, the plan) read one `planned(name)` helper, so erase_e2e.rs 103-111 no longer rhymes with 170-179 (53 tokens) - the one block that left, and this anchored member (REANCHORED successor of 15362123217158421226) the one member the suite baseline lost with it (cli/tests ce.toml dedup budget 90 -> 89)",
     ),
 ];
