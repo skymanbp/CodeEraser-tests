@@ -3,9 +3,11 @@
 //! indexed version is pre-edit), stay silent below thresholds, and
 //! round-trip over the daemon socket.
 
+use codeeraser::daemon::client;
+use codeeraser::daemon::proto::{Request, Response};
 use codeeraser::dedup::{Params, index::Index, pairs, probe};
 use codeeraser::scan::lang::Lang;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::common;
 use crate::common::{rust_fn, tmp};
@@ -17,19 +19,21 @@ fn filter(p: Params) -> pairs::Filter {
     }
 }
 
-/// Index a.rs on disk, then probe content that T2-clones it. The
-/// completeness stamp is honest — a.rs IS the whole corpus — and it
-/// is what keeps the daemon leg schedule-free: an unstamped index
-/// sends the daemon into its ADR-003 first build, and a probe racing
-/// that build gets the cold-start refusal (CI caught the window).
-fn seeded_index(dir: &Path) -> Index {
+/// Index a.rs on disk in a fresh directory, then probe content that
+/// T2-clones it. The completeness stamp is honest — a.rs IS the whole
+/// corpus — and it is what keeps the daemon leg schedule-free: an
+/// unstamped index sends the daemon into its ADR-003 first build, and a
+/// probe racing that build gets the cold-start refusal (CI caught the
+/// window).
+fn seeded(name: &str) -> (PathBuf, Index) {
+    let dir = tmp(name);
     let p = Params::default();
     std::fs::write(dir.join("a.rs"), rust_fn(1)).expect("write a.rs");
     let mut idx = Index::open(&dir.join(".ce/index.db"), p).expect("open");
     idx.refresh_file("a.rs", rust_fn(1).as_bytes(), Lang::Rust, p, false)
         .expect("seed");
     idx.mark_full_build().expect("stamp");
-    idx
+    (dir, idx)
 }
 
 /// One probe of `content` as `rel` through the seeded index — the
@@ -45,10 +49,18 @@ fn probed(idx: &Index, dir: &Path, rel: &'static str, content: &[u8]) -> Vec<pro
     probe::probe(idx, dir, target, p, filter(p)).expect("probe")
 }
 
+/// A probe of `content` as `rel` in a fresh seeded directory finds
+/// nothing — the one shape of every silent case (the self-exclusion, the
+/// sub-threshold and the unrelated content used to spell it out each).
+fn silent(name: &str, rel: &'static str, content: &[u8], why: &str) {
+    let (dir, idx) = seeded(name);
+    let m = probed(&idx, &dir, rel, content);
+    assert!(m.is_empty(), "{why}, got {m:?}");
+}
+
 #[test]
 fn probe_finds_t2_clone_of_indexed_file() {
-    let dir = tmp("probe-hit");
-    let idx = seeded_index(&dir);
+    let (dir, idx) = seeded("probe-hit");
     // new file whose content T2-clones a.rs (renamed ids, new literals)
     let m = probed(&idx, &dir, "b.rs", &rust_fn(2).into_bytes());
     assert!(!m.is_empty(), "T2 clone of a.rs must be flagged");
@@ -58,32 +70,42 @@ fn probe_finds_t2_clone_of_indexed_file() {
 
 #[test]
 fn probe_excludes_the_edited_file_itself() {
-    let dir = tmp("probe-self");
-    let idx = seeded_index(&dir);
     // re-writing a.rs with its own (slightly grown) content must not
     // self-flag against the pre-edit indexed version
-    let grown = format!("{}\nfn extra() -> i64 {{ 42 }}\n", rust_fn(1));
-    let m = probed(&idx, &dir, "a.rs", grown.as_bytes());
-    assert!(m.is_empty(), "self-match must be excluded, got {m:?}");
+    let grown = format!(
+        "{}
+fn extra() -> i64 {{ 42 }}
+",
+        rust_fn(1)
+    );
+    silent(
+        "probe-self",
+        "a.rs",
+        grown.as_bytes(),
+        "self-match must be excluded",
+    );
 }
 
 #[test]
 fn probe_ignores_short_and_unrelated_content() {
-    let dir = tmp("probe-quiet");
-    let idx = seeded_index(&dir);
-    let m = probed(&idx, &dir, "c.rs", b"fn tiny() -> i64 { 1 }\n");
-    assert!(m.is_empty(), "sub-threshold content stays silent");
-    let unrelated = "fn other(a: u8) -> u8 { a.wrapping_add(3) }\n".repeat(8);
-    let m2 = probed(&idx, &dir, "d.rs", unrelated.as_bytes());
-    assert!(m2.is_empty(), "unrelated content stays silent, got {m2:?}");
+    let tiny = b"fn tiny() -> i64 { 1 }
+";
+    silent(
+        "probe-quiet",
+        "c.rs",
+        tiny,
+        "sub-threshold content stays silent",
+    );
+    let unrelated = "fn other(a: u8) -> u8 { a.wrapping_add(3) }
+"
+    .repeat(8);
+    let why = "unrelated content stays silent";
+    silent("probe-unrelated", "d.rs", unrelated.as_bytes(), why);
 }
 
 #[test]
 fn probe_over_daemon_socket() {
-    use codeeraser::daemon::client;
-    use codeeraser::daemon::proto::{Request, Response};
-    let root = tmp("probe-daemon");
-    let _ = seeded_index(&root);
+    let (root, _) = seeded("probe-daemon");
     let child = common::spawn_daemon_ready(&root);
     let req = Request::Probe {
         file_path: root.join("b.rs").display().to_string(),
