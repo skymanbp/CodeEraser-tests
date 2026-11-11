@@ -109,6 +109,7 @@ mod eval_t3_candidates;
 mod eval_t3_precision;
 mod eval_t3_precision_parts;
 mod eval_t3_universe;
+mod external_answers;
 mod face_parity;
 mod face_parity_legs;
 mod face_parity_options;
