@@ -89,7 +89,7 @@ fn consume_names_the_degraded_reply_and_every_skew() {
 answers | [[1, 5]] | goal that was not sent
 answers | [[0, 5, 6]] | arity
 errors | [[41, 1]] | token <= sent
-errors | [[3, 10]] | code 1..9
+errors | [[3, 12]] | code 1..11
 goals | [[1, 0, 0]] | goal in order
 preds | [[26, 5, 0]] | code >= 1000
 proof | [[0, 0, 1]] | proof row
