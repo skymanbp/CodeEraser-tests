@@ -3,9 +3,9 @@
 //! indexed version is pre-edit), stay silent below thresholds, and
 //! round-trip over the daemon socket.
 
+use codeeraser::corelink::sent_on_this_thread;
 use codeeraser::daemon::client;
 use codeeraser::daemon::proto::{Request, Response};
-use codeeraser::dedup::pairs::cover;
 use codeeraser::dedup::{Params, index::Index, pairs, probe};
 use codeeraser::scan::lang::Lang;
 use std::path::{Path, PathBuf};
@@ -59,31 +59,33 @@ fn silent(name: &str, rel: &'static str, content: &[u8], why: &str) {
     assert!(m.is_empty(), "{why}, got {m:?}");
 }
 
-/// The probe finds the clone — and asks the core no cover/1 question
-/// (v2.35 imports lane, R2: the write-time probe reads its own verified
-/// runs; the report path's selection is the core's). The counter is this
-/// thread's, so the leg also watches the report path move it.
+/// The probe finds the clone — and writes no line to any core (v2.35
+/// imports lane, R2: the write-time probe reads its own verified runs;
+/// the report path's selection is the core's). The tally is this
+/// thread's (corelink::sent_on_this_thread), so no other leg moves it.
+/// It is read after `seeded`: the index build has already loaded the
+/// definition package, on this thread or another, so the leg asserts no
+/// absolute count — only that the probe leaves it where it was, and that
+/// the report path (the control) moves it.
 #[test]
 fn probe_finds_t2_clone_of_indexed_file() {
     let (dir, idx) = seeded("probe-hit");
-    let asked = cover::sent_on_this_thread();
+    let written = sent_on_this_thread();
     // new file whose content T2-clones a.rs (renamed ids, new literals)
     let m = probed(&idx, &dir, "b.rs", &rust_fn(2).into_bytes());
     assert!(!m.is_empty(), "T2 clone of a.rs must be flagged");
     assert_eq!(m[0].file, "a.rs");
     assert!(m[0].tokens >= Params::default().guarantee());
-    assert_eq!(
-        cover::sent_on_this_thread(),
-        asked,
-        "the probe sends no cover request"
-    );
+    let probe = "the write-time probe writes no line to a core";
+    assert_eq!(sent_on_this_thread(), written, "{probe}");
     std::fs::write(dir.join("b.rs"), rust_fn(2)).expect("write b.rs");
     let found = codeeraser::dedup::analyze(&dir, None, None, None)
         .expect("analyze")
         .0;
+    let control = "the report path asks the core";
     assert!(
-        !found.blocks.is_empty() && cover::sent_on_this_thread() > asked,
-        "the report path asks it"
+        !found.blocks.is_empty() && sent_on_this_thread() > written,
+        "{control}"
     );
 }
 

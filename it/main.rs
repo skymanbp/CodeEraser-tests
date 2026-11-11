@@ -38,6 +38,7 @@ mod concurrent_writers;
 mod config_contract;
 mod core_size_gate;
 mod core_wire;
+mod corelink_tally;
 mod daemon_cwd;
 mod daemon_document;
 mod daemon_e2e;
