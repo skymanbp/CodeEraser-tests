@@ -76,6 +76,8 @@ mod erase_hunks_apply;
 mod erase_refusals;
 mod eval_arch_self;
 mod eval_commit_review;
+mod eval_deadfile;
+mod eval_deadfile_parts;
 mod eval_dedup_distinct;
 mod eval_docdup_precision;
 mod eval_docdup_universe;
