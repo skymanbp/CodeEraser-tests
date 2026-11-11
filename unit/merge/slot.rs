@@ -196,8 +196,8 @@ typescript | function f(v) { this.a = v; x = "hi"; y++; o.foo(p); }\nclass K {}\
 tsx | function f(v) { this.a = v; x = "hi"; o.foo(p); }\n | member_expression@this.a=4 identifier@x=3 property_identifier@foo=4 string_fragment@hi=4
 rust | struct S;\nfn f(v: i32) { self.a = v; x = "hi"; y += 1; o.foo(p); }\n | type_identifier@S=3 field_expression@self.a=4 identifier@x=3 identifier@y=3 field_identifier@foo=4 string_content@hi=4
 go | package p\ntype T int\nfunc f(v int) { s.a = v; x = "hi"; y++; o.foo(p) }\n | type_identifier@T=3 selector_expression@s.a=4 identifier@x=3 identifier@y=3 field_identifier@foo=4 interpreted_string_literal_content@hi=4
-c | void f(int v) { s.a = v; x = "hi"; y++; o.foo(p); }\n | field_expression@s.a=4 identifier@x=3 identifier@y=3 field_identifier@foo=4 string_content@hi=4
-cpp | void f(int v) { s.a = v; x = "hi"; y++; o.foo(p); }\n | field_expression@s.a=4 identifier@x=3 identifier@y=3 field_identifier@foo=4 string_content@hi=4
+c | void f(int v) { s.a = v; x = "hi"; y++; o.foo(p); g((P){1,2}); }\n | field_expression@s.a=4 identifier@x=3 identifier@y=3 field_identifier@foo=4 string_content@hi=4 compound_literal_expression@(P){1,2}=1
+cpp | void f(int v) { s.a = v; x = "hi"; y++; o.foo(p); g((P){1,2}); }\n | field_expression@s.a=4 identifier@x=3 identifier@y=3 field_identifier@foo=4 string_content@hi=4 compound_literal_expression@(P){1,2}=1
 java | class C { void f(int v) { this.a = v; x = "hi"; y++; o.foo(p); } }\n | field_access@this.a=4 identifier@x=3 identifier@y=3 identifier@foo=4 string_fragment@hi=4 identifier@C=3
 lua | function f(v) self.a = v; x = "hi"; o:foo(p) end\n | dot_index_expression@self.a=4 identifier@x=3 identifier@foo=4 string_content@hi=4 identifier@a=4
 r | f <- function(v) { x <- "hi"; 2 -> z; o$a <- v }\n | identifier@f=3 identifier@x=3 identifier@z=3 extract_operator@o$a=4 identifier@a=4 string_content@hi=4
