@@ -45,12 +45,37 @@ fn a_version_indexed_ledger_is_a_witness() {
     );
 }
 
+/// A heading indexes a version only through the reader the segment
+/// witness uses (v2.35 V4): three numeric parts, or two behind `v`. A
+/// section number, a `§` reference or a language version is not one,
+/// so a design booklet numbered `### 4.1 …` is no ledger.
 #[test]
 fn version_marks_are_read_by_shape() {
-    assert!(has_semver("v1.6.0") && has_semver("2.3"));
-    assert!(!has_semver("v1") && !has_semver("a.b"));
-    assert!(has_iso_date("released 2026-09-04") && !has_iso_date("2026-9-4"));
-    assert!(versioned("未发布") && versioned("Unreleased changes"));
+    for yes in [
+        "1.6.0",
+        "[v1.9.2] — fix",
+        "v2.3 notes",
+        "2026-09-04",
+        "未发布",
+        "Unreleased changes",
+    ] {
+        assert!(versioned(yes), "{yes}");
+    }
+    for no in [
+        "4.1 语言",
+        "§4.2 the gate",
+        "Python 3.12",
+        "v1",
+        "a.b",
+        "2026-9-4",
+    ] {
+        assert!(!versioned(no), "{no}");
+    }
+    let booklet = "# Track\n\n## 4.1 Rows\n\n### 4.2 Cols\n\n## 4.3 Caps\n\n## Notes\n";
+    assert_eq!(
+        changelog_role("docs/track.md", booklet, Lang::Markdown),
+        None
+    );
     assert_eq!(
         (
             Witness::Path.name(),

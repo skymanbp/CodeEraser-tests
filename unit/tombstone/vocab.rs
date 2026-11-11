@@ -87,5 +87,28 @@ fn a_table_holds_a_word_exactly_and_the_floors_nest() {
         "a two-word name like dongpo_pork must fit one window"
     );
     assert!(v().min_wide_name < v().min_ascii_name);
-    assert_eq!(TOMBSTONE_REV, 1);
+    assert_eq!(TOMBSTONE_REV, 2);
+}
+
+/// The reserved words of every judged code language (v2.35 V4, revision
+/// 2): C / C++, Java, Lua and R joined the six the list was written for,
+/// so `final`, `local` or `typedef` alone is syntax, never an erased name.
+#[test]
+fn every_judged_code_language_lends_its_reserved_words() {
+    let words = [
+        "typedef",
+        "sizeof",
+        "volatile",
+        "template",
+        "typename",
+        "final",
+        "synchronized",
+        "throws",
+        "local",
+        "elseif",
+        "until",
+        "repeat",
+        "next",
+    ];
+    assert!(words.iter().all(|w| has(v().keywords, w)), "{words:?}");
 }
