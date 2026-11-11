@@ -35,7 +35,11 @@ use std::path::{Path, PathBuf};
 fn measure(shadow: &Path, w: &Write, blobs: &mut Blobs) -> Option<Over> {
     let cap = zone::table_for(shadow, &w.policy.cfg, w.rel).file_lines_fail;
     let after = blobs.lines(w.commit, w.rel);
-    let before = if w.status == 'A' { 0 } else { blobs.lines(w.parent, w.rel) };
+    let before = if w.status == 'A' {
+        0
+    } else {
+        blobs.lines(w.parent, w.rel)
+    };
     let kind = match zone::budget_kind(Ok(before), after, cap)? {
         Budget::Crossing => "crossing",
         Budget::Growth => "growth",
@@ -71,7 +75,7 @@ pub fn replay(repo: &Path, shadow: &Path, name: &str, commits: &[String]) -> Cor
 }
 
 /// The repository and the chain a corpus name selects.
-fn corpus(name: &str) -> (PathBuf, Vec<String>) {
+pub fn corpus(name: &str) -> (PathBuf, Vec<String>) {
     if corpora().iter().any(|(_, n)| *n == name) {
         let (_, tip) = exam_of_corpus(name);
         let base = std::env::var_os("CE_FPR_CLONE_ROOT")
@@ -101,22 +105,10 @@ fn every_write_past_the_line_is_read_against_its_parent() {
     let name = std::env::var("CE_FPR_CORPUS").unwrap_or_else(|_| "self".into());
     let (repo, commits) = corpus(&name);
     let c = replay(&repo, &tmp(&format!("fpr-budget-{name}")), &name, &commits);
-    for r in c.rows.iter().filter(|r| r.kind != "carried") {
-        println!("  REFUSED {}", serde_json::to_string(r).expect("a row"));
-    }
+    let walked = c.summary(&repo);
     let row = c.json();
-    println!("{}", table(std::slice::from_ref(&row)));
-    println!(
-        "walked {} commits of {name} at {}: {} events, {} unreadable ce.toml",
-        c.commits,
-        repo.display(),
-        c.events,
-        c.unreadable
-    );
-    if crate::facts::blessing() {
-        LEDGER.merge(&repo_root(), row, &[], |c| {
-            let n = c["name"].as_str().unwrap_or_default();
-            (rank(n), String::new())
-        });
-    }
+    let printed = table(std::slice::from_ref(&row));
+    LEDGER.report(row, printed, walked, |c| {
+        (rank(c["name"].as_str().unwrap_or_default()), String::new())
+    });
 }

@@ -106,35 +106,6 @@ fn scenes() -> Vec<Scene> {
             )
         },
         Scene {
-            write: filler(751),
-            ..scene(
-                "guard-say-budget",
-                "deny",
-                "at 751 lines, past the hard budget of 750",
-                "共 751 行，越过 750 行的硬预算",
-            )
-        },
-        Scene {
-            declare: vec![("b.rs", filler(749))],
-            write: filler(751),
-            ..scene(
-                "guard-say-budget-cross",
-                "deny",
-                "from 749 to 751 lines, past the hard budget of 750",
-                "从 749 行变成 751 行，越过 750 行的硬预算",
-            )
-        },
-        Scene {
-            declare: vec![("b.rs", filler(800))],
-            write: filler(801),
-            ..scene(
-                "guard-say-budget-growth",
-                "deny",
-                "is already past the hard budget of 750 at 800 lines; this write grows it to 801",
-                "已越过 750 行的硬预算，现有 800 行；这次写入会让它长到 801 行",
-            )
-        },
-        Scene {
             declare: toml("[guard]\nzone_tiers = true\n"),
             write: filler(600),
             ..scene(
@@ -171,8 +142,50 @@ fn scenes() -> Vec<Scene> {
             )
         },
     ];
+    all.extend(budget_scenes());
     all.extend(flow_scenes());
     all
+}
+
+/// The hard budget's three sentences (v2.35 GD1): a new file created
+/// past the line (nothing on disk), an existing file taken across it,
+/// and a file already past it grown. Rows: (tag, lines on disk before —
+/// 0 = absent, lines written, English, Chinese).
+fn budget_scenes() -> Vec<Scene> {
+    let filler = |n: usize| "// filler\n".repeat(n);
+    [
+        (
+            "guard-say-budget",
+            0,
+            751,
+            "at 751 lines, past the hard budget of 750",
+            "共 751 行，越过 750 行的硬预算",
+        ),
+        (
+            "guard-say-budget-cross",
+            749,
+            751,
+            "from 749 to 751 lines, past the hard budget of 750",
+            "从 749 行变成 751 行，越过 750 行的硬预算",
+        ),
+        (
+            "guard-say-budget-growth",
+            800,
+            801,
+            "is already past the hard budget of 750 at 800 lines; this write grows it to 801",
+            "已越过 750 行的硬预算，现有 800 行；这次写入会让它长到 801 行",
+        ),
+    ]
+    .map(|(tag, before, after, en, zh)| Scene {
+        declare: if before == 0 {
+            Vec::new()
+        } else {
+            vec![("b.rs", filler(before))]
+        },
+        write: filler(after),
+        ..scene(tag, "deny", en, zh)
+    })
+    .into()
 }
 
 /// The flow class (plan v2.31 step 5) speaks only for a language the

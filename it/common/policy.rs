@@ -93,8 +93,14 @@ impl Blobs {
         Blobs { child, out }
     }
 
-    /// `rev:rel`'s line count; the blob must exist.
-    pub fn lines(&mut self, rev: &str, rel: &str) -> usize {
+    /// Ask for `rev:rel` and read its blob through `read` (handed the
+    /// blob's bytes, exactly its size); the blob must exist.
+    fn ask<T>(
+        &mut self,
+        rev: &str,
+        rel: &str,
+        read: impl FnOnce(&mut dyn std::io::Read) -> T,
+    ) -> T {
         use std::io::{BufRead, Read, Write};
         let stdin = self.child.stdin.as_mut().expect("stdin");
         writeln!(stdin, "{rev}:{rel}").expect("ask cat-file");
@@ -107,10 +113,26 @@ impl Blobs {
             .next()
             .and_then(|n| n.parse().ok())
             .unwrap_or_else(|| panic!("{rev}:{rel}: {header}"));
-        let n = zone::count_lines_in((&mut self.out).take(size)).expect("a blob reads");
+        let mut blob = (&mut self.out).take(size);
+        let value = read(&mut blob);
+        std::io::copy(&mut blob, &mut std::io::sink()).expect("the blob's rest");
         let mut nl = [0u8; 1];
         self.out.read_exact(&mut nl).expect("trailing newline");
-        n
+        value
+    }
+
+    /// `rev:rel`'s line count, by the hook's own counter.
+    pub fn lines(&mut self, rev: &str, rel: &str) -> usize {
+        self.ask(rev, rel, |r| zone::count_lines_in(r).expect("a blob reads"))
+    }
+
+    /// `rev:rel`'s bytes.
+    pub fn bytes(&mut self, rev: &str, rel: &str) -> Vec<u8> {
+        self.ask(rev, rel, |r| {
+            let mut out = Vec::new();
+            r.read_to_end(&mut out).expect("a blob reads");
+            out
+        })
     }
 }
 
@@ -148,7 +170,16 @@ pub fn each_write(
                     let path = Path::new(rel.as_str());
                     if *status != 'D' && Lang::sized_path(path).is_some() && scope.contains(path) {
                         let (status, rel, policy) = (*status, rel.as_str(), &policy);
-                        f(&Write { parent, commit, status, rel, policy }, &mut blobs);
+                        f(
+                            &Write {
+                                parent,
+                                commit,
+                                status,
+                                rel,
+                                policy,
+                            },
+                            &mut blobs,
+                        );
                     }
                 }
             }

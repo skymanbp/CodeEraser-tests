@@ -1,4 +1,4 @@
-//! Observe-feed contract (ce.observe/0.13.0): the NDJSON feed is the
+//! Observe-feed contract (ce.observe/0.14.0): the NDJSON feed is the
 //! M4 evaluation-set raw material, so its line shape is pinned by a
 //! golden. One deterministic run of every producer — probe, budget
 //! (§4.2 step 2), zone unarmed AND armed (plan v2.6 §A / v2.7 ①), the
@@ -69,12 +69,24 @@ fn asked_write_settles(dir: &Path) {
 /// commitmsg — the staged set now erases a.rs's `work_1` and the
 /// message argues it away: precommit's line shape under its own event,
 /// the message's own site, session null.
+///
+/// The Stop's four-class leg asks the daemon, and every hook above shut
+/// its daemon down on the way out (run_hook), so a cold one would have
+/// to start inside that request's spawn window — a race the load of the
+/// rest of the suite decides (`"degraded": "daemon_unavailable"`). The
+/// golden pins the JUDGED shape, so the daemon is up before the Stop
+/// and gone after it: the git-hook faces run with no daemon, as before.
+/// The degraded shape has its own deterministic leg
+/// (hook_traces::an_unreachable_daemon_degrades_the_four_class_leg).
 fn stop_and_git_faces(dir: &Path) {
-    common::run_hook(
+    let daemon = common::spawn_daemon_ready(dir);
+    common::run_hook_alive(
         dir,
         &["audit", "--hook"],
         &common::stop_envelope(dir, false),
+        &[],
     );
+    common::shutdown_and_wait(dir, daemon, "the Stop's daemon");
     assert!(common::run_ce(dir, &["precommit"]).status.success());
     common::git(dir, &["rm", "-q", "a.rs"]);
     std::fs::write(

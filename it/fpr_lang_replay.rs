@@ -14,6 +14,8 @@
 //!
 //!   CE_FPR_CORPUS=lua cargo test --release --test it -- --ignored fpr_lang_replay --nocapture
 //!
+//! CE_FPR_CLONE_ROOT names the directory the corpus clones sit under
+//! (default `.ce-eval/corpora`; a worktree lane clones its own).
 //! CE_BLESS=1 merges the measured row into
 //! contracts/eval/fpr-lang-v1.json, replacing the row of the same name
 //! and keeping the other five as their own runs left them. With
@@ -53,7 +55,7 @@ use crate::common::ledger::{self, Ledger, corpus_at};
 use crate::common::stats::{cp_upper_ppm, rate_ppm};
 use crate::common::{chain_of, repo_root, tmp};
 use crate::eval_lang_parts::exam_of_corpus;
-use crate::eval_support::{lang_of, pinned_root};
+use crate::eval_support::{lang_of, pinned_at};
 use crate::fpr_replay::replay;
 use crate::fpr_replay_parts::Intercept;
 use serde_json::{Value, json};
@@ -127,7 +129,9 @@ impl Fold {
 pub fn channel(rows: impl Iterator<Item = (String, String, [bool; 4])>) -> [usize; 3] {
     let mut events: BTreeMap<(String, String), [bool; 4]> = BTreeMap::new();
     for (commit, rel, [landed, moved, neutral, born]) in rows {
-        let e = events.entry((commit, rel)).or_insert([false, false, true, false]);
+        let e = events
+            .entry((commit, rel))
+            .or_insert([false, false, true, false]);
         e[0] |= landed;
         e[1] |= moved;
         e[2] &= neutral;
@@ -228,7 +232,11 @@ fn every_language_is_read_over_its_own_history() {
     let name = std::env::var("CE_FPR_CORPUS").expect("CE_FPR_CORPUS names the corpus (CORPORA)");
     let (code, _) = language_of(&name);
     let (_, tip) = exam_of_corpus(&name);
-    let repo = pinned_root(&name, tip);
+    let base = std::env::var_os("CE_FPR_CLONE_ROOT").map_or_else(
+        || repo_root().join(".ce-eval/corpora"),
+        std::path::PathBuf::from,
+    );
+    let repo = pinned_at(&base, &name, tip);
     let commits = chain_of(&repo, tip, Some(WINDOW));
     let shadow = tmp(&format!("fpr-lang-{name}"));
     let (events, rows) = replay(&repo, &shadow, Some(lang_of(code)), &commits);

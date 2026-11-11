@@ -50,7 +50,11 @@ fn a_move_with_its_source_removed_first_passes() {
     std::fs::write(dir.join("a.py"), G).expect("source removed first");
     let (out, probe) = write(&dir, "c.py", F);
     assert!(out.trim().is_empty(), "a relocation is not refused: {out}");
-    assert_eq!((&probe["matches"], &probe["relocated"]), (&1.into(), &1.into()), "{probe}");
+    assert_eq!(
+        (&probe["matches"], &probe["relocated"]),
+        (&1.into(), &1.into()),
+        "{probe}"
+    );
     assert!(probe.get("relocation").is_none(), "{probe}");
 }
 
@@ -106,7 +110,9 @@ fn without_git_there_is_no_credit() {
     assert!(out.contains("\"deny\"") && out.contains("b.py"), "{out}");
     let probe = last_observe(&dir);
     assert!(
-        probe["relocation"].as_str().is_some_and(|w| w.starts_with("git")),
+        probe["relocation"]
+            .as_str()
+            .is_some_and(|w| w.starts_with("git")),
         "{probe}"
     );
 }

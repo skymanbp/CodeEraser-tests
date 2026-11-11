@@ -11,7 +11,7 @@ use crate::common;
 use std::path::Path;
 
 /// Every path the shared index holds, in order.
-fn indexed(dir: &Path) -> Vec<String> {
+pub fn indexed(dir: &Path) -> Vec<String> {
     let db = rusqlite::Connection::open(dir.join(".ce/index.db")).expect("open the shared index");
     let mut stmt = db
         .prepare("SELECT path FROM files ORDER BY 1")

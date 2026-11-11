@@ -44,7 +44,10 @@ fn a_candidate_edited_in_the_middle_is_matched_on_both_sides() {
     write_all(&dir, &[("b.py", &format!("{H}\n{}\n{F}", padding(9)))]);
     let both = format!("{H}\n\n{F}");
     let reason = common::expect_write_denied(&dir, "c.py", &both, "indexed region(s)");
-    assert!(reason.contains("b.py:1-") && reason.contains("b.py:22-"), "{reason}");
+    assert!(
+        reason.contains("b.py:1-") && reason.contains("b.py:22-"),
+        "{reason}"
+    );
 }
 
 /// Over a real tree with a fresh index, every own file's current
@@ -64,7 +67,10 @@ fn a_fresh_index_holds_exactly_the_current_fingerprints() {
     let idx = Index::open(&dir.join(".ce/index.db"), p).expect("index");
     let mut indexed: BTreeMap<String, Vec<(u64, usize)>> = BTreeMap::new();
     for i in idx.all_instances().expect("instances") {
-        indexed.entry(i.file).or_default().push((i.hash, i.start_tok));
+        indexed
+            .entry(i.file)
+            .or_default()
+            .push((i.hash, i.start_tok));
     }
     assert!(indexed.len() > 10, "a real tree: {} files", indexed.len());
     for (file, mut rows) in indexed {

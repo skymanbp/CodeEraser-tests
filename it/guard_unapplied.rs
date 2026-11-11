@@ -27,7 +27,11 @@ fn an_edit_that_cannot_apply_leaves_its_reason_on_the_probe_line() {
             (Some("probe"), Some(f[2])),
             "{case}: {line}"
         );
-        assert_eq!(line["apply"]["degraded"].is_string(), f[3] == "1", "{case}: {line}");
+        assert_eq!(
+            line["apply"]["degraded"].is_string(),
+            f[3] == "1",
+            "{case}: {line}"
+        );
     }
     assert_eq!(
         codeeraser::health::degraded_runs(&dir).0,
@@ -37,5 +41,8 @@ fn an_edit_that_cannot_apply_leaves_its_reason_on_the_probe_line() {
     );
     let w = common::pretooluse_envelope_at(&dir, "b.rs", "Write", "// whole\n");
     run_hook(&dir, &["probe", "--hook"], &w);
-    assert!(last_observe(&dir).get("unapplied").is_none(), "a Write always applies");
+    assert!(
+        last_observe(&dir).get("unapplied").is_none(),
+        "a Write always applies"
+    );
 }

@@ -24,13 +24,21 @@ fn an_edit_that_cannot_apply_says_why() {
     let dir = scratch("guard-applied-why");
     let f = dir.join("a.py");
     std::fs::write(&f, "x = 1\ny = 1\n").expect("seed");
-    let why = |e: Envelope| apply(&e).err().map(Unapplied::code);
-    assert_eq!(why(edit(&dir.join("gone.py"), "x", "z", false)), Some("absent"));
-    assert_eq!(why(edit(&dir, "x", "z", false)), Some("unreadable"));
-    assert_eq!(why(edit(&f, "", "z", false)), Some("no_match"));
-    assert_eq!(why(edit(&f, "q = 2", "z", false)), Some("no_match"));
-    assert_eq!(why(edit(&f, " = 1", "z", false)), Some("ambiguous"));
-    assert_eq!(why(edit(&f, " = 1", " = 2", true)), None);
+    let gone = dir.join("gone.py");
+    let seen: Vec<Option<&str>> = [
+        edit(&gone, "x", "z", false),
+        edit(&dir, "x", "z", false),
+        edit(&f, "", "z", false),
+        edit(&f, "q = 2", "z", false),
+        edit(&f, " = 1", "z", false),
+        edit(&f, " = 1", " = 2", true),
+    ]
+    .iter()
+    .map(|e| apply(e).err().map(Unapplied::code))
+    .collect();
+    let want = "absent unreadable no_match no_match ambiguous -";
+    let want: Vec<Option<&str>> = want.split(' ').map(|w| (w != "-").then_some(w)).collect();
+    assert_eq!(seen, want);
 }
 
 /// The Edit's text is applied on the CRLF-normalised file and its size

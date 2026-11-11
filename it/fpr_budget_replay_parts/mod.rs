@@ -28,13 +28,13 @@ pub const LEDGER: Ledger =
 /// and what the hook's rule (`guard::zone::budget_kind`) made of it.
 #[derive(serde::Serialize)]
 pub struct Over {
-    pub sha: String,
-    #[serde(rename = "file")]
-    pub rel: String,
+    pub kind: &'static str,
     pub before: usize,
     pub after: usize,
     pub cap: usize,
-    pub kind: &'static str,
+    pub sha: String,
+    #[serde(rename = "file")]
+    pub rel: String,
 }
 
 /// One corpus as the walk finished it.
@@ -72,6 +72,20 @@ pub fn derived(events: usize, rows: &[Value]) -> Vec<(&'static str, u64)> {
 }
 
 impl Corpus {
+    /// The instrument's printout of one walk: every refusal as a
+    /// `REFUSED` line (the frozen rows' serializer), and the summary.
+    pub fn summary(&self, repo: &std::path::Path) -> String {
+        for r in self.rows.iter().filter(|r| r.kind != "carried") {
+            println!("  REFUSED {}", serde_json::to_string(r).expect("a row"));
+        }
+        let at = repo.display();
+        let (n, events, unreadable) = (self.commits, self.events, self.unreadable);
+        format!(
+            "walked {n} commits of {} at {at}: {events} events, {unreadable} unreadable ce.toml",
+            self.name
+        )
+    }
+
     /// The frozen row: the raw counts, every write past the line, and the
     /// derived numbers the gate recomputes from those rows.
     pub fn json(&self) -> Value {

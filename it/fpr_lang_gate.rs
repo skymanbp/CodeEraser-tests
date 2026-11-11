@@ -98,7 +98,12 @@ fn coherent(c: &Value) {
     );
     let flag = |r: &Value, k: &str| r[k] == true;
     let [moved, neutral, born] = channel(intercepts(c).iter().map(|r| {
-        let flags = [flag(r, "landed"), flag(r, "relocated"), flag(r, "count_neutral"), flag(r, "born_together")];
+        let flags = [
+            flag(r, "landed"),
+            flag(r, "relocated"),
+            flag(r, "count_neutral"),
+            flag(r, "born_together"),
+        ];
         (cell(r, "commit"), cell(r, "file"), flags)
     }));
     closes(
@@ -183,10 +188,20 @@ fn the_relocation_channel_reads_a_rename_and_two_copies_born_together() {
     crate::common::write_all(&rename, &[("a.c", FOLD)]);
     crate::common::commit_all(&rename, "rename");
     let commits = chain_of(&rename, "HEAD", None);
-    let (_, rows) = replay(&rename, &tmp("fpr-lang-rename-shadow"), Some(Lang::C), &commits);
+    let (_, rows) = replay(
+        &rename,
+        &tmp("fpr-lang-rename-shadow"),
+        Some(Lang::C),
+        &commits,
+    );
     let last = rows.last().expect("the rename's new name is intercepted");
     assert_eq!(
-        (last.twin.as_str(), last.landed, last.relocated, last.count_neutral),
+        (
+            last.twin.as_str(),
+            last.landed,
+            last.relocated,
+            last.count_neutral
+        ),
         ("z.c", false, false, true),
         "write-first: no credit at its moment, count-neutral as a commit"
     );
@@ -199,7 +214,12 @@ fn the_relocation_channel_reads_a_rename_and_two_copies_born_together() {
     let (_, rows) = replay(&born, &tmp("fpr-lang-born-shadow"), Some(Lang::C), &commits);
     assert_eq!(rows.len(), 1, "the second copy is the one intercept");
     assert_eq!(
-        (rows[0].rel.as_str(), rows[0].twin.as_str(), rows[0].born_together, rows[0].landed),
+        (
+            rows[0].rel.as_str(),
+            rows[0].twin.as_str(),
+            rows[0].born_together,
+            rows[0].landed
+        ),
         ("b.c", "a.c", true, true)
     );
 }

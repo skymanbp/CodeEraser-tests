@@ -87,8 +87,16 @@ impl Intercept {
         ) + &format!(
             "{}{}{}",
             if self.relocated { " relocated" } else { "" },
-            if self.count_neutral { " count-neutral" } else { "" },
-            if self.born_together { " born-together" } else { "" },
+            if self.count_neutral {
+                " count-neutral"
+            } else {
+                ""
+            },
+            if self.born_together {
+                " born-together"
+            } else {
+                ""
+            },
         )
     }
 }
@@ -138,7 +146,11 @@ pub fn report(events: usize, rows: &[Intercept]) {
         hit.len() - landed_events.len(),
     );
     let events_where = |pred: &dyn Fn(&Intercept) -> bool| {
-        rows.iter().filter(|r| pred(r)).map(event_of).collect::<BTreeSet<_>>().len()
+        rows.iter()
+            .filter(|r| pred(r))
+            .map(event_of)
+            .collect::<BTreeSet<_>>()
+            .len()
     };
     println!(
         "relocation channel (v2.35 GD4): {} events the product's stage credits at their moment in the walk; {} rows count-neutral over the whole commit; {} rows born together with their twin in one commit",

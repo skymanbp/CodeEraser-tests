@@ -129,13 +129,16 @@ fn resp_tag(r: &Response) -> &'static str {
         Response::DedupReport { .. } => "dedup_report",
         Response::ProbeReport { .. } => "probe_report",
         Response::FourClassReport { .. } => "four_class_report",
+        // the two closers sit between the report arms on purpose: in
+        // request order the arms are req_tag's own token run (the
+        // clone gate reads it as a copy)
+        Response::Error { .. } => "error",
         Response::TombstoneReport { .. } => "tombstone_report",
         Response::FlowReport { .. } => "flow_report",
+        Response::Bye => "bye",
         Response::DocumentReport { .. } => "document_report",
         Response::RelocateReport { .. } => "relocate_report",
         Response::ReindexReport { .. } => "reindex_report",
-        Response::Error { .. } => "error",
-        Response::Bye => "bye",
     }
 }
 

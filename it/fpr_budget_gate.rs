@@ -42,15 +42,44 @@ fn every_frozen_budget_row_closes_against_its_own_writes() {
             } else {
                 "growth"
             };
-            assert!(cap > 0 && a > cap && r["kind"] == want, "{}: {r}", c["name"]);
+            assert!(
+                cap > 0 && a > cap && r["kind"] == want,
+                "{}: {r}",
+                c["name"]
+            );
         }
         closes(c, &derived(events, rows));
     }
 }
 
+/// The rule as the pages publish it: (page, the words it must carry).
+/// A page that still said "past the line" would describe a rule the
+/// hook no longer runs.
+const WORDING: [(&str, &str); 5] = [
+    (
+        "docs/FPR-REPLAY.md",
+        "cap != 0 ∧ after > cap ∧ after > before",
+    ),
+    (
+        "docs/reference/methodology/11-fpr-discipline-and-the-guard-tier-ladder.md",
+        "breach ⇔ cap != 0 ∧ after > cap ∧ after > before",
+    ),
+    ("README.md", "A write that grows a file past"),
+    ("README.zh.md", "让文件长过"),
+    ("plugin/README.md", "写入让文件长过其硬线"),
+];
+
 #[test]
 fn the_budget_doc_quotes_the_frozen_table_and_the_tier_is_the_class_tier() {
     LEDGER.page_quotes("docs/FPR-REPLAY.md", &table(&LEDGER.corpora()));
+    let root = crate::common::repo_root();
+    for (page, words) in WORDING {
+        let text = crate::facts::read(&root, page);
+        assert!(
+            text.contains(words),
+            "{page}: the published rule is `{words}`"
+        );
+    }
     assert_eq!(
         GROWTH_TIER,
         GrowthTier::Class,
@@ -71,23 +100,25 @@ fn lines(n: usize, tag: &str) -> String {
 #[test]
 fn a_synthetic_history_lands_one_crossing_one_growth_one_carried() {
     let toml = "[thresholds]\nfile_lines_warn = 10\nfile_lines_fail = 30\n";
-    let repo = two_commits(
-        "fpr-budget-e2e",
-        &[
-            ("ce.toml", toml),
-            ("b.rs", &lines(35, "b")),
-            ("c.rs", &lines(40, "c")),
-            ("d.rs", &lines(40, "d")),
-            ("e.rs", &lines(1, "e")),
-        ],
-        &[
-            ("a.rs", &lines(40, "a")),
-            ("b.rs", &lines(36, "b")),
-            ("c.rs", &lines(40, "c2")),
-            ("d.rs", &lines(20, "d")),
-            ("e.rs", &lines(10, "e")),
-        ],
-    );
+    // `file:lines:tag` — a file of `lines` bait-free lines spelled by `tag`
+    let tree = |spec: &str| -> Vec<(String, String)> {
+        spec.split(' ')
+            .map(|w| {
+                let f: Vec<&str> = w.split(':').collect();
+                (
+                    f[0].to_string(),
+                    lines(f[1].parse().expect("a count"), f[2]),
+                )
+            })
+            .collect()
+    };
+    let mut seed = tree("b.rs:35:b c.rs:40:c d.rs:40:d e.rs:1:e");
+    seed.push(("ce.toml".into(), toml.into()));
+    let then = tree("a.rs:40:a b.rs:36:b c.rs:40:c2 d.rs:20:d e.rs:10:e");
+    fn refs(v: &[(String, String)]) -> Vec<(&str, &str)> {
+        v.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect()
+    }
+    let repo = two_commits("fpr-budget-e2e", &refs(&seed), &refs(&then));
     let commits = crate::common::chain_of(&repo, "HEAD", None);
     let c = replay(&repo, &tmp("fpr-budget-e2e-shadow"), "e2e", &commits);
     let seen: Vec<(&str, &str, usize, usize)> = c

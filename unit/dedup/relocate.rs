@@ -20,7 +20,13 @@ fn a_run_is_counted_at_every_start() {
 #[test]
 fn the_reply_is_read_strictly() {
     let ok = consume(&json!({"relocated": [0, 2], "all": false}), 3).expect("ok");
-    assert_eq!(ok, Verdict { moved: vec![0, 2], all: false });
+    assert_eq!(
+        ok,
+        Verdict {
+            moved: vec![0, 2],
+            all: false
+        }
+    );
     let all = consume(&json!({"relocated": [0, 1], "all": true}), 2).expect("all");
     assert!(all.all);
     let bad = [
@@ -28,7 +34,10 @@ fn the_reply_is_read_strictly() {
         (json!({"relocated": [3], "all": false}), "ascend"),
         (json!({"relocated": [0], "all": true}), "disagrees"),
         (json!({"relocated": [0]}), "boolean"),
-        (json!({"degraded": true, "reason": "relocate_too_large"}), "too_large"),
+        (
+            json!({"degraded": true, "reason": "relocate_too_large"}),
+            "too_large",
+        ),
     ];
     for (reply, needle) in bad {
         let err = consume(&reply, 2).expect_err("refused");

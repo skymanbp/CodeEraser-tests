@@ -64,10 +64,19 @@ fn malformed_envelope_fails_open_everywhere() {
 fn probe_failure_is_stamped_degraded() {
     let dir = tmp("guard-degraded");
     seed_project(&dir, "deny");
-    // no daemon survives a hook run (P13), so the probe below
-    // respawns against the corrupted db by construction
+    // no daemon survives a hook run (P13), and none is started for this
+    // one (run_hook_cold), so the probe respawns against the corrupted
+    // db by construction
     common::corrupt_index(&dir);
-    let line = silent_probe_observe(&dir, &rust_fn(1));
+    let out = common::run_hook_cold(
+        &dir,
+        &["probe", "--hook"],
+        &envelope(&dir, "Write", &rust_fn(1)),
+        &[],
+    );
+    assert!(out.trim().is_empty(), "fail-open: {out}");
+    let line = common::last_observe(&dir);
+    assert_eq!(line["event"], "probe");
     assert_eq!(line["degraded"], true, "stamped, not silent");
 }
 
@@ -229,7 +238,8 @@ fn exclusion_model_agrees_across_a_vcs_boundary() {
     // its file already sits past the line, so the write that GROWS it is
     // the refused one (v2.35 GD1)
     let grown = "// filler
-".repeat(752);
+"
+    .repeat(752);
     common::expect_write_denied(&dir.join("cut"), "hidden.rs", &grown, "grows it to 752");
 }
 

@@ -10,6 +10,9 @@
 //! generation is not touched.
 
 use crate::common::{self, run_hook, spawn_daemon_ready, tmp, write_all};
+// the files the index holds, read without opening it as an Index (an
+// open would rebuild a key it finds stale)
+use crate::scoped_index::indexed;
 use std::path::Path;
 
 const F: &str = "def own_copy(rows, key, limit):\n    seen = {}\n    for row in rows:\n        k = row.get(key)\n        if k is None:\n            continue\n        bucket = seen.setdefault(k, [])\n        if len(bucket) >= limit:\n            raise ValueError(\"too many rows for %s\" % k)\n        bucket.append(row)\n    total = sum(len(v) for v in seen.values())\n    return sorted(seen.items(), key=lambda kv: (len(kv[1]), kv[0])), total\n";
@@ -19,23 +22,17 @@ const G: &str = "def unrelated(x):\n    return x + 1\n";
 /// on disk, PostToolUse — with the project's daemon running (the
 /// caller's guard holds it; the re-measure never starts one).
 fn landed(dir: &Path, rel: &str, text: &str) {
-    let pre = common::pretooluse_envelope_at(dir, rel, "Write", text);
-    let out = common::run_hook_alive(dir, &["probe", "--hook"], &pre);
-    assert!(out.trim().is_empty(), "{rel}: the first write passes: {out}");
+    let (pre, post) = (
+        common::pretooluse_envelope_at(dir, rel, "Write", text),
+        common::posttooluse_envelope(dir, rel, "Write", "t"),
+    );
+    let first = common::run_hook_alive(dir, &["probe", "--hook"], &pre, &[]);
+    assert!(
+        first.trim().is_empty(),
+        "{rel}: the first write passes: {first}"
+    );
     write_all(dir, &[(rel, text)]);
-    let post = common::posttooluse_envelope(dir, rel, "Write", "t");
-    common::run_hook_alive(dir, &["settle", "--hook"], &post);
-}
-
-/// The files the index holds, read without opening it as an Index (an
-/// open would rebuild a key it finds stale).
-fn indexed(dir: &Path) -> Vec<String> {
-    let conn = rusqlite::Connection::open(dir.join(".ce/index.db")).expect("db");
-    let mut stmt = conn.prepare("SELECT path FROM files").expect("files");
-    stmt.query_map([], |r| r.get(0))
-        .expect("rows")
-        .map(|p| p.expect("path"))
-        .collect()
+    common::run_hook_alive(dir, &["settle", "--hook"], &post, &[]);
 }
 
 /// A seeded, indexed tree with its daemon up.
@@ -76,7 +73,10 @@ fn only_this_indexs_own_measured_files_are_refreshed() {
     landed(&dir, "x.py", F);
     common::shutdown_and_wait(&dir, guard, "daemon after the scope leg");
     let paths = indexed(&dir);
-    assert!(paths.iter().any(|p| p == "x.py"), "the control is indexed: {paths:?}");
+    assert!(
+        paths.iter().any(|p| p == "x.py"),
+        "the control is indexed: {paths:?}"
+    );
     assert!(
         !paths
             .iter()
@@ -114,9 +114,13 @@ fn an_index_of_another_generation_is_not_touched() {
     let before = indexed(&dir);
     write_all(&dir, &[("x.py", F)]);
     let post = common::posttooluse_envelope(&dir, "x.py", "Write", "t");
-    common::run_hook_alive(&dir, &["settle", "--hook"], &post);
+    common::run_hook_alive(&dir, &["settle", "--hook"], &post, &[]);
     common::shutdown_and_wait(&dir, guard, "daemon after the generation leg");
-    assert_eq!(indexed(&dir), before, "another generation's index is not touched");
+    assert_eq!(
+        indexed(&dir),
+        before,
+        "another generation's index is not touched"
+    );
     let v: i64 = rusqlite::Connection::open(dir.join(".ce/index.db"))
         .expect("db")
         .pragma_query_value(None, "user_version", |r| r.get(0))

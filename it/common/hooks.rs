@@ -170,27 +170,58 @@ pub fn run_hook(dir: &Path, args: &[&str], stdin: &str) -> String {
 /// `run_hook` under named environment (the run_ce / run_ce_env
 /// shape): the leg that arms the SessionStart update notice overrides
 /// the harness's default opt-out here, and nothing else does.
+///
+/// A `probe` runs with its daemon already up. The duplicate-write leg
+/// asks the daemon; started lazily by the hook, a cold one has to answer
+/// inside the hook's two-second spawn window, and under the suite's load
+/// it sometimes does not — the probe then fails open, and a leg about
+/// the probe's answer reads an empty one. The daemon started here is the
+/// one the hook would start (spawn_daemon_ready_as_hook: the hook's
+/// environment, the same root); teardown below is unchanged, and the
+/// guard reaps on a panic; a daemon that does not come up within the
+/// readiness bound fails the test by name (common/daemon.rs `ready`).
+/// A leg about the cold path itself never comes here: run_hook_cold.
 pub fn run_hook_env(dir: &Path, args: &[&str], stdin: &str, env: &[(&str, &str)]) -> String {
+    let _daemon = (args.first() == Some(&"probe"))
+        .then(|| super::daemon::spawn_daemon_ready_as_hook(dir, env));
+    run_hook_cold(dir, args, stdin, env)
+}
+
+/// A hook run with NO daemon started for it — the cold path, for the
+/// legs that are about it (a cold daemon the hook starts itself, or one
+/// that cannot be started): whatever the hook spawns, it spawns inside
+/// its own window. Teardown as run_hook's.
+pub fn run_hook_cold(dir: &Path, args: &[&str], stdin: &str, env: &[(&str, &str)]) -> String {
     let out = hook_output(dir, args, stdin, env);
     // confirmed gone at every root the hook could have judged (a
     // delegated write's daemon lives under the nested project), and
     // inert for daemon-free hooks (request_if_running never spawns);
     // before the assert so a red test cannot leak
     shutdown_daemon(dir);
+    fail_open_stdout(out)
+}
+
+/// One hook run that neither starts nor tears down a daemon — for a leg
+/// whose daemon a `DaemonGuard` already holds across several hooks (the
+/// PostToolUse re-measure reaches a RUNNING daemon only), or whose
+/// socket a stand-in holds (a cold leg: no daemon can come up), and
+/// which then tears it down itself; `env` as in run_hook_env.
+pub fn run_hook_alive(dir: &Path, args: &[&str], stdin: &str, env: &[(&str, &str)]) -> String {
+    fail_open_stdout(hook_output(dir, args, stdin, env))
+}
+
+/// A hook's exit must be 0 (fail-open); its stdout.
+fn fail_open_stdout(out: std::process::Output) -> String {
     assert!(out.status.success(), "hook must always exit 0 (fail-open)");
     String::from_utf8_lossy(&out.stdout).to_string()
 }
 
-/// One hook run that leaves the daemon alone — for a leg whose daemon a
-/// `DaemonGuard` already holds across several hooks (the PostToolUse
-/// re-measure reaches a RUNNING daemon only), which then tears it down.
-pub fn run_hook_alive(dir: &Path, args: &[&str], stdin: &str) -> String {
-    let out = hook_output(dir, args, stdin, &[]);
-    assert!(out.status.success(), "hook must always exit 0 (fail-open)");
-    String::from_utf8_lossy(&out.stdout).to_string()
-}
-
-fn hook_output(dir: &Path, args: &[&str], stdin: &str, env: &[(&str, &str)]) -> std::process::Output {
+fn hook_output(
+    dir: &Path,
+    args: &[&str],
+    stdin: &str,
+    env: &[(&str, &str)],
+) -> std::process::Output {
     use std::io::Write as _;
     let mut child = Command::new(env!("CARGO_BIN_EXE_ce"))
         .args(args)

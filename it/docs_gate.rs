@@ -24,7 +24,7 @@ use std::collections::BTreeSet;
 const KEY_DOC_TSV: &str = "\
 exclude\tExtra exclude globs, added on top of the built-in defaults (plan §4.1); gitignore syntax, `/` separators only — a `\\` (an escape in this syntax, never a separator) and a leading `!` or `#` are refused by name, a literal metacharacter is written as a class (`[*]`), `dir/` names a directory. A committed ratchet row whose file an exclude (or an ignore file) hides is `dropped`, not removed: `ce check` fails by name (`rows_dropped`, 6.4.0) until `CE_ACCEPT_FENCE=1 ce baseline` owns the exclusion
 thresholds.file_lines_warn\tWarn once a source file passes this line count
-thresholds.file_lines_fail\tHard file budget: scan fails past it, and the guard refuses writes that would land past it
+thresholds.file_lines_fail\tHard file budget: scan fails past it, and the guard refuses a write that grows a file past it (a file already past it may keep or shrink, so it can be split one step at a time)
 thresholds.fn_lines_warn\tWarn once a function passes this line count
 thresholds.fn_lines_fail\tFail once a function passes this line count
 thresholds.params_warn\tWarn once a function takes more parameters than this

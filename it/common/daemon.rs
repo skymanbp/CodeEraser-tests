@@ -62,6 +62,21 @@ pub fn spawn_daemon_ready(root: &Path) -> DaemonGuard {
     ready(root, DaemonGuard::from(child))
 }
 
+/// The daemon a hook run under `env` would lazily start for `root`,
+/// started first and waited for: the hook's own environment
+/// (hooks.rs: update check off, no ambient CE_LANG, `env` last), so
+/// the daemon judges as the lazily spawned one would — only no longer
+/// inside the hook's two-second spawn window.
+pub fn spawn_daemon_ready_as_hook(root: &Path, env: &[(&str, &str)]) -> DaemonGuard {
+    let child = daemon_command(root, Stdio::inherit())
+        .env("CE_UPDATE_CHECK", "0")
+        .env_remove("CE_LANG")
+        .envs(env.iter().copied())
+        .spawn()
+        .expect("spawn ce daemon");
+    ready(root, DaemonGuard::from(child))
+}
+
 /// The same daemon with its stderr read into a buffer by a thread, for
 /// the batteries that assert what the daemon said (or did not say) on
 /// it: the lines arrive once the daemon has exited (shutdown_and_wait
@@ -95,7 +110,10 @@ fn ready(root: &Path, guard: DaemonGuard) -> DaemonGuard {
             return guard;
         }
     }
-    panic!("daemon never came up");
+    panic!(
+        "the daemon for {} never answered a ping within 30 s",
+        root.display()
+    );
 }
 
 /// A raw connection to the daemon for `root`, bypassing the client

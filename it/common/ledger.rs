@@ -138,6 +138,23 @@ impl Ledger {
     /// order. The doc is read and written at one path: CE_FPR_OUT's
     /// directory when set (out_file), so successive blesses accumulate
     /// outside the tree.
+    /// A standing instrument's ending: print the row's table and the
+    /// walk's summary line, and under a bless merge the row into the
+    /// doc (`rank` orders the rows).
+    pub fn report(
+        &self,
+        row: Value,
+        table: String,
+        walked: String,
+        rank: impl Fn(&Value) -> (usize, String),
+    ) {
+        println!("{table}");
+        println!("{walked}");
+        if crate::facts::blessing() {
+            self.merge(&repo_root(), row, &[], rank);
+        }
+    }
+
     pub fn merge(
         &self,
         root: &Path,

@@ -46,7 +46,10 @@ fn coherent(c: &Value) {
     let (k, events) = (n("false_asks") as usize, n("events") as usize);
     assert!(events > 0 && n("events_shared") <= n("events"));
     assert!(n("in_zone") <= n("events") && hidden <= n("ask"));
-    assert!(n("carried") <= n("observe"), "a carried landing fires no tier");
+    assert!(
+        n("carried") <= n("observe"),
+        "a carried landing fires no tier"
+    );
     let soft_events: u64 = c["soft_lines"]
         .as_object()
         .expect("soft lines")
@@ -97,8 +100,14 @@ fn a_synthetic_history_lands_one_ask_one_warn_and_one_shadowed() {
             ("a.rs", &filler(26)),
             ("b.rs", &filler(16)),
             ("c.rs", &filler(40)),
-            ("d.rs", &format!("// changed
-{}", filler(25))),
+            (
+                "d.rs",
+                &format!(
+                    "// changed
+{}",
+                    filler(25)
+                ),
+            ),
         ],
     );
     let c = replay(&repo, &tmp("fpr-zone-e2e-shadow"), "e2e");

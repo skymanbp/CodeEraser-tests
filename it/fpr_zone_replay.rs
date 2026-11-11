@@ -65,7 +65,11 @@ fn measure(shadow: &Path, w: &Write, blobs: &mut Blobs, t: &mut Tally) {
     let Some(l) = zone::landing(lines, soft, hard, p.tiers) else {
         return;
     };
-    let before = if w.status == 'A' { 0 } else { blobs.lines(w.parent, w.rel) };
+    let before = if w.status == 'A' {
+        0
+    } else {
+        blobs.lines(w.parent, w.rel)
+    };
     let carried = !zone::grows(Ok(before), lines);
     t.rows.push(Landed {
         sha: w.commit[..8].to_string(),
@@ -113,8 +117,8 @@ fn every_zone_landing_is_read_against_the_baseline_of_its_parent() {
         );
     }
     let row = c.json();
-    println!("{}", table(std::slice::from_ref(&row)));
-    println!(
+    let printed = table(std::slice::from_ref(&row));
+    let walked = format!(
         "walked {} commits at {}: {} events ({} share fpr_replay's denominator), {} unreadable ce.toml",
         c.commits,
         repo.display(),
@@ -122,11 +126,9 @@ fn every_zone_landing_is_read_against_the_baseline_of_its_parent() {
         c.events_shared,
         c.unreadable
     );
-    if crate::facts::blessing() {
-        // the two corpora are two runs: the row of the same name is
-        // replaced, the other kept, both in name order
-        LEDGER.merge(&repo_root(), row, &[], |c| {
-            (0, c["name"].as_str().unwrap_or_default().to_string())
-        });
-    }
+    // the two corpora are two runs: the row of the same name is
+    // replaced, the other kept, both in name order
+    LEDGER.report(row, printed, walked, |c| {
+        (0, c["name"].as_str().unwrap_or_default().to_string())
+    });
 }

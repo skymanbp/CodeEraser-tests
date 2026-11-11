@@ -43,7 +43,11 @@ pub struct CommitStreams {
 }
 
 impl CommitStreams {
-    pub fn load(repo: &Path, (parent, commit): (&str, &str), touched: &BTreeMap<&str, char>) -> Self {
+    pub fn load(
+        repo: &Path,
+        (parent, commit): (&str, &str),
+        touched: &BTreeMap<&str, char>,
+    ) -> Self {
         let mut s = CommitStreams {
             parent: BTreeMap::new(),
             child: BTreeMap::new(),
@@ -51,16 +55,22 @@ impl CommitStreams {
         for (rel, status) in touched {
             let lang = Lang::judged_path(Path::new(rel)).expect("a judged file");
             if *status != 'A' {
-                s.parent.insert(rel.to_string(), hashes(&blob(repo, parent, rel), lang));
+                s.parent
+                    .insert(rel.to_string(), hashes(&blob(repo, parent, rel), lang));
             }
             if *status != 'D' {
-                s.child.insert(rel.to_string(), hashes(&blob(repo, commit, rel), lang));
+                s.child
+                    .insert(rel.to_string(), hashes(&blob(repo, commit, rel), lang));
             }
         }
         s
     }
 
-    fn occ(side: &BTreeMap<String, Vec<u64>>, files: impl Iterator<Item = String>, run: &[u64]) -> u64 {
+    fn occ(
+        side: &BTreeMap<String, Vec<u64>>,
+        files: impl Iterator<Item = String>,
+        run: &[u64],
+    ) -> u64 {
         files
             .filter_map(|f| side.get(&f))
             .map(|s| occurrences(s, run))
@@ -81,7 +91,8 @@ impl CommitStreams {
         let with_t = before.iter().cloned().chain(std::iter::once(t.to_string()));
         let head = Self::occ(&self.parent, with_t, run);
         let others = before.iter().filter(|f| *f != t).cloned();
-        let now = Self::occ(&self.child, others, run) + Self::occ(&self.child, std::iter::once(t.to_string()), run);
+        let now = Self::occ(&self.child, others, run)
+            + Self::occ(&self.child, std::iter::once(t.to_string()), run);
         [head, now]
     }
 }
@@ -98,10 +109,16 @@ pub fn read(link: &mut Link, streams: &CommitStreams, rows: &mut [Intercept]) {
         let mine: Vec<&Intercept> = rows.iter().filter(|r| r.rel == rel).collect();
         let counts: Vec<[u64; 2]> = mine
             .iter()
-            .flat_map(|r| r.runs.iter().map(|run| streams.at_write(run, &r.applied_before, &rel)))
+            .flat_map(|r| {
+                r.runs
+                    .iter()
+                    .map(|run| streams.at_write(run, &r.applied_before, &rel))
+            })
             .collect();
         let reply = judged::ask(link, CAP, KIND, relocate::body(&counts)).expect("relocate/1");
-        let credited = relocate::consume(&reply, counts.len()).expect("a verdict").all;
+        let credited = relocate::consume(&reply, counts.len())
+            .expect("a verdict")
+            .all;
         for r in rows.iter_mut().filter(|r| r.rel == rel) {
             r.relocated = credited;
         }
