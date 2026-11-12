@@ -130,8 +130,12 @@ pub fn convention_docs() -> Docs {
 
 /// Every record file with its pinned sha256: (path, sha).
 pub fn pinned() -> Vec<(&'static str, &'static str)> {
-    PINNED
-        .lines()
+    pins(PINNED)
+}
+
+/// The `(path, sha256)` pins of a `sha path` text, one a line.
+pub fn pins(text: &'static str) -> Vec<(&'static str, &'static str)> {
+    text.lines()
         .filter_map(|l| l.split_once(' '))
         .map(|(h, p)| (p, h))
         .collect()

@@ -81,6 +81,8 @@ mod eval_deadfile;
 mod eval_deadfile_bars;
 mod eval_deadfile_bars_four;
 mod eval_deadfile_class;
+mod eval_deadfile_gen2;
+mod eval_deadfile_gen2_parts;
 mod eval_deadfile_k1;
 mod eval_deadfile_parts;
 mod eval_deadfile_positions;
