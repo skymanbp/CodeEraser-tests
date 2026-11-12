@@ -70,8 +70,9 @@ fn items(text: &str) -> usize {
 
 /// A batch writes what one refresh per file wrote, row for row and id
 /// for id, in one ask; a ceiling the next file would pass sends the
-/// batch so far first — the items, then the line (a ceiling of 0 bytes
-/// sends every file with units alone, the no-unit file asking nothing).
+/// batch so far first — the items, the ask's planned bytes, then the line
+/// (a ceiling of 0 bytes sends every file with units alone, the no-unit file
+/// asking nothing).
 #[test]
 fn a_batch_writes_what_one_refresh_per_file_wrote() {
     let (d1, mut one) = index("batch-one");
@@ -80,9 +81,10 @@ fn a_batch_writes_what_one_refresh_per_file_wrote() {
     }
     let all = items(A) + items(B);
     for (caps, want) in [
-        ((usize::MAX, usize::MAX), 1),
-        ((all - 1, usize::MAX), 2),
-        ((usize::MAX, 0), 2),
+        ((usize::MAX, usize::MAX, usize::MAX), 1),
+        ((all - 1, usize::MAX, usize::MAX), 2),
+        ((usize::MAX, 0, usize::MAX), 2),
+        ((usize::MAX, usize::MAX, 0), 2),
     ] {
         let (d2, mut idx) = index("batch-many");
         let asks = Rc::new(Cell::new(0));
@@ -117,7 +119,11 @@ fn an_ask_failing_mid_refresh_writes_none_of_its_batch() {
     }
     put(&mut want, file("a.rs", C));
     let asks = Rc::new(Cell::new(0));
-    let mut batch = Batch::asking(Params::default(), (items(C), usize::MAX), counted(&asks, 2));
+    let mut batch = Batch::asking(
+        Params::default(),
+        (items(C), usize::MAX, usize::MAX),
+        counted(&asks, 2),
+    );
     batch.push(&mut idx, file("a.rs", C), false).expect("waits");
     batch
         .push(&mut idx, file("b.rs", A), false)
