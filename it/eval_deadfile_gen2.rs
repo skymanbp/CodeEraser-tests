@@ -8,10 +8,11 @@
 //! record and the registry are fixed in eval_deadfile_gen2_bars.rs; the
 //! real-corpus legs live in eval_deadfile_gen2_parts/run.rs.
 
+use crate::eval_deadfile_gen2_parts::gitz::{read_listing, read_statuses};
 use crate::eval_deadfile_gen2_parts::model::{
-    Dead, Event, Fate, History, Kind, State, Step, Tree, events_at, fate, window,
+    Dead, Event, Fate, History, Kind, State, Step, Tree, events_at, fate, follow, window,
 };
-use crate::eval_deadfile_gen2_parts::replay::read_status;
+use crate::eval_deadfile_gen2_parts::replay::check_in_files;
 
 /// A history from one line per commit, `;`-separated clauses: `f a b`
 /// the tree's files, `r x` its dead roots, `d y` its dependents, `m x`
@@ -125,6 +126,18 @@ fn the_first_fate_that_happens_decides() {
             Fate::Undetermined,
         ),
         ("f a.py ; u ; t 1\nf a.py ; t 1", Fate::ReReferred),
+        // G10: at an unjudged commit the deadness is carried from the last
+        // judged tree; rule 1 cannot fire, a change keeps up, a deletion
+        // removes untouched
+        (
+            "f a.py ; u ; t 1\nf a.py ; r a.py ; t 1",
+            Fate::Undetermined,
+        ),
+        (
+            "f a.py ; u ; m a.py ; t 3\nf a.py ; r a.py ; t 1",
+            Fate::KeptUp { focused: true },
+        ),
+        ("f ; u ; x a.py ; t 1\nf ; t 1", Fate::RemovedUntouched),
     ];
     for (rest, want) in cases {
         let h = history(&format!("{base}{rest}"));
@@ -153,21 +166,17 @@ fn the_window_and_a_window_shorter_than_eight_hundred_commits() {
     assert_eq!(window(150), 1..1, "no commit 200 before the tip: no window");
 }
 
+/// `git diff -M -l0 --name-status -z` records (G8): a rename or copy
+/// `R<score>\0from\0to\0`, any other status `X\0path\0`; a non-ASCII
+/// name is read as it is, never quoted.
 #[test]
-fn the_name_status_lines_read_as_section_two_says() {
+fn the_name_status_records_read_as_section_two_says() {
     let mut s = Step::default();
-    for line in [
-        "R100\told.py\tnew.py",
-        "R087\tx.md\ty.md",
-        "A\tb.py",
-        "M\tc.py",
-        "D\td.py",
-        "T\te",
-        "C075\tf.py\tg.py",
-    ] {
-        read_status(&mut s, line);
-    }
-    assert_eq!(s.touched, 7);
+    let raw = "R100\0old.py\0new.py\0R087\0x.md\0y.md\0A\0b.py\0M\0c.py\0D\0d.py\0\
+               T\0e\0C075\0f.py\0g.py\0D\0\u{fc}ber.md\0";
+    read_statuses(&mut s, raw);
+    assert_eq!(s.touched, 8);
+    assert!(s.deleted.contains("\u{fc}ber.md"), "{s:?}");
     assert_eq!(s.renamed.get("new.py").map(String::as_str), Some("old.py"));
     let changed: Vec<&str> = s.changed.iter().map(String::as_str).collect();
     assert_eq!(
@@ -176,4 +185,57 @@ fn the_name_status_lines_read_as_section_two_says() {
         "a rename alone is no change"
     );
     assert!(s.deleted.contains("d.py"));
+}
+
+/// G15: each fate says the commit whose step decided it and the file's
+/// name there, after the renames; G3: whether its walk met an unjudged
+/// tree.
+/// `commits => fate decided-at path-then met-unjudged`, commits `|`
+/// between them, the event at commit 1.
+const DECIDED: &str = "
+f a.py|f a.py ; r a.py|f b.py ; r b.py ; n b.py<a.py ; t 1|f b.py ; u ; t 1|f ; x b.py ; t 1 => RemovedUntouched Some(4) b.py true
+f a.py|f a.py ; r a.py|f b.py ; r b.py ; n b.py<a.py ; t 1 => Undetermined None b.py false";
+
+/// The decision of commit 1's event in a `|`-separated history.
+fn decided(spec: &str) -> String {
+    let h = history(&spec.replace('|', "\n"));
+    let f = follow(&h, &only(&h, 1).0);
+    let at = f.decided_at;
+    format!("{:?} {at:?} {} {}", f.fate, f.path_then, f.met_unjudged)
+}
+
+#[test]
+fn a_fate_says_where_it_was_decided() {
+    let read: String = DECIDED
+        .trim()
+        .lines()
+        .map(|l| {
+            let spec = l.split(" => ").next().unwrap_or(l);
+            format!("{spec} => {}\n", decided(spec))
+        })
+        .collect();
+    assert_eq!(read.trim(), DECIDED.trim());
+}
+
+/// G16: a gitlink (160000) is no file of the tree, a symbolic link
+/// (120000) is a file listed apart; `ls-tree -r -z` reads names unquoted.
+#[test]
+fn the_tree_listing_reads_modes_and_names_as_git_holds_them() {
+    let oid = "0".repeat(40);
+    let raw = format!(
+        "100644 blob {oid}\ta.md\0100755 blob {oid}\trun.sh\0120000 blob {oid}\tlink.md\0\
+         160000 commit {oid}\tvendor/sub\0100644 blob {oid}\t\u{fc}ber.md\0"
+    );
+    let l = read_listing(&raw);
+    let files: Vec<&str> = l.files.iter().map(String::as_str).collect();
+    assert_eq!(files, ["a.md", "link.md", "run.sh", "\u{fc}ber.md"]);
+    assert_eq!(l.symlinks.iter().collect::<Vec<_>>(), ["link.md"]);
+}
+
+/// G11: a dead row names a file of the tree, else the run stops.
+#[test]
+#[should_panic(expected = "p c9: dead row \"gone.md\" names no file of the tree")]
+fn a_dead_row_outside_the_tree_stops_the_run() {
+    let h = history("f a.md ; r gone.md");
+    check_in_files("p", "c9", &h.trees[0].dead, &h.trees[0].files);
 }

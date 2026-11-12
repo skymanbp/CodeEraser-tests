@@ -3,7 +3,7 @@
 //! the AUDIT_ROWS undetermined events lowest by
 //! `sha256("ce-deadfile-gen2-v1|" + corpus + "|" + commit + "|" + path)`,
 //! all of them when fewer. Reading C is reading B with the undetermined
-//! added at the audited `in_use` share. The auditors' answers are read
+//! added at the audited `in_use` share, exactly (G1). The auditors' answers are read
 //! by whole path component (N8: a substring is no match), never with
 //! generation 1's `named` reader.
 
@@ -48,16 +48,32 @@ pub fn names_component(text: &str, path: &str) -> bool {
         .any(|w| w == base || w.trim_end_matches('.') == base)
 }
 
-/// Reading C: reading B's `(false, denominator)` with every
-/// undetermined event added to the denominator and, at the audited share
-/// `in_use / audited` (floored to whole events), to the false count.
-pub fn reading_c(fates: &[Fate], in_use: usize, audited: usize) -> (usize, usize) {
+/// Reading C (G1): reading B with the undetermined events added at the
+/// audited `in_use` share, as an exact fraction — `(k_B * audited + U *
+/// in_use, (n_B + U) * audited)`, U the undetermined events, no flooring.
+/// Reading B itself when there are none; `None` when there are some and
+/// nothing was audited. Stated per state, pooled over the primary
+/// corpora, nothing finer.
+pub fn reading_c(fates: &[Fate], in_use: usize, audited: usize) -> Option<(usize, usize)> {
     let (k, n) = share(Reading::B, fates);
-    let undetermined = fates.iter().filter(|f| **f == Fate::Undetermined).count();
-    let in_use = if audited == 0 {
-        0
-    } else {
-        undetermined * in_use / audited
-    };
-    (k + in_use, n + undetermined)
+    let u = fates.iter().filter(|f| **f == Fate::Undetermined).count();
+    match (u, audited) {
+        (0, _) => Some((k, n)),
+        (_, 0) => None,
+        _ => Some((k * audited + u * in_use, (n + u) * audited)),
+    }
+}
+
+/// Reading C twice when audited rows end `unsure`: those counted as
+/// `in_use`, then not.
+pub fn reading_c_twice(
+    fates: &[Fate],
+    in_use: usize,
+    unsure: usize,
+    audited: usize,
+) -> [Option<(usize, usize)>; 2] {
+    [
+        reading_c(fates, in_use + unsure, audited),
+        reading_c(fates, in_use, audited),
+    ]
 }

@@ -1,112 +1,106 @@
 //! The two runs on the real corpora, both `#[ignore]` and both refused
-//! until the registry names the product commit (part 4A landed, the
-//! main session's word): the tips (section 1's second replacement
+//! until the registry names the product commit and that commit's product
+//! is the one under test (G6): the tips (section 1's second replacement
 //! reason, read with the product build) and the replay itself. Neither
-//! writes the registry; the replay writes its doc to CE_DEADFILE_GEN2_OUT.
+//! writes the registry; the replay writes one doc per corpus to
+//! CE_DEADFILE_GEN2_OUT (G14), and CE_DEADFILE_GEN2_ONLY=<dir name>
+//! restricts a run to one corpus.
 //!   CE_DEADFILE_GEN2_ROOT=<clones> CE_DEADFILE_GEN2_COPIES=<scratch dir> cargo test --test it -- --ignored eval_deadfile_gen2_parts::run::deadfile_gen2_tips --nocapture
 //!   CE_DEADFILE_GEN2_ROOT=<clones> CE_DEADFILE_GEN2_COPIES=<scratch dir> CE_DEADFILE_GEN2_OUT=<dir> cargo test --test it -- --ignored eval_deadfile_gen2_parts::run::deadfile_gen2_replay --nocapture
 
-use super::model::{State, replayed};
+use super::doc::{corpus_doc, done, write};
+use super::gitz::{checkout, clone_copy};
+use super::judge::{deadcode, product_record};
+use super::model::replayed;
 use super::replay::history;
-use super::report::fate_name;
 use super::{dir_name, product_commit, registry};
+use crate::common::repo_root;
 use crate::eval_lang_parts::generate::env;
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::path::Path;
 
-/// The registry, refused while its product commit is unset.
-fn armed() -> Value {
+/// The registry and the product record, refused while the product commit
+/// is unset or names another product than HEAD's.
+pub fn armed() -> (Value, Value) {
     let reg = registry();
-    assert!(
-        product_commit(&reg).is_some(),
-        "the registry names no product commit: generation 2 runs only on the build of the landed part 4A"
-    );
-    reg
+    let commit = product_commit(&reg).unwrap_or_else(|| {
+        panic!("the registry names no product commit: generation 2 runs only on the build of the landed part 4A")
+    });
+    let record = product_record(&repo_root(), commit)
+        .unwrap_or_else(|e| panic!("not the registered product: {e}"));
+    (reg, record)
 }
 
+/// The chosen rows, CE_DEADFILE_GEN2_ONLY's alone when it is set.
 fn rows(reg: &Value) -> Vec<Value> {
-    reg["corpora"].as_array().cloned().unwrap_or_default()
+    let only = std::env::var("CE_DEADFILE_GEN2_ONLY").ok();
+    let all = reg["corpora"].as_array().cloned().unwrap_or_default();
+    let rows: Vec<Value> = all
+        .into_iter()
+        .filter(|r| only.as_deref().is_none_or(|o| dir_name(r) == o))
+        .collect();
+    assert!(!rows.is_empty(), "no registry row is {only:?}");
+    rows
 }
 
-/// Each chosen corpus's tip judged by this build: the exit code of
-/// `ce deadcode` (2 = refused, section 1's replacement reason).
+fn paths(row: &Value, suffix: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+    let name = dir_name(row);
+    (
+        Path::new(&env("CE_DEADFILE_GEN2_ROOT")).join(name),
+        Path::new(&env("CE_DEADFILE_GEN2_COPIES")).join(format!("{name}{suffix}")),
+    )
+}
+
+/// Each chosen corpus's tip judged by this build, by G5's predicate:
+/// `judged` or the reason.
 #[test]
 #[ignore = "runs ce deadcode on the registered clones; armed by the registry's product commit"]
 fn deadfile_gen2_tips() {
-    let reg = armed();
+    let (reg, _) = armed();
     for row in rows(&reg) {
-        let (clone, copy) = (
-            Path::new(&env("CE_DEADFILE_GEN2_ROOT")).join(dir_name(&row)),
-            Path::new(&env("CE_DEADFILE_GEN2_COPIES")).join(format!("{}-tip", dir_name(&row))),
-        );
+        let (clone, copy) = paths(&row, "-tip");
         let tip = row["tip"].as_str().expect("tip");
-        let judged = tip_judged(&clone, &copy, tip);
-        println!("{} {} judged {}", row["language"], tip, judged);
+        clone_copy(&clone, &copy);
+        let read = match checkout(&copy, tip) {
+            Err(why) => why,
+            Ok(()) => match deadcode(&copy) {
+                Err(run) => panic!(
+                    "{} {tip}: not a statement about the tree: {run}",
+                    dir_name(&row)
+                ),
+                Ok(Ok(_)) => "judged".into(),
+                Ok(Err(why)) => why,
+            },
+        };
+        println!("{} {tip} {read}", row["language"]);
     }
 }
 
-fn tip_judged(clone: &Path, copy: &Path, tip: &str) -> bool {
-    if copy.exists() {
-        std::fs::remove_dir_all(copy).expect("remove the earlier copy");
-    }
-    let (from, to) = (clone.to_string_lossy(), copy.to_string_lossy());
-    crate::common::gitio::git_ok(
-        Path::new("."),
-        &["clone", "-q", "--no-checkout", &from, &to],
-    );
-    crate::common::gitio::git_ok(copy, &["checkout", "-q", "-f", "--detach", tip]);
-    let out = crate::common::ce_command(copy, &[])
-        .args(["deadcode", "--format", "json", "."])
-        .output()
-        .expect("run ce deadcode");
-    out.status.code() != Some(2)
-}
-
-/// The replay: per chosen corpus every event of the window with its
-/// fate, the unjudged trees and the dependents, into one doc. The
-/// tables and the bars are read off that doc (readings.rs), never here.
+/// The replay: per chosen corpus every event of the window with its fate,
+/// the unjudged trees and the side numbers, into that corpus's doc; a
+/// corpus whose doc holds this tip and product is skipped. The tables and
+/// the bars are read off the docs (report.rs), never here.
 #[test]
 #[ignore = "replays the registered clones' histories; armed by the registry's product commit"]
 fn deadfile_gen2_replay() {
-    let reg = armed();
-    let mut corpora = Vec::new();
+    let (reg, record) = armed();
+    let out = env("CE_DEADFILE_GEN2_OUT");
+    let out = Path::new(&out);
     for row in rows(&reg) {
-        let name = dir_name(&row).to_string();
-        let (clone, copy) = (
-            Path::new(&env("CE_DEADFILE_GEN2_ROOT")).join(&name),
-            Path::new(&env("CE_DEADFILE_GEN2_COPIES")).join(&name),
-        );
-        let h = history(&clone, &copy, row["tip"].as_str().expect("tip"));
-        let (events, dependents) = replayed(&h);
-        let unjudged = h.trees.iter().filter(|t| !t.judged).count();
-        let list: Vec<Value> = events
-            .iter()
-            .map(|(e, f)| {
-                let state = if e.state == State::Orphaned {
-                    "orphaned"
-                } else {
-                    "born"
-                };
-                json!({"commit": h.shas[e.at], "path": e.path, "state": state,
-                       "kind": format!("{:?}", e.kind).to_lowercase(), "fate": fate_name(*f)})
-            })
-            .collect();
+        let (name, tip) = (dir_name(&row), row["tip"].as_str().expect("tip"));
+        if done(out, name, tip, &record) {
+            println!("{name}: its doc is written for this tip and product, skipped");
+            continue;
+        }
+        let (clone, copy) = paths(&row, "");
+        let h = history(&clone, &copy, tip);
+        let (events, sides) = replayed(&h);
         println!(
-            "{name}: {} commits, {} events, {unjudged} unjudged trees",
+            "{name}: {} commits, {} events, {} unjudged window pairs",
             h.trees.len(),
-            list.len()
+            events.len(),
+            sides.unjudged_pairs
         );
-        corpora.push(
-            json!({"corpus": name, "commits": h.shas, "unjudged": unjudged,
-                            "dependents": dependents, "events": list}),
-        );
+        write(out, &corpus_doc((name, tip, &record), &h, &events, &sides));
     }
-    let doc = json!({"schema": "ce.eval-deadfile-gen2-replay/1.0.0",
-                     "product": reg["product"], "corpora": corpora});
-    let out = Path::new(&env("CE_DEADFILE_GEN2_OUT")).join("deadfile-gen2-replay-v1.json");
-    std::fs::write(
-        &out,
-        serde_json::to_string_pretty(&doc).expect("doc") + "\n",
-    )
-    .expect("write");
 }

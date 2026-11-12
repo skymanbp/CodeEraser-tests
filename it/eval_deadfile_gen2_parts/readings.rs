@@ -90,17 +90,58 @@ pub fn pooled(
         .collect()
 }
 
-/// Conditions 2 and 3 for one kind (or every kind): the pooled share at
-/// most 1.0 %, and no corpus with at least MIN_CORPUS_EVENTS events of
-/// it above 5.0 %.
-fn holds(table: &Table, state: State, kind: Option<Kind>, r: Reading) -> bool {
-    let (k, n) = share(r, &pooled(table, state, kind, &|_| true));
-    within(k, n, POOLED_DIV)
-        && table.keys().all(|c| {
-            let f = fates(table, c, state, kind);
+/// One bar condition read with its integers: `corpus` None is the pooled
+/// share (condition 2, at most 1.0 %), Some the share of one corpus with
+/// at least MIN_CORPUS_EVENTS events (condition 3, at most 5.0 %).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Cond {
+    pub corpus: Option<String>,
+    pub events: usize,
+    pub k: usize,
+    pub n: usize,
+    pub ok: bool,
+}
+
+/// Conditions 2 and 3 for one kind (or every kind), each with the
+/// integers that decide it: the report prints these, the bars read them.
+pub fn conditions(table: &Table, state: State, kind: Option<Kind>, r: Reading) -> Vec<Cond> {
+    let all = pooled(table, state, kind, &|_| true);
+    let (k, n) = share(r, &all);
+    let mut out = vec![Cond {
+        corpus: None,
+        events: all.len(),
+        k,
+        n,
+        ok: within(k, n, POOLED_DIV),
+    }];
+    for c in table.keys() {
+        let f = fates(table, c, state, kind);
+        if f.len() >= MIN_CORPUS_EVENTS {
             let (k, n) = share(r, &f);
-            f.len() < MIN_CORPUS_EVENTS || within(k, n, CORPUS_DIV)
-        })
+            let ok = within(k, n, CORPUS_DIV);
+            out.push(Cond {
+                corpus: Some(c.clone()),
+                events: f.len(),
+                k,
+                n,
+                ok,
+            });
+        }
+    }
+    out
+}
+
+/// The kinds that answer the bars by themselves (condition 4): those
+/// with at least MIN_EVENTS events of their own.
+pub fn own_kinds(table: &Table, state: State) -> Vec<Kind> {
+    [Kind::Code, Kind::Document]
+        .into_iter()
+        .filter(|k| pooled(table, state, Some(*k), &|_| true).len() >= MIN_EVENTS)
+        .collect()
+}
+
+fn holds(table: &Table, state: State, kind: Option<Kind>, r: Reading) -> bool {
+    conditions(table, state, kind, r).iter().all(|c| c.ok)
 }
 
 /// Section 4: `None` when the state has fewer than MIN_EVENTS events
@@ -111,9 +152,7 @@ pub fn blocks(table: &Table, state: State, r: Reading) -> Option<bool> {
     if pooled(table, state, None, &|_| true).len() < MIN_EVENTS {
         return None;
     }
-    let kinds = [Kind::Code, Kind::Document]
-        .into_iter()
-        .filter(|k| pooled(table, state, Some(*k), &|_| true).len() >= MIN_EVENTS);
+    let kinds = own_kinds(table, state);
     Some(holds(table, state, None, r) && kinds.into_iter().all(|k| holds(table, state, Some(k), r)))
 }
 
@@ -162,12 +201,18 @@ pub fn upper_ppm(k: usize, n: usize) -> u64 {
     cp_upper_ppm(k, n)
 }
 
-/// The pooled share with each corpus left out in turn: `(corpus, k, n)`.
-pub fn leave_one_out(table: &Table, state: State, r: Reading) -> Vec<(String, usize, usize)> {
+/// The pooled share of one kind (or every kind) with each corpus left
+/// out in turn: `(corpus, k, n)`.
+pub fn leave_one_out(
+    table: &Table,
+    state: State,
+    kind: Option<Kind>,
+    r: Reading,
+) -> Vec<(String, usize, usize)> {
     table
         .keys()
         .map(|out| {
-            let (k, n) = share(r, &pooled(table, state, None, &|c| c != out));
+            let (k, n) = share(r, &pooled(table, state, kind, &|c| c != out));
             (out.clone(), k, n)
         })
         .collect()

@@ -9,11 +9,15 @@
 //! landed, and the replay refuses to run until it is.
 
 pub mod audit;
+pub mod doc;
+pub mod gitz;
+pub mod judge;
 pub mod model;
 pub mod readings;
 pub mod replay;
 pub mod report;
 pub mod run;
+pub mod words;
 
 use crate::common::repo_root;
 use serde_json::Value;

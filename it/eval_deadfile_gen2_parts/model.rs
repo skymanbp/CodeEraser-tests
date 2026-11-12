@@ -18,21 +18,26 @@ pub struct Dead {
 }
 
 /// One commit's tree as the section reads it. `judged` is false when the
-/// product refused the tree: a pair touching it yields no event.
+/// product refused the tree (G5) or git could not check it out here
+/// (G17): a pair touching it yields no event, and `why` says what
+/// happened (the exit code and the words). `symlink_rows` counts the dead
+/// rows dropped as symbolic links (G16).
 #[derive(Clone, Debug, Default)]
 pub struct Tree {
     pub files: BTreeSet<String>,
     pub dead: BTreeMap<String, Dead>,
     pub judged: bool,
+    pub why: Option<String>,
+    pub symlink_rows: usize,
 }
 
-/// The diff from the previous commit to this one, as `git diff -M
-/// --name-status` prints it: `renamed` maps a destination to its source
-/// (a rename at the default similarity is the same file), `changed`
-/// holds every path (named at this commit) whose content changed —
-/// added, modified, or renamed with an edit; a rename alone is no change
-/// — `deleted` every path removed, and `touched` how many files the
-/// commit changes (one per printed line).
+/// The diff from the previous commit to this one, as `git diff -M -l0
+/// --name-status -z` prints it: `renamed` maps a destination to its
+/// source (a rename at the default similarity is the same file),
+/// `changed` holds every path (named at this commit) whose content
+/// changed — added, modified, or renamed with an edit; a rename alone is
+/// no change — `deleted` every path removed, and `touched` how many files
+/// the commit changes (one per printed record).
 #[derive(Clone, Debug, Default)]
 pub struct Step {
     pub renamed: BTreeMap<String, String>,
@@ -77,6 +82,18 @@ pub enum Fate {
     KeptUp { focused: bool },
     RemovedUntouched,
     Undetermined,
+}
+
+/// An event's fate with where it was decided (G15): `decided_at` the
+/// commit whose step decided (None when undetermined), `path_then` the
+/// file's name there after the renames (at the tip when undetermined),
+/// `met_unjudged` whether the walk passed an unjudged tree (G3).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Followed {
+    pub fate: Fate,
+    pub decided_at: Option<usize>,
+    pub path_then: String,
+    pub met_unjudged: bool,
 }
 
 /// The commit a `kept up` change counts as focused at: at most this
@@ -146,44 +163,92 @@ pub fn events_at(h: &History, c: usize) -> Vec<Event> {
 /// not dead (re-referred); it is still dead and its content changed
 /// (kept up, focused when the commit changes at most FOCUSED_FILES
 /// files); it was deleted (removed untouched — a content change before
-/// would have decided first). An unjudged tree decides nothing.
-pub fn fate(h: &History, ev: &Event) -> Fate {
-    let mut name = ev.path.clone();
+/// would have decided first). At an unjudged commit (G10) the deadness
+/// is carried from the last judged tree and git's facts are read as
+/// usual: rule 1 cannot fire there, a change keeps up, a deletion
+/// removes untouched.
+pub fn follow(h: &History, ev: &Event) -> Followed {
+    let (mut name, mut dead, mut met) = (ev.path.clone(), true, false);
     for k in ev.at + 1..h.trees.len() {
         let step = &h.steps[k];
         if let Some((to, _)) = step.renamed.iter().find(|(_, from)| **from == name) {
             name = to.clone();
         }
         let tree = &h.trees[k];
-        if !tree.judged {
-            continue;
-        }
-        if tree.files.contains(&name) && !tree.dead.contains_key(&name) {
-            return Fate::ReReferred;
-        }
-        if tree.dead.contains_key(&name) && step.changed.contains(&name) {
-            return Fate::KeptUp {
-                focused: step.touched <= FOCUSED_FILES,
+        let fate = if tree.judged {
+            dead = tree.dead.contains_key(&name);
+            (tree.files.contains(&name) && !dead).then_some(Fate::ReReferred)
+        } else {
+            met = true;
+            None
+        };
+        let fate = fate.or_else(|| {
+            if dead && step.changed.contains(&name) {
+                Some(Fate::KeptUp {
+                    focused: step.touched <= FOCUSED_FILES,
+                })
+            } else if step.deleted.contains(&name) {
+                Some(Fate::RemovedUntouched)
+            } else {
+                None
+            }
+        });
+        if let Some(fate) = fate {
+            return Followed {
+                fate,
+                decided_at: Some(k),
+                path_then: name,
+                met_unjudged: met,
             };
         }
-        if step.deleted.contains(&name) {
-            return Fate::RemovedUntouched;
-        }
     }
-    Fate::Undetermined
+    Followed {
+        fate: Fate::Undetermined,
+        decided_at: None,
+        path_then: name,
+        met_unjudged: met,
+    }
 }
 
-/// Every event of the window with its fate; the dependents of the
-/// window's trees counted beside (the side table: dead, not a root).
-pub fn replayed(h: &History) -> (Vec<(Event, Fate)>, usize) {
+/// The event's fate alone.
+pub fn fate(h: &History, ev: &Event) -> Fate {
+    follow(h, ev).fate
+}
+
+/// The side numbers of one corpus (G3, G16): window pairs with an
+/// unjudged side, unjudged trees after the window, events whose fate walk
+/// met an unjudged tree, the dependents of the window's trees (dead, not
+/// a root), and the dead rows every tree of the chain dropped as symbolic
+/// links.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Sides {
+    pub unjudged_pairs: usize,
+    pub unjudged_after: usize,
+    pub met_unjudged: usize,
+    pub dependents: usize,
+    pub symlink_rows: usize,
+}
+
+/// Every event of the window with its fate, and the side numbers.
+pub fn replayed(h: &History) -> (Vec<(Event, Followed)>, Sides) {
+    let w = window(h.trees.len());
+    let mut sides = Sides {
+        unjudged_after: h.trees[w.end.min(h.trees.len())..]
+            .iter()
+            .filter(|t| !t.judged)
+            .count(),
+        symlink_rows: h.trees.iter().map(|t| t.symlink_rows).sum(),
+        ..Sides::default()
+    };
     let mut out = Vec::new();
-    let mut dependents = 0;
-    for c in window(h.trees.len()) {
-        dependents += h.trees[c].dead.values().filter(|d| !d.root).count();
+    for c in w {
+        sides.unjudged_pairs += usize::from(!(h.trees[c - 1].judged && h.trees[c].judged));
+        sides.dependents += h.trees[c].dead.values().filter(|d| !d.root).count();
         for ev in events_at(h, c) {
-            let f = fate(h, &ev);
+            let f = follow(h, &ev);
+            sides.met_unjudged += usize::from(f.met_unjudged);
             out.push((ev, f));
         }
     }
-    (out, dependents)
+    (out, sides)
 }

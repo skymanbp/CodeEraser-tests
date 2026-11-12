@@ -1,11 +1,14 @@
 //! The dead-file exam, generation 2 (lane v235_licence, part 4B),
 //! sections 3 and 4 and the record: the two readings and reading C, the
-//! bars and their four outcomes, the report read back from a replay doc,
-//! the keyed audit draw, the record's bytes and the registry. Section 2's
-//! definitions are fixed in eval_deadfile_gen2.rs.
+//! bars and their four outcomes, the keyed audit draw, the record's bytes
+//! and the registry. Section 2's definitions are fixed in
+//! eval_deadfile_gen2.rs; the report and the run's rules in
+//! eval_deadfile_gen2_run.rs.
 
 use crate::common::repo_root;
-use crate::eval_deadfile_gen2_parts::audit::{Row, drawn, names_component, reading_c};
+use crate::eval_deadfile_gen2_parts::audit::{
+    Row, drawn, names_component, reading_c, reading_c_twice,
+};
 use crate::eval_deadfile_gen2_parts::model::{Event, Fate, Kind, State};
 use crate::eval_deadfile_gen2_parts::readings::{
     Outcome, Reading, Table, blocks, outcome, sentence, share, tally,
@@ -27,9 +30,19 @@ fn the_two_readings() {
     ];
     assert_eq!(share(Reading::A, &f), (4, 5));
     assert_eq!(share(Reading::B, &f), (2, 3));
-    // reading C: the one undetermined added at an audited share of 1 / 2
-    assert_eq!(reading_c(&f, 1, 2), (2, 4));
-    assert_eq!(reading_c(&f, 2, 2), (3, 4));
+    // reading C (G1), exact: B is 2 / 3, the one undetermined added at an
+    // audited share of 1 / 2 gives (2 * 2 + 1 * 1) / ((3 + 1) * 2) = 5 / 8
+    assert_eq!(reading_c(&f, 1, 2), Some((5, 8)));
+    assert_eq!(reading_c(&f, 2, 2), Some((6, 8)));
+    assert_eq!(
+        reading_c(&f, 0, 0),
+        None,
+        "undetermined and nothing audited"
+    );
+    let decided = &f[..4];
+    assert_eq!(reading_c(decided, 0, 0), Some(share(Reading::B, decided)));
+    // three audited, one in use, one unsure: unsure counted in use, then not
+    assert_eq!(reading_c_twice(&f, 1, 1, 3), [Some((8, 12)), Some((7, 12))]);
 }
 
 /// A table of `corpus state kind removed false` rows, `;` between rows:
@@ -124,26 +137,6 @@ fn the_bars_and_their_four_outcomes() {
     ] {
         assert!(sentence("orphaned", o).starts_with("orphaned "), "{o:?}");
     }
-}
-
-/// The report reads a replay doc back and prints every fate, both
-/// shares and the leave-one-out line per state.
-#[test]
-fn the_report_reads_a_replay_doc() {
-    use crate::eval_deadfile_gen2_parts::report::{render, table_of};
-    let doc = serde_json::json!({"corpora": [
-        {"corpus": "p", "events": [
-            {"path": "a.py", "state": "orphaned", "kind": "code", "fate": "removed untouched"},
-            {"path": "b.md", "state": "born", "kind": "document", "fate": "kept up sweep"}]},
-        {"corpus": "q", "events": [
-            {"path": "c.py", "state": "orphaned", "kind": "code", "fate": "re-referred"}]}]});
-    let text = render(&table_of(&doc));
-    let lines = "| p | 1 | 0 | 0 | 0 | 1 | 0 | 0/1 (0.0 %
-| pooled | 2 | 1 | 0 | 0 | 1 | 0 | 1/2 (50.0 %
-leave one out, reading A: without p 1/1 (100.0 %
-orphaned has fewer than 100 events";
-    let missing: Vec<&str> = lines.lines().filter(|l| !text.contains(l)).collect();
-    assert!(missing.is_empty(), "{missing:?} not in\n{text}");
 }
 
 #[test]

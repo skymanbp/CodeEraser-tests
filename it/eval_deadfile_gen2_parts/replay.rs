@@ -1,18 +1,24 @@
 //! The replay (BARS-GEN2 section 2): one corpus's first-parent history
 //! read into the model — every tree from the window's first parent to
 //! the tip judged by this build's `ce deadcode`, every step read off
-//! `git diff -M --name-status` — on a CLONE of the registered clone
-//! (the registered clone is read-only), checked out commit by commit.
-//! Nothing here counts; model.rs reads the events and fates, readings.rs
-//! the shares.
+//! `git diff -M -l0 --name-status -z` — on a CLONE of the registered
+//! clone (the registered clone is read-only), checked out commit by
+//! commit. The corpus is the copy's directory name. Nothing here counts;
+//! model.rs reads the events and fates, readings.rs the shares.
 
+use super::gitz::{Listing, checkout, clone_copy, ls_tree, step};
+use super::judge::deadcode;
 use super::model::{Dead, FUTURE, History, Step, Tree, WINDOW};
+use crate::common::first_parent;
 use crate::common::gitio::git_ok;
-use crate::common::{first_parent, git_lines};
 use codeeraser::scan::lang::Lang;
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+
+/// Every chain index divisible by this, and the tip, is judged a second
+/// time on a cold index (G13).
+pub const COLD_EVERY: usize = 100;
 
 /// The product's word for a documentation file: a file of a document
 /// language (Markdown, HTML) or plain prose.
@@ -21,35 +27,6 @@ pub fn document(path: &str) -> bool {
         Lang::from_path(Path::new(path)),
         Some(Lang::Markdown | Lang::Html | Lang::Text)
     )
-}
-
-/// One parsed `git diff -M --name-status` line into a step.
-pub fn read_status(step: &mut Step, line: &str) {
-    let cols: Vec<&str> = line.split('\t').collect();
-    let status = cols.first().copied().unwrap_or("");
-    let letter = status.chars().next().unwrap_or(' ');
-    step.touched += 1;
-    match (letter, cols.as_slice()) {
-        ('R', [_, from, to]) => {
-            step.renamed.insert(to.to_string(), from.to_string());
-            if status != "R100" {
-                step.changed.insert(to.to_string());
-            }
-        }
-        ('C', [_, _, to]) => drop(step.changed.insert(to.to_string())),
-        ('D', [_, p]) => drop(step.deleted.insert(p.to_string())),
-        (_, [_, p]) => drop(step.changed.insert(p.to_string())),
-        _ => panic!("unread name-status line {line:?}"),
-    }
-}
-
-/// The step from `p` to `c`.
-pub fn step(repo: &Path, p: &str, c: &str) -> Step {
-    let mut s = Step::default();
-    for line in git_lines(repo, &["diff", "-M", "--name-status", p, c]) {
-        read_status(&mut s, &line);
-    }
-    s
 }
 
 /// The dead map of one `ce deadcode --format json` document: a root is
@@ -73,29 +50,85 @@ pub fn dead_of(doc: &Value) -> BTreeMap<String, Dead> {
         .collect()
 }
 
-/// One commit's tree: checked out in the copy, judged by this build.
-fn tree(copy: &Path, sha: &str) -> Tree {
-    git_ok(copy, &["checkout", "-q", "-f", "--detach", sha]);
-    git_ok(copy, &["clean", "-q", "-ffdx", "-e", ".ce"]);
-    let files: BTreeSet<String> = git_lines(copy, &["ls-tree", "-r", "--name-only", sha])
-        .into_iter()
-        .collect();
-    let out = crate::common::ce_command(copy, &[])
-        .args(["deadcode", "--format", "json", "."])
-        .output()
-        .expect("run ce deadcode");
-    let doc: Option<Value> = serde_json::from_slice(&out.stdout).ok();
-    let judged =
-        out.status.code() != Some(2) && doc.as_ref().is_some_and(|d| d["degraded"].is_null());
-    let dead = doc
-        .filter(|_| judged)
-        .map(|d| dead_of(&d))
-        .unwrap_or_default();
-    Tree {
-        files,
-        dead,
-        judged,
+/// G11: every dead row names a file of the tree (only file nodes enter
+/// `dead`; a mismatch is an instrument defect, never an event).
+pub fn check_in_files(
+    corpus: &str,
+    sha: &str,
+    dead: &BTreeMap<String, Dead>,
+    files: &BTreeSet<String>,
+) {
+    if let Some(p) = dead.keys().find(|p| !files.contains(*p)) {
+        panic!("{corpus} {sha}: dead row {p:?} names no file of the tree");
     }
+}
+
+/// The tree a judged document gives over a listing: the symbolic links'
+/// rows dropped and counted (G16), every other row a file (G11).
+pub fn judged_tree(corpus: &str, sha: &str, doc: &Value, l: &Listing) -> Tree {
+    let (links, dead): (BTreeMap<_, _>, BTreeMap<_, _>) = dead_of(doc)
+        .into_iter()
+        .partition(|(p, _)| l.symlinks.contains(p));
+    check_in_files(corpus, sha, &dead, &l.files);
+    Tree {
+        files: l.files.clone(),
+        dead,
+        judged: true,
+        why: None,
+        symlink_rows: links.len(),
+    }
+}
+
+/// The checked-out tree judged by this build.
+fn judge_here(copy: &Path, corpus: &str, sha: &str, l: &Listing) -> Tree {
+    match deadcode(copy) {
+        Err(run) => panic!("{corpus} {sha}: not a statement about the tree: {run}"),
+        Ok(Ok(doc)) => judged_tree(corpus, sha, &doc, l),
+        Ok(Err(why)) => Tree {
+            files: l.files.clone(),
+            why: Some(why),
+            ..Tree::default()
+        },
+    }
+}
+
+/// One commit's tree: checked out in the copy, judged by this build; a
+/// tree git cannot check out here is unjudged (G17).
+fn tree(copy: &Path, corpus: &str, sha: &str) -> Tree {
+    let l = ls_tree(copy, sha);
+    if let Err(why) = checkout(copy, sha) {
+        return Tree {
+            files: l.files,
+            why: Some(why),
+            ..Tree::default()
+        };
+    }
+    git_ok(copy, &["clean", "-q", "-ffdx", "-e", ".ce"]);
+    judge_here(copy, corpus, sha, &l)
+}
+
+/// G13: the tree judged again after `.ce` is removed must read the same;
+/// else both maps are written beside the copy and the run stops.
+fn cold_check(copy: &Path, corpus: &str, sha: &str, warm: &Tree) {
+    let index = copy.join(".ce");
+    if index.exists() {
+        std::fs::remove_dir_all(&index).expect("remove the warm index");
+    }
+    let cold = judge_here(copy, corpus, sha, &ls_tree(copy, sha));
+    if (&cold.dead, cold.judged) == (&warm.dead, warm.judged) {
+        return;
+    }
+    let map = |t: &Tree| -> Value {
+        json!({"judged": t.judged, "why": t.why,
+               "dead": t.dead.iter().map(|(p, d)| json!([p, d.root, d.document])).collect::<Vec<_>>()})
+    };
+    let out = copy.with_file_name(format!("{corpus}-warm-cold-{sha}.json"));
+    let doc = json!({"corpus": corpus, "commit": sha, "warm": map(warm), "cold": map(&cold)});
+    std::fs::write(&out, serde_json::to_string_pretty(&doc).expect("doc")).expect("write");
+    panic!(
+        "{corpus} {sha}: the warm index and a cold one judge differently ({})",
+        out.display()
+    );
 }
 
 /// The first-parent chain the replay reads, oldest first: from the
@@ -110,14 +143,11 @@ pub fn chain(repo: &Path, tip: &str) -> Vec<String> {
 /// The corpus's history: a fresh copy of the registered clone, every
 /// tree of the chain and every step between.
 pub fn history(clone: &Path, copy: &Path, tip: &str) -> History {
-    if copy.exists() {
-        std::fs::remove_dir_all(copy).expect("remove the earlier copy");
-    }
-    let (from, to) = (clone.to_string_lossy(), copy.to_string_lossy());
-    git_ok(
-        Path::new("."),
-        &["clone", "-q", "--no-checkout", &from, &to],
-    );
+    let corpus = copy
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .expect("the copy is named for its corpus");
+    clone_copy(clone, copy);
     let shas = chain(copy, tip);
     let mut h = History {
         shas: shas.clone(),
@@ -129,7 +159,15 @@ pub fn history(clone: &Path, copy: &Path, tip: &str) -> History {
         } else {
             step(copy, &shas[i - 1], sha)
         });
-        h.trees.push(tree(copy, sha));
+        let t = tree(copy, &corpus, sha);
+        if t.why
+            .as_deref()
+            .is_none_or(|w| !w.starts_with("checkout: "))
+            && (i % COLD_EVERY == 0 || i + 1 == shas.len())
+        {
+            cold_check(copy, &corpus, sha, &t);
+        }
+        h.trees.push(t);
     }
     h
 }
