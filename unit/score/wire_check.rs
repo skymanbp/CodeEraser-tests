@@ -36,6 +36,7 @@ fn rep(f: impl FnOnce(&mut Reply)) -> Reply {
         class_knobs: Vec::new(),
         dedup_blocks: None,
         degraded: None,
+        extent: Some([0, 0]),
     };
     f(&mut r);
     r
@@ -73,6 +74,16 @@ fn table(cases: &[(Request, Reply, &str)]) {
             (Err(e), true) => panic!("case {i}: refused, wanted a pass: {e:?}"),
         }
     }
+}
+
+/// The extent law (10.0.0): a judged reply carries the extent it was
+/// judged on; one without it is a skewed core, refused by name.
+#[test]
+fn a_judged_reply_carries_its_extent() {
+    let r = req(|_| {});
+    assert!(check_reply(&r, &rep(|_| {})).is_ok());
+    let e = check_reply(&r, &rep(|r| r.extent = None)).expect_err("no extent");
+    assert!(e.to_string().contains("extent"), "{e}");
 }
 
 #[test]

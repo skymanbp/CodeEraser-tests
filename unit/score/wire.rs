@@ -22,3 +22,31 @@ fn class_column_and_knob_table_ride_only_when_classed() {
     );
     assert_eq!(classed["classKnobs"], json!([[1, 0, 400]]));
 }
+
+/// The reply's `extent` (10.0.0, the extent law): `{tenths, lines}` is
+/// read; tenths above ten times lines, a reply without tenths and the
+/// draft's exact `{num, den, lines}` are each refused by name.
+#[test]
+fn the_extent_is_tenths_and_lines_or_a_named_refusal() {
+    let read = |e: Value| extent_of(&json!({ "extent": e }));
+    assert_eq!(
+        read(json!({"tenths": 26, "lines": 3})).unwrap(),
+        Some([26, 3])
+    );
+    assert_eq!(read(Value::Null).unwrap(), None);
+    let refused = [
+        (
+            json!({"tenths": 31, "lines": 3}),
+            "tenths 31 above ten times lines 3",
+        ),
+        (json!({"lines": 3}), "extent.tenths: missing or not a count"),
+        (
+            json!({"num": 51, "den": 20, "lines": 3}),
+            "the 10.0.0 draft",
+        ),
+    ];
+    for (e, named) in refused {
+        let err = read(e).expect_err(named).to_string();
+        assert!(err.contains(named), "{err}");
+    }
+}

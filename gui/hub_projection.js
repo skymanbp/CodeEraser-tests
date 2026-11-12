@@ -16,6 +16,8 @@
 // hub dispatches to the renderer, and that the path list it asks for
 // reaches the invoke as the named argument.
 //
+// The score screen's printed E (`extent.tenths`) is pinned here too.
+//
 // Usage: node cli/tests/gui/hub_projection.js   (exit 1 = a lost column)
 "use strict";
 const fs = require("fs");
@@ -172,6 +174,25 @@ say(
   "hub_arch.js registers arch with its command, its path argument and its renderer"
 );
 say(el("hub-family").children.some((o) => o.value === "arch"), "the family joins the hub's picker");
+// The check score screen prints E as the core printed it (ce.check-report
+// 0.6.0 `extent.tenths`, half up): gui/ui/score.js under the same stubs,
+// a document whose num / den would read 2.5 as a double (51/20) and 0.0 as
+// a fraction stand-in — the hero must carry the field's 2.6.
+const scoreEls = {};
+const scoreBox = {
+  ...sandbox,
+  $: (id) => (scoreEls[id] ??= { addEventListener() {}, innerHTML: "", hidden: false, value: "" }),
+  row: () => "",
+  census: () => [],
+};
+vm.createContext(scoreBox);
+vm.runInContext(fs.readFileSync(path.join(root, "gui/ui/score.js"), "utf8"), scoreBox);
+vm.runInContext(
+  'checkDoc = { score: 900, scoreScale: 1000, axes: [], candidates: [], joinSeverity: [], degraded: null, floor: null, ' +
+    'extent: { tenths: 26, lines: 3 }, ratchet: { fail: false, failed: [], added: [], removed: [], over: [], toleranceDrawn: [] } }; renderCheck();',
+  scoreBox
+);
+say(scoreEls["check-hero"].innerHTML.includes("extentLines(2.6,3)"), "the score screen prints extent.tenths (2.6 of 3 lines) and divides nothing");
 el("hub-family").value = "arch";
 el("hub-paths").value = " a/x.py , ,b/y.py";
 (async () => {

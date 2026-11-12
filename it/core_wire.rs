@@ -109,7 +109,9 @@ fn knobless_echo() -> (codeeraser::config::Thresholds, serde_json::Value) {
                 "sim": [], "pos": [], "tier": [], "churn": [], "cochange": [],
                 "continuous": [], "discrete": [], "baseline": null,
                 "weights": [], "floor": null, "ceilings": [],
-                "thresholds": [], "tolerance": []
+                "thresholds": [], "tolerance": [],
+                // the extent law's four tables ride on every request (10.0.0)
+                "contSpans": [], "dupSpans": [], "refLines": [], "proseLines": []
             }),
         )
         .expect("verdict round-trip");
@@ -123,10 +125,11 @@ fn knob_default_drift_gate() {
         reply["knobs"],
         serde_json::json!({
             "sizeCeil": t.file_lines_warn, "cocCeil": t.cognitive_warn,
-            // the v0.6 zone trio (2.14.0): H mirrors ce.toml's fail
-            // line; P_max and k have no config default and pin here
-            "sizeHard": t.file_lines_fail, "sizePMax": 10, "softLineK": 2,
-            "deadIndegCeil": 0, "rewriteNum": 50, "rewriteDen": 100,
+            // H mirrors ce.toml's fail line (the soft line's upper
+            // fence); k has no config default and pins here. P_max and
+            // the dead in-degree ceiling left the verdict at 10.0.0
+            "sizeHard": t.file_lines_fail, "softLineK": 2,
+            "rewriteNum": 50, "rewriteDen": 100,
             "cochangeFloor": 2, "violCost": 10, "defaultWeight": 1,
             "scoreScale": 1000, "tolNum": 102, "tolDen": 100, "tolAbs": 10,
             // 9.0.0: the complexity rows' absolute leg, points not lines
@@ -153,27 +156,27 @@ fn the_rust_mirror_of_the_core_defaults_matches_the_echo() {
     };
     let (t, reply) = knobless_echo();
     let mirror = core_defaults();
+    // the codes the mirror must send: every live slot of the table (a
+    // retired code is a None slot and never rides), less the one key a
+    // table borrows from another section — thresholds code 7 is
+    // `[graph] scc_floor`, which the score mirror does not declare
     let tables = [
-        (
-            &CEILING_KEYS[..],
-            ceiling_rows(&t, &mirror),
-            CEILING_KEYS.len(),
-        ),
+        (&CEILING_KEYS[..], ceiling_rows(&t, &mirror), None),
         (
             &THRESHOLD_KEYS[..],
             threshold_rows(&mirror, None),
-            THRESHOLD_KEYS.len() - 1,
+            Some("cycleFloor"),
         ),
-        (
-            &TOLERANCE_KEYS[..],
-            tolerance_rows(&mirror),
-            TOLERANCE_KEYS.len(),
-        ),
+        (&TOLERANCE_KEYS[..], tolerance_rows(&mirror), None),
     ];
-    for (keys, rows, want) in tables {
-        assert_eq!(rows.len(), want, "the mirror declares every code: {rows:?}");
+    for (keys, rows, borrowed) in tables {
+        let live: Vec<i64> = (0..keys.len() as i64)
+            .filter(|&c| keys[c as usize].is_some_and(|k| Some(k) != borrowed))
+            .collect();
+        let sent: Vec<i64> = rows.iter().map(|r| r[0]).collect();
+        assert_eq!(sent, live, "the mirror declares every live code: {rows:?}");
         for [code, value] in rows {
-            let key = keys[code as usize];
+            let key = keys[code as usize].expect("a live code");
             assert_eq!(
                 reply["knobs"][key],
                 serde_json::json!(value),

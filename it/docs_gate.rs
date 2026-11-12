@@ -39,14 +39,12 @@ graph.entry_globs\tExtra liveness roots for the deadcode judgment, beyond the me
 graph.crate_roots\tRust crate roots of a tree whose manifest lives elsewhere (the test-suite submodule is a slice of the `cli` package): root-relative exact paths. A declared root mounts its `mod` children and anchors `crate::` paths like a manifest target, and is one for the deadcode entry role; a declared path that is not a walked Rust file is refused by name
 graph.scc_floor\tThe cycle floor: the smallest strongly connected component the graph's cycle table and the score's cycle axis count as a cycle — one knob, two faces (graph/1 `sccFloor`, verdict/1 threshold `cycleFloor`). Absent = 2, a lone file is never a cycle; 1 counts a file exactly when it imports itself; 0 is refused by name
 graph.search_roots\tA table of language name → root-relative directories that language's ladder consults (plan v2.30): `c = [\"third_party/include\"]` is where a C or C++ `#include \"x.h\"` looks when the including file's directory holds no `x.h` (two declared roots holding two different files refuse as ambiguous; the compile database answers after them (`compile_commands.json`, `build/compile_commands.json` or `compile_flags.txt`, the three names clangd probes), and for a file no compile chain reaches an `include` directory beside the including file's directory or any ancestor of it is read by convention, undeclared); `java = [\"src/main/java\"]` settles a class or a package that two walked files or directories answer — one package in two source roots — by the one under a declared directory, where the ladder otherwise refuses as ambiguous; `lua = [\"lib\"]` joins the directories a `require` searches (the requiring file's own directory, the root, `src`, `lua` and every template the tree's own files write into `package.path`), each tried as `name.lua` then `name/init.lua` (a `vendor` directory would be refused: the walk excludes it by name, so it holds no walked file); `r = [\"lib\"]` is where a `source(\"x.R\")` looks after the sourcing file's directory and the root; `html = [\"site\"]` is the deployment root a page's root-relative `/x` resolves under; declared, it replaces the root the page's own URL derives (its canonical, `og:url` or own-language `hreflang` alternate) and the one ancestor directory holding the path, which are read only when nothing is declared (two declared roots holding it refuse as ambiguous). The keys are `c` (C++ shares it), `lua`, `java`, `r`, `html`; any other key is refused at load, and a directory holding no walked file is refused by the walk
-score.weights\tPer-axis weight numerators by axis name (size / complexity / clone / docdup / deadcode / churn / cycle); unlisted axes keep the equal default
-score.size_penalty_max\tSoft-zone curve: the size-axis penalty of a file AT the hard line (plan v2.6; default 10)
+score.weights\tPer-axis weight numerators by axis name (size / complexity / clone / docdup / deadcode / churn / cycle); unlisted axes keep the equal default. The weights layer the extent: the heaviest axes' named lines count fully before a lighter axis's join them, and a weight of 0 takes its axis out of the score
 score.soft_line_k\tRelative soft line: the multiplicative-MAD exponent k in S = clamp(median*r^k, [200,500]) (default 2)
-score.dead_indeg_ceil\tDeadcode axis: a file at or below this in-degree (and unreachable) counts as orphaned
 score.rewrite_num\tChurn axis rewrite-share threshold, ratio numerator (cross-multiplied); ≥ 1 — at 0 every churned entity would read rewrite-heavy, so 0 is refused at load by name
 score.rewrite_den\tChurn axis rewrite-share threshold, ratio denominator
 score.cochange_floor\tCo-change count at which a pair counts as entangled; ≥ 1 — at 0 every pair would read hot, so 0 is refused at load by name
-score.viol_cost\tThe score fold's strictness dial, relative to its neutral value 10 (`violCostNeutral`): score = scale − ⌊Σ wᵢ·chargeᵢ·viol_cost ⁄ (10·Σ wᵢ)⌋, floored at 0, so at 10 the score is the scale minus the floored weighted mean of the axis charges, above 10 harsher (it may saturate at 0 by choice), below 10 gentler; ≥ 1 — at 0 the score sits at the scale and no floor can fail, so 0 is refused at load by name
+score.viol_cost\tThe score's strictness dial, relative to its neutral value 10 (`violCostNeutral`): score = ⌊scale · (1 − (viol_cost ⁄ 10) · E ⁄ L)⌋, floored at 0, where E is the lines a finding names and L the tree's lines — at 10 the score is the scale times the share of lines no finding names, above 10 harsher (it may reach 0 by choice), below 10 gentler; ≥ 1 — at 0 the score sits at the scale and no floor can fail, so 0 is refused at load by name
 score.default_weight\tWeight of any axis the weights table does not name
 score.score_scale\tThe score's full scale (per-mille by default)
 score.tol_num\tRatchet ratio leg numerator: a ceiling may grow to ceiling*tol_num/tol_den in one edit
@@ -69,6 +67,13 @@ tombstone.ledger\tFiles declared to hold the changelog role, in the exclude list
 tombstone.terms\tThe repository's own vocabulary: words that never spell a name, whole or as a word of a compound (`pork` declared keeps `braise_pork` out and leaves `braise` in); matched case-insensitively
 flow.tier\tThe intra-function dead-code class's own hook tier (plan v2.31 step 5): observe / warn / ask / deny; unset = observe. `[guard] mode` does not reach this class, and a tier speaks only for a finding in a language the precision gate admitted (`flow::judged_mask`: the languages whose blind-reviewed exam passed), so a finding in any other language, and every unused parameter, stays advisory; the Stop leg never blocks at any tier, and `ce flow --check` exits 1 only at `deny` with a judged finding. Any other value is refused at load by name, so a mistyped tier can never look armed
 ui.lang\tThe project's console language, `en` or `zh` (any other value is refused at load by name): the third selector — `--lang` wins, then `CE_LANG`, then this key — read where the console face loads its config, so `ce` commands, the hooks' refusal sentences and the git hooks answer in it; never `--help`, which renders before a project is known, and never the GUI, which keeps its own language button. Outside the knob fingerprint: a language moves no line
+";
+
+/// Keys a section still parses but the loader refuses by name: they are
+/// not documented as keys (no row), the section states the refusal once.
+/// `section \t keys (space separated) \t the sentence under the section`.
+const RETIRED_TSV: &str = "\
+score\tsize_penalty_max dead_indeg_ceil\t`size_penalty_max` and `dead_indeg_ceil` retired with the density law (v2.35): the score is the extent law, and the split advisory's P_max is a constant of the core. A `ce.toml` that declares either is refused at load by name: `ce.toml [score] <key>: retired with the density law (v2.35); remove the key`.
 ";
 
 const GEN_BANNER: &str = "<!-- GENERATED — do not edit. \
@@ -258,8 +263,19 @@ fn config_page() -> String {
         .collect();
     s += &format!("\n## Top level\n\n{}", key_table("", &leaves, &mut used));
     for (name, v) in top.iter().filter(|(_, v)| is_section(v)) {
-        let fields = held(name, v);
+        let (keys, note) = retired_in(name);
+        let mut fields = held(name, v);
+        let before = fields.len();
+        fields.retain(|(k, _)| !keys.contains(&k.as_str()));
+        assert_eq!(
+            before - fields.len(),
+            keys.len(),
+            "[{name}] a retired key is not a field: {keys:?}"
+        );
         s += &format!("\n## [{name}]\n\n{}", key_table(name, &fields, &mut used));
+        if let Some(note) = note {
+            s += &format!("\n{note}\n");
+        }
     }
     let tsv: BTreeSet<String> = KEY_DOC_TSV
         .lines()
@@ -271,6 +287,20 @@ fn config_page() -> String {
         "TSV keys != schema keys (dead or missing doc line)"
     );
     s
+}
+
+/// The retired keys of one section and the sentence that states their refusal.
+fn retired_in(section: &str) -> (Vec<&'static str>, Option<&'static str>) {
+    RETIRED_TSV
+        .lines()
+        .filter_map(|l| {
+            let mut cols = l.splitn(3, '\t');
+            Some((cols.next()?, cols.next()?, cols.next()?))
+        })
+        .find(|(sec, _, _)| *sec == section)
+        .map_or((Vec::new(), None), |(_, keys, note)| {
+            (keys.split(' ').collect(), Some(note))
+        })
 }
 
 fn is_section(v: &str) -> bool {

@@ -19,6 +19,7 @@ mod baseline_policy;
 mod baseline_reanchored;
 mod baseline_retired;
 mod bless_guard;
+mod check_extent_wide;
 mod check_sim_table;
 mod churn;
 mod cli_bare;

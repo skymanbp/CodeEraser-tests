@@ -90,9 +90,11 @@ fn a_pair_both_families_judged_rides_once_per_family() {
     );
 
     // (2) judged: one row per family (T1/T2, T3, docdup), one candidate
-    // per pair, and the docdup axis charges the pair over its two
-    // segment owners (2 of 2: half the scale) though the tree holds no
-    // Markdown file
+    // per pair, and both the clone and the docdup axis name the pair's
+    // lines (the extent law, 10.0.0) though the tree holds no Markdown
+    // file: each file is the 6-line doc block over the 11-line seed
+    // function, L = 2 · 17; the clone axis names both functions (2 · 11
+    // lines), the docdup axis both doc blocks (2 · 6)
     let o = common::judged(&dir);
     assert_eq!(o.files, 2, "both files are in the verdict universe");
     assert_eq!(o.sim_pairs, 3, "the pair rides once per family");
@@ -102,16 +104,27 @@ fn a_pair_both_families_judged_rides_once_per_family() {
         "one join candidate per pair: {:?}",
         o.reply.candidates
     );
-    let axis3 = o.reply.axes.iter().find(|a| a[0] == 3).map(|a| a[1]);
-    assert_eq!(axis3, Some(500), "{:?}", o.reply.axes);
+    let axis = |c: i64| o.reply.axes.iter().find(|a| a[0] == c).map(|a| a[1]);
+    let (doc, func) = (
+        SHARED_DOC.lines().count(),
+        common::rust_fn(1).lines().count(),
+    );
+    let (doc, func) = (doc as i64, func as i64);
+    let len = 2 * (doc + func);
+    assert_eq!(
+        (axis(2), axis(3)),
+        (Some(1000 * 2 * func / len), Some(1000 * 2 * doc / len)),
+        "{:?}",
+        o.reply.axes
+    );
 }
 
 /// Two files the T3 family alone relates (plan v2.30 step 5b-9): no
 /// T1/T2 block, one near-miss pair — and the check seats it as one
-/// sim row of kind 1, charging the clone axis exactly as the block
-/// pair above charges it (two touched files over two code files) and
-/// the docdup axis nothing. Until 5b-9 the table took the free T1/T2
-/// blocks and kind 1 was dead on every live road.
+/// sim row of kind 1 and its two units' spans as clone lines (the
+/// extent law, 10.0.0), the docdup axis naming nothing. Until 5b-9 the
+/// table took the free T1/T2 blocks and kind 1 was dead on every live
+/// road.
 #[test]
 fn a_t3_only_pair_rides_the_sim_table_as_kind_one() {
     let dir = common::tmp("check-sim-t3");
@@ -121,12 +134,10 @@ fn a_t3_only_pair_rides_the_sim_table_as_kind_one() {
     // (1) the fixture IS the shape: no block, one T3 clone, c <-> d
     common::analyze(&dir, 0, 0);
     assert_eq!(t3_pairs(&dir), ["c.rs <-> d.rs"], "one near-miss pair");
-    // (2) one sim row, one candidate, the clone axis charged as the
-    // block pair's is, the docdup axis not at all
-    let (t3_only, block_pair) = (
-        common::judged(&dir),
-        common::judged(&fixture("check-sim-twin")),
-    );
+    // (2) one sim row, one candidate, the clone axis naming the pair's
+    // unit lines — each file is its one function, so every line of both
+    // (1000 per 1000) — the docdup axis not at all
+    let t3_only = common::judged(&dir);
     let axis = |o: &codeeraser::score::Outcome, c: i64| {
         o.reply.axes.iter().find(|a| a[0] == c).map(|a| a[1])
     };
@@ -140,9 +151,8 @@ fn a_t3_only_pair_rides_the_sim_table_as_kind_one() {
     );
     assert_eq!(
         (axis(&t3_only, 2), axis(&t3_only, 3)),
-        (axis(&block_pair, 2), Some(0)),
-        "kind 1 reads as kind 0 on the clone axis: {:?}",
+        (Some(1000), Some(0)),
+        "kind 1 names clone lines: {:?}",
         t3_only.reply.axes
     );
-    assert!(axis(&t3_only, 2) > Some(0), "{:?}", t3_only.reply.axes);
 }

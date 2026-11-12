@@ -37,9 +37,13 @@ fn the_derived_soft_line_is_committed_under_the_hard_line() {
         serde_json::json!(400),
         "S is fenced at H"
     );
-    // the 450-line file past the wall charges P_max (10) — a flat P_max,
-    // since S = H leaves no zone — over the two size rows: the density
-    // law floor(1000 · 10 / (10 + 2))
+    // the 450-line file's 50 lines past S = H are the size axis's own
+    // share of the 750 lines (the extent law, 10.0.0)
     let size_axis = r.axes.iter().find(|[axis, _]| *axis == 0).map(|[_, c]| *c);
-    assert_eq!(size_axis, Some(1000 * 10 / (10 + 2)), "axes {:?}", r.axes);
+    assert_eq!(
+        size_axis,
+        Some(1000 * (450 - 400) / (300 + 450)),
+        "axes {:?}",
+        r.axes
+    );
 }
