@@ -191,19 +191,28 @@ pub fn blob_at(rev: &str, path: &str) -> String {
     git_in(Some(".."), &["show", &format!("{rev}:{path}")])
 }
 
-/// cli/Cargo.lock read as an answers input: the crate's own `version`
-/// line dropped, every other line kept. The lockfile sits on the
-/// precision docs' ANSWERED_BY for its dependency pins (the grammars
-/// above all); the release train moves the crate's own version line
-/// on every bump and that line answers nothing, so a doc is held to
-/// the pins and a bump alone never retires it (v1.8.0's lesson).
+/// cli/Cargo.lock read as an answers input, held to its pins: in the
+/// crate's own block its `version` line (a bump answers nothing, v1.8.0)
+/// and its `dependencies` list's bare names (`"name",`: the package's own
+/// block carries the pin; v2.35 D added libc) are dropped; a versioned name
+/// there (it picks between two pins), every other block, a new block stay.
 pub fn lock_pins(lock: &str) -> String {
-    let mut after_own_name = false;
+    let bare = |l: &str| -> bool {
+        let quoted = l.trim_start().strip_prefix('"');
+        quoted
+            .and_then(|r| r.strip_suffix("\","))
+            .is_some_and(|n| !n.contains(' '))
+    };
+    let (mut own, mut list) = (false, false);
     lock.lines()
         .filter(|line| {
-            let own_version = after_own_name && line.starts_with("version = ");
-            after_own_name = *line == "name = \"codeeraser\"";
-            !own_version
+            let line = line.trim_end();
+            own &= !(line.is_empty() || line == "[[package]]");
+            let named = list && bare(line);
+            let dropped = own && (line.starts_with("version = ") || named);
+            list = (list || (own && line == "dependencies = [")) && line != "]";
+            own |= line == "name = \"codeeraser\"";
+            !dropped
         })
         .flat_map(|line| [line, "\n"])
         .collect()

@@ -180,29 +180,74 @@ fn lang_docs_answer_the_code_they_name() {
     }
 }
 
-/// The lockfile answers through its pins: the crate's own version
-/// line is the one line dropped, a dependency's version moving is
-/// still a move, and the block's other lines stay.
+/// One lockfile for the pin legs: the crate's own block (its version,
+/// its own dependency list with `root` appended), a grammar block (its
+/// version, its list with `grammar_deps` appended), the libc block, and
+/// `tail` (more blocks).
+fn lock(own: &str, root: &str, grammar: &str, grammar_deps: &str, tail: &str) -> String {
+    format!(
+        "[[package]]\nname = \"codeeraser\"\nversion = \"{own}\"\ndependencies = [\n \"tree-sitter-c\",\n{root}]\n\n\
+         [[package]]\nname = \"tree-sitter-c\"\nversion = \"{grammar}\"\ndependencies = [\n \"cc\",\n{grammar_deps}]\n\n\
+         [[package]]\nname = \"libc\"\nversion = \"0.2.189\"\n{tail}"
+    )
+}
+
+/// The lockfile answers through its pins: in the crate's own block the
+/// version line and the bare names of its dependency list go (a bare
+/// name links the only package of that name, whose own block carries the
+/// pin); a versioned name in that list, every other block whole, and a
+/// block appearing stay moves.
 #[test]
 fn the_lockfile_answers_through_its_pins() {
-    let lock = |own: &str, grammar: &str| {
-        format!(
-            "[[package]]\nname = \"codeeraser\"\nversion = \"{own}\"\ndependencies = [\n \"tree-sitter-c\",\n]\n\n[[package]]\nname = \"tree-sitter-c\"\nversion = \"{grammar}\"\n"
-        )
-    };
-    let pinned = lock_pins(&lock("1.7.4", "0.24.2"));
+    let read =
+        |own, root: &str, grammar, deps, tail| lock_pins(&lock(own, root, grammar, deps, tail));
+    let pinned = read("1.7.4", "", "0.24.2", "", "");
     assert_eq!(
         pinned,
-        lock_pins(&lock("1.8.0", "0.24.2")),
+        read("1.8.0", "", "0.24.2", "", ""),
         "a release bump is not a move"
     );
     assert_ne!(
         pinned,
-        lock_pins(&lock("1.7.4", "0.24.3")),
+        read("1.7.4", "", "0.24.3", "", ""),
         "a grammar pin moving is a move"
     );
+    let bare = read("1.7.4", " \"libc\",\n", "0.24.2", "", "");
+    assert_eq!(
+        pinned, bare,
+        "a bare name in the crate's own list is not a move"
+    );
+    let two = |v: u32| {
+        read(
+            "1.7.4",
+            &format!(" \"tree-sitter 0.{v}.0\",\n"),
+            "0.24.2",
+            "",
+            "",
+        )
+    };
+    assert_ne!(
+        two(25),
+        two(26),
+        "a versioned name in the crate's own list is a move"
+    );
+    let edge = read("1.7.4", "", "0.24.2", " \"libc\",\n", "");
+    assert_ne!(
+        pinned, edge,
+        "a bare name in another package's list is a move"
+    );
+    let block = read(
+        "1.7.4",
+        "",
+        "0.24.2",
+        "",
+        "\n[[package]]\nname = \"cc\"\nversion = \"1.2.0\"\n",
+    );
+    assert_ne!(pinned, block, "a new package block is a move");
     assert!(
-        !pinned.contains("1.7.4") && pinned.contains("dependencies = ["),
-        "only the own version line goes"
+        !pinned.contains("1.7.4")
+            && pinned.contains("dependencies = [")
+            && pinned.contains("\"cc\","),
+        "the own version line and the own list's bare names go; every other line stays"
     );
 }
