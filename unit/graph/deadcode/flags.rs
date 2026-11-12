@@ -38,7 +38,9 @@ fn allow_claim_requires_the_why_tail() {
 
 /// `path ⇒ letters` per line over the roles a file's name and place
 /// decide: `u` compilation unit, `n` named entry, `t` test, `d` entry
-/// directory, `p` declared by its package, `-` none. Plan v2.30 steps 2
+/// directory, `p` declared by its package, `c` a tool convention (part
+/// 4A: the core's `entry_conventions` rows, one row per kind here and the
+/// nearest negative beside it), `-` none. Plan v2.30 steps 2
 /// and 3 (register D18): a
 /// compilation unit carries the unit role by its extension alone, a
 /// header and a Java class carry none (a class is reached by its name),
@@ -67,8 +69,19 @@ src/FooTest.java ⇒ t
 src/Foo.java ⇒ -
 main.lua ⇒ n
 game/conf.lua ⇒ n
-init.lua ⇒ n
+init.lua ⇒ c
 lua/foo/init.lua ⇒ -
+src/main/java/a/package-info.java ⇒ c
+packages/a/vitest.config.mts ⇒ c
+packages/a/vitest.workspace.ts ⇒ -
+web/app/blog/page.tsx ⇒ c
+web/app/_lib/page.tsx ⇒ -
+pages/page.tsx ⇒ -
+docs/conf.py ⇒ c
+.github/CONTRIBUTING.md ⇒ c
+packages/a/CONTRIBUTING.md ⇒ -
+SECURITY.md ⇒ c
+src/SECURITY.md ⇒ -
 plugin/foo.lua ⇒ d
 after/ftplugin/lua.lua ⇒ d
 lsp/clangd.lua ⇒ d
@@ -100,9 +113,11 @@ fn roles_read_the_file_name_and_place() {
         't' => ROLE_TEST,
         'd' => ROLE_ENTRY_DIR,
         'p' => ROLE_DECLARED,
+        'c' => ROLE_CONVENTION,
         _ => 0,
     };
-    let mask = ROLE_UNIT | ROLE_ENTRY_NAMED | ROLE_TEST | ROLE_ENTRY_DIR | ROLE_DECLARED;
+    let mask =
+        ROLE_UNIT | ROLE_ENTRY_NAMED | ROLE_TEST | ROLE_ENTRY_DIR | ROLE_DECLARED | ROLE_CONVENTION;
     let root = crate::testutil::scratch("dc-name-roles");
     crate::testutil::write_tree(&root, &[("pkg/DESCRIPTION", "Package: pkg\n")]);
     for row in ROLES.lines() {

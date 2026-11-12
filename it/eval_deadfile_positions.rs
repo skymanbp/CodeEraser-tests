@@ -147,25 +147,27 @@ fn a_rule_the_reader_does_not_know_is_refused() {
 
 /// A matched path enters `[graph] entry_globs` as a literal: `[id]`,
 /// `(group)` and `{x}` name exactly their own file, never the sibling a
-/// glob reading of the same characters would also select.
+/// glob reading of the same characters would also select. The files are
+/// named `view.tsx` / `frame.tsx`, no convention's name (since part 4A
+/// `page.tsx` below `app/` is an entry of the product itself).
 #[test]
 fn a_literal_entry_names_exactly_its_file() {
     let entries = [
-        "app/blog/[id]/page.tsx",
-        "app/(group)/layout.tsx",
-        "app/{x,y}/page.tsx",
+        "app/blog/[id]/view.tsx",
+        "app/(group)/frame.tsx",
+        "app/{x,y}/view.tsx",
     ];
     let globs: Vec<String> = entries
         .iter()
         .map(|p| format!("{:?}", literal(p)))
         .collect();
     let tree = format!(
-        "--- ce.toml\n[graph]\nentry_globs = [{}]\n--- app/blog/[id]/page.tsx\nexport {{}};\n--- app/blog/i/page.tsx\nexport {{}};\n\
-         --- app/(group)/layout.tsx\nexport {{}};\n--- app/{{x,y}}/page.tsx\nexport {{}};\n--- app/x/page.tsx\nexport {{}};\n",
+        "--- ce.toml\n[graph]\nentry_globs = [{}]\n--- app/blog/[id]/view.tsx\nexport {{}};\n--- app/blog/i/view.tsx\nexport {{}};\n\
+         --- app/(group)/frame.tsx\nexport {{}};\n--- app/{{x,y}}/view.tsx\nexport {{}};\n--- app/x/view.tsx\nexport {{}};\n",
         globs.join(", ")
     );
     let dir = common::fixtures::doc_tree("deadfile-literal-entry", &tree);
     let report = deadcode::run(&dir, None, &core_bin()).expect("deadcode");
     let dead: Vec<&str> = report.dead.iter().map(|d| d.path.as_str()).collect();
-    assert_eq!(dead, ["app/blog/i/page.tsx", "app/x/page.tsx"], "{globs:?}");
+    assert_eq!(dead, ["app/blog/i/view.tsx", "app/x/view.tsx"], "{globs:?}");
 }

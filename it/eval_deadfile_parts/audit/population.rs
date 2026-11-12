@@ -162,16 +162,24 @@ pub struct Moved {
     pub reach_dead: BTreeSet<String>,
 }
 
-/// A fresh copy of a corpus and its control run with the corpus's own
-/// `ce.toml`: (copy, own text, dead rows), the rows the frozen slice's.
-fn controlled(corpus: &str) -> (PathBuf, Option<String>, BTreeSet<String>) {
+/// A fresh copy of a corpus and the dead rows this build reports on it
+/// with the corpus's own `ce.toml` and nothing added: (copy, own text,
+/// dead rows).
+pub fn as_it_is(corpus: &str) -> (PathBuf, Option<String>, BTreeSet<String>) {
     let (from, copy) = (
         Path::new(&env("CE_DEADFILE_ROOT")).join(corpus),
         Path::new(&env("CE_DEADFILE_COPIES")).join(corpus),
     );
     copy_tree(&from, &copy);
     let own = std::fs::read_to_string(copy.join("ce.toml")).ok();
-    let before = dead_on(&copy, own.as_deref(), &[]);
+    let dead = dead_on(&copy, own.as_deref(), &[]);
+    (copy, own, dead)
+}
+
+/// A fresh copy of a corpus and its control run with the corpus's own
+/// `ce.toml`: (copy, own text, dead rows), the rows the frozen slice's.
+fn controlled(corpus: &str) -> (PathBuf, Option<String>, BTreeSet<String>) {
+    let (copy, own, before) = as_it_is(corpus);
     assert_eq!(
         before,
         frozen_dead(corpus),

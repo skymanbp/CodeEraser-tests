@@ -30,8 +30,9 @@ fn the_vocabulary_names_the_owners_codes_and_hashes_apart() {
     assert_eq!(named(&w::EDGE_NAMES, w::EDGE_REFDEF_UNUSED), Some("refdef"));
     assert_eq!(named(&KIND_NAMES, KIND_IMPL - KIND_FN), Some("impl"));
     assert_eq!(named(&ROLE_NAMES, 8), Some("unit"));
+    assert_eq!(named(&ROLE_NAMES, 10), Some("convention"));
     assert_eq!(
-        (named(&ROLE_NAMES, -1), named(&ROLE_NAMES, 10)),
+        (named(&ROLE_NAMES, -1), named(&ROLE_NAMES, 11)),
         (None, None)
     );
     let kinds = [0, 1, 2, KIND_ASSET, KIND_PROSE, 5].map(node_kind);

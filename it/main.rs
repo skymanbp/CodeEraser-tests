@@ -44,6 +44,7 @@ mod daemon_flow;
 mod daemon_proto;
 mod daemon_refusal;
 mod daemon_singleton;
+mod deadcode_conventions;
 mod deadcode_e2e;
 mod declared_domain;
 mod dedup_core;

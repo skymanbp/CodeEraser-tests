@@ -6,6 +6,7 @@
 pub mod bars;
 pub mod conventions;
 pub mod derived;
+pub mod entries;
 pub mod page;
 pub mod page_bars;
 pub mod population;
