@@ -43,12 +43,16 @@ const METHOD: &str = "every universe row of one language, from the frozen slices
     corpus the pool and primary counts of BARS section 1's weights.";
 
 pub fn constants() -> Value {
+    // the bars the classes read, by their source names; the hashes are
+    // the record's pins (audit/record.rs), never a second spelling
+    let pins: BTreeMap<&str, &str> = super::audit::record::pinned().into_iter().collect();
+    let pin = |rec: &str| pins[rec];
     json!({
         "bars_sha256": {
-            "BARS.md": "2934ab1c7f33f3373065a8fbc37b349a35b816481a882a4e94b7c3145a29fa65",
-            "BARS-ADDENDUM-1.md": "d42c6f7020c05dac791901f75d137fd9d6c42f29a94bee643cbc4f80a0024a31",
-            "BARS-ADDENDUM-2.md": "e2d5860908eb00ca722d4b83a1c557563e72feba3d1fb59f88e8c63b11baa07b",
-            "BARS-ADDENDUM-3.md": "8bc0404efe4e4b5fc32bc41029c9c3c95bb7f55fcfecf4b2111c6668aaf59667",
+            "BARS.md": pin("deadfile-bars-v1.md"),
+            "BARS-ADDENDUM-1.md": pin("deadfile-bars-addendum-1-v1.md"),
+            "BARS-ADDENDUM-2.md": pin("deadfile-bars-addendum-2-v1.md"),
+            "BARS-ADDENDUM-3.md": pin("deadfile-bars-addendum-3-v1.md"),
         },
         "k0_sha256": "549337f8b658574a1181ee79836b00a1293dbc3f4a5279ca5a088822dd5dd0f4",
         "rulings": {"strict_active": STRICT, "both_active": BOTH_ACTIVE, "confirmed": CONFIRMED},

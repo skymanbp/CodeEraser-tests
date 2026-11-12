@@ -173,12 +173,12 @@ pub fn evaluate(
             .map(|r| r[key].as_str().unwrap_or("").to_string())
             .collect();
         match (set.len(), b.is_some()) {
-            (1, true) => json!({"outcome": set.into_iter().next(), "ships": true}),
+            (1, true) => json!({"outcome": set.into_iter().next(), "agreed": true}),
             (_, false) => {
-                json!({"outcome": "owner question: population B not computed", "ships": false})
+                json!({"outcome": "owner question: population B not computed", "agreed": false})
             }
             _ => {
-                json!({"outcome": "owner question: the readings differ", "ships": false, "by_reading": readings.iter().map(|(k, r)| (k.clone(), r[key].clone())).collect::<BTreeMap<_, _>>()})
+                json!({"outcome": "owner question: the readings differ", "agreed": false, "by_reading": readings.iter().map(|(k, r)| (k.clone(), r[key].clone())).collect::<BTreeMap<_, _>>()})
             }
         }
     };

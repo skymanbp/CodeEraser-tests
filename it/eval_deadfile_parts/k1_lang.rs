@@ -119,6 +119,9 @@ const JAVA_STMT: Table = (
     &[],
 );
 
+/// A language outside the seven: no kind is inert or active by table.
+const NO_STMT: Table = (&[], &[]);
+
 /// Ruling 1: the C / C++ conditionals and linkage blocks (transparent)
 /// and the other directives (execute nothing).
 const C_CONDITIONAL: [&str; 6] = [
@@ -157,7 +160,7 @@ pub fn judge_statement<'t>(cx: &mut Cx, lang: Lang, n: Node<'t>) -> Stmt<'t> {
         "r" => (R_STMT, r),
         "c" | "cpp" => (C_STMT, c),
         "java" => (JAVA_STMT, |cx, n| cx.undecided(n, n.kind())),
-        _ => (JAVA_STMT, |cx, n| cx.undecided(n, "language")),
+        _ => (NO_STMT, |cx, n| cx.undecided(n, "language")),
     };
     Stmt::Judged(if table.0.contains(&k) {
         Judged::Inert

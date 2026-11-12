@@ -6,6 +6,7 @@
 
 use crate::eval_deadfile_bars::{answer, tip};
 use crate::eval_deadfile_parts::audit::bars::{Row, evaluate, render};
+use crate::eval_deadfile_parts::audit::page_bars::outcome_sentence;
 use crate::eval_deadfile_parts::audit::review::clone_facts;
 use crate::eval_deadfile_parts::audit::tables::{ByRow, bars_rows, review_doc};
 use serde_json::{Value, json};
@@ -52,7 +53,7 @@ fn the_split_ships_only_when_every_reading_agrees() {
     let report = evaluate(&rows, &BTreeSet::new(), Some(&every(&rows)));
     assert_eq!(
         report["code"],
-        json!({"outcome": "the split ships: runs-alone advisory, declares keeps failing", "ships": true})
+        json!({"outcome": "the split ships: runs-alone advisory, declares keeps failing", "agreed": true})
     );
     assert_eq!(class(&report, "k1/A", "document")["verdict"], "not judged");
     let k1a = &report["readings"]["k1/A"];
@@ -70,7 +71,7 @@ fn the_split_ships_only_when_every_reading_agrees() {
     assert!(render(&report).contains("leave one out"));
     let rows = population(STRICT_DIFFERS);
     let report = evaluate(&rows, &BTreeSet::new(), Some(&every(&rows)));
-    assert_eq!(report["code"]["ships"], false);
+    assert_eq!(report["code"]["agreed"], false);
     assert_eq!(
         report["code"]["by_reading"]["k1_strict/A"],
         "nothing ships: runs-alone failing"
@@ -79,6 +80,25 @@ fn the_split_ships_only_when_every_reading_agrees() {
     assert_eq!(
         evaluate(&rows, &BTreeSet::new(), None)["code"]["outcome"],
         "owner question: population B not computed"
+    );
+}
+
+/// The registry page's outcome sentence opens "ships no split": with
+/// every reading agreeing that the split ships it has no words and
+/// refuses; with the readings differing it renders.
+#[test]
+fn the_outcome_sentence_refuses_an_agreed_split() {
+    let sentence = |spec: &str| {
+        let rows = population(spec);
+        let report = evaluate(&rows, &BTreeSet::new(), Some(&every(&rows)));
+        outcome_sentence(&report, &["setup.py"])
+    };
+    let refused = sentence(SPLIT).expect_err("an agreed split has no sentence");
+    assert!(refused.contains("the split ships"), "{refused}");
+    let said = sentence(STRICT_DIFFERS).expect("the readings differ");
+    assert!(
+        said.contains("the code outcome is an owner question"),
+        "{said}"
     );
 }
 

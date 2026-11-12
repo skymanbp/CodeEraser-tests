@@ -99,10 +99,13 @@ fn population_b_stands_on_the_slices_and_the_passing_set() {
             .map(String::from)
             .collect()
     };
-    for ((corpus, _), r) in corpora()
-        .into_iter()
-        .zip(doc["corpora"].as_array().expect("corpora"))
-    {
+    let listed = doc["corpora"].as_array().expect("corpora");
+    assert_eq!(
+        listed.len(),
+        corpora().len(),
+        "population B names every corpus of the exam table"
+    );
+    for ((corpus, _), r) in corpora().into_iter().zip(listed) {
         let (slice, still) = (frozen_dead(corpus), set(&r["still_dead"]));
         assert_eq!(r["corpus"], corpus);
         assert_eq!(r["before"], slice.len(), "{corpus}: not the frozen slice");
@@ -162,7 +165,8 @@ fn rendered() -> Vec<String> {
         page_bars::flips_table(&report),
         page_bars::same_table(&report),
         page_bars::outcomes(&report),
-        page_bars::outcome_sentence(&report, &passing(&reviews)),
+        page_bars::outcome_sentence(&report, &passing(&reviews))
+            .expect("an outcome the page has words for"),
     ]
 }
 

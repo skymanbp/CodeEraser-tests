@@ -94,42 +94,50 @@ pub fn same_table(report: &Value) -> String {
 pub fn outcomes(report: &Value) -> String {
     let line = |k: &str| {
         format!(
-            "- {}: {} (ships: {})",
+            "- {}: {} (readings agree: {})",
             k,
             s(&report[k]["outcome"]),
-            report[k]["ships"]
+            report[k]["agreed"]
         )
     };
     [line("code"), line("document")].join("\n")
 }
 
 /// The outcome in one sentence, from the agreed outcomes and the
-/// passing set.
-pub fn outcome_sentence(report: &Value, passing: &[&str]) -> String {
+/// passing set. The opening clause holds only when no code outcome
+/// ships: the readings differ, or they agree on "nothing ships"; any
+/// other agreed code outcome has no sentence here and is refused.
+pub fn outcome_sentence(report: &Value, passing: &[&str]) -> Result<String, String> {
     let names: Vec<String> = passing.iter().map(|n| format!("`{n}`")).collect();
-    let ships = |k: &str| report[k]["ships"] == true;
+    let agreed = |k: &str| report[k]["agreed"] == true;
+    let code_outcome = s(&report["code"]["outcome"]);
+    if agreed("code") && !code_outcome.starts_with("nothing ships") {
+        return Err(format!(
+            "no sentence for the agreed code outcome `{code_outcome}`"
+        ));
+    }
     let asked = |c: &str| {
         let all = report["readings"].as_object().into_iter().flatten();
         let mut questions =
             all.flat_map(|(_, r)| r["questions"].as_array().cloned().unwrap_or_default());
         questions.any(|q| q.as_str().is_some_and(|q| q.starts_with(&format!("{c}:"))))
     };
-    let agreed = s(&report["document"]["outcome"]);
-    let document = match (ships("document"), asked("document")) {
+    let doc_outcome = s(&report["document"]["outcome"]);
+    let document = match (agreed("document"), asked("document")) {
         (true, true) => format!(
-            "is {agreed} under every reading and, failing with an in-share of at least 0.50, an owner question"
+            "is {doc_outcome} under every reading and, failing with an in-share of at least 0.50, an owner question"
         ),
-        (true, false) => format!("is {agreed} under every reading"),
+        (true, false) => format!("is {doc_outcome} under every reading"),
         (false, _) => "is an owner question (the readings differ)".into(),
     };
-    let code = if ships("code") {
-        "agrees under every reading"
+    let code = if agreed("code") {
+        format!("is \"{code_outcome}\" under every reading")
     } else {
-        "is an owner question (the readings differ)"
+        "is an owner question (the readings differ)".into()
     };
     let count = crate::facts::form::Form::WordCap.render(&passing.len().to_string(), false);
-    format!(
+    Ok(format!(
         "Generation 1 ships no split of unreferenced files: the code outcome {code} and the document outcome {document}. {count} tool conventions pass BARS section 3: {}.",
         names.join(", ")
-    )
+    ))
 }
