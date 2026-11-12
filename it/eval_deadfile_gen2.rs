@@ -8,7 +8,7 @@
 //! record and the registry are fixed in eval_deadfile_gen2_bars.rs; the
 //! real-corpus legs live in eval_deadfile_gen2_parts/run.rs.
 
-use crate::eval_deadfile_gen2_parts::gitz::{read_listing, read_statuses};
+use crate::eval_deadfile_gen2_parts::gitz::{Listing, case_clash, read_listing, read_statuses};
 use crate::eval_deadfile_gen2_parts::model::{
     Dead, Event, Fate, History, Kind, State, Step, Tree, events_at, fate, follow, window,
 };
@@ -238,4 +238,36 @@ fn the_tree_listing_reads_modes_and_names_as_git_holds_them() {
 fn a_dead_row_outside_the_tree_stops_the_run() {
     let h = history("f a.md ; r gone.md");
     check_in_files("p", "c9", &h.trees[0].dead, &h.trees[0].files);
+}
+
+/// R1c, F1: among a tree's paths and every ancestor directory of each, two
+/// spellings that fold to one leave it unjudged, the first such pair in
+/// path order named: `paths => a | b`, `-` no clash.
+const CLASHES: &str = "
+lua/Date.lua lua/date.lua => lua/Date.lua | lua/date.lua
+a/B.md a/b.md c/X.md c/x.md => a/B.md | a/b.md
+a/x.md b/X.md => -
+Docs/a.md docs/b.md => Docs | docs
+a/B/x.md a/b/y.md => a/B | a/b
+readme README/x.md => README | readme
+docs/a.md docs/b.md => -";
+
+#[test]
+fn a_tree_two_of_whose_paths_differ_only_by_case_is_unjudged() {
+    let bad: Vec<String> = CLASHES
+        .trim()
+        .lines()
+        .filter_map(|row| {
+            let (paths, want) = row.split_once(" => ").expect("row");
+            let l = Listing {
+                files: paths.split(' ').map(String::from).collect(),
+                ..Listing::default()
+            };
+            let want =
+                (want != "-").then(|| format!("checkout: paths differ only by case: {want}"));
+            let got = case_clash(&l);
+            (got != want).then(|| format!("{paths}: {got:?}, want {want:?}"))
+        })
+        .collect();
+    assert!(bad.is_empty(), "{}", bad.join("\n"));
 }

@@ -20,14 +20,16 @@ pub struct Dead {
 /// One commit's tree as the section reads it. `judged` is false when the
 /// product refused the tree (G5) or git could not check it out here
 /// (G17): a pair touching it yields no event, and `why` says what
-/// happened (the exit code and the words). `symlink_rows` counts the dead
-/// rows dropped as symbolic links (G16).
+/// happened (the exit code and the words). `retried` holds the first
+/// run's reason of a tree only the second run judged (R2). `symlink_rows`
+/// counts the dead rows dropped as symbolic links (G16).
 #[derive(Clone, Debug, Default)]
 pub struct Tree {
     pub files: BTreeSet<String>,
     pub dead: BTreeMap<String, Dead>,
     pub judged: bool,
     pub why: Option<String>,
+    pub retried: Option<String>,
     pub symlink_rows: usize,
 }
 
@@ -218,8 +220,8 @@ pub fn fate(h: &History, ev: &Event) -> Fate {
 /// The side numbers of one corpus (G3, G16): window pairs with an
 /// unjudged side, unjudged trees after the window, events whose fate walk
 /// met an unjudged tree, the dependents of the window's trees (dead, not
-/// a root), and the dead rows every tree of the chain dropped as symbolic
-/// links.
+/// a root), the dead rows every tree of the chain dropped as symbolic
+/// links, and the trees of the chain judged only when asked again (R2).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Sides {
     pub unjudged_pairs: usize,
@@ -227,6 +229,7 @@ pub struct Sides {
     pub met_unjudged: usize,
     pub dependents: usize,
     pub symlink_rows: usize,
+    pub retried: usize,
 }
 
 /// Every event of the window with its fate, and the side numbers.
@@ -238,6 +241,7 @@ pub fn replayed(h: &History) -> (Vec<(Event, Followed)>, Sides) {
             .filter(|t| !t.judged)
             .count(),
         symlink_rows: h.trees.iter().map(|t| t.symlink_rows).sum(),
+        retried: h.trees.iter().filter(|t| t.retried.is_some()).count(),
         ..Sides::default()
     };
     let mut out = Vec::new();

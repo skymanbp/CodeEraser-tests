@@ -8,17 +8,19 @@
 //! `ce.toml`, repaired in the next commit) with a dead root deleted AT
 //! the refused commit, a symbolic link, and a dead page referenced only
 //! by a link to one of its sections from another dead page (part 4C: a
-//! dependent, no event).
+//! dependent, no event), and at the last commit a dead root renamed by
+//! case alone (R1d: no event, the fate follows the new name).
 
 use crate::eval_deadfile_gen2_parts::model::{
     Event, Fate, History, Kind, State, events_at, follow,
 };
 use crate::eval_deadfile_gen2_parts::replay::history;
-use crate::eval_deadfile_gen2_seed::seeded;
+use crate::eval_deadfile_gen2_seed::{SEED, seeded};
 
 /// One expected event: `commit path state`, all of them documents.
 const EVENTS: &str = "
 1 gone.md born
+1 case.md born
 1 old.md born
 1 p1.md born
 1 zap.md born
@@ -30,6 +32,7 @@ const EVENTS: &str = "
 /// (`-` when undetermined, the name at the tip then).
 const FATES: &str = "
 gone.md removed 5 gone.md
+case.md undetermined - Case.md
 old.md undetermined - new.md
 p1.md undetermined - p1.md
 zap.md removed 6 zap.md
@@ -133,11 +136,10 @@ fn tree_mismatches(h: &History) -> Vec<String> {
     {
         bad.push(format!("step 3 (rename with an edit): {s3:?}"));
     }
-    // G16: a link checked out as a small text file (no symlinks here) is
-    // a dead row of the product, dropped and counted; a real link is not
-    // walked at all
-    let (t9, links) = (&h.trees[9], usize::from(cfg!(windows)));
-    if t9.dead.contains_key("link.md") || t9.symlink_rows != links {
+    // G16, R1b: the copy checks a link out as a small text file on every
+    // platform, a dead row of the product, dropped and counted
+    let t9 = &h.trees[9];
+    if t9.dead.contains_key("link.md") || t9.symlink_rows != 1 {
         let got = (t9.dead.get("link.md"), t9.symlink_rows);
         bad.push(format!("link.md at c9: dead row, dropped {got:?}"));
     }
@@ -151,9 +153,9 @@ fn tree_mismatches(h: &History) -> Vec<String> {
 
 #[test]
 fn the_replay_reads_a_seeded_history_with_the_real_product() {
-    let (seeded, copy, tip) = seeded("deadfile-gen2-e2e");
+    let (seeded, copy, tip) = seeded("deadfile-gen2-e2e", SEED);
     let h = history(&seeded, &copy, &tip);
-    assert_eq!(h.trees.len(), 10, "ten commits");
+    assert_eq!(h.trees.len(), 11, "eleven commits");
     let bad = mismatches(&h);
     assert!(
         bad.is_empty(),
@@ -168,7 +170,7 @@ fn the_replay_reads_a_seeded_history_with_the_real_product() {
 #[test]
 fn a_tree_git_cannot_check_out_is_unjudged_by_git_s_words() {
     use crate::eval_deadfile_gen2_parts::gitz::{checkout, clone_copy};
-    let (seeded, copy, tip) = seeded("deadfile-gen2-checkout");
+    let (seeded, copy, tip) = seeded("deadfile-gen2-checkout", SEED);
     clone_copy(&seeded, &copy);
     std::fs::write(copy.join(".git").join("index.lock"), "").expect("lock");
     let why = checkout(&copy, &tip).expect_err("a held lock refuses the checkout");
@@ -176,4 +178,54 @@ fn a_tree_git_cannot_check_out_is_unjudged_by_git_s_words() {
         why.starts_with("checkout: ") && why.contains("index.lock"),
         "{why}"
     );
+}
+
+/// R1a: the corpus's own attributes convert nothing in the copy (a
+/// `* text eol=crlf` line would rewrite an LF file at checkout).
+const ATTRIBUTES: &str = "\
+--- .gitattributes
+* text eol=crlf
+--- a.md
+# A
+
+one
+two
+=== commit
+";
+
+#[test]
+fn the_copy_holds_the_blob_s_bytes_whatever_the_attributes_say() {
+    use crate::eval_deadfile_gen2_parts::gitz::{checkout, clone_copy};
+    let (seeded, copy, tip) = seeded("deadfile-gen2-attributes", ATTRIBUTES);
+    clone_copy(&seeded, &copy);
+    checkout(&copy, &tip).expect("checkout");
+    let blob = std::process::Command::new("git")
+        .arg("-C")
+        .arg(&copy)
+        .args(["cat-file", "blob", &format!("{tip}:a.md")])
+        .output()
+        .expect("git")
+        .stdout;
+    let disk = std::fs::read(copy.join("a.md")).expect("a.md");
+    assert_eq!(
+        String::from_utf8_lossy(&disk),
+        String::from_utf8_lossy(&blob),
+        "a.md on disk, its blob"
+    );
+}
+
+/// R3b, F2: an armed run joins the tests subrepo's HEAD to the record as
+/// `instrument`, refused by name while it holds an uncommitted change.
+#[test]
+fn the_record_names_the_instrument_commit() {
+    let (repo, _, tip) = seeded("deadfile-gen2-instrument", "--- a.md\n# A\n=== commit\n");
+    let record = serde_json::json!({"commit": "pc"});
+    assert_eq!(
+        crate::eval_deadfile_gen2_parts::judge::with_instrument(record.clone(), &repo),
+        Ok(serde_json::json!({"commit": "pc", "instrument": tip}))
+    );
+    std::fs::write(repo.join("stray.md"), "# Stray\n").expect("write");
+    let err = crate::eval_deadfile_gen2_parts::judge::with_instrument(record, &repo)
+        .expect_err("an untracked file");
+    assert!(err.contains("stray.md"), "{err}");
 }

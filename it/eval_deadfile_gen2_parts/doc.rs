@@ -2,8 +2,9 @@
 //! `<OUT>/deadfile-gen2-replay-v1.<corpus>.json`, written when that
 //! corpus's replay ends, so a run resumes; each carries the corpus's tip
 //! and the product record (G6). Each event says where its fate was
-//! decided (G15); each unjudged tree is listed with its commit, exit code
-//! and reason (G3, G5).
+//! decided (G15) and whether its walk met an unjudged tree; each unjudged
+//! tree is listed with its commit, exit code and reason (G3, G5), each
+//! tree judged only when asked again with its first reason (R2).
 
 use super::model::{Event, Followed, History, Sides, window};
 use super::words::{KINDS, STATES, fate_name, word};
@@ -31,7 +32,7 @@ fn event(h: &History, e: &Event, f: &Followed) -> Value {
            "state": word(&STATES, e.state), "kind": word(&KINDS, e.kind),
            "fate": fate_name(f.fate),
            "decided_at": f.decided_at.map(|k| h.shas[k].clone()),
-           "path_then": f.path_then})
+           "path_then": f.path_then, "met_unjudged": f.met_unjudged})
 }
 
 /// One corpus's doc from its history, events and side numbers.
@@ -49,12 +50,23 @@ pub fn corpus_doc(
         .filter(|(t, _)| !t.judged)
         .map(|(t, sha)| json!({"commit": sha, "reason": t.why}))
         .collect();
+    let retried: Vec<Value> = h
+        .trees
+        .iter()
+        .zip(&h.shas)
+        .filter_map(|(t, sha)| {
+            t.retried
+                .as_ref()
+                .map(|r| json!({"commit": sha, "reason": r}))
+        })
+        .collect();
     json!({"schema": SCHEMA, "corpus": corpus, "tip": tip, "product": product,
            "commits": h.shas, "window": [w.start, w.end],
            "unjudged_trees": unjudged,
            "unjudged_pairs": s.unjudged_pairs, "unjudged_after_window": s.unjudged_after,
            "met_unjudged": s.met_unjudged, "dependents": s.dependents,
            "symlink_rows": s.symlink_rows,
+           "retried": s.retried, "retried_trees": retried,
            "events": events.iter().map(|(e, f)| event(h, e, f)).collect::<Vec<_>>()})
 }
 

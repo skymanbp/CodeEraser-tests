@@ -6,8 +6,8 @@
 //! commit. The corpus is the copy's directory name. Nothing here counts;
 //! model.rs reads the events and fates, readings.rs the shares.
 
-use super::gitz::{Listing, checkout, clone_copy, ls_tree, step};
-use super::judge::deadcode;
+use super::gitz::{Listing, case_clash, checkout, clone_copy, ls_tree, step};
+use super::judge::settle;
 use super::model::{Dead, FUTURE, History, Step, Tree, WINDOW};
 use crate::common::first_parent;
 use crate::common::gitio::git_ok;
@@ -74,34 +74,43 @@ pub fn judged_tree(corpus: &str, sha: &str, doc: &Value, l: &Listing) -> Tree {
         files: l.files.clone(),
         dead,
         judged: true,
-        why: None,
         symlink_rows: links.len(),
+        ..Tree::default()
     }
 }
 
-/// The checked-out tree judged by this build.
+/// The checked-out tree judged by this build, a refusal asked again (R2).
 fn judge_here(copy: &Path, corpus: &str, sha: &str, l: &Listing) -> Tree {
-    match deadcode(copy) {
-        Err(run) => panic!("{corpus} {sha}: not a statement about the tree: {run}"),
-        Ok(Ok(doc)) => judged_tree(corpus, sha, &doc, l),
-        Ok(Err(why)) => Tree {
-            files: l.files.clone(),
-            why: Some(why),
-            ..Tree::default()
-        },
+    let s = settle(copy)
+        .unwrap_or_else(|run| panic!("{corpus} {sha}: not a statement about the tree: {run}"));
+    let t = match s.read {
+        Ok(doc) => judged_tree(corpus, sha, &doc, l),
+        Err(why) => unjudged(l, why),
+    };
+    Tree {
+        retried: s.retried,
+        ..t
+    }
+}
+
+fn unjudged(l: &Listing, why: String) -> Tree {
+    Tree {
+        files: l.files.clone(),
+        why: Some(why),
+        ..Tree::default()
     }
 }
 
 /// One commit's tree: checked out in the copy, judged by this build; a
-/// tree git cannot check out here is unjudged (G17).
+/// tree two of whose paths differ only by case (R1c), or that git cannot
+/// check out here (G17), is unjudged.
 fn tree(copy: &Path, corpus: &str, sha: &str) -> Tree {
     let l = ls_tree(copy, sha);
+    if let Some(why) = case_clash(&l) {
+        return unjudged(&l, why);
+    }
     if let Err(why) = checkout(copy, sha) {
-        return Tree {
-            files: l.files,
-            why: Some(why),
-            ..Tree::default()
-        };
+        return unjudged(&l, why);
     }
     git_ok(copy, &["clean", "-q", "-ffdx", "-e", ".ce"]);
     judge_here(copy, corpus, sha, &l)

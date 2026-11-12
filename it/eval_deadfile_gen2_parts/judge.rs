@@ -5,8 +5,10 @@
 //! is no statement about the TREE (the core missing, a version skew, a
 //! deadline, an IO error) is refused by name instead of counted; the run's
 //! `ce` waits `CE_CORE_DEADLINE_SECS=3600`, so a starved core is never read
-//! as a refusal. G6: "armed" — the product under test is the registered
-//! one, path by path, with a record of what ran.
+//! as a refusal; a refusal counts only when a second run on a cold index
+//! repeats it (R2). G6: "armed" — the product under test is the
+//! registered one, path by path, with a record of what ran; an armed
+//! run joins the instrument's commit to it (R3, F2).
 
 use crate::common::gitio::{git_ok, git_out};
 use serde_json::{Value, json};
@@ -19,13 +21,16 @@ cannot start|unexpected reply type|bad hello reply|desync|bad reply|os error";
 /// The core's reply wait for the replay's runs, in seconds.
 pub const DEADLINE_SECS: &str = "3600";
 
-/// The product paths G6 holds equal to the registered commit's.
-pub const PRODUCT_PATHS: [&str; 5] = [
+/// The product paths G6 holds equal to the registered commit's (the two
+/// cabal project files choose the core's dependencies and flags, R3a).
+pub const PRODUCT_PATHS: [&str; 7] = [
     "cli/src",
     "core/app",
     "cli/Cargo.toml",
     "cli/Cargo.lock",
     "core/ce-core.cabal",
+    "core/cabal.project",
+    "core/cabal.project.freeze",
 ];
 
 /// `Ok(Ok(doc))` judged, `Ok(Err(reason))` unjudged, `Err(reason)` a
@@ -59,6 +64,68 @@ pub fn deadcode(dir: &Path) -> Judgment {
     judgment(out.status.code(), &out.stdout, &out.stderr)
 }
 
+/// A tree's settled reading (R2): the document or the reason it stays
+/// unjudged, and the first run's reason when only the second judged it.
+#[derive(Debug)]
+pub struct Settled {
+    pub read: Result<Value, String>,
+    pub retried: Option<String>,
+}
+
+/// R2: a refusal counts only when the product repeats it. The first run
+/// judged: judged, `again` is not called. A reason about the run, either
+/// time: `Err` (the run stops by name). Unjudged, then judged: judged by
+/// the second, the first reason kept. Unjudged twice for the same reason:
+/// unjudged; for two reasons: `Err` with both.
+pub fn settled(first: Judgment, again: impl FnOnce() -> Judgment) -> Result<Settled, String> {
+    let first = match first? {
+        Ok(doc) => {
+            return Ok(Settled {
+                read: Ok(doc),
+                retried: None,
+            });
+        }
+        Err(why) => why,
+    };
+    match again()? {
+        Ok(doc) => Ok(Settled {
+            read: Ok(doc),
+            retried: Some(first),
+        }),
+        Err(why) if why == first => Ok(Settled {
+            read: Err(why),
+            retried: None,
+        }),
+        Err(why) => Err(format!(
+            "two runs refuse one tree for two reasons: {first} | {why}"
+        )),
+    }
+}
+
+/// `ce deadcode` in `dir`, settled by R2: a refusal is asked again on a
+/// cold index (`.ce` removed).
+pub fn settle(dir: &Path) -> Result<Settled, String> {
+    settled(deadcode(dir), || {
+        let index = dir.join(".ce");
+        if index.exists() {
+            std::fs::remove_dir_all(&index).expect("remove the index");
+        }
+        deadcode(dir)
+    })
+}
+
+/// R3b, F2: an armed run's record joined with the instrument's commit,
+/// the HEAD of the tests subrepo at `tests` (the instrument and the
+/// helpers it calls), refused by name while it holds an uncommitted
+/// change.
+pub fn with_instrument(mut record: Value, tests: &Path) -> Result<Value, String> {
+    if let Some(line) = git_ok(tests, &["status", "--porcelain"]).lines().next() {
+        return Err(format!("the instrument has an uncommitted change: {line}"));
+    }
+    record["instrument"] = json!(oid(tests, "HEAD"));
+    Ok(record)
+}
+
 /// sha256 hex of a file's bytes.
 pub fn file_sha(path: &str) -> String {
     use sha2::Digest;
@@ -74,7 +141,9 @@ fn oid(root: &Path, rev: &str) -> String {
 /// G6: every product path's object id at the registered commit equals
 /// HEAD's, and none has an uncommitted change; the record then names the
 /// commit, the two trees, every path's object, the build profile and the
-/// sha256 of the `ce` and `ce-core` that run.
+/// sha256 of the `ce` and `ce-core` that run. It says nothing about the
+/// instrument: the product's identity does not depend on the tests tree,
+/// the armed run's does (F2, `with_instrument`).
 pub fn product_record(root: &Path, commit: &str) -> Result<Value, String> {
     if !git_out(root, &["cat-file", "-e", &format!("{commit}^{{commit}}")]).0 {
         return Err(format!("{commit}: no such commit here"));

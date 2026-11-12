@@ -4,29 +4,36 @@
 //! reason, read with the product build) and the replay itself. Neither
 //! writes the registry; the replay writes one doc per corpus to
 //! CE_DEADFILE_GEN2_OUT (G14), and CE_DEADFILE_GEN2_ONLY=<dir name>
-//! restricts a run to one corpus.
+//! restricts a run to one corpus. Neither prints a count read off the
+//! model (R4a): the unjudged leg prints the trees' reasons, which the
+//! coordinator reads before the report runs.
 //!   CE_DEADFILE_GEN2_ROOT=<clones> CE_DEADFILE_GEN2_COPIES=<scratch dir> cargo test --test it -- --ignored eval_deadfile_gen2_parts::run::deadfile_gen2_tips --nocapture
 //!   CE_DEADFILE_GEN2_ROOT=<clones> CE_DEADFILE_GEN2_COPIES=<scratch dir> CE_DEADFILE_GEN2_OUT=<dir> cargo test --test it -- --ignored eval_deadfile_gen2_parts::run::deadfile_gen2_replay --nocapture
+//!   CE_DEADFILE_GEN2_OUT=<dir> cargo test --test it -- --ignored eval_deadfile_gen2_parts::run::deadfile_gen2_unjudged --nocapture
 
-use super::doc::{corpus_doc, done, write};
+use super::doc::{corpus_doc, done, read_all, write};
 use super::gitz::{checkout, clone_copy};
-use super::judge::{deadcode, product_record};
+use super::judge::{product_record, settle, with_instrument};
 use super::model::replayed;
 use super::replay::history;
+use super::report::render_unjudged;
 use super::{dir_name, product_commit, registry};
 use crate::common::repo_root;
 use crate::eval_lang_parts::generate::env;
 use serde_json::Value;
 use std::path::Path;
 
-/// The registry and the product record, refused while the product commit
-/// is unset or names another product than HEAD's.
+/// The registry and the product record with the instrument's commit,
+/// refused while the product commit is unset, names another product than
+/// HEAD's, or the instrument holds an uncommitted change (F2).
 pub fn armed() -> (Value, Value) {
     let reg = registry();
     let commit = product_commit(&reg).unwrap_or_else(|| {
         panic!("the registry names no product commit: generation 2 runs only on the build of the landed part 4A")
     });
-    let record = product_record(&repo_root(), commit)
+    let root = repo_root();
+    let record = product_record(&root, commit)
+        .and_then(|r| with_instrument(r, &root.join("cli").join("tests")))
         .unwrap_or_else(|e| panic!("not the registered product: {e}"));
     (reg, record)
 }
@@ -51,8 +58,9 @@ fn paths(row: &Value, suffix: &str) -> (std::path::PathBuf, std::path::PathBuf) 
     )
 }
 
-/// Each chosen corpus's tip judged by this build, by G5's predicate:
-/// `judged` or the reason.
+/// Each chosen corpus's tip judged by this build, by G5's predicate and
+/// R2's second asking: `judged` (with the first reason when retried) or
+/// the reason.
 #[test]
 #[ignore = "runs ce deadcode on the registered clones; armed by the registry's product commit"]
 fn deadfile_gen2_tips() {
@@ -63,13 +71,16 @@ fn deadfile_gen2_tips() {
         clone_copy(&clone, &copy);
         let read = match checkout(&copy, tip) {
             Err(why) => why,
-            Ok(()) => match deadcode(&copy) {
+            Ok(()) => match settle(&copy) {
                 Err(run) => panic!(
                     "{} {tip}: not a statement about the tree: {run}",
                     dir_name(&row)
                 ),
-                Ok(Ok(_)) => "judged".into(),
-                Ok(Err(why)) => why,
+                Ok(s) => match (s.read, s.retried) {
+                    (Ok(_), None) => "judged".into(),
+                    (Ok(_), Some(first)) => format!("judged (retried: {first})"),
+                    (Err(why), _) => why,
+                },
             },
         };
         println!("{} {tip} {read}", row["language"]);
@@ -95,12 +106,16 @@ fn deadfile_gen2_replay() {
         let (clone, copy) = paths(&row, "");
         let h = history(&clone, &copy, tip);
         let (events, sides) = replayed(&h);
-        println!(
-            "{name}: {} commits, {} events, {} unjudged window pairs",
-            h.trees.len(),
-            events.len(),
-            sides.unjudged_pairs
-        );
         write(out, &corpus_doc((name, tip, &record), &h, &events, &sides));
+        println!("{name}: replayed, its doc is written");
     }
+}
+
+/// R4b: whatever per-corpus docs are present, read for their unjudged and
+/// retried trees alone (no event, no count of one).
+#[test]
+#[ignore = "reads the per-corpus docs a generation-2 run wrote"]
+fn deadfile_gen2_unjudged() {
+    let docs = read_all(Path::new(&env("CE_DEADFILE_GEN2_OUT")));
+    println!("{}", render_unjudged(&docs));
 }

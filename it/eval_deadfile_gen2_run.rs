@@ -1,14 +1,18 @@
 //! The dead-file exam, generation 2 (lane v235_licence, part 4B): the
 //! run's own rules, fixed before any count — the report prints what the
 //! bars read (G2) and the side numbers (G3), the doc's words are read
-//! strictly (G4), one predicate says "the product judged this tree" (G5),
-//! "armed" means the registered product is the one under test (G6), and
-//! a run's docs are one per corpus, each chosen row exactly once (G14).
+//! strictly (G4), one predicate says "the product judged this tree" (G5)
+//! and a refusal counts only when repeated (R2), "armed" means the
+//! registered product and instrument are the ones under test (G6, R3),
+//! and a run's docs are one per corpus, each chosen row exactly once (G14).
+//! The report opens on the product and the tips (R4c).
 
 use crate::common::{core_bin, repo_root};
 use crate::eval_deadfile_gen2_parts::doc::{checked, done, write};
-use crate::eval_deadfile_gen2_parts::judge::{judgment, product_record};
-use crate::eval_deadfile_gen2_parts::report::{render, render_sides, table_of};
+use crate::eval_deadfile_gen2_parts::judge::{Judgment, judgment, product_record, settled};
+use crate::eval_deadfile_gen2_parts::report::{
+    render, render_head, render_sides, render_unjudged, table_of,
+};
 use serde_json::{Value, json};
 
 /// A run doc from `corpus state kind fate count` rows, `;` between rows.
@@ -76,20 +80,34 @@ born has fewer than 100 events",
     );
 }
 
-/// G3: the side numbers per corpus and pooled, every unjudged tree with
-/// its commit and reason.
+/// G3, R2: the side numbers per corpus and pooled, every unjudged and
+/// every retried tree with its commit and reason; R4c's first lines; R4b's
+/// reasons per corpus.
 #[test]
 fn the_report_prints_the_side_numbers() {
+    let product = json!({"commit": "pc", "profile": "release", "ce_sha256": "s1",
+                         "core_sha256": "s2", "instrument": "ic"});
     let side = |c: &str, n: u64| {
-        json!({"corpus": c, "unjudged_pairs": n, "unjudged_after_window": 1, "met_unjudged": 2,
-               "dependents": 3, "symlink_rows": 0,
-               "unjudged_trees": [{"commit": "c7", "reason": "exit 2: ce deadcode: parse ce.toml"}]})
+        json!({"corpus": c, "tip": "t", "product": product, "commits": ["a", "b", "c7"],
+               "unjudged_pairs": n, "unjudged_after_window": 1, "met_unjudged": 2,
+               "dependents": 3, "symlink_rows": 0, "retried": 1,
+               "unjudged_trees": [{"commit": "c7", "reason": "exit 2: ce deadcode: parse ce.toml"}],
+               "retried_trees": [{"commit": "b", "reason": "exit 2: core closed the pipe"}]})
     };
-    let text = render_sides(&[side("p", 4), side("q", 5)]);
+    let docs = [side("p", 4), side("q", 5)];
+    let text = [
+        render_head(&docs),
+        render_sides(&docs),
+        render_unjudged(&docs),
+    ]
+    .join("\n");
     for want in [
-        "| p | 4 | 1 | 2 | 3 | 0 |",
-        "| pooled | 9 | 2 | 4 | 6 | 0 |",
+        "product \"pc\" (\"release\"), ce sha256 \"s1\", ce-core sha256 \"s2\", instrument \"ic\"\ncorpus \"p\" at \"t\"",
+        "| p | 4 | 1 | 2 | 3 | 0 | 1 |",
+        "| pooled | 9 | 2 | 4 | 6 | 0 | 2 |",
         "unjudged \"q\" \"c7\": \"exit 2: ce deadcode: parse ce.toml\"",
+        "retried \"q\" \"b\": \"exit 2: core closed the pipe\"",
+        "\"q\": 3 commits, 1 unjudged trees, 1 retried trees\n  unjudged 1 trees, first \"c7\"",
     ] {
         assert!(text.contains(want), "{want:?} not in\n{text}");
     }
@@ -120,7 +138,26 @@ const JUDGMENTS: &str = r#"
 x | - | - => tree no exit code
 2 | - | ce deadcode: core unavailable: no core => run exit 2: ce deadcode: core unavailable: no core ("core unavailable")
 2 | - | core reply deadline exceeded: no progress — core killed => run exit 2: core reply deadline exceeded: no progress — core killed ("core killed")
-2 | - | proto mismatch: core 9.0.0 vs ce 10.0.0 => run exit 2: proto mismatch: core 9.0.0 vs ce 10.0.0 ("proto mismatch")"#;
+2 | - | proto mismatch: core 9.0.0 vs ce 10.0.0 => run exit 2: proto mismatch: core 9.0.0 vs ce 10.0.0 ("proto mismatch")
+2 | - | ce deadcode: core closed the pipe => tree exit 2: ce deadcode: core closed the pipe"#;
+
+/// A table's `case => reading` lines, split.
+fn cases(table: &str) -> (Vec<&str>, Vec<&str>) {
+    table
+        .trim()
+        .lines()
+        .map(|l| l.rsplit_once(" => ").expect("case"))
+        .unzip()
+}
+
+/// A judgment as the legs spell it: `judged`, `tree <reason>`, `run <reason>`.
+fn word_of(j: Judgment) -> String {
+    match j {
+        Ok(Ok(_)) => "judged".to_string(),
+        Ok(Err(why)) => format!("tree {why}"),
+        Err(run) => format!("run {run}"),
+    }
+}
 
 /// One case of JUDGMENTS read by G5's predicate.
 fn read(case: &str) -> String {
@@ -135,21 +172,60 @@ fn read(case: &str) -> String {
             s.as_bytes().to_vec()
         }
     };
-    match judgment(code.parse().ok(), &bytes(out), &bytes(err)) {
-        Ok(Ok(_)) => "judged".to_string(),
-        Ok(Err(why)) => format!("tree {why}"),
-        Err(run) => format!("run {run}"),
-    }
+    word_of(judgment(code.parse().ok(), &bytes(out), &bytes(err)))
 }
 
 #[test]
 fn one_predicate_says_the_product_judged_the_tree() {
-    let (cases, want): (Vec<&str>, Vec<&str>) = JUDGMENTS
-        .trim()
-        .lines()
-        .map(|l| l.rsplit_once(" => ").expect("case"))
-        .unzip();
+    let (cases, want) = cases(JUDGMENTS);
     let got: Vec<String> = cases.iter().map(|c| read(c)).collect();
+    assert_eq!(got, want);
+}
+
+/// R2's rows: `first | second => reading` in the legs' words, `-` a run
+/// never asked; a reading `judged retried: <reason>` keeps the first.
+const SETTLED: &str = "
+judged | - => judged
+run core unavailable | - => run core unavailable
+tree exit 2: a | judged => judged retried: exit 2: a
+tree exit 2: a | tree exit 2: a => tree exit 2: a
+tree exit 2: a | tree exit 2: b => run two runs refuse one tree for two reasons: exit 2: a | exit 2: b
+tree exit 2: a | run core killed => run core killed";
+
+fn judgment_of(w: &str) -> Judgment {
+    match w.split_once(' ').unwrap_or((w, "")) {
+        ("judged", _) => Ok(Ok(json!({}))),
+        ("tree", why) => Ok(Err(why.to_string())),
+        ("run", why) => Err(why.to_string()),
+        _ => panic!("judgment {w:?}"),
+    }
+}
+
+#[test]
+fn a_refusal_counts_only_when_the_product_repeats_it() {
+    let (rows, want) = cases(SETTLED);
+    let got: Vec<String> = rows
+        .iter()
+        .map(|row| {
+            let (first, second) = row.split_once(" | ").expect("row");
+            let asked = std::cell::Cell::new(0);
+            let s = settled(judgment_of(first), || {
+                asked.set(asked.get() + 1);
+                judgment_of(second)
+            });
+            assert!(
+                asked.get() <= 1 && (second != "-" || asked.get() == 0),
+                "{row}"
+            );
+            match s {
+                Ok(s) => match (word_of(Ok(s.read)), s.retried) {
+                    (w, Some(first)) => format!("{w} retried: {first}"),
+                    (w, None) => w,
+                },
+                Err(run) => format!("run {run}"),
+            }
+        })
+        .collect();
     assert_eq!(got, want);
 }
 
@@ -160,7 +236,11 @@ fn armed_means_the_registered_product_is_the_one_under_test() {
     let root = repo_root();
     let head = crate::common::gitio::git_ok(&root, &["rev-parse", "HEAD"]);
     let rec = product_record(&root, head.trim()).expect("HEAD's product is HEAD's");
-    assert_eq!(rec["objects"].as_object().map(|o| o.len()), Some(5));
+    assert_eq!(rec["objects"].as_object().map(|o| o.len()), Some(7));
+    assert!(
+        rec.get("instrument").is_none(),
+        "the product says nothing of the tests tree"
+    );
     let core = crate::eval_deadfile_gen2_parts::judge::file_sha(&core_bin());
     assert_eq!(
         (rec["core_sha256"].as_str(), rec["head_tree"].is_string()),

@@ -10,7 +10,7 @@
 
 use super::model::Step;
 use crate::common::gitio::git_ok;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
 
@@ -105,25 +105,56 @@ pub fn checkout(copy: &Path, sha: &str) -> Result<(), String> {
     Err(format!("checkout: {first}"))
 }
 
+/// R1c, F1: the first pair in path order of two spellings that fold to
+/// one (the key is the whole spelling's `to_lowercase()`) among the
+/// tree's paths and every ancestor directory of each, as the reason that
+/// leaves the tree unjudged: a case-insensitive file system holds one of
+/// the two, and the product would read a tree that is not the
+/// repository's.
+pub fn case_clash(l: &Listing) -> Option<String> {
+    let spellings: BTreeSet<&str> = l
+        .files
+        .iter()
+        .flat_map(|p| {
+            p.match_indices('/')
+                .map(|(i, _)| &p[..i])
+                .chain([p.as_str()])
+        })
+        .collect();
+    let mut seen: BTreeMap<String, &str> = BTreeMap::new();
+    for s in spellings {
+        if let Some(a) = seen.insert(s.to_lowercase(), s) {
+            return Some(format!("checkout: paths differ only by case: {a} | {s}"));
+        }
+    }
+    None
+}
+
+/// The attributes written into every copy: `info/attributes` comes first,
+/// so no `.gitattributes` of the corpus converts, smudges or expands a
+/// byte at checkout (R1a).
+pub const NO_CONVERSION: &str = "* -text -eol -filter -ident -working-tree-encoding\n";
+
 /// A copy of a clone that checks out the bytes the repository holds:
-/// no line-ending conversion, long paths allowed (G10).
+/// no line-ending conversion (the machine's or the corpus's own), long
+/// paths allowed (G10), and a symbolic link a small text file on every
+/// platform (R1b).
 pub fn clone_copy(clone: &Path, copy: &Path) {
     if copy.exists() {
         std::fs::remove_dir_all(copy).expect("remove the earlier copy");
     }
     let (from, to) = (clone.to_string_lossy(), copy.to_string_lossy());
-    git_ok(
-        Path::new("."),
-        &[
-            "clone",
-            "-q",
-            "--no-checkout",
-            "-c",
-            "core.autocrlf=false",
-            "-c",
-            "core.longpaths=true",
-            &from,
-            &to,
-        ],
-    );
+    let mut args = vec!["clone", "-q", "--no-checkout"];
+    for c in [
+        "core.autocrlf=false",
+        "core.longpaths=true",
+        "core.symlinks=false",
+    ] {
+        args.extend(["-c", c]);
+    }
+    args.extend([&*from, &*to]);
+    git_ok(Path::new("."), &args);
+    let info = copy.join(".git").join("info");
+    std::fs::create_dir_all(&info).expect("mkdir .git/info");
+    std::fs::write(info.join("attributes"), NO_CONVERSION).expect("write info/attributes");
 }

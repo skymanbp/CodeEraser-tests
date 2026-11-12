@@ -1,4 +1,5 @@
-//! BARS-GEN2 section 3's report, from the replay's per-corpus docs: per
+//! BARS-GEN2 section 3's report, from the replay's per-corpus docs: the
+//! product record and each corpus at its tip (R4c), then per
 //! state the events and each fate per corpus (all kinds and per kind) and
 //! pooled, the false share under A and under B with its Clopper-Pearson
 //! 95 % upper bound, the pooled share with each corpus left out (all kinds
@@ -171,21 +172,23 @@ pub fn render(t: &Table) -> String {
     out.join("\n")
 }
 
-const SIDES: [&str; 5] = [
+const SIDES: [&str; 6] = [
     "unjudged_pairs",
     "unjudged_after_window",
     "met_unjudged",
     "dependents",
     "symlink_rows",
+    "retried",
 ];
 
-/// The side numbers per corpus and pooled, and every unjudged tree (G3).
+/// The side numbers per corpus and pooled, every unjudged tree and every
+/// tree judged only when asked again (G3, R2).
 pub fn render_sides(docs: &[Value]) -> String {
     let mut out = vec![
         format!("| corpus | {} |", SIDES.join(" | ")),
-        "|---|---|---|---|---|---|".into(),
+        format!("|---|{}", "---|".repeat(SIDES.len())),
     ];
-    let mut sums = [0u64; 5];
+    let mut sums = [0u64; SIDES.len()];
     for d in docs {
         let v: Vec<u64> = SIDES
             .iter()
@@ -201,12 +204,60 @@ pub fn render_sides(docs: &[Value]) -> String {
     }
     let cells: Vec<String> = sums.iter().map(u64::to_string).collect();
     out.push(format!("| pooled | {} |", cells.join(" | ")));
+    for (key, word) in [("unjudged_trees", "unjudged"), ("retried_trees", "retried")] {
+        for d in docs {
+            for u in d[key].as_array().into_iter().flatten() {
+                out.push(format!(
+                    "{word} {} {}: {}",
+                    d["corpus"], u["commit"], u["reason"]
+                ));
+            }
+        }
+    }
+    out.join("\n")
+}
+
+/// The report's first lines (R4c): the product record of the first doc
+/// (`checked` holds every doc to the same one) and each corpus at its tip.
+pub fn render_head(docs: &[Value]) -> String {
+    let p = docs.first().map(|d| &d["product"]).unwrap_or(&Value::Null);
+    let mut out = vec![format!(
+        "product {} ({}), ce sha256 {}, ce-core sha256 {}, instrument {}",
+        p["commit"], p["profile"], p["ce_sha256"], p["core_sha256"], p["instrument"]
+    )];
+    out.extend(
+        docs.iter()
+            .map(|d| format!("corpus {} at {}", d["corpus"], d["tip"])),
+    );
+    out.join("\n")
+}
+
+/// Per corpus (R4b): the chain length, the unjudged and retried trees,
+/// and each distinct reason with its number of trees and its first
+/// commit. Nothing about events.
+pub fn render_unjudged(docs: &[Value]) -> String {
+    let mut out = Vec::new();
     for d in docs {
-        for u in d["unjudged_trees"].as_array().into_iter().flatten() {
-            out.push(format!(
-                "unjudged {} {}: {}",
-                d["corpus"], u["commit"], u["reason"]
-            ));
+        let list = |k: &str| d[k].as_array().cloned().unwrap_or_default();
+        let (unjudged, retried) = (list("unjudged_trees"), list("retried_trees"));
+        out.push(format!(
+            "{}: {} commits, {} unjudged trees, {} retried trees",
+            d["corpus"],
+            list("commits").len(),
+            unjudged.len(),
+            retried.len()
+        ));
+        for (word, trees) in [("unjudged", &unjudged), ("retried", &retried)] {
+            let mut reasons: Vec<(&Value, usize, &Value)> = Vec::new();
+            for t in trees {
+                match reasons.iter_mut().find(|(r, _, _)| **r == t["reason"]) {
+                    Some((_, n, _)) => *n += 1,
+                    None => reasons.push((&t["reason"], 1, &t["commit"])),
+                }
+            }
+            for (r, n, first) in reasons {
+                out.push(format!("  {word} {n} trees, first {first}: {r}"));
+            }
         }
     }
     out.join("\n")
@@ -225,5 +276,10 @@ fn deadfile_gen2_report() {
         .collect();
     checked(&docs, &chosen).unwrap_or_else(|e| panic!("the run's docs: {e}"));
     let run = serde_json::json!({"corpora": docs});
-    println!("{}\n\n{}", render(&table_of(&run)), render_sides(&docs));
+    println!(
+        "{}\n\n{}\n\n{}",
+        render_head(&docs),
+        render(&table_of(&run)),
+        render_sides(&docs)
+    );
 }

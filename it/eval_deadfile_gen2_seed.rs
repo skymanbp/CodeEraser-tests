@@ -10,10 +10,11 @@ use std::path::{Path, PathBuf};
 /// The seeded history: `--- path` opens a file body (written at the next
 /// `=== commit`), `=== rm p`, `=== mv a b`, `=== commit` and
 /// `=== link name target` (a symbolic link entry, mode 120000, written
-/// into the index and committed at once: `add -A` would stage its
-/// removal, the link being no file of the work tree). Commit k is the
-/// k-th commit made.
-const SEED: &str = "\
+/// into the index and committed at once, the link being no file of the
+/// work tree). Commit k is the
+/// k-th commit made. The last commit (c10) renames a dead root by case
+/// alone (R1d).
+pub const SEED: &str = "\
 --- README.md
 # Readme
 
@@ -38,6 +39,10 @@ nobody links this page
 # Gone
 
 nobody links this page either
+--- case.md
+# Case
+
+renamed by case alone at the last commit
 --- zap.md
 # Zap
 
@@ -110,6 +115,8 @@ No links any more.
 See [the reference](ref.md) again.
 === commit
 === link link.md ref.md
+=== mv case.md Case.md
+=== commit
 ";
 
 /// One `=== ` command of the seed.
@@ -117,7 +124,9 @@ fn command(dir: &Path, cmd: &str, commits: &mut usize) {
     let w: Vec<&str> = cmd.split_whitespace().collect();
     match w[..] {
         ["commit"] => {
-            git(dir, &["add", "-A"]);
+            // removals come from `rm` / `mv` alone: the link entry, no file
+            // of the work tree, stays in the index
+            git(dir, &["add", "--ignore-removal", "."]);
             git(
                 dir,
                 &[
@@ -150,12 +159,12 @@ fn hash_blob(dir: &Path, text: &str) -> String {
     oid.trim().to_string()
 }
 
-/// The seed written out commit by commit; the tip's sha. The file
+/// A seed written out commit by commit; the tip's sha. The file
 /// sections between two commands are one fixture document.
-pub fn seed(dir: &Path) -> String {
+pub fn seed(dir: &Path, text: &str) -> String {
     git(dir, &["init", "-q"]);
     let (mut commits, mut files) = (0usize, String::new());
-    for line in SEED.lines() {
+    for line in text.lines() {
         match line.strip_prefix("=== ") {
             Some(cmd) => {
                 write_doc(dir, &files);
@@ -171,11 +180,11 @@ pub fn seed(dir: &Path) -> String {
     git_ok(dir, &["rev-parse", "HEAD"]).trim().to_string()
 }
 
-/// The seed in `<tmp>/<name>/seed`, the copy's path beside it, the tip.
-pub fn seeded(name: &str) -> (PathBuf, PathBuf, String) {
+/// A seed in `<tmp>/<name>/seed`, the copy's path beside it, the tip.
+pub fn seeded(name: &str, text: &str) -> (PathBuf, PathBuf, String) {
     let root = crate::common::tmp(name);
     let (seeded, copy) = (root.join("seed"), root.join("copy"));
     std::fs::create_dir_all(&seeded).expect("mkdir");
-    let tip = seed(&seeded);
+    let tip = seed(&seeded, text);
     (seeded, copy, tip)
 }
