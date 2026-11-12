@@ -88,7 +88,7 @@ fn fixture() -> PathBuf {
 /// (def, p body lines, return, two blank lines, a two-line function),
 /// rw = p rewritten and ap = 4 appended (the two blank lines count),
 /// t = 1/2, so its excess is (p + 6)(p - 4) / 2p; summed exactly over
-/// the common denominator 2 * prod p (about 2^95, inside u128).
+/// the common denominator 2 * prod p (107 bits, inside u128).
 fn derived_tenths() -> u128 {
     let den: u128 = 2 * PRIMES.iter().map(|&p| u128::from(p)).product::<u128>();
     let num: u128 = PRIMES
