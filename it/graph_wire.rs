@@ -78,7 +78,10 @@ fn edges_land_and_survive_content_refresh() {
 /// the SOURCE file never changes, only the TARGET's heading — the
 /// slug_hash key input must re-fire the sweep, or the section edge
 /// serves the dead slug forever. One table drives the three rounds
-/// (validate → degrade on rename → re-validate on restore).
+/// (validate → degrade on rename → re-validate on restore). A validated
+/// anchor also stores the file-level holder edge (part 4C: a link to a
+/// confirmed section of another file references that file); the
+/// degraded answer is the file already.
 #[test]
 fn target_heading_edit_refreshes_the_source_anchor() {
     let dir = common::tmp("wire-md-stale");
@@ -102,10 +105,10 @@ fn target_heading_edit_refreshes_the_source_anchor() {
     for (target, unit, gran, why) in rounds {
         std::fs::write(dir.join("c.md"), target).expect("c.md");
         dedup::analyze(&dir, None, None, None).expect(why);
-        assert_eq!(
-            edges(&db),
-            rows(&[("a.md", "c.md", unit, 1, 2, gran)]),
-            "{why}"
-        );
+        let mut want = vec![("a.md", "c.md", unit, 1, 2, gran)];
+        if !unit.is_empty() {
+            want.insert(0, ("a.md", "c.md", "", 1, 2, 0));
+        }
+        assert_eq!(edges(&db), rows(&want), "{why}");
     }
 }

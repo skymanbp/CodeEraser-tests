@@ -39,6 +39,20 @@ fn also_rows_group_by_site_in_order() {
     );
 }
 
+/// Part 4C: a section answer's holder row names the answer's own file —
+/// no repeat of the answer (the section is the answer), so it reads.
+#[test]
+fn a_section_answers_holder_row_is_no_repeat_of_its_answer() {
+    let section = Outcome::ResolvedSection {
+        path: "c.md".into(),
+        slug: Some("sec".into()),
+        rung: 2,
+    };
+    let reply = json!({"also": [[0, "c.md", 2]], "opaque": []});
+    let got = also_rows(&reply, &[section]).expect("a holder row reads");
+    assert_eq!(got[0].rows, [("c.md".to_string(), 2)]);
+}
+
 #[test]
 fn a_table_no_core_writes_is_refused_by_name() {
     let refused = |reply: serde_json::Value, why: &str| {
