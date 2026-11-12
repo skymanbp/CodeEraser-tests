@@ -59,7 +59,7 @@ fn apply_outside_a_repo_refuses() {
     w("b.md", format!("# b\n\n{PARA}\n"));
     let core = core_bin();
     let plan = erase::plan(&dir, None, &core).expect("plan");
-    assert!(plan.counts.eraseable >= 1, "the verbatim span plans");
+    assert_eq!(plan.counts.eraseable, 1, "the one verbatim span plans");
     refuses(&dir, &core, &plan, "not a git repository");
 }
 

@@ -135,7 +135,7 @@ pub(crate) fn refuses(dir: &Path, core: &str, plan: &erase::Plan, needle: &str) 
 }
 
 #[test]
-fn plan_names_all_classes_and_is_deterministic() {
+fn plan_names_every_class_and_its_reason() {
     let (_dir, _core, p) = planned("erase-plan");
     assert_eq!(p.counts.eraseable, 1, "the doc2 span alone");
     // orphan.md and spare.py are private, vouched and unreferenced —
