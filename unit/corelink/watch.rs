@@ -2,11 +2,21 @@
 //! that works is never stalled, however slow the wall clock; a core that
 //! moves neither signal for S is; a core past B CPU-seconds is over budget.
 
-use super::{Sample, Verdict, Watch};
+use super::{Faults, Sample, Verdict, Watch};
 use std::time::Duration;
 
 const S: Duration = Duration::from_secs(60);
 const B: Duration = Duration::from_secs(600);
+
+/// The page-fault count as the caller hands it over: read, and not.
+const READ: Faults = Faults {
+    noun: "page faults",
+    count: Some(1532),
+};
+const UNREAD: Faults = Faults {
+    noun: "page faults",
+    count: None,
+};
 
 fn at(secs: u64, bytes: u64, cpu_ms: Option<u64>) -> Sample {
     Sample {
@@ -90,7 +100,7 @@ fn says(text: &str, parts: &[&str]) {
 #[test]
 fn the_error_names_the_clause_the_readings_and_the_seam() {
     let (_, w) = run(at(0, 0, Some(0)), &[at(5, 1234, Some(5_450))]);
-    let stalled = w.explain(Verdict::Stalled, 2000, "clone.request (1999 bytes)");
+    let stalled = w.explain(Verdict::Stalled, 2000, "clone.request (1999 bytes)", READ);
     says(
         &stalled,
         &[
@@ -98,18 +108,60 @@ fn the_error_names_the_clause_the_readings_and_the_seam() {
             "no progress for 60s",
             "waiting on clone.request (1999 bytes)",
             "1234 of 2000 B written",
-            "core CPU 5.45 s",
+            "core CPU 5.45 s and 1532 page faults on it",
             "CE_CORE_DEADLINE_SECS",
         ],
     );
-    let over = w.explain(Verdict::OverBudget, 2000, "bags.request (1999 bytes)");
+    let over = w.explain(
+        Verdict::OverBudget,
+        2000,
+        "bags.request (1999 bytes)",
+        UNREAD,
+    );
     says(
         &over,
-        &["CPU budget exceeded (600s)", "CE_CORE_CPU_BUDGET_SECS"],
+        &[
+            "CPU budget exceeded (600s)",
+            "core CPU 5.45 s on it, page faults unreadable",
+            "CE_CORE_CPU_BUDGET_SECS",
+        ],
     );
     let (_, unread) = run(at(0, 0, None), &[]);
     says(
-        &unread.explain(Verdict::Stalled, 1, "hello"),
+        &unread.explain(Verdict::Stalled, 1, "hello", READ),
         &["core CPU unreadable"],
+    );
+}
+
+/// The stall line whole, in its three states: both readings, the count
+/// unreadable, the clock unreadable. A whole request written and a CPU
+/// clock that never moved is the line that cannot tell a core waiting on
+/// the disk from a wedged one; the count is what tells them apart.
+#[test]
+fn the_stall_line_in_its_three_states() {
+    let (_, w) = run(at(0, 83_974, Some(0)), &[]);
+    let (_, blind) = run(at(0, 9, None), &[]);
+    let on = "clone.request (83973 bytes)";
+    let lines = [
+        w.explain(Verdict::Stalled, 83_974, on, READ),
+        w.explain(Verdict::Stalled, 83_974, on, UNREAD),
+        blind.explain(Verdict::Stalled, 10, "hello", READ),
+    ];
+    let head = "core reply deadline exceeded: no progress for 60s waiting on";
+    let tail = "— core killed (CE_CORE_DEADLINE_SECS sets the wait)";
+    assert_eq!(
+        lines,
+        [
+            format!(
+                "{head} {on}: 83974 of 83974 B written, core CPU 0.00 s and 1532 page faults on it {tail}"
+            ),
+            format!(
+                "{head} {on}: 83974 of 83974 B written, core CPU 0.00 s on it, page faults unreadable {tail}"
+            ),
+            format!(
+                "{head} hello: 9 of 10 B written, core CPU unreadable, so the bytes written were the only \
+                 progress read; 1532 page faults on it {tail}"
+            ),
+        ]
     );
 }

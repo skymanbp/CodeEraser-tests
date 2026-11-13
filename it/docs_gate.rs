@@ -128,7 +128,8 @@ fn cli_page() -> String {
          relative to the root, so a `ce.toml` project below git's toplevel sees its own \
          history.\n\nA core is killed after `CE_CORE_DEADLINE_SECS` s (default 60) without progress \
          (request bytes taken or CPU spent) or past `CE_CORE_CPU_BUDGET_SECS` CPU s (default 600) on one \
-         request; the command fails naming the request (kind, line bytes), the bytes written and the core's CPU.\n\n## ce\n\n```text\n{root}```\n"
+         request; the command fails naming the request (kind, line bytes), the bytes written, the core's CPU and \
+         its page faults on the request (page-ins on macOS).\n\n## ce\n\n```text\n{root}```\n"
     );
     for sub in subcommands(&root) {
         let h = help_of(Some(&sub));

@@ -225,6 +225,10 @@ fn a_core_that_stops_draining_is_killed_naming_the_write() {
         written < 4 << 20,
         "the write stopped short of the line: {err}"
     );
+    assert!(
+        !err.contains("unreadable"),
+        "the CPU clock and the page-fault count were both read: {err}"
+    );
 }
 
 /// Leg 3: a core that spins without answering is killed by the budget, and
