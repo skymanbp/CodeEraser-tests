@@ -36,8 +36,11 @@ pub struct Generation {
 
 /// Every generation, oldest first. The first is the record of the
 /// first audit (core and slot tables before the nine rulings of merge
-/// generation 2); the second re-measures the five corpora under them.
-pub const GENERATIONS: [Generation; 2] = [
+/// generation 2); the second re-measures the five corpora under them;
+/// the third re-measures them under the T1/T2 stream of TOKENIZER_REV 5
+/// (import and load statements give no token) and the core's coverage
+/// rule (cover/1), which change which clone blocks the groups come from.
+pub const GENERATIONS: [Generation; 3] = [
     Generation {
         n: 1,
         set: "contracts/eval/merge-suggestions-v1.json",
@@ -51,6 +54,13 @@ pub const GENERATIONS: [Generation; 2] = [
         sample: "contracts/eval/merge-sample-v2.json",
         review: "contracts/eval/merge-review-v2.json",
         precision: "contracts/eval/merge-precision-v2.json",
+    },
+    Generation {
+        n: 3,
+        set: "contracts/eval/merge-suggestions-v3.json",
+        sample: "contracts/eval/merge-sample-v3.json",
+        review: "contracts/eval/merge-review-v3.json",
+        precision: "contracts/eval/merge-precision-v3.json",
     },
 ];
 

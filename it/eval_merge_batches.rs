@@ -31,8 +31,8 @@ use std::path::Path;
 
 /// The batches' own hash domain (the order a judge reads in), the exam
 /// generation's: the first generation's batches read under
-/// `merge-batches-v1`.
-const DOMAIN: &str = "merge-batches-v2";
+/// `merge-batches-v1`, the second's under `merge-batches-v2`.
+const DOMAIN: &str = "merge-batches-v3";
 
 /// The generation of reading rules the prompt carries (the first
 /// generation's prompt had none; booklet §13 item 50).
