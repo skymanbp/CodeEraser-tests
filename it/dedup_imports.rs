@@ -53,6 +53,26 @@ const FUNCTION: &str = "def work(items, limit):
     return [total, limit, len(items)]
 ";
 
+/// Two files that end in the same function under different heads: one
+/// block, of the function's tokens, each span the function's lines —
+/// it starts at the first token below the head.
+fn one_block_of_the_function(name: &str, ext: &str, (a, b): (&str, &str), function: &str) {
+    let found = blocks(name, &[(&format!("a.{ext}"), a), (&format!("b.{ext}"), b)]);
+    assert_eq!(found.len(), 1, "{ext}: {found:?}");
+    let block = &found[0];
+    assert_eq!(
+        block.tokens,
+        hashes(lang_of(ext), function).len(),
+        "{ext}: the function's tokens, no import's"
+    );
+    let span = |text: &str| {
+        let end = text.lines().count();
+        (end + 1 - function.lines().count(), end)
+    };
+    assert_eq!((block.a_start, block.a_end), span(a), "{ext}: a's span");
+    assert_eq!((block.b_start, block.b_end), span(b), "{ext}: b's span");
+}
+
 #[test]
 fn a_function_under_different_imports_is_a_clone_of_the_function() {
     let a = format!("import os\nimport sys\n\n{FUNCTION}");
@@ -60,25 +80,29 @@ fn a_function_under_different_imports_is_a_clone_of_the_function() {
         "from collections import deque\nimport json, re\nfrom . import util\n\n{}",
         FUNCTION.replace("work", "job")
     );
-    let found = blocks("imports-function", &[("a.py", &a), ("b.py", &b)]);
-    assert_eq!(found.len(), 1, "{found:?}");
-    let block = &found[0];
-    assert_eq!(
-        block.tokens,
-        hashes(Lang::Python, FUNCTION).len(),
-        "the function's tokens, no import's"
+    one_block_of_the_function("imports-function", "py", (&a, &b), FUNCTION);
+}
+
+const HS_FUNCTION: &str = "work :: [Int] -> Int -> Int
+work items limit = go items 0
+  where
+    go [] total = total
+    go (x : xs) total
+      | x > limit = go xs (total + x * 3 + 7)
+      | otherwise = go xs (total - x `div` 2)
+";
+
+/// The Haskell module header is the module's identity, a declaration of
+/// the family like Go's package clause: two modules that differ in
+/// header, export list and imports and end in one function are a clone
+/// of the function alone.
+#[test]
+fn a_haskell_function_under_different_headers_is_a_clone_of_the_function() {
+    let a = format!("module A (work) where\n\nimport Data.List (sort)\n\n{HS_FUNCTION}");
+    let b = format!(
+        "module B.C\n  ( work\n  , other\n  )\nwhere\n\nimport qualified Data.Map as M\nimport Data.Char (ord)\n\n{HS_FUNCTION}"
     );
-    let lines = FUNCTION.lines().count();
-    assert_eq!(
-        (block.a_start, block.a_end),
-        (4, 3 + lines),
-        "a: the function's lines"
-    );
-    assert_eq!(
-        (block.b_start, block.b_end),
-        (5, 4 + lines),
-        "b: the function's lines"
-    );
+    one_block_of_the_function("imports-hs-header", "hs", (&a, &b), HS_FUNCTION);
 }
 
 #[test]
@@ -180,7 +204,8 @@ cpp @@ both include forms
 ----
 int f(int x) { return x + 1; }
 ====
-hs @@ every import form, PackageImports included
+hs @@ the module header with its export list, and every import form, PackageImports included
+module CE.Probe (f, T (..)) where
 import Data.List (sort)
 import qualified Data.Map as M
 import "base" Data.Maybe
@@ -188,6 +213,22 @@ import Data.Char hiding (ord)
 ----
 f :: Int -> Int
 f x = x + 1
+====
+hs @@ a header without an export list, and no import
+module CE.Plain where
+----
+g :: Int -> Int
+g y = y * 2
+====
+hs @@ a header written over several lines
+module Main
+  ( main
+  )
+where
+import System.Exit (exitSuccess)
+----
+main :: IO ()
+main = exitSuccess
 ====
 lua @@ local, multiple, protected, global and bare loads
 local util = require("luarocks.util")

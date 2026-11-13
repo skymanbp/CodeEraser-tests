@@ -150,7 +150,8 @@ export * from "./a";
 export { a } from "./c";
 export const e = <div />;
 ====
-hs @@ 1 @@ the named `import`; a `foreign import` keyword is an unnamed node of the same kind
+hs @@ 1,2 @@ the module header (its export list with it) and the named `import`; a `foreign import` keyword is an unnamed node of the same kind
+module M (f, T (..)) where
 import Data.List (sort)
 foreign import ccall "sin" c_sin :: Double -> Double
 ====
