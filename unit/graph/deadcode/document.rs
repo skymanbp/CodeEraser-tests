@@ -13,6 +13,7 @@ fn fixture(reason: &str) -> (GraphWire, Judged) {
         kept: Some(5),
         degraded: Some(reason.into()),
         fail: true,
+        grouping: Default::default(),
         advisory: Some(Advised::Rows {
             rows: vec![Named {
                 node: 0,

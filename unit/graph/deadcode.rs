@@ -32,6 +32,7 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
     // `unres`, so the core always answers three columns
     let reply = json!({
         "dead": [[0, 1, 2]], "reported": [[1, 3], [2, 1]],
+        "roots": [[0, 0]], "under": [],
         "fail": true, "counts": {"kept": 7}
     });
     let j = super::consume(&reply, &nodes, None).expect("consume");
