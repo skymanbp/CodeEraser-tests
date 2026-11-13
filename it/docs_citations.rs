@@ -11,9 +11,7 @@
 
 use crate::common::repo_root;
 use crate::docs_citations_parts::ledger::{Resolution, Resolved, resolve};
-use crate::docs_citations_parts::{
-    Citation, Ledger, json, label_claims, lines, render, target_path,
-};
+use crate::docs_citations_parts::{Citation, Ledger, json, lines, render, target_path};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
@@ -123,13 +121,21 @@ fn harvest(citing: &str, text: &str) -> Vec<Citation> {
     out
 }
 
-/// What no harvest admits: a missing target, or a link whose own range
-/// runs backwards. A blank or past-EOF pointer is judged where it
-/// means something — a fresh seed refuses it, a ledgered citation
-/// resolves through it (that is what "moved" looks like).
+/// What no harvest admits: a label with a comma (`file:a-b,c-d`: the
+/// ledger anchors one range a citation, so the second would be a number
+/// nothing holds — one citation a range), a missing target, or a link
+/// whose own range runs backwards. A blank or past-EOF pointer is judged
+/// where it means something — a fresh seed refuses it, a ledgered
+/// citation resolves through it (that is what "moved" looks like).
 fn refusals(root: &Path, citations: &[Citation]) -> Vec<String> {
     let mut errors = Vec::new();
     for c in citations {
+        if c.label.contains(',') {
+            errors.push(format!(
+                "{}:{}: [{}] -> a label names one range: one citation a range",
+                c.citing, c.citing_line, c.label
+            ));
+        }
         let prefix = format!("{}:{}: {}", c.citing, c.citing_line, c.link);
         if !target_path(root, &c.citing, &c.target).is_file() {
             errors.push(format!("{prefix} -> target missing"));
@@ -173,8 +179,7 @@ fn paired<'a>(pages: &'a [Page], res: &'a Resolution) -> Vec<Paired<'a>> {
         .collect()
 }
 
-/// Every resolved end lies in [start, EOF], and every further number a
-/// comma-list label claims (unrendered human claims) lies in the file.
+/// Every resolved end lies in [start, EOF].
 fn range_errors(root: &Path, pairs: &[(&Citation, &Resolved)]) -> Vec<String> {
     let mut errors = Vec::new();
     for (c, r) in pairs {
@@ -184,11 +189,6 @@ fn range_errors(root: &Path, pairs: &[(&Citation, &Resolved)]) -> Vec<String> {
             errors.push(format!(
                 "{where_}: range end L{e} outside [L{}, EOF {count}]",
                 r.line
-            ));
-        }
-        for n in label_claims(&c.label).into_iter().filter(|&n| n > count) {
-            errors.push(format!(
-                "{where_}: label claims L{n} past EOF (target has {count} lines)"
             ));
         }
     }
@@ -209,6 +209,28 @@ fn settle_ledger(root: &Path, saved: &Ledger, next: &Ledger) -> Vec<String> {
     fs::write(root.join(LEDGER), json(next)).expect("bless citation ledger");
     println!("blessed {} citations at {LEDGER}", next.len());
     Vec::new()
+}
+
+/// A comma label is refused naming the page, its line and the label; a
+/// link the harvest does not read (no `#L`, as an external one) is not.
+/// The label is put together from its parts, so this file holds no
+/// `file:line` text of its own for source_citations to read.
+#[test]
+fn a_label_with_two_ranges_is_refused_by_name() {
+    let root = repo_root();
+    let (file, ranges) = ("README.md", "1-2,5");
+    let text = format!(
+        "x\nsee [{file}:{ranges}]({file}#L1) and [a.java:{}, 113-116](https://e.org/a.java)\n",
+        "80-81"
+    );
+    let refused = refusals(&root, &harvest("p.md", &text));
+    let page = "p.md";
+    assert_eq!(
+        refused,
+        [format!(
+            "{page}:2: [{file}:{ranges}] -> a label names one range: one citation a range"
+        )]
+    );
 }
 
 #[test]

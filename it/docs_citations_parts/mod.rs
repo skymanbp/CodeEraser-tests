@@ -64,14 +64,12 @@ fn is_zero(n: &usize) -> bool {
 
 pub type Ledger = BTreeMap<String, LedgerEntry>;
 
-/// The line numbers a label states: `file:a`, `file:a-b`, a bare `a`
-/// (the range-end form `…–[141](…#L141)`), or the FIRST segment of a
-/// comma list `file:a-b,c,d` — the later segments are human claims,
-/// bounded by EOF (`label_claims`) and otherwise unread. None for a
+/// The line numbers a label states: `file:a`, `file:a-b` or a bare `a`
+/// (the range-end form `…–[141](…#L141)`); a label with a comma is
+/// refused before it is read (docs_citations.rs `refusals`). None for a
 /// label naming no line.
 pub fn label_lines(label: &str) -> Option<(usize, Option<usize>)> {
-    let tail = label.rsplit_once(':').map_or(label, |(_, t)| t);
-    let first = tail.split(',').next().unwrap_or(tail).trim();
+    let first = label.rsplit_once(':').map_or(label, |(_, t)| t).trim();
     let (start, end) = first
         .split_once('-')
         .map_or((first, None), |(a, b)| (a, Some(b)));
@@ -81,17 +79,6 @@ pub fn label_lines(label: &str) -> Option<(usize, Option<usize>)> {
         None => None,
     };
     Some((start, end))
-}
-
-/// The numbers a comma-list label claims beyond its first segment —
-/// human claims the renderer never touches, so the EOF bound reads
-/// them here.
-pub fn label_claims(label: &str) -> Vec<usize> {
-    let tail = label.rsplit_once(':').map_or(label, |(_, t)| t);
-    let rest = tail.split_once(',').map_or("", |(_, r)| r);
-    rest.split(|c: char| !c.is_ascii_digit())
-        .filter_map(|s| s.parse().ok())
-        .collect()
 }
 
 pub fn target_path(root: &Path, citing: &str, target: &str) -> PathBuf {
@@ -121,9 +108,6 @@ fn label_shapes() {
     assert_eq!(label_lines("Cost.hs:42-55"), Some((42, Some(55))));
     assert_eq!(label_lines("dedup/mod.rs:301"), Some((301, None)));
     assert_eq!(label_lines("141"), Some((141, None)));
-    assert_eq!(label_lines("Split.hs:2-5,24,202"), Some((2, Some(5))));
     assert_eq!(label_lines("Cost.hs"), None);
     assert_eq!(label_lines("§4.2"), None);
-    assert_eq!(label_claims("Split.hs:2-5,24,202"), vec![24, 202]);
-    assert_eq!(label_claims("285"), Vec::<usize>::new());
 }

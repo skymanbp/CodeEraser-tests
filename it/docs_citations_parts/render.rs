@@ -1,6 +1,6 @@
 //! The rendering half: a citation's numbers spelled from where its
-//! text resolved — the label's `file:a-b` (or bare `a`, or the first
-//! segment of a comma list) and the link's `#La[-Lb]`. A page whose
+//! text resolved — the label's `file:a-b` (or bare `a`) and the link's
+//! `#La[-Lb]`. A page whose
 //! rendering differs from what it says is drift: named on a plain run,
 //! rewritten under CE_BLESS=1, the page outside each citation's span
 //! byte-for-byte untouched (so a CRLF page stays CRLF).
@@ -10,12 +10,11 @@ use super::ledger::Resolved;
 use std::fs;
 use std::path::Path;
 
-/// `file:a` / `file:a-b` / bare `a` / `file:a-b,c,d` with the first
-/// segment re-spelled; a range stays a range only when an end is
-/// known. A label naming no line is returned as written.
+/// `file:a` / `file:a-b` / bare `a` re-spelled; a range stays a range
+/// only when an end is known. A label naming no line is returned as
+/// written.
 pub fn label(label: &str, line: usize, end: Option<usize>) -> String {
-    let (head, tail) = label.rsplit_once(':').map_or(("", label), |(h, t)| (h, t));
-    let (first, rest) = tail.split_once(',').map_or((tail, ""), |(f, r)| (f, r));
+    let (head, first) = label.rsplit_once(':').map_or(("", label), |(h, t)| (h, t));
     if super::label_lines(label).is_none() {
         return label.to_string();
     }
@@ -24,8 +23,7 @@ pub fn label(label: &str, line: usize, end: Option<usize>) -> String {
         _ => line.to_string(),
     };
     let colon = if head.is_empty() { "" } else { ":" };
-    let comma = if rest.is_empty() { "" } else { "," };
-    format!("{head}{colon}{spelled}{comma}{rest}")
+    format!("{head}{colon}{spelled}")
 }
 
 /// `target#La`, plus `-Lb` where the link carried a range end.
@@ -93,7 +91,6 @@ fn labels_and_links_keep_their_shape() {
         ("Cost.hs:42-55", 44, Some(57), "Cost.hs:44-57"),
         ("Cost.hs:42", 44, Some(57), "Cost.hs:44"),
         ("141", 143, None, "143"),
-        ("Split.hs:2-5,24,202", 3, Some(6), "Split.hs:3-6,24,202"),
         ("Cost.hs:42-55", 44, None, "Cost.hs:44"),
         ("§4.2", 9, None, "§4.2"),
         ("../x.rs#L42", 44, Some(57), "../x.rs#L44"),
