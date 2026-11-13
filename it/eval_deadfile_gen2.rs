@@ -21,47 +21,66 @@ use crate::eval_deadfile_gen2_parts::replay::check_in_files;
 fn history(spec: &str) -> History {
     let mut h = History::default();
     for line in spec.lines().filter(|l| !l.trim().is_empty()) {
-        let (mut tree, mut step) = (
-            Tree {
-                judged: true,
-                ..Tree::default()
-            },
-            Step::default(),
-        );
-        for clause in line.split(';').map(str::trim).filter(|c| !c.is_empty()) {
-            let (head, rest) = clause.split_once(' ').unwrap_or((clause, ""));
-            let words = rest.split_whitespace().map(String::from);
-            match head {
-                "f" => tree.files.extend(words),
-                "r" | "d" => {
-                    let root = head == "r";
-                    for w in words {
-                        let document = w.ends_with(".md");
-                        tree.dead.insert(w, Dead { root, document });
-                    }
-                }
-                "m" => step.changed.extend(words),
-                "x" => step.deleted.extend(words),
-                "t" => step.touched = rest.parse().expect("touched"),
-                "u" => tree.judged = false,
-                "n" => {
-                    for w in words {
-                        let edited = w.ends_with('!');
-                        let (to, from) = w.trim_end_matches('!').split_once('<').expect("new<old");
-                        step.renamed.insert(to.into(), from.into());
-                        if edited {
-                            step.changed.insert(to.into());
-                        }
-                    }
-                }
-                _ => panic!("unread clause {clause:?}"),
-            }
-        }
+        let (tree, step) = commit(line);
         h.shas.push(format!("c{}", h.trees.len()));
         h.trees.push(tree);
         h.steps.push(step);
     }
     h
+}
+
+/// One commit's tree and step, read clause by clause; a clause no letter
+/// names stops the leg.
+fn commit(line: &str) -> (Tree, Step) {
+    let mut tree = Tree {
+        judged: true,
+        ..Tree::default()
+    };
+    let mut step = Step::default();
+    for clause in line.split(';').map(str::trim).filter(|c| !c.is_empty()) {
+        let (head, rest) = clause.split_once(' ').unwrap_or((clause, ""));
+        if !read_clause(head, rest, &mut tree, &mut step) {
+            panic!("unread clause {clause:?}");
+        }
+    }
+    (tree, step)
+}
+
+/// One clause into the tree (`f r d u`) or the step (`m x t n`); false
+/// for a letter it does not read.
+fn read_clause(head: &str, rest: &str, tree: &mut Tree, step: &mut Step) -> bool {
+    let words = rest.split_whitespace().map(String::from);
+    match head {
+        "f" => tree.files.extend(words),
+        "r" | "d" => mark_dead(tree, head == "r", words),
+        "u" => tree.judged = false,
+        "m" => step.changed.extend(words),
+        "x" => step.deleted.extend(words),
+        "t" => step.touched = rest.parse().expect("touched"),
+        "n" => rename(step, words),
+        _ => return false,
+    }
+    true
+}
+
+/// `r` dead roots or `d` dependents; a `.md` name is a document.
+fn mark_dead(tree: &mut Tree, root: bool, words: impl Iterator<Item = String>) {
+    for w in words {
+        let document = w.ends_with(".md");
+        tree.dead.insert(w, Dead { root, document });
+    }
+}
+
+/// `new<old` renames; `!` after one: with an edit, so a change too.
+fn rename(step: &mut Step, words: impl Iterator<Item = String>) {
+    for w in words {
+        let edited = w.ends_with('!');
+        let (to, from) = w.trim_end_matches('!').split_once('<').expect("new<old");
+        step.renamed.insert(to.into(), from.into());
+        if edited {
+            step.changed.insert(to.into());
+        }
+    }
 }
 
 /// The one event of commit `c`, and its fate.

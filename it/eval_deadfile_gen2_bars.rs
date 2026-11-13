@@ -86,15 +86,23 @@ p orphaned code 271 0; q orphaned code 27 2 => orphaned FailsByDefault
 # a kind with 100 events of its own answers the bars by itself
 p orphaned code 400 0; q orphaned document 98 2 => orphaned Listed";
 
+/// 1 false in 100: at most 1.0 %, blocks under both readings.
 #[test]
-fn the_bars_and_their_four_outcomes() {
-    use {Kind::*, State::*};
-    // 1 false in 100: at most 1.0 %, blocks under both readings
+fn one_false_in_a_hundred_blocks() {
     let t = table("p orphaned code 99 1");
     assert_eq!(
-        (blocks(&t, Orphaned, Reading::A), outcome(&t, Orphaned)),
+        (
+            blocks(&t, State::Orphaned, Reading::A),
+            outcome(&t, State::Orphaned)
+        ),
         (Some(true), Outcome::FailsByDefault)
     );
+}
+
+/// Every row of `BARS` reads the outcome it names.
+#[test]
+fn the_bars_read_as_their_table_says() {
+    use State::*;
     let cases = BARS.lines().filter_map(|l| l.split_once(" => "));
     let got: Vec<String> = cases
         .clone()
@@ -112,7 +120,13 @@ fn the_bars_and_their_four_outcomes() {
         .map(|(rows, want)| format!("{rows} => {want}"))
         .collect();
     assert_eq!(got, want);
-    // A and B disagree: an undetermined counts false under A only
+}
+
+/// A and B disagree: an undetermined counts false under A only, which is
+/// the owner's question.
+#[test]
+fn an_undetermined_parts_the_readings() {
+    use {Kind::*, State::*};
     let mut t = table("p born code 100 0");
     let ev = Event {
         at: 1,
@@ -129,6 +143,11 @@ fn the_bars_and_their_four_outcomes() {
         &mut t,
     );
     assert_eq!(outcome(&t, Born), Outcome::OwnerQuestion);
+}
+
+/// Each of the four outcomes has its sentence, led by the state.
+#[test]
+fn the_four_outcomes_each_have_a_sentence() {
     for o in [
         Outcome::FailsByDefault,
         Outcome::Listed,
