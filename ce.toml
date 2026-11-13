@@ -75,6 +75,13 @@ entry_globs = ["gui/", "unit/"]
 # refusal tests push is one `hand_built` helper, and the refusal tests
 # moved to it/erase_refusals.rs at the file's 300-line soft line. Row
 # set diffed against the 6a85feb tree: that row gone, none new.
+# 89 -> 38 (v2.35 imports lane): fifty-one rows left with the two rule
+# changes, none bought: forty-nine runs had fewer than 50 tokens of
+# their own once a longer run of the pair covered them (the coverage
+# rule, cover/1), two reached 50 only with `use` lines (the import
+# family, TOKENIZER_REV 5); three rows re-aligned. Row set of main's
+# build (e59a6d2f / 8d140b4) against the lane's on one tree: 89 -> 38,
+# no lane row without a main block on the same pair over both spans.
 # Ratchet DOWN with every cleanup.
 [dedup]
-budget = 89
+budget = 38
