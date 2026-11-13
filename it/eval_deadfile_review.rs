@@ -23,11 +23,17 @@ use crate::eval_support::{content_sha, load};
 use serde_json::Value;
 use std::collections::BTreeSet;
 
+/// Every pinned record file under `contracts/eval/` holds its sha256
+/// (both generations' gates read their pins through this).
+pub(crate) fn pins_hold(pins: &[(&str, &str)]) {
+    for (rel, sha) in pins {
+        assert_eq!(content_sha(&text(rel)), *sha, "{rel}: not the copied bytes");
+    }
+}
+
 #[test]
 fn the_record_is_the_main_sessions_bytes() {
-    for (rel, sha) in pinned() {
-        assert_eq!(content_sha(&text(rel)), sha, "{rel}: not the copied bytes");
-    }
+    pins_hold(&pinned());
     for dir in [ANSWERS.0, ANSWERS.1] {
         let names: BTreeSet<String> = std::fs::read_dir(at(dir))
             .expect(dir)
@@ -170,29 +176,31 @@ fn rendered() -> Vec<String> {
     ]
 }
 
-#[test]
-fn the_registry_page_states_the_committed_numbers() {
-    let page = std::fs::read_to_string(repo_root().join("docs/EVAL-SET-DEADFILE.md"))
+/// A registry page (`rel`) carries every rendered block verbatim, and
+/// every `> ` line of its section from `from` to the heading `to` is a
+/// line of one of the record texts (the docdup marker aside).
+pub(crate) fn page_carries(
+    rel: &str,
+    blocks: Vec<String>,
+    (from, to): (&str, &str),
+    record: &[String],
+) {
+    let page = std::fs::read_to_string(repo_root().join(rel))
         .expect("registry page")
         .replace("\r\n", "\n");
-    let missing: Vec<String> = rendered()
+    let missing: Vec<String> = blocks
         .into_iter()
         .filter(|b| !page.contains(b.as_str()))
         .collect();
     assert!(
         missing.is_empty(),
-        "docs/EVAL-SET-DEADFILE.md lacks these rendered blocks:\n\n{}",
+        "{rel} lacks these rendered blocks:\n\n{}",
         missing.join("\n\n")
     );
-    let record: Vec<String> = pinned()
-        .into_iter()
-        .filter(|(p, _)| p.ends_with(".md"))
-        .map(|(p, _)| text(p))
-        .collect();
     let quoted = page
-        .split("## The bars, as frozen")
+        .split(from)
         .nth(1)
-        .and_then(|t| t.split("## Who answered").next())
+        .and_then(|t| t.split(to).next())
         .expect("the bars section");
     let cut: Vec<&str> = quoted
         .lines()
@@ -206,6 +214,21 @@ fn the_registry_page_states_the_committed_numbers() {
             "quoted but not a line of the record: {line}"
         );
     }
+}
+
+#[test]
+fn the_registry_page_states_the_committed_numbers() {
+    let record: Vec<String> = pinned()
+        .into_iter()
+        .filter(|(p, _)| p.ends_with(".md"))
+        .map(|(p, _)| text(p))
+        .collect();
+    page_carries(
+        "docs/EVAL-SET-DEADFILE.md",
+        rendered(),
+        ("## The bars, as frozen", "## Who answered"),
+        &record,
+    );
 }
 
 /// The rendered blocks in page order, each after a `=== block` line —

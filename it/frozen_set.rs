@@ -29,6 +29,7 @@ docs/EVAL-SET-FLOW.md
 docs/EVAL-SET-FLOW-GEN1.md
 docs/EVAL-SET-MERGE.md
 docs/EVAL-SET-DEADFILE.md
+docs/EVAL-SET-DEADFILE-GEN2.md
 docs/FIELD-TEST.md";
 
 /// A marker spelled on a frozen page may only DESCRIBE one (inside a

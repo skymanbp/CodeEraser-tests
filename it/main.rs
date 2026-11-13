@@ -89,6 +89,7 @@ mod eval_deadfile_gen2;
 mod eval_deadfile_gen2_bars;
 mod eval_deadfile_gen2_e2e;
 mod eval_deadfile_gen2_parts;
+mod eval_deadfile_gen2_record;
 mod eval_deadfile_gen2_run;
 mod eval_deadfile_gen2_seed;
 mod eval_deadfile_k1;
