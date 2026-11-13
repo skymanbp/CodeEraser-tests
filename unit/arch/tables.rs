@@ -57,6 +57,7 @@ fn wire() -> GraphWire {
         unmentioned: None,
         mounts: None,
         scc_floor: None,
+        gate: None,
     }
 }
 

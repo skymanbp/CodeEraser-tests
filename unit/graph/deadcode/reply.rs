@@ -31,27 +31,18 @@ fn the_grouping_is_held_to_the_dead_rows_and_refused_by_name() {
         .iter()
         .map(|p| node(p, "", super::super::super::wire::GRAN_FILE))
         .collect();
-    let cases: Vec<(&str, &str)> = CASES
-        .trim()
-        .lines()
-        .map(|l| l.split_once(" => ").expect("a case line"))
-        .collect();
-    assert_eq!(cases.len(), 15, "every case line reads");
-    for (keys, says) in cases {
+    for (keys, says) in crate::testutil::case_table(CASES, 15) {
         let mut reply: Value = json!({
             "dead": [[0, 1, 2], [1, 3, 2], [2, 3, 2]], "reported": [],
-            "fail": true, "counts": {"kept": 2}
+            "fail": false, "blocked": [], "counts": {"kept": 2}
         });
         let extra: Value = serde_json::from_str(keys).expect(keys);
         for (k, v) in extra.as_object().expect("an object") {
             reply[k] = v.clone();
         }
-        let got = super::consume(&reply, &nodes, None);
-        match (says, got) {
-            ("ok", Ok(j)) => assert_eq!(j.grouping.roots[0], [0, 0], "{keys}"),
-            ("ok", Err(e)) => panic!("{keys} refused: {e:#}"),
-            (_, Ok(_)) => panic!("{keys} accepted; expected: {says}"),
-            (_, Err(e)) => assert!(format!("{e:#}").contains(says), "{keys}: {e:#}"),
+        let got = super::consume(&reply, &nodes, None, None);
+        if let Some(j) = crate::testutil::holds(keys, says, got) {
+            assert_eq!(j.grouping.roots[0], [0, 0], "{keys}");
         }
     }
 }

@@ -49,6 +49,7 @@ mod daemon_singleton;
 mod deadcode_conventions;
 mod deadcode_e2e;
 mod deadcode_fragment_links;
+mod deadcode_gate;
 mod deadcode_roots;
 mod declared_domain;
 mod dedup_core;

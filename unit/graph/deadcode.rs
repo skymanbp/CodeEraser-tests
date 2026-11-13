@@ -32,10 +32,10 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
     // `unres`, so the core always answers three columns
     let reply = json!({
         "dead": [[0, 1, 2]], "reported": [[1, 3], [2, 1]],
-        "roots": [[0, 0]], "under": [],
+        "roots": [[0, 0]], "under": [], "blocked": [0],
         "fail": true, "counts": {"kept": 7}
     });
-    let j = super::consume(&reply, &nodes, None).expect("consume");
+    let j = super::consume(&reply, &nodes, None, None).expect("consume");
     assert!(j.advisory.is_none(), "a road not asked has no rows");
     assert_eq!(j.dead, vec![vec![0, 1, 2]]);
     assert_eq!(j.reported, vec![[1, 3], [2, 1]]);
@@ -60,7 +60,7 @@ fn reported_rows_and_fail_bit_consume_and_skew_refuses() {
         "offers no graph/1 `reported`",
     ];
     for (reply, says) in skewed.iter().zip(says) {
-        let err = super::consume(reply, &nodes, None).expect_err(says);
+        let err = super::consume(reply, &nodes, None, None).expect_err(says);
         let text = format!("{err:#}");
         assert!(text.contains(says), "refused by name: {text}");
     }

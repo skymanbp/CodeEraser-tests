@@ -114,20 +114,23 @@ fn the_document_names_the_roots_and_each_dependents_roots() {
 }
 
 /// Each tree's console in both languages: every root line before every
-/// dependent line, a root's line counts what falls with it, a
-/// dependent's names its roots, and the summary counts the roots.
+/// dependent line, a root's line counts what falls with it from one up
+/// and says nothing at zero (early review G2), a dependent's names its
+/// roots, and the summary counts the roots.
 #[test]
 fn the_console_prints_roots_first_in_both_languages() {
     let core = core_bin();
     let words = [
+        // a row starts with the word; these trees have no baseline, so no
+        // root carries a state mark (5B, early review F3)
         (
             "en",
-            "unreferenced: ",
+            "unreferenced",
             "file(s) fall with it",
             " — under ",
             "unreferenced (",
         ),
-        ("zh", "无引用：", "个文件随它无引用", "——随根 ", "无引用（"),
+        ("zh", "无引用", "个文件随它无引用", "——随根 ", "无引用（"),
     ];
     for t in trees() {
         let dir = tree_dir(&t);
@@ -141,11 +144,19 @@ fn the_console_prints_roots_first_in_both_languages() {
             let rows: Vec<&str> = text.lines().filter(|l| l.starts_with(row)).collect();
             assert_eq!(rows.len(), t.dead, "{} {lang}: {text}", t.name);
             let roots = t.dead - t.under.len();
-            assert!(
-                rows[..roots].iter().all(|l| l.contains(falls)),
-                "{} {lang}: roots first: {text}",
-                t.name
-            );
+            for l in &rows[..roots] {
+                let n = t
+                    .under
+                    .iter()
+                    .filter(|(_, rs)| rs.contains(&row_path(l)))
+                    .count();
+                let said = if n == 0 {
+                    !l.contains(falls)
+                } else {
+                    l.contains(&format!("{n} {falls}"))
+                };
+                assert!(said, "{} {lang}: root {n} falling: {l}", t.name);
+            }
             for (l, (dep, rs)) in rows[roots..].iter().zip(&t.under) {
                 assert!(
                     l.contains(dep.as_str()) && l.ends_with(&format!("{under}{}", rs.join(", "))),
@@ -160,6 +171,16 @@ fn the_console_prints_roots_first_in_both_languages() {
             );
         }
     }
+}
+
+/// The path a console row names: after the row word and its colon, up
+/// to the two spaces before the verdict.
+fn row_path(line: &str) -> String {
+    let rest = line
+        .split_once(": ")
+        .or_else(|| line.split_once('：'))
+        .map_or("", |(_, r)| r);
+    rest.split("  ").next().unwrap_or("").to_string()
 }
 
 /// The MCP tool returns the same document: the grouping's keys arrive.

@@ -259,16 +259,27 @@ fn empty_index_is_an_explicit_error() {
     );
 }
 
-/// Shared red→green harness for the `--check` gate: build the tree,
-/// expect exit 1, apply the one-file rewrite, expect exit 0 (a gate
-/// that never demonstrated red is unproven — M5-close stance; a
-/// second copy of this stanza was the ratchet's catch, twice).
+/// Shared red→green harness for the liveness the gate reads: build the
+/// tree, expect an unreferenced file, apply the one-file rewrite, expect
+/// none (a verdict that never demonstrated red is unproven — M5-close
+/// stance; a second copy of this stanza was the ratchet's catch, twice).
+/// Since the dead-file amendment (plan v2.35) an unreferenced file is
+/// listed and `--check` passes by default, so the red is the document's
+/// `dead` table; what blocks is deadcode_gate.rs's.
 fn check_flips_on(tag: &str, tree: &[(&str, &str)], rewrite: (&str, &str), why: [&str; 2]) {
     let fx = common::fixture(tag, tree);
     let core = core_bin();
     let gate = |msg: &str, ok: bool| {
-        let out = common::run_ce(&fx.dir, &["deadcode", ".", "--core", &core, "--check"]);
-        assert_eq!(out.status.success(), ok, "{msg}");
+        let out = common::run_ce(
+            &fx.dir,
+            &["deadcode", ".", "--core", &core, "--format", "json"],
+        );
+        let doc: serde_json::Value = serde_json::from_slice(&out.stdout).expect(msg);
+        assert_eq!(
+            doc["dead"].as_array().is_some_and(Vec::is_empty),
+            ok,
+            "{msg}: {doc}"
+        );
     };
     gate(why[0], false);
     std::fs::write(fx.dir.join(rewrite.0), rewrite.1).expect("rewrite");

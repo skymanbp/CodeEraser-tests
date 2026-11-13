@@ -32,11 +32,13 @@ fn rep(f: impl FnOnce(&mut Reply)) -> Reply {
         dropped: None,
         new_baseline: json!({"continuous": [], "discrete": []}),
         knobs: [("defaultWeight".to_string(), 1)].into_iter().collect(),
-        weights: (0..7).map(|a| [a, 1]).collect(),
+        // the dead axis (code 4) is opt-in: it weighs 0 unless named
+        weights: (0..7).map(|a| [a, i64::from(a != 4)]).collect(),
         class_knobs: Vec::new(),
         dedup_blocks: None,
         degraded: None,
         extent: Some([0, 0]),
+        dead_added: None,
     };
     f(&mut r);
     r

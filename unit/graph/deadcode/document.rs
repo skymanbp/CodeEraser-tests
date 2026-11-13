@@ -14,6 +14,7 @@ fn fixture(reason: &str) -> (GraphWire, Judged) {
         degraded: Some(reason.into()),
         fail: true,
         grouping: Default::default(),
+        gated: Default::default(),
         advisory: Some(Advised::Rows {
             rows: vec![Named {
                 node: 0,

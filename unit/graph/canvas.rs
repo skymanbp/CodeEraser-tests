@@ -16,6 +16,7 @@ fn fixture() -> (GraphWire, Judged) {
         degraded: None,
         fail: true,
         grouping: Default::default(),
+        gated: Default::default(),
         advisory: None,
     };
     (w, judged)

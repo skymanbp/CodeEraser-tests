@@ -221,6 +221,7 @@ fn wire(d: &mut Draw, nodes: Vec<Node>) -> GraphWire {
         unmentioned: None,
         mounts: None,
         scc_floor: None,
+        gate: None,
     }
 }
 

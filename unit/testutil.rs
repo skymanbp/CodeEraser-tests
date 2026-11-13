@@ -19,6 +19,32 @@ pub fn catalogue_schema(family: &str) -> serde_json::Value {
     tables["document"][family]["schema"].clone()
 }
 
+/// A literal case table, one `input => expected` per line, read and
+/// counted (the count catches a line the separator missed).
+pub fn case_table(table: &str, n: usize) -> Vec<(&str, &str)> {
+    let cases: Vec<(&str, &str)> = table
+        .trim()
+        .lines()
+        .map(|l| l.split_once(" => ").expect("a case line"))
+        .collect();
+    assert_eq!(cases.len(), n, "every case line reads");
+    cases
+}
+
+/// One case of a refusal table: `ok` expects an answer (handed back),
+/// anything else is text the refusal must contain.
+pub fn holds<T>(case: &str, says: &str, got: anyhow::Result<T>) -> Option<T> {
+    match (says, got) {
+        ("ok", Ok(t)) => Some(t),
+        ("ok", Err(e)) => panic!("{case} refused: {e:#}"),
+        (_, Ok(_)) => panic!("{case} accepted; expected: {says}"),
+        (_, Err(e)) => {
+            assert!(format!("{e:#}").contains(says), "{case}: {e:#}");
+            None
+        }
+    }
+}
+
 /// Fresh empty scratch dir keyed by tag + pid (parallel-test safe);
 /// callers remove it themselves when the assertion needs a clean end.
 pub fn scratch(tag: &str) -> PathBuf {
@@ -127,6 +153,7 @@ pub fn four_node_wire(edges: &[[i64; 4]]) -> crate::graph::deadcode::GraphWire {
         unmentioned: None,
         mounts: None,
         scc_floor: None,
+        gate: None,
     }
 }
 
