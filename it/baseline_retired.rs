@@ -14,7 +14,7 @@
 /// names the key the member carried on the day it dissolved: the
 /// frozen 6.x key before 7.0.0, the anchored (relocated) key after —
 /// both readers in baseline_bridge.rs share `seated_or_retired`.
-pub const RETIRED: [(u64, &str); 52] = [
+pub const RETIRED: [(u64, &str); 64] = [
     (
         5414355871597516298,
         "v2.32 step 6 2026-10-03: 8.0.0 retired structure/1's `patterns` request key, so CE.Structure imports the named refusal (CE.Wire.Retired) inside the import run it shared with CE.Docdup and StructureProps no longer refuses the pattern table twice - the two blocks this member's pair rode (Docdup.hs:38-43 / Structure.hs:32-37 imports, StructureProps.hs:124-134 / 134-137 refusals) left with the road (ce.toml dedup budget 37 -> 35)",
@@ -226,5 +226,53 @@ pub const RETIRED: [(u64, &str); 52] = [
     (
         4109802609287562483,
         "v2.35 score lane 2026-11-12 (phase 2C): CE.Verdict.Score's ScoreKnobs lost the six fields the extent law does not read (sSizePMax, sCloneNum, sCloneDen, sDupNum, sDupDen, sDeadIndegCeil), so CE.Structure.Axes's record rhymes with it once where it rhymed twice (Axes.hs 53-75 / Score.hs 73-89 and 59-91 / 74-100 -> Axes.hs 65-92 / Score.hs 29-50) - the one block that left, and this anchored member (REANCHORED successor of 16971071944191990935) the one member the main baseline lost with it (ce.toml dedup budget 29 -> 28)",
+    ),
+    (
+        893885578290999606,
+        "v2.35 imports lane 2026-11-12 (the module header gives no token (Haskell's import family is ['import', 'header'], TOKENIZER_REV 5), so the two modules' export lists no longer carry core/app/CE/Structure/Cost.hs 8-40 against core/app/CE/Verdict/Cost.hs 51-86 (54 tokens)) - this anchored member (REANCHORED successor of 383014491731907364) left the baseline with that block (ce.toml dedup budget 28 -> 10)",
+    ),
+    (
+        5367228321686517421,
+        "v2.35 imports lane 2026-11-12 (the import family gives no token (TOKENIZER_REV 5), so cli/src/audit.rs 27-37 against cli/src/health.rs 11-21 (54 tokens) no longer reaches 50 tokens without its `use` lines) - this anchored member (REANCHORED successor of 220661488074354803) left the baseline with that block (ce.toml dedup budget 28 -> 10)",
+    ),
+    (
+        7958468518719001281,
+        "v2.35 imports lane 2026-11-12 (the import family gives no token (TOKENIZER_REV 5), so core/test/SplitProps.hs 15-25 against core/test/TrendProps.hs 19-29 (53 tokens) no longer reaches 50 tokens without its import lines) - this anchored member (REANCHORED successor of 5339641534576888699) left the baseline with that block (ce.toml dedup budget 28 -> 10)",
+    ),
+    (
+        8110698983170028587,
+        "v2.35 imports lane 2026-11-12 (the module header gives no token (Haskell's import family is ['import', 'header'], TOKENIZER_REV 5), so the two modules' export lists no longer carry core/app/CE/Docdup/Cost.hs 5-145 against core/app/CE/Graph/Cost.hs 14-155 (99 tokens)) - this anchored member (REANCHORED successor of 10644037952343320839) left the baseline with that block (ce.toml dedup budget 28 -> 10)",
+    ),
+    (
+        8277309085554555782,
+        "v2.35 imports lane 2026-11-12 (the import family gives no token (TOKENIZER_REV 5), so core/test/AuditProps.hs 17-27 against core/test/TrendProps.hs 19-29 (60 tokens) no longer reaches 50 tokens without its import lines) - this anchored member (REANCHORED successor of 6931640579431850328) left the baseline with that block (ce.toml dedup budget 28 -> 10)",
+    ),
+    (
+        11777542260286451750,
+        "v2.35 imports lane 2026-11-12 (the module header gives no token (Haskell's import family is ['import', 'header'], TOKENIZER_REV 5), so the two modules' export lists no longer carry core/app/CE/Docdup/Cost.hs 5-145 against core/app/CE/Structure/Cost.hs 15-104 (100 tokens)) - this anchored member (REANCHORED successor of 10951126460536114704) left the baseline with that block (ce.toml dedup budget 28 -> 10)",
+    ),
+    (
+        15778361983480758011,
+        "v2.35 imports lane 2026-11-12 (the module header gives no token (Haskell's import family is ['import', 'header'], TOKENIZER_REV 5), so the two modules' export lists no longer carry core/app/CE/Graph/Cost.hs 14-28 against core/app/CE/Verdict/Cost.hs 52-86 (52 tokens)) - this anchored member (REANCHORED successor of 18281263396683763653) left the baseline with that block (ce.toml dedup budget 28 -> 10)",
+    ),
+    (
+        16069206510978510719,
+        "v2.35 imports lane 2026-11-12 (the module header gives no token (Haskell's import family is ['import', 'header'], TOKENIZER_REV 5), so the two modules' export lists no longer carry core/app/CE/Graph/Cost.hs 14-155 against core/app/CE/Structure/Cost.hs 9-104 (111 tokens)) - this anchored member (REANCHORED successor of 260199259066623225) left the baseline with that block (ce.toml dedup budget 28 -> 10)",
+    ),
+    (
+        10116995092941979681,
+        "v2.35 imports lane 2026-11-12 (the import family gives no token (TOKENIZER_REV 5), so the run it/coc_haskell.rs 8-31 against it/metrics.rs 8-25 (66 tokens) that began on the `use` lines now begins inside CASES (11-31 / 11-25), the CASES / CASES member the baseline already holds) - this anchored member (REANCHORED successor of 5809836232211080205) left the baseline with that block (cli/tests ce.toml dedup budget 89 -> 38)",
+    ),
+    (
+        10408772140774367092,
+        "v2.35 imports lane 2026-11-12 (the import family gives no token (TOKENIZER_REV 5), so the run it/coc_haskell.rs 8-31 against it/divergence_stances.rs 7-29 (66 tokens) that began on the `use` lines now begins inside CASES (11-31 / 10-29), the CASES / CASES member the baseline already holds) - this anchored member (REANCHORED successor of 18341374642905750366) left the baseline with that block (cli/tests ce.toml dedup budget 89 -> 38)",
+    ),
+    (
+        13045399194712769330,
+        "v2.35 imports lane 2026-11-12 (the import family gives no token (TOKENIZER_REV 5), so it/eval_docdup_universe.rs 16-37 against it/eval_t3_universe.rs 17-32 (55 tokens) no longer reaches 50 tokens without its `use` lines) - this anchored member (REANCHORED successor of 7159712613621110196) left the baseline with that block (cli/tests ce.toml dedup budget 89 -> 38)",
+    ),
+    (
+        14955390874888204888,
+        "v2.35 imports lane 2026-11-12 (the coverage rule (cover/1) replaced the line-containment pass, so it/dedup_pairs.rs 46-54 against 106-114 (115 tokens, stale_anchor_skipped_not_panicked against verified_run_has_exact_length) has fewer than 50 tokens of its own once the kept runs 46-54 / 87-94 and 84-94 / 103-114 cover it) - this anchored member (REANCHORED successor of 5897628904388091846) left the baseline with that block (cli/tests ce.toml dedup budget 89 -> 38)",
     ),
 ];
