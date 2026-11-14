@@ -251,12 +251,49 @@ fn the_console_renders_the_advisory_beside_the_verdicts() {
 #[test]
 fn empty_index_is_an_explicit_error() {
     let dir = common::tmp("deadcode-empty");
-    std::fs::write(dir.join("notes.txt"), "no lang files here\n").expect("write");
+    common::git(&dir, &["init", "-q"]);
     let err = deadcode::run(&dir, None, &core_bin()).expect_err("must refuse");
     assert!(
-        err.to_string().contains("empty index"),
+        err.to_string().contains("nothing was walked"),
         "explicit empty-index error, got: {err:#}"
     );
+}
+
+/// A tree whose only files are prose (`.txt`: indexed for the
+/// documentation family, read by no graph rung) is judged, not refused as
+/// empty (release 1.10.0, item I1): `ce deadcode` answers zero files and
+/// `ce check` a verdict that counts the two pages' duplicated paragraph.
+#[test]
+fn a_prose_only_tree_is_judged_on_an_empty_graph() {
+    let para = "The ratchet compares every measured value against the committed\n\
+        baseline ceiling and refuses any edit that grows a file or a function\n\
+        past the tolerated allowance, while values that shrink tighten the\n\
+        ceiling automatically so that the allowance never accumulates across\n\
+        runs and the gate stays honest for every contributor who touches the\n\
+        tree over time.\n";
+    let dir = common::tmp("deadcode-prose");
+    for page in ["A", "B"] {
+        let text = format!("Intro for {page}.\n\n{para}");
+        std::fs::write(dir.join(format!("{page}.txt")), text).expect("page");
+    }
+    common::git(&dir, &["init", "-q"]);
+    let r = deadcode::run(&dir, None, &core_bin()).expect("a prose tree is judged");
+    assert!(
+        r.dead.is_empty(),
+        "no file of an empty graph is unreferenced"
+    );
+    let core = core_bin();
+    let out = common::run_ce(&dir, &["check", ".", "--format", "json", "--core", &core]);
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert_ne!(
+        out.status.code(),
+        Some(2),
+        "a verdict, not a refusal: {err}"
+    );
+    let doc: serde_json::Value = serde_json::from_slice(&out.stdout).expect("check document");
+    assert!(doc["score"].is_number(), "a score: {doc}");
+    let pairs = doc["candidates"].as_array().map_or(0, Vec::len);
+    assert!(pairs >= 1, "the duplicated paragraph is counted: {doc}");
 }
 
 /// Shared red→green harness for the liveness the gate reads: build the

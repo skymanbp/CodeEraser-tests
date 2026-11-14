@@ -211,3 +211,37 @@ fn the_stop_audit_writes_the_advisors_row_for_a_new_same_role_unit() {
     let quiet = common::stop_observe(&dir);
     assert!(quiet.get("similar").is_none(), "{quiet}");
 }
+
+/// A typed path names one file on every face (release 1.10.0, H33): the
+/// `at` of `ce similar` and the `impact` of `ce arch`, spelled relative,
+/// `./`-headed (once, or with a doubled slash), backslashed and absolute
+/// under the root, give one document each through the library faces the
+/// CLI, MCP and GUI share; the CLI reads an absolute path under a `.`
+/// root the same way.
+#[test]
+fn every_spelling_of_a_typed_path_names_one_file() {
+    let dir = seeded("similar-typed");
+    let abs = dir.join("a.rs").display().to_string();
+    let spellings = ["a.rs", "./a.rs", ".//a.rs", r".\a.rs", abs.as_str()];
+    let want = face(&dir, &Ask::at("a.rs:2").expect("at"), false);
+    let arch = |p: &str| {
+        let answer = codeeraser::faces::arch(
+            &dir,
+            &common::core_bin(),
+            &[p.to_string()],
+            Default::default(),
+        );
+        codeeraser::faces::doc(answer).expect("arch face")
+    };
+    let impact = arch("a.rs");
+    for p in spellings {
+        let at = Ask::at(&format!("{p}:2")).expect("at");
+        assert_eq!(face(&dir, &at, false), want, "similar --at {p}:2");
+        assert_eq!(arch(p), impact, "arch --impact {p}");
+    }
+    assert_eq!(
+        cli_doc(&dir, &["--at", &format!("{abs}:2")]),
+        want,
+        "the CLI"
+    );
+}

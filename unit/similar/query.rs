@@ -20,7 +20,8 @@ fn helper() {}
 fn at_parses_file_line_and_refuses_what_is_not_one() {
     let ok = [
         ("src/a.rs:12", "src/a.rs", 12),
-        ("C:\\w\\a.rs:3", "C:/w/a.rs", 3),
+        // the path as typed: its spelling is walk::typed's, at the face
+        ("C:\\w\\a.rs:3", "C:\\w\\a.rs", 3),
         ("a:b.rs:1", "a:b.rs", 1),
     ];
     for (spec, path, line) in ok {

@@ -167,3 +167,43 @@ fn prose(s: &str) -> bool {
         .collect();
     words.windows(2).any(|w| word(w[0]) && word(w[1]))
 }
+
+/// The paragraph both pages hold, an anchor inside it and no heading
+/// above it (release 1.10.0, item K4).
+fn anchored(name: &str, links: &str) -> PathBuf {
+    let dir = tmp(name);
+    // between "eta" and "theta", seven words in
+    let page = format!("{} <a id=\"keep\"></a> {}\n", &PARA[..39], &PARA[40..]);
+    common::write_all(
+        &dir,
+        &[
+            ("README.md", format!("# P\n\n{links}\n")),
+            ("docs/a.md", page.clone()),
+            ("docs/b.md", page),
+        ],
+    );
+    common::init_and_commit(&dir, "fixture");
+    dir
+}
+
+/// A link to an anchor INSIDE the duplicated segment lands on a target
+/// the erase would remove (K4): with only `docs/b.md#keep` linked the
+/// candidate is docs/a.md's copy (0 links against 1) and it is
+/// eraseable; with `docs/a.md#keep` linked too both copies are linked
+/// and the candidate is refused as `linked_section`.
+#[test]
+fn a_link_to_an_anchor_inside_the_segment_counts() {
+    let one = anchored(
+        "erase-linked-anchor-one",
+        "[b](docs/b.md#keep) [a](docs/a.md)",
+    );
+    assert_eq!(doc_row(&one), ("docs/a.md".into(), true, "eraseable", 0));
+    let both = anchored(
+        "erase-linked-anchor-both",
+        "[b](docs/b.md#keep) [a](docs/a.md#keep)",
+    );
+    assert_eq!(
+        doc_row(&both),
+        ("docs/b.md".into(), false, "linked_section", 1)
+    );
+}
