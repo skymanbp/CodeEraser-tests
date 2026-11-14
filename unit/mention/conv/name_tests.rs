@@ -45,6 +45,10 @@ x/a.test.ts f/0 ⇒ T
 x/.test.ts f/0 ⇒ -
 x/.test.helper.test.ts f/0 ⇒ T
 x/a.spec.tsx f/0 ⇒ T
+x/a.spec.cts f/0 ⇒ T
+x/test.ts f/0 ⇒ T
+x/a.test.helper.ts f/0 ⇒ -
+x/a.test.py f/0 ⇒ -
 x/test_a.py f/0 ⇒ T
 x/test_.py f/0 ⇒ -
 x/a_test.py f/0 ⇒ T

@@ -230,7 +230,7 @@ fn shapes(l: &mut Ledger, text: &str) {
 /// The `<pkg>/{benches,examples}` prefix whose component alone gives a
 /// file its Test bit — asked of the product's own path rule by a
 /// monotone probe, never restated: the bit absent on the prefix before
-/// the component and present with it. A TEST_DIRS component earlier
+/// the component and present with it. A `flags.test_dirs_word` component earlier
 /// in the path already carries the bit (no transition is seen), a
 /// package root is whatever the rule says it is, and no basename arm
 /// fires on `probe.rs`.

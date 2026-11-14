@@ -54,7 +54,11 @@ fn allow_claim_requires_the_why_tail() {
 /// DESCRIPTION's directory (the scratch root holds `pkg/DESCRIPTION`,
 /// so the same directories outside it are nobody's) and the code
 /// directly in its `R/`, busted's and testthat's tests. Step 5: a
-/// site's `index.html` and `404.html` by name at any depth. One literal
+/// site's `index.html` and `404.html` by name at any depth. Release
+/// 1.10.0: every basename form a test runner documents (the package's
+/// `runner_tests`, the convention word's table too), and this role's own
+/// directory row (`tests`, `__tests__`; a `test/` directory is the
+/// convention word's habit, not this role's). One literal
 /// rather than rows of typed tuples: rows of one shape repeat every
 /// dozen tokens under the clone gate.
 const ROLES: &str = "\
@@ -99,6 +103,20 @@ pkg/R/sub/deep.R ⇒ -
 R/utils.R ⇒ -
 tests/testthat/test-utils.R ⇒ t
 x/test_utils.r ⇒ t
+web/src/sum.spec.ts ⇒ t
+web/src/view.test.tsx ⇒ t
+web/src/a.test.mts ⇒ t
+web/test.ts ⇒ t
+web/a.test.helper.ts ⇒ -
+pkg/core_test.py ⇒ t
+x/test_a.py ⇒ t
+test/conftest.py ⇒ t
+test/FooSpec.hs ⇒ t
+test/Spec.hs ⇒ t
+x/a_test.go ⇒ t
+x/_test.go ⇒ -
+__tests__/a.ts ⇒ t
+web/test/e2e.ts ⇒ -
 index.html ⇒ n
 site/zh/how/index.html ⇒ n
 404.html ⇒ n
