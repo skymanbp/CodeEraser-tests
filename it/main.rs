@@ -266,6 +266,7 @@ mod soft_line_wall;
 mod sonar_whitepaper;
 mod source_citations;
 mod source_citations_parts;
+mod source_paths;
 mod stack_replay;
 mod structure_knobs;
 mod structure_modularity;

@@ -18,11 +18,11 @@ e - {"blocked": [], "fail": false, "deadNow": {"files": [1, 2, 3], "dead": [1, 2
 - - {"blocked": [], "fail": false, "blockUnanswered": true} => ok
 - d {"blocked": [], "fail": true} => ok
 e d {"blocked": [], "fail": true} => ok
-- - {"fail": false} => pre-amendment core: graph/1 offers no `blocked`
+- - {"fail": false} => core offers no graph/1 `blocked` in the shape this ce reads
 - - {"blocked": [1, 0], "fail": true} => `blocked` row 1 is not strictly ascending
 - - {"blocked": [0, 0], "fail": true} => `blocked` row 1 is not strictly ascending
 - - {"blocked": [3], "fail": true} => blocked node 3 is not an unreferenced file
-- - {"blocked": [], "fail": false, "states": null} => pre-amendment core: graph/1 offers no `states`
+- - {"blocked": [], "fail": false, "states": null} => core offers no graph/1 `states` in the shape this ce reads
 - - {"blocked": [], "fail": false, "states": [[0, 3], [1, 1]]} => `states` is not one row per dead row
 - - {"blocked": [], "fail": false, "states": [[1, 1], [0, 3], [2, 2]]} => `states` is not one row per dead row
 - - {"blocked": [], "fail": false, "states": [[0, 3], [1, 4], [2, 2]]} => file 1: state 4 outside 0..3

@@ -1,11 +1,11 @@
 //! The reply's `also` table as this side reads it (proto 9.1.0,
 //! graph/resolve/mod.rs `also_rows`): rows group by site in order, and a
-//! table a core could not have written is refused by name — absent (a
-//! core before 9.1.0: reading it as empty would drop the edges it
+//! table a core could not have written is refused by name — absent (wire
+//! skew, corelink::skew: reading it as empty would drop the edges it
 //! carries), out of order, naming no site, or repeating the site's own
 //! answer. The `opaque` table beside it (lane v235_graphtrust) marks its
-//! sites, and is refused by name when absent, out of order or naming no
-//! site.
+//! sites, and is refused by name when absent (skew too), out of order or
+//! naming no site.
 
 use super::super::also_rows;
 use crate::graph::ladder::{Also, Outcome, Reason};
@@ -59,7 +59,7 @@ fn a_table_no_core_writes_is_refused_by_name() {
         let err = also_rows(&reply, &outs()).expect_err(why);
         assert!(err.contains(why), "{err}");
     };
-    refused(json!({}), "a core before proto 9.1.0");
+    refused(json!({}), "core offers no resolve/1 `also` table");
     refused(
         json!({"also": [[1, "a.py", 2], [0, "b.py", 2]], "opaque": []}),
         "also 1: not after the row before it",
@@ -72,7 +72,10 @@ fn a_table_no_core_writes_is_refused_by_name() {
         json!({"also": [[0, "pkg/__init__.py", 2]], "opaque": []}),
         "repeats site 0's answer",
     );
-    refused(json!({"also": []}), "no `opaque` table");
+    refused(
+        json!({"also": []}),
+        "core offers no resolve/1 `opaque` table",
+    );
     refused(
         json!({"also": [], "opaque": [1, 0]}),
         "opaque rows not ascending",

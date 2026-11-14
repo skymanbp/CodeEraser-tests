@@ -10,9 +10,9 @@ use serde_json::{Value, json};
 const CASES: &str = r#"
 {"roots": [[0]], "under": [[1, 0], [2, 0]]} => ok
 {"roots": [[0]], "under": [], "underDropped": true} => ok
-{"under": [[1, 0], [2, 0]]} => pre-amendment core: graph/1 offers no `roots`
-{"roots": [[0]]} => pre-amendment core: graph/1 offers no `under`
-{"roots": [[0, 0]], "under": [[1, 0], [2, 0]]} => pre-amendment core: graph/1 offers no `roots`
+{"under": [[1, 0], [2, 0]]} => core offers no graph/1 `roots` in the shape this ce reads
+{"roots": [[0]]} => core offers no graph/1 `under` in the shape this ce reads
+{"roots": [[0, 0]], "under": [[1, 0], [2, 0]]} => core offers no graph/1 `roots` in the shape this ce reads
 {"roots": [[0], [3]], "under": [[1, 0], [2, 0]]} => root 3 is not a dead row
 {"roots": [[1], [0]], "under": [[2, 0]]} => `roots` row 1 is not strictly ascending
 {"roots": [[0], [0]], "under": [[1, 0], [2, 0]]} => `roots` row 1 is not strictly ascending
