@@ -38,11 +38,16 @@ fn seeded(name: &str, toml: &str, body: &str) -> std::path::PathBuf {
     common::indexed_doc(name, &format!("--- ce.toml\n{toml}--- main.py\n{body}"))
 }
 
+/// The tree's structure report with the split advisory armed.
+fn report(dir: &Path) -> StructureReport {
+    let answer =
+        judge::run(dir, None, &common::core_bin(), (false, None, true)).expect("structure");
+    read_bound(answer.document, "structure").expect("read")
+}
+
 /// The best seam's benefit, candidate or exemption.
 fn best_benefit(dir: &Path) -> i64 {
-    let core = common::core_bin();
-    let answer = judge::run(dir, None, &core, (false, None, true)).expect("structure");
-    let report: StructureReport = read_bound(answer.document, "structure").expect("read");
+    let report = report(dir);
     assert!(report.split, "split armed");
     report
         .split_candidates
@@ -79,9 +84,7 @@ fn a_classed_file_prices_its_seam_on_its_class_curve() {
         [[rules.class]]\nname = \"tight\"\nglobs = [\"main.py\"]\n\
         [rules.class.knobs]\nfile_lines_warn = 3\nfile_lines_fail = 20\n";
     let dir = seeded("structure-knob-classed", toml, WIDE);
-    let answer =
-        judge::run(&dir, None, &common::core_bin(), (false, None, true)).expect("structure");
-    let report: StructureReport = read_bound(answer.document, "structure").expect("read");
+    let report = report(&dir);
     let seam = report
         .split_candidates
         .first()
@@ -119,10 +122,7 @@ fn a_class_wall_below_the_soft_line_sends_the_files_between() {
     };
     let low_wall = soft_at_20(seeded("structure-knob-low-wall", &walled, WIDE));
     assert!(best_benefit(&low_wall) > 0);
-    let dir = soft_at_20(seeded("structure-knob-no-wall", lines, WIDE));
-    let answer =
-        judge::run(&dir, None, &common::core_bin(), (false, None, true)).expect("structure");
-    let report: StructureReport = read_bound(answer.document, "structure").expect("read");
+    let report = report(&soft_at_20(seeded("structure-knob-no-wall", lines, WIDE)));
     assert!(report.split_candidates.is_empty() && report.size_exempt.is_empty());
 }
 

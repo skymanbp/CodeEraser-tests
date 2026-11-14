@@ -32,14 +32,14 @@ fn punct() -> Vec<Vec<&'static str>> {
 }
 
 /// The GUI's words, both languages, markers unfilled.
-fn gui() -> Value {
+pub(crate) fn gui() -> Value {
     let out = common::gates::node(&["cli/tests/gui/words.js"], &[]);
     common::gates::expect_ok(&out, "node cli/tests/gui/words.js");
     serde_json::from_slice(&out.stdout).expect("the words")
 }
 
 /// One copied sentence of `lang`, its markers filled in order.
-fn copy(w: &Value, lang: &str, key: &str, fill: &[&str]) -> String {
+pub(crate) fn copy(w: &Value, lang: &str, key: &str, fill: &[&str]) -> String {
     let mut s = w[lang][key]
         .as_str()
         .unwrap_or_else(|| panic!("{lang}.{key}"))
@@ -72,8 +72,19 @@ fn establish(dir: &Path) {
     assert_eq!(code, Some(0), "{dir:?}: the baseline is written: {err}");
 }
 
+/// `ce <family> . --format json` in `dir`: its document.
+pub(crate) fn document(dir: &Path, family: &str) -> Value {
+    let core = core_bin();
+    let (_, out, err) = common::ce_triple(
+        dir,
+        &[family, ".", "--format", "json", "--core", &core],
+        &[],
+    );
+    serde_json::from_str(&out).unwrap_or_else(|e| panic!("{family}: {e}: {err}"))
+}
+
 /// `ce` in `dir` under `lang`, stdout and stderr together.
-fn ce(dir: &Path, lang: &str, args: &[&str]) -> String {
+pub(crate) fn ce(dir: &Path, lang: &str, args: &[&str]) -> String {
     let core = core_bin();
     let args: Vec<&str> = args.iter().copied().chain(["--core", &core]).collect();
     let (_, out, err) = common::ce_triple(dir, &args, &[("CE_LANG", lang)]);
@@ -147,14 +158,7 @@ fn the_state_words_the_gate_and_the_check_hint_are_the_consoles() {
         &dir,
         "main.ts: export const m = 1;\nn.ts: export const z = 1;",
     );
-    let core = core_bin();
-    let (_, out, err) = common::ce_triple(
-        &dir,
-        &["check", ".", "--format", "json", "--core", &core],
-        &[],
-    );
-    let doc: Value = serde_json::from_str(&out).expect(&err);
-    let off = doc["axes"][4][1].to_string();
+    let off = document(&dir, "check")["axes"][4][1].to_string();
     for p in punct() {
         let lang = p[0];
         let text = ce(&dir, lang, &["deadcode", ".", "--check"]);
@@ -222,102 +226,6 @@ fn the_gate_rows_none_blocked_and_unanswered_are_the_consoles() {
                 key,
                 &fill,
             );
-        }
-    }
-}
-
-/// The erase screen's four provenance templates (`provDead`, `provDoc`,
-/// `provLinked`, `provTwin`) are the console's `prov_*` rows: on the
-/// erase fixture with linked documentation twins added (erase_e2e's
-/// seed: an unreferenced file, a clone twin; the two linked pages: a
-/// documentation twin whose candidate's section is linked), each
-/// advisory row's GUI sentence, its markers filled with the row's facts
-/// (the plan's `from`), appears in the console, in both languages.
-#[test]
-fn the_erase_provenance_templates_are_the_consoles() {
-    let w = gui();
-    let dir = tmp("gui-words-provenance");
-    crate::erase_e2e::seed(&dir);
-    let page = format!(
-        "# Page\n\n## Install\n\n{} extra words here\n",
-        crate::erase_e2e::PARA
-    );
-    let files = [
-        (
-            "links.md",
-            "[a](docs/a.md#install) [b](docs/b.md#install)".to_string(),
-        ),
-        ("docs/a.md", page.clone()),
-        ("docs/b.md", page),
-    ];
-    common::write_all(&dir, &files);
-    common::commit_all(&dir, "linked docs");
-    let core = core_bin();
-    let (_, out, err) = common::ce_triple(
-        &dir,
-        &["erase", ".", "--format", "json", "--core", &core],
-        &[],
-    );
-    let plan: Value = serde_json::from_str(&out).unwrap_or_else(|e| panic!("{e}: {err}"));
-    let rows: Vec<&Value> = plan["rows"]
-        .as_array()
-        .expect("rows")
-        .iter()
-        .filter(|r| r["eraseable"] == false)
-        .collect();
-    for family in ["deadcode", "docdup", "dedup"] {
-        assert!(
-            rows.iter().any(|r| r["from"]["family"] == family),
-            "an advisory {family} row: {plan}"
-        );
-    }
-    assert!(
-        rows.iter().any(|r| r["from"]["linked"].as_u64() > Some(0)),
-        "a linked row: {plan}"
-    );
-    for lang in ["en", "zh"] {
-        let text = ce(&dir, lang, &["erase", "."]);
-        for r in &rows {
-            let line = provenance(&w, lang, &r["from"]);
-            assert!(text.contains(&line), "{lang}: {line} in {text}");
-        }
-    }
-}
-
-/// One plan row's provenance in `lang`, the GUI's way (gui/ui/erase.js
-/// `provText`): its template with the row's facts in the markers.
-fn provenance(w: &Value, lang: &str, f: &Value) -> String {
-    let s = |v: &Value| v.as_str().map_or_else(|| v.to_string(), String::from);
-    let span = [s(&f["span"][0]), s(&f["span"][1])];
-    match f["family"].as_str() {
-        Some("deadcode") => {
-            let why = s(&w[lang]["deadWhy"][s(&f["whyCode"])]);
-            copy(w, lang, "provDead", &[&s(&f["verdict"]), &why])
-        }
-        Some("docdup") => {
-            let fill = [
-                s(&f["twin"]),
-                span[0].clone(),
-                span[1].clone(),
-                s(&f["jaccard"][0]),
-                s(&f["jaccard"][1]),
-                s(&f["verbatim"]),
-            ];
-            let linked = match f["linked"].as_u64() {
-                Some(n) if n > 0 => copy(w, lang, "provLinked", &[&n.to_string()]),
-                _ => String::new(),
-            };
-            copy(w, lang, "provDoc", &fill.each_ref().map(String::as_str)) + &linked
-        }
-        _ => {
-            let fill = [
-                s(&f["twin"]),
-                span[0].clone(),
-                span[1].clone(),
-                s(&f["tokens"]),
-                s(&f["unit"]),
-            ];
-            copy(w, lang, "provTwin", &fill.each_ref().map(String::as_str))
         }
     }
 }

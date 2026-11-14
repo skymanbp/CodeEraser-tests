@@ -283,14 +283,13 @@ fn a_prose_only_tree_is_judged_on_an_empty_graph() {
         "no file of an empty graph is unreferenced"
     );
     let core = core_bin();
-    let out = common::run_ce(&dir, &["check", ".", "--format", "json", "--core", &core]);
-    let err = String::from_utf8_lossy(&out.stderr);
-    assert_ne!(
-        out.status.code(),
-        Some(2),
-        "a verdict, not a refusal: {err}"
+    let (code, out, err) = common::ce_triple(
+        &dir,
+        &["check", ".", "--format", "json", "--core", &core],
+        &[],
     );
-    let doc: serde_json::Value = serde_json::from_slice(&out.stdout).expect("check document");
+    assert_ne!(code, Some(2), "a verdict, not a refusal: {err}");
+    let doc: serde_json::Value = serde_json::from_str(&out).expect("check document");
     assert!(doc["score"].is_number(), "a score: {doc}");
     let pairs = doc["candidates"].as_array().map_or(0, Vec::len);
     assert!(pairs >= 1, "the duplicated paragraph is counted: {doc}");

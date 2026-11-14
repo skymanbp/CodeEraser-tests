@@ -54,13 +54,17 @@ fn doctor_reports_project_without_spawning_daemon() {
     }
 }
 
+/// The plugin's manifest, parsed.
+fn manifest(plugin: &std::path::Path) -> serde_json::Value {
+    let text =
+        std::fs::read_to_string(plugin.join(".claude-plugin/plugin.json")).expect("plugin.json");
+    serde_json::from_str(&text).expect("plugin.json parses")
+}
+
 #[test]
 fn plugin_manifests_parse_and_wire_real_subcommands() {
     let plugin = repo_root().join("plugin");
-    let manifest: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(plugin.join(".claude-plugin/plugin.json")).expect("plugin.json"),
-    )
-    .expect("plugin.json parses");
+    let manifest = manifest(&plugin);
     assert_eq!(manifest["name"], "codeeraser");
     let hooks: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(plugin.join("hooks/hooks.json")).expect("hooks.json"),
@@ -165,12 +169,13 @@ fn marketplace_manifest_sits_at_repo_root_and_points_home() {
 #[test]
 fn the_starter_compares_folders_against_the_manifest_name() {
     let plugin = repo_root().join("plugin");
-    let manifest: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(plugin.join(".claude-plugin/plugin.json")).expect("plugin.json"),
-    )
-    .expect("plugin.json parses");
-    let name = manifest["name"].as_str().expect("a name");
-    let sh = std::fs::read_to_string(plugin.join("bin/ce.sh")).expect("ce.sh");
-    let want = format!("\nplugin={name}\n");
-    assert!(sh.contains(&want), "ce.sh compares against `{name}`");
+    let name = manifest(&plugin)["name"]
+        .as_str()
+        .map(str::to_string)
+        .expect("a name");
+    let starter = std::fs::read_to_string(plugin.join("bin/ce.sh")).expect("ce.sh");
+    assert!(
+        starter.contains(&format!("\nplugin={name}\n")),
+        "ce.sh compares against `{name}`"
+    );
 }
