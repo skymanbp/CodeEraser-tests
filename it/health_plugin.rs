@@ -158,3 +158,19 @@ fn marketplace_manifest_sits_at_repo_root_and_points_home() {
         "entry version must stay unset — plugin.json is the authority"
     );
 }
+
+/// The starter uses a data folder only when it is this plugin's own
+/// (release 1.10.0, J4): named the plugin's name, or that name and `-`.
+/// The name it compares against is the manifest's.
+#[test]
+fn the_starter_compares_folders_against_the_manifest_name() {
+    let plugin = repo_root().join("plugin");
+    let manifest: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(plugin.join(".claude-plugin/plugin.json")).expect("plugin.json"),
+    )
+    .expect("plugin.json parses");
+    let name = manifest["name"].as_str().expect("a name");
+    let sh = std::fs::read_to_string(plugin.join("bin/ce.sh")).expect("ce.sh");
+    let want = format!("\nplugin={name}\n");
+    assert!(sh.contains(&want), "ce.sh compares against `{name}`");
+}
