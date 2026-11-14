@@ -19,7 +19,7 @@ fn fixture() -> (GraphWire, Judged) {
         degraded: None,
         fail: true,
         grouping: Grouping {
-            roots: vec![[1, 0]],
+            roots: vec![1],
             under: vec![],
             dropped: false,
         },
