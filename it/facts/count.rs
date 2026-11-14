@@ -133,6 +133,12 @@ fn golden_requests(root: &Path) -> usize {
 /// Counts off the tree and the contract JSONs.
 /// Capabilities the hello reply offers that are no judgment family.
 const NOT_FAMILIES: &str = "hello tables/1 document/1 resolve/1 candidates/1 rank/1 docpairs/1 moves/1 bags/1 relocate/1 cover/1";
+/// Of those, the three that are no stage either.
+const NOT_STAGES: &str = "hello tables/1 document/1";
+
+fn named(list: &str, c: &serde_json::Value) -> bool {
+    list.split(' ').any(|n| Some(n) == c.as_str())
+}
 
 fn tree(root: &Path) -> Vec<Fact> {
     let hooks = json(root, "plugin/hooks/hooks.json");
@@ -154,7 +160,7 @@ fn tree(root: &Path) -> Vec<Fact> {
             // clone judgment's coverage rule)
             capabilities
                 .iter()
-                .filter(|c| !NOT_FAMILIES.split(' ').any(|n| Some(n) == c.as_str()))
+                .filter(|c| !named(NOT_FAMILIES, c))
                 .count(),
             "contracts/fixtures/handshake/hello-ok.ndjson::capabilities (minus hello, tables/1, document/1, \
              the W2a stage resolve/1 and the W3 stages candidates/1, rank/1, docpairs/1, moves/1 the W6 stage bags/1 and the v2.35 stages relocate/1, cover/1)",
@@ -162,16 +168,10 @@ fn tree(root: &Path) -> Vec<Fact> {
         linked(
             "count:stages#word",
             // the stage capabilities a family or the write-time probe
-            // calls (the how pages name them): NOT_FAMILIES past its first
-            // three, the handshake, tables/1 and document/1
+            // calls (the how pages name them): NOT_FAMILIES but NOT_STAGES
             capabilities
                 .iter()
-                .filter(|c| {
-                    NOT_FAMILIES
-                        .split(' ')
-                        .skip(3)
-                        .any(|n| Some(n) == c.as_str())
-                })
+                .filter(|c| named(NOT_FAMILIES, c) && !named(NOT_STAGES, c))
                 .count(),
             "contracts/fixtures/handshake/hello-ok.ndjson::capabilities (the stages: NOT_FAMILIES \
              without hello, tables/1, document/1)",
