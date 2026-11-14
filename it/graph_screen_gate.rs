@@ -6,7 +6,9 @@
 //! key of `ce.graph-screen` is, key for key and byte for byte, what
 //! `ce deadcode --format json` prints for the same tree. The tree holds a
 //! standing root (`s.ts`, unreferenced when the baseline was written), a
-//! born root (`n.ts`, new since) and a dependent (`d.ts`, under `n.ts`).
+//! born root (`n.ts`, new since) and a born dependent (`d.ts`, under
+//! `n.ts`: every unreferenced file has a state; `d.ts` does not block,
+//! since `n.ts`, itself in a blocked state, supports it).
 
 use crate::common::{self, core_bin};
 use serde_json::Value;
@@ -46,8 +48,8 @@ fn the_screen_carries_the_deadcode_document_byte_for_byte() {
         .collect();
     assert_eq!(
         states,
-        [("d.ts", "-"), ("n.ts", "born"), ("s.ts", "standing")],
-        "a dependent, a born root and a standing root: {face}"
+        [("d.ts", "born"), ("n.ts", "born"), ("s.ts", "standing")],
+        "a born dependent, a born root and a standing root: {face}"
     );
     assert_eq!(face["gate"]["blocked"], 1, "{face}");
     assert_eq!(

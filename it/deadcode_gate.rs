@@ -11,6 +11,28 @@
 //! must carry — `deadcode` is `ce deadcode . --check`, `check` is
 //! `ce check .`, `baseline` is `ce baseline .`, `baseline!` the same
 //! under CE_ACCEPT_BASELINE=1.
+//!
+//! The law the table holds (CE.Graph.Point): every unreferenced file has
+//! a state; M is the unreferenced files whose state `[deadcode] block`
+//! names; the files that block are M's roots (a file of M that every
+//! member of M supporting it is supported by), and the gate passes iff M
+//! is empty. Three scenarios read the difference from the roots-only
+//! reading:
+//! - `deadcode-gate-standing-importer` (the audit's gate1 tree): at the
+//!   baseline `s.ts` is unreferenced (standing) and `main.ts` imports
+//!   `lib.ts`; then `main.ts` drops it and `s.ts` imports `lib.ts` and a
+//!   new `n.ts`. D = {lib (orphaned), n (born), s (standing)}, `s` the only
+//!   root of D. M = {lib, n}; the one file supporting either is `s`, not
+//!   in M, so both are roots of M: both block (the roots-only reading
+//!   blocked nothing, its one root being standing).
+//! - `deadcode-gate-standing-control`: the same baseline, `main.ts` drops
+//!   `lib.ts` and nothing imports it. D = {lib (orphaned), s (standing)},
+//!   both roots; M = {lib}: `lib.ts` blocks, the roots-only answer.
+//! - `deadcode-gate-partial-mask` (block = born): `main.ts` drops
+//!   `lib.ts`, which imports a new `n.ts`. D = {lib (orphaned), n (born)},
+//!   `lib` the root, `n` under it. M = {n}, nothing in M supports it:
+//!   `n.ts` blocks (the roots-only reading passed: its root is orphaned,
+//!   not a blocked state).
 
 use crate::common;
 use crate::common::mcp::McpSession;
@@ -38,7 +60,7 @@ run baseline! 0 baseline written
 run deadcode 0 unreferenced (standing): s.ts
 run check 0 -> pass
 write n.ts: export const z = 1;
-run deadcode 1 deadcode check: 1 root(s) blocked (born): n.ts
+run deadcode 1 deadcode check: 1 file(s) blocked (born): n.ts
 run check 1 failed: dead_added
 == deadcode-gate-orphaned
 write main.ts: import './lib';
@@ -46,7 +68,7 @@ write lib.ts: export const v = 1;
 toml [graph];entry_globs = ["main.ts"];[deadcode];block = ["orphaned"]
 run baseline! 0 baseline written
 write main.ts: export const m = 1;
-run deadcode 1 deadcode check: 1 root(s) blocked (orphaned): lib.ts
+run deadcode 1 deadcode check: 1 file(s) blocked (orphaned): lib.ts
 run check 1 failed: dead_added
 write main.ts: import './lib';
 write n.ts: export const z = 1;
@@ -55,8 +77,8 @@ run check 0 -> pass
 == deadcode-gate-no-baseline
 write a.ts: export const a = 1;
 toml [deadcode];block = ["born"]
-run deadcode 2 no committed baseline records which files were unreferenced
-run check 2 no committed baseline records which files were unreferenced
+run deadcode 2 ce-baseline.json holds no comparison point
+run check 2 ce-baseline.json holds no comparison point
 == deadcode-gate-no-point
 write a.ts: export const a = 1;
 toml [deadcode];block = ["born"]
@@ -95,6 +117,38 @@ toml [deadcode];block = ["born"]
 run check 1 failed: knobs_digest
 run baseline! 0 baseline written
 has knobsDigest
+== deadcode-gate-standing-importer
+write main.ts: import './lib';
+write lib.ts: export const l = 1;
+write s.ts: export const s = 2;
+toml [graph];entry_globs = ["main.ts"];[deadcode];block = ["orphaned", "born"]
+run baseline! 0 baseline written
+run deadcode 0 unreferenced (standing): s.ts
+write main.ts: export const m = 0;
+write s.ts: import './lib'; import './n';
+write n.ts: export const n = 3;
+run deadcode 1 deadcode check: 2 file(s) blocked (born, orphaned): lib.ts, n.ts
+run deadcode 1 unreferenced (born): n.ts
+run check 1 failed: dead_added
+== deadcode-gate-standing-control
+write main.ts: import './lib';
+write lib.ts: export const l = 1;
+write s.ts: export const s = 2;
+toml [graph];entry_globs = ["main.ts"];[deadcode];block = ["orphaned", "born"]
+run baseline! 0 baseline written
+write main.ts: export const m = 0;
+run deadcode 1 deadcode check: 1 file(s) blocked (orphaned): lib.ts
+run check 1 failed: dead_added
+== deadcode-gate-partial-mask
+write main.ts: import './lib';
+write lib.ts: export const l = 1;
+toml [graph];entry_globs = ["main.ts"];[deadcode];block = ["born"]
+run baseline! 0 baseline written
+write main.ts: export const m = 0;
+write lib.ts: import './n';
+write n.ts: export const n = 3;
+run deadcode 1 deadcode check: 1 file(s) blocked (born): n.ts
+run check 1 failed: dead_added
 "#;
 
 #[test]
@@ -127,7 +181,7 @@ fn the_gate_holds_its_states_against_the_committed_baseline() {
             _ => panic!("unread line: {line}"),
         }
     }
-    assert_eq!(seen, 9, "every scenario ran");
+    assert_eq!(seen, 12, "every scenario ran");
 }
 
 /// One command of the table: its exit code and the words it must say.
@@ -166,8 +220,8 @@ fn edit_baseline(dir: &Path, f: impl FnOnce(&mut serde_json::Map<String, Value>)
 }
 
 /// The MCP tools return the same documents: `deadcode` carries the gate
-/// and each root's state and blocking, `check` the blocking roots in the
-/// ratchet beside `dead_added` and the effective weights.
+/// and each unreferenced file's state and blocking, `check` the blocking
+/// files in the ratchet beside `dead_added` and the effective weights.
 #[test]
 fn the_mcp_tools_carry_the_gate() {
     let dir = common::gates::standing_root_under_block("deadcode-gate-mcp");
