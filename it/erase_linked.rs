@@ -74,6 +74,17 @@ fn a_linked_candidate_is_refused_and_never_erased() {
     assert!(a.contains(PARA) && b.contains(PARA), "both copies stay");
 }
 
+/// The tree's candidate `cand` is the eraseable side with no linked
+/// section, `--apply` erases its copy and leaves the other one.
+fn the_unlinked_copy_goes(name: &str, links: &str, heads: [&str; 2], cand: &str) {
+    let dir = tree(name, links, heads[0], heads[1]);
+    assert_eq!(doc_row(&dir), (cand.into(), true, "eraseable", 0));
+    let (n, a, b) = applied(&dir);
+    let stays = (a.contains(PARA), b.contains(PARA));
+    let want = (cand != "docs/a.md", cand != "docs/b.md");
+    assert_eq!((n, stays), (1, want), "the unlinked copy goes");
+}
+
 /// The auditor's er1 shape: only the LATER side's section is linked
 /// (docs/b.md#install; docs/a.md linked without a fragment). The side
 /// with fewer links, docs/a.md, is the candidate and is erased;
@@ -81,13 +92,11 @@ fn a_linked_candidate_is_refused_and_never_erased() {
 #[test]
 fn only_the_later_side_linked_erases_the_earlier() {
     let links = "See [install](docs/b.md#install) and [a](docs/a.md).";
-    let dir = tree("erase-linked-later", links, "# A", "## Install");
-    assert_eq!(doc_row(&dir), ("docs/a.md".into(), true, "eraseable", 0));
-    let (n, a, b) = applied(&dir);
-    assert_eq!(n, 1);
-    assert!(
-        !a.contains(PARA) && b.contains(PARA),
-        "the unlinked copy goes"
+    the_unlinked_copy_goes(
+        "erase-linked-later",
+        links,
+        ["# A", "## Install"],
+        "docs/a.md",
     );
 }
 
@@ -95,14 +104,12 @@ fn only_the_later_side_linked_erases_the_earlier() {
 /// side is the candidate and is erased, as before.
 #[test]
 fn only_the_earlier_side_linked_erases_the_later_as_before() {
-    let links = "[a](docs/a.md#install)";
-    let dir = tree("erase-linked-earlier", links, "## Install", "## Install");
-    assert_eq!(doc_row(&dir), ("docs/b.md".into(), true, "eraseable", 0));
-    let (n, a, b) = applied(&dir);
-    assert_eq!(n, 1);
-    assert!(
-        a.contains(PARA) && !b.contains(PARA),
-        "the unlinked copy goes"
+    let heads = ["## Install", "## Install"];
+    the_unlinked_copy_goes(
+        "erase-linked-earlier",
+        "[a](docs/a.md#install)",
+        heads,
+        "docs/b.md",
     );
 }
 

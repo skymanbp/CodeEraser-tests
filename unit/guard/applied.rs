@@ -16,6 +16,18 @@ fn edit(path: &std::path::Path, old: &str, new: &str, all: bool) -> Envelope {
     }
 }
 
+fn write(path: &std::path::Path) -> Envelope {
+    Envelope {
+        tool_name: "Write".into(),
+        tool_input: ToolInput {
+            file_path: path.to_string_lossy().into_owned(),
+            content: "new\n".into(),
+            ..ToolInput::default()
+        },
+        ..Envelope::default()
+    }
+}
+
 /// An Edit says why it cannot apply (GD3): the target is absent, a
 /// directory sits at the path (unreadable), `old_string` is empty or
 /// matches nothing, or it matches twice without `replace_all`.
@@ -51,19 +63,21 @@ fn the_size_before_comes_off_the_one_read() {
     std::fs::write(&f, "x = 1\r\ny = 2\r\nz = 3").expect("seed");
     let a = apply(&edit(&f, "y = 2\n", "", false)).expect("applies");
     assert_eq!((a.text.as_str(), a.before), ("x = 1\nz = 3", Some(3)));
-    let write = |p: &std::path::Path| Envelope {
-        tool_name: "Write".into(),
-        tool_input: ToolInput {
-            file_path: p.to_string_lossy().into_owned(),
-            content: "new\n".into(),
-            ..ToolInput::default()
-        },
-        ..Envelope::default()
-    };
     let w = write(&f);
     let a = apply(&w).expect("a write always applies");
     assert_eq!((a.text.as_str(), a.before), ("new\n", None));
     assert_eq!(before_lines(&w, &a), Ok(Some(3)));
     let n = write(&dir.join("new.py"));
     assert_eq!(before_lines(&n, &apply(&n).expect("applies")), Ok(None));
+}
+
+/// A Write whose before side cannot be read subtracts nothing in the
+/// guard's probe: the replaced text is the one `Applied` read (once),
+/// and a directory at the path reads as no text at all.
+#[test]
+fn an_unreadable_before_text_subtracts_nothing() {
+    let dir = scratch("guard-probe-unreadable");
+    let env = write(&dir);
+    let a = apply(&env).expect("a write always applies");
+    assert_eq!(a.prior_text(&env), None);
 }

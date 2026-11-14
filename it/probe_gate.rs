@@ -50,6 +50,13 @@ fn probed(idx: &Index, dir: &Path, rel: &'static str, content: &[u8]) -> Vec<pro
     probe::probe(idx, dir, target, p, filter(p)).expect("probe")
 }
 
+/// The probe of `content` as b.rs read as (matches, copies of the first,
+/// its tokens, its start) — the four numbers the copies legs compare.
+fn shape(idx: &Index, dir: &Path, content: &[u8]) -> (usize, usize, usize, usize) {
+    let m = probed(idx, dir, "b.rs", content);
+    (m.len(), m[0].copies, m[0].tokens, m[0].at)
+}
+
 /// A probe of `content` as `rel` in a fresh seeded directory finds
 /// nothing — the one shape of every silent case (the self-exclusion, the
 /// sub-threshold and the unrelated content used to spell it out each).
@@ -100,12 +107,10 @@ fn probe_finds_t2_clone_of_indexed_file() {
 #[test]
 fn probe_counts_the_copies_of_one_source_run() {
     let (dir, idx) = seeded("probe-copies");
-    let one = probed(&idx, &dir, "b.rs", rust_fn(2).as_bytes());
-    assert_eq!((one.len(), one[0].copies, one[0].at), (1, 1, 0));
+    let (n, copies, tokens, at) = shape(&idx, &dir, rust_fn(2).as_bytes());
+    assert_eq!((n, copies, at), (1, 1, 0));
     let two = format!("{}\n{}", rust_fn(2), rust_fn(3));
-    let both = probed(&idx, &dir, "b.rs", two.as_bytes());
-    let got = (both.len(), both[0].copies, both[0].at, both[0].tokens);
-    assert_eq!(got, (1, 2, 0, one[0].tokens));
+    assert_eq!(shape(&idx, &dir, two.as_bytes()), (1, 2, tokens, 0));
 }
 
 /// Periodic text over a shorter periodic source: a.rs holds P five
@@ -141,16 +146,9 @@ fn periodic_text_counts_disjoint_copies() {
             p.repeat(n)
         )
     };
-    let five = probed(&idx, &dir, "b.rs", text(5).as_bytes());
-    let twelve = probed(&idx, &dir, "b.rs", text(12).as_bytes());
-    assert_eq!((five.len(), five[0].copies, five[0].tokens), (1, 1, 60));
-    let got = (
-        twelve.len(),
-        twelve[0].copies,
-        twelve[0].tokens,
-        twelve[0].at,
-    );
-    assert_eq!(got, (1, 2, 60, five[0].at));
+    let five = shape(&idx, &dir, text(5).as_bytes());
+    assert_eq!((five.0, five.1, five.2), (1, 1, 60));
+    assert_eq!(shape(&idx, &dir, text(12).as_bytes()), (1, 2, 60, five.3));
 }
 
 #[test]
