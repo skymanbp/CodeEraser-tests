@@ -1,5 +1,6 @@
 use super::*;
 use crate::mcp::adapters::count;
+use serde_json::json;
 
 /// The trend window has ONE default (trend::DEFAULT_COMMITS): this
 /// face answered 10 while clap and the GUI answered 30, and the
@@ -37,8 +38,9 @@ fn the_churn_days_row_names_the_shared_default() {
     assert_eq!(carriers, ["churn", "join"]);
 }
 
-/// The update row is the CHECK alone (the read-only charter): `path`
-/// rides its schema like every row's and nothing else does, and the
+/// The update row is the CHECK alone (the read-only charter): it asks
+/// for nothing beyond the shared `path` (its tools/list schema is
+/// pinned beside the descriptor, in mod.rs's unit file), and the
 /// description says what the tool does not do.
 #[test]
 fn the_update_row_is_the_read_only_check() {
@@ -48,7 +50,4 @@ fn the_update_row_is_the_read_only_check() {
         .expect("update_check row");
     assert!(row.extra.is_empty());
     assert!(row.desc.contains("places nothing"), "{}", row.desc);
-    let d = descriptor(row);
-    let props = d["inputSchema"]["properties"].as_object().expect("props");
-    assert_eq!(props.keys().collect::<Vec<_>>(), ["path"]);
 }

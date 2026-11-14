@@ -1,7 +1,21 @@
-use super::{FRAME_MAX, serve_stream};
+use super::{FRAME_MAX, descriptor, serve_stream, tools};
 use serde_json::Value;
 use std::io::Cursor;
 use std::path::Path;
+
+/// The update row's tools/list schema is `path` alone: the shared
+/// property rides it like every row's and nothing else does (the
+/// read-only charter; the row's own facts are pinned under tools).
+#[test]
+fn the_update_row_lists_path_alone() {
+    let row = tools::TOOLS
+        .iter()
+        .find(|t| t.name == "update_check")
+        .expect("update_check row");
+    let d = descriptor(row);
+    let props = d["inputSchema"]["properties"].as_object().expect("props");
+    assert_eq!(props.keys().collect::<Vec<_>>(), ["path"]);
+}
 
 /// The frames the loop wrote back for one canned stdin. `.` as the
 /// root is safe: no method exercised here reaches the filesystem.
