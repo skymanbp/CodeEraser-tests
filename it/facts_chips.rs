@@ -18,19 +18,20 @@ const M: &str = "docs/reference/methodology/";
 const SURFACES: &[(&str, usize, bool)] = &[
     ("README.md", 33, EN),
     ("README.zh.md", 33, ZH),
-    ("plugin/README.md", 7, ZH),
+    ("plugin/README.md", 7, EN),
+    ("plugin/README.zh.md", 7, ZH),
     ("contracts/DAEMON.md", 2, ZH),
     ("contracts/VERSIONING.md", 10, ZH),
     ("docs/RELEASE.md", 14, ZH),
     ("docs/reference/gui.md", 4, EN),
-    ("site/index.html", 6, EN),
-    ("site/zh/index.html", 6, ZH),
-    ("site/how/index.html", 11, EN),
-    ("site/zh/how/index.html", 11, ZH),
+    ("site/index.html", 7, EN),
+    ("site/zh/index.html", 7, ZH),
+    ("site/how/index.html", 13, EN),
+    ("site/zh/how/index.html", 13, ZH),
     ("site/stack/index.html", 5, EN),
     ("site/zh/stack/index.html", 5, ZH),
-    ("site/math/index.html", 2, EN),
-    ("site/zh/math/index.html", 2, ZH),
+    ("site/math/index.html", 3, EN),
+    ("site/zh/math/index.html", 3, ZH),
 ];
 
 /// The methodology booklets carrying chips (English): `file=count`
@@ -99,6 +100,7 @@ fn no_unenrolled_document_carries_a_chip() {
         root.join("README.md"),
         root.join("README.zh.md"),
         root.join("plugin/README.md"),
+        root.join("plugin/README.zh.md"),
     ];
     for (dir, ext) in [("docs", "md"), ("contracts", "md"), ("site", "html")] {
         files_with_ext(&root.join(dir), ext, &mut files);

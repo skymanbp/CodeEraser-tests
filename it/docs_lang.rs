@@ -23,6 +23,8 @@ use std::path::Path;
 pub const SURFACES: &[(&str, bool)] = &[
     ("README.md", false),
     ("README.zh.md", true),
+    ("plugin/README.md", false),
+    ("plugin/README.zh.md", true),
     ("site/index.html", false),
     ("site/how/index.html", false),
     ("site/how/analysis/index.html", false),

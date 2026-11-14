@@ -65,7 +65,8 @@ const WORDING: [(&str, &str); 5] = [
     ),
     ("README.md", "A write that grows a file past"),
     ("README.zh.md", "让文件长过"),
-    ("plugin/README.md", "写入让文件长过其硬线"),
+    ("plugin/README.md", "a write that grows a file past its hard line"),
+    ("plugin/README.zh.md", "写入让文件长过其硬线"),
 ];
 
 #[test]

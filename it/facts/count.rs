@@ -160,6 +160,18 @@ fn tree(root: &Path) -> Vec<Fact> {
              the W2a stage resolve/1 and the W3 stages candidates/1, rank/1, docpairs/1, moves/1 the W6 stage bags/1 and the v2.35 stages relocate/1, cover/1)",
         ),
         linked(
+            "count:stages#word",
+            // the stage capabilities a family or the write-time probe
+            // calls (the how pages name them): NOT_FAMILIES past its first
+            // three, the handshake, tables/1 and document/1
+            capabilities
+                .iter()
+                .filter(|c| NOT_FAMILIES.split(' ').skip(3).any(|n| Some(n) == c.as_str()))
+                .count(),
+            "contracts/fixtures/handshake/hello-ok.ndjson::capabilities (the stages: NOT_FAMILIES \
+             without hello, tables/1, document/1)",
+        ),
+        linked(
             "count:golden_requests#digits",
             golden_requests(root),
             "contracts/fixtures/*/golden.ndjson (request lines; the pairing is \

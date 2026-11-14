@@ -132,23 +132,24 @@ fn chrome_terms(root: &Path) -> Vec<String> {
         .collect()
 }
 
-/// The architecture sublabels that spell a derived fact: `node|en|zh`,
+/// The diagram sublabels that spell a derived fact: `diagram.node|en|zh`,
 /// one row per component, `{id}` rendered through the registry
 /// (facts::template — the same channel the source-literal sites use).
 /// One literal rather than a table of same-shaped tuples: such a table
 /// is a clone of every other one by construction (facts_chips.rs).
 const SPELLED: &str = "
-scan|tree-sitter · {count:grammars#word} grammars|tree-sitter · {count:grammars#word}套语法
-wire|proto {ver:proto#v} · {count:families#word} families|proto {ver:proto#v} · {count:families#word}个家族
-gui|Tauri · {count:screens#word} screens|Tauri · {count:screens#word}屏
-mcp|{count:mcp_tools#word} read-only tools|{count:mcp_tools#word}个只读工具
+architecture.scan|tree-sitter · {count:grammars#word} grammars|tree-sitter · {count:grammars#word}套语法
+architecture.wire|proto {ver:proto#v} · {count:families#word} families|proto {ver:proto#v} · {count:families#word}个家族
+architecture.gui|Tauri · {count:screens#word} screens|Tauri · {count:screens#word}屏
+architecture.mcp|{count:mcp_tools#word} read-only tools|{count:mcp_tools#word}个只读工具
+judgment.gate|exit code · {count:fail_conditions#word} fail conditions|退出码 · {count:fail_conditions#word}个 fail 条件
 ";
 
-/// The `sublabel` of one architecture component, by id.
+/// The `sublabel` of one diagram component, by id.
 fn sublabel(ir: &Value, id: &str) -> String {
     ir["components"]
         .as_array()
-        .expect("the architecture IR carries components")
+        .expect("a diagram IR carries components")
         .iter()
         .find(|c| c["id"] == id)
         .unwrap_or_else(|| panic!("the architecture IR has no component {id:?}"))["sublabel"]
@@ -158,16 +159,17 @@ fn sublabel(ir: &Value, id: &str) -> String {
 }
 
 #[test]
-fn the_architecture_sublabels_spell_the_registry_values() {
+fn the_diagram_sublabels_spell_the_registry_values() {
     let root = repo_root();
     for row in SPELLED.lines().filter(|l| !l.is_empty()) {
-        let (id, rest) = row.split_once('|').expect("node|en|zh");
-        let (en, zh) = rest.split_once('|').expect("node|en|zh");
+        let (at, rest) = row.split_once('|').expect("diagram.node|en|zh");
+        let (diagram, id) = at.split_once('.').expect("diagram.node");
+        let (en, zh) = rest.split_once('|').expect("diagram.node|en|zh");
         for (lang, template, is_zh) in [("en", en, false), ("zh", zh, true)] {
             assert_eq!(
-                sublabel(&ir(&root, "architecture", lang), id),
+                sublabel(&ir(&root, diagram, lang), id),
                 facts::template(template, is_zh),
-                "docs/diagrams/architecture.{lang}.json: component {id} drifted from the \
+                "docs/diagrams/{diagram}.{lang}.json: component {id} drifted from the \
                  registry — edit the IR, then re-render with `node scripts/diagram.mjs --write`"
             );
         }

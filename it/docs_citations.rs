@@ -5,7 +5,7 @@
 //! live in docs_citations_parts.
 //!
 //! Surfaces are derived, not listed: every tracked Markdown page under
-//! docs/, the two READMEs, CHANGELOG, plugin/README and demo/README,
+//! docs/, the two READMEs, CHANGELOG, the plugin README pair and demo/README,
 //! minus contracts/docs-citations-optout.json — each opt-out with its
 //! reason, and each naming a page the derivation knows.
 
@@ -17,11 +17,12 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-const FIXED: [&str; 5] = [
+const FIXED: [&str; 6] = [
     "README.md",
     "README.zh.md",
     "CHANGELOG.md",
     "plugin/README.md",
+    "plugin/README.zh.md",
     "demo/README.md",
 ];
 const LEDGER: &str = "contracts/docs-citations.json";
