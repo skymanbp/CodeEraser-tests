@@ -74,7 +74,7 @@ ui.lang\tThe project's console language, `en` or `zh` (any other value is refuse
 /// not documented as keys (no row), the section states the refusal once.
 /// `section \t keys (space separated) \t the sentence under the section`.
 const RETIRED_TSV: &str = "\
-score\tsize_penalty_max dead_indeg_ceil\t`size_penalty_max` and `dead_indeg_ceil` retired with the density law (v2.35): the score is the extent law, and the split advisory's P_max is a constant of the core. A `ce.toml` that declares either is refused at load by name: `ce.toml [score] <key>: retired with the density law (v2.35); remove the key`.
+score\tsize_penalty_max dead_indeg_ceil\t`size_penalty_max` and `dead_indeg_ceil` retired in 1.10.0: the score is the extent law, and the split advisory's P_max is a constant of the core. A `ce.toml` that declares either is refused at load by name: `ce.toml [score] <key>: retired in 1.10.0 (the score no longer reads it); remove the key`.
 ";
 
 const GEN_BANNER: &str = "<!-- GENERATED — do not edit. \

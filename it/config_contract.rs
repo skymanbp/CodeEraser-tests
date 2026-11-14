@@ -161,8 +161,9 @@ fn rulepack_classes_refuse_at_the_load_throat() {
 /// The three threshold numerators whose zero makes a predicate
 /// vacuous (9.0.0: the core's thresholds codes 1 / 3 / 4) refuse by
 /// name at the load throat, before any request is built; 1 loads.
-/// The two keys retired with the density law (v2.35), `size_penalty_max`
-/// and `dead_indeg_ceil`: declared at any value, each is refused by name.
+/// The two keys retired in 1.10.0, `size_penalty_max` and
+/// `dead_indeg_ceil`: declared at any value, each is refused by name,
+/// with the reason a user can read (no internal plan number).
 #[test]
 fn zero_threshold_numerators_refuse_at_the_load_throat() {
     let fx = common::fixture("config-contract-numerators", &[("src/a.rs", "fn a() {}\n")]);
@@ -176,7 +177,10 @@ fn zero_threshold_numerators_refuse_at_the_load_throat() {
         for value in [0, 10] {
             let toml = format!("[score]\n{key} = {value}\n");
             let err = load_toml(&fx.dir, &toml).expect_err(key);
-            assert!(err.contains(key) && err.contains("retired"), "{err}");
+            let want = format!(
+                "ce.toml [score] {key}: retired in 1.10.0 (the score no longer reads it); remove the key"
+            );
+            assert_eq!(err, want);
         }
     }
 }
