@@ -70,6 +70,25 @@ fn an_edit_replacing_the_twin_with_itself_is_not_new() {
     assert_eq!(line["matches"], 0, "the replaced span already matched");
 }
 
+/// A file that already carries one copy may not take a SECOND by a
+/// Write or by an Edit (release 1.10.0): the probe reports the new
+/// text's match on a.rs as two copies, the replaced text's as one, and
+/// the guard subtracts in those units — the second unit finds every
+/// line used up. A new file holding two copies is denied with the very
+/// reason one copy gets: the reason counts source regions, not copies.
+#[test]
+fn a_second_copy_beside_the_carried_one_denies() {
+    let dir = seeded("novelty-second");
+    let (one, two) = (rust_fn(2), format!("{}\n{}", rust_fn(2), rust_fn(3)));
+    let write = pretooluse_envelope_at(&dir, "b.rs", "Write", &two);
+    expect_decision(&dir, &write, "deny");
+    let edit = pretooluse_edit_envelope(&dir, "b.rs", &one, &two);
+    expect_decision(&dir, &edit, "deny");
+    let leaf = |text: &str| pretooluse_envelope_at(&dir, "leaf.rs", "Write", text);
+    let single = expect_decision(&dir, &leaf(&one), "deny");
+    assert_eq!(expect_decision(&dir, &leaf(&two), "deny"), single);
+}
+
 /// The split-to-a-new-file write has no replaced content and still
 /// denies — and the reason teaches the ordering that passes (trim
 /// the source first; the probe verifies against the current tree).

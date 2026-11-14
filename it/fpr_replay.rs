@@ -77,18 +77,15 @@ fn seed(repo: &Path, shadow: &Path, idx: &mut Index, first: &str, p: Params) -> 
     live
 }
 
-/// The guard's split (guard/probe.rs `carried`): a match whose twin
-/// region overlaps one the parent content already had is carried
-/// forward, not written anew.
+/// The guard's split, read from the product (guard/probe.rs
+/// `subtract`, counted in units since 1.10.0): what the parent content
+/// already matched is carried forward, each copy once by source line;
+/// any further copy is written anew.
 fn novel(child: Vec<Match>, parent: &[Match]) -> Vec<Match> {
-    child
-        .into_iter()
-        .filter(|m| {
-            !parent.iter().any(|b| {
-                b.file == m.file && b.start_line <= m.end_line && m.start_line <= b.end_line
-            })
-        })
-        .collect()
+    codeeraser::guard::subtract(child, parent, |m| {
+        let (s, e) = (m.start_line as u64, m.end_line as u64);
+        Some((m.file.clone(), s, e, m.copies as u64))
+    })
 }
 
 /// Shared tokens per twin — the sum over every verified run with that

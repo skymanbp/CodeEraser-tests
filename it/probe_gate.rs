@@ -89,6 +89,70 @@ fn probe_finds_t2_clone_of_indexed_file() {
     );
 }
 
+/// One match per source run, with how many copies of it the probed
+/// text holds (release 1.10.0). One copy: `copies` 1 at the copy's
+/// start, as before. Two copies of a.rs's function: still ONE match,
+/// `copies` 2, `at` the first copy's start (token 0). Derivation of the
+/// second: each copy extends to the whole of a.rs (b0 = 0, len = all
+/// of its tokens) — backward the second copy stops at a.rs's first
+/// token, forward the first copy stops at a.rs's last — so both starts
+/// name one run; their intervals are disjoint.
+#[test]
+fn probe_counts_the_copies_of_one_source_run() {
+    let (dir, idx) = seeded("probe-copies");
+    let one = probed(&idx, &dir, "b.rs", rust_fn(2).as_bytes());
+    assert_eq!((one.len(), one[0].copies, one[0].at), (1, 1, 0));
+    let two = format!("{}\n{}", rust_fn(2), rust_fn(3));
+    let both = probed(&idx, &dir, "b.rs", two.as_bytes());
+    let got = (both.len(), both[0].copies, both[0].at, both[0].tokens);
+    assert_eq!(got, (1, 2, 0, one[0].tokens));
+}
+
+/// Periodic text over a shorter periodic source: a.rs holds P five
+/// times between `{` and `return`, the probed text twelve times between
+/// `;` and `}` (P = one 12-token statement, `if` first and `}` last,
+/// with no shorter period). Around a.rs's run the tokens are `{` before
+/// and `return` after; around any aligned stretch of the probed text
+/// they are `;` or a P's `}` before and `if` or `}` after, so the
+/// extension stops exactly at a.rs's run. Derivation from the definition:
+/// only shifts by whole periods align 25-token windows; a shift of k
+/// periods with 0 <= k <= 7 puts a.rs's five P inside the twelve, the
+/// extension stops at both of a.rs's boundaries, so every such start
+/// names the ONE run (a.rs's five P, 60 tokens) and S = {at + 12k : k in
+/// 0..=7}; k = -1 or 8 overlap four P (48 tokens, below the 50 floor).
+/// Greedy disjoint count: take k = 0, next start >= at + 60 is k = 5,
+/// next would need k >= 10: copies = 2 (eight starts, not eight copies).
+/// `at` is the k = 0 start: the same as the probe of the text holding
+/// exactly five P.
+#[test]
+fn periodic_text_counts_disjoint_copies() {
+    let p = "    if a < b { c += d * e; }\n";
+    let dir = tmp("probe-periodic");
+    let par = Params::default();
+    let source = format!("fn a() {{\n{}    return;\n}}\n", p.repeat(5));
+    std::fs::write(dir.join("a.rs"), &source).expect("write a.rs");
+    let mut idx = Index::open(&dir.join(".ce/index.db"), par).expect("open");
+    idx.refresh_file("a.rs", source.as_bytes(), Lang::Rust, par, false)
+        .expect("seed");
+    idx.mark_full_build().expect("stamp");
+    let text = |n: usize| {
+        format!(
+            "const Q: u8 = 0;\nfn b() {{\n    let z = 0;\n{}}}\n",
+            p.repeat(n)
+        )
+    };
+    let five = probed(&idx, &dir, "b.rs", text(5).as_bytes());
+    let twelve = probed(&idx, &dir, "b.rs", text(12).as_bytes());
+    assert_eq!((five.len(), five[0].copies, five[0].tokens), (1, 1, 60));
+    let got = (
+        twelve.len(),
+        twelve[0].copies,
+        twelve[0].tokens,
+        twelve[0].at,
+    );
+    assert_eq!(got, (1, 2, 60, five[0].at));
+}
+
 #[test]
 fn probe_excludes_the_edited_file_itself() {
     // re-writing a.rs with its own (slightly grown) content must not
@@ -140,6 +204,7 @@ fn probe_over_daemon_socket() {
             let arr = matches.as_array().expect("array");
             assert!(!arr.is_empty(), "socket probe must flag the T2 clone");
             assert_eq!(arr[0]["file"], "a.rs");
+            assert_eq!(arr[0]["copies"], 1, "the wire carries the copy count");
             println!("socket probe elapsed: {elapsed_ms} ms");
         }
         other => panic!("expected probe report, got {other:?}"),

@@ -100,6 +100,35 @@ fn a_posix_cwd_leaves_a_degraded_line() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
+/// Input that is not JSON and this event's envelope with no `cwd` each
+/// leave a named degraded line in the feed of the project the hook runs
+/// in (both went quiet with no trace until 1.10.0); an envelope that
+/// names ANOTHER event is not this hook's call and stays silent.
+#[test]
+fn an_unreadable_envelope_leaves_a_degraded_line() {
+    let dir = project("trace-intake");
+    probe(&dir, b"{not json");
+    traced(&dir, "hook envelope is not JSON");
+    let no_cwd = serde_json::json!({
+        "session_id": "t", "hook_event_name": "PreToolUse", "tool_name": "Write",
+        "tool_input": {"file_path": "x.py", "content": "y = 1\n"}
+    });
+    probe(&dir, no_cwd.to_string().as_bytes());
+    traced(&dir, "hook envelope names no cwd");
+    let before = common::observe_lines(&dir).len();
+    let other = serde_json::json!({
+        "session_id": "t", "hook_event_name": "Stop",
+        "cwd": dir.display().to_string(),
+    });
+    probe(&dir, other.to_string().as_bytes());
+    assert_eq!(
+        common::observe_lines(&dir).len(),
+        before,
+        "another event is silence"
+    );
+    std::fs::remove_dir_all(&dir).ok();
+}
+
 #[test]
 fn a_cold_stop_judges_the_four_class_leg() {
     let dir = grown("trace-cold-stop");

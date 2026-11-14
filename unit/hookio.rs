@@ -2,7 +2,8 @@ use super::*;
 
 /// The intake is bounded: an envelope under the cap still parses,
 /// one over it is a NAMED refusal (v2.35 G4: the gate writes it to the
-/// feed) instead of being materialized whole, and garbage is ignored.
+/// feed) instead of being materialized whole, and input that is not
+/// JSON is a named refusal too (it went untraced until 1.10.0).
 /// Without the cap the over-cap case parses fine and this asserts
 /// nothing — that WAS the hole.
 #[test]
@@ -14,11 +15,10 @@ fn envelope_intake_is_capped() {
         Err(Intake::Refused(why)) => assert!(why.contains("cap"), "{why}"),
         _ => panic!("over-cap envelope must be a named refusal"),
     }
-    let junk = parse_envelope::<serde_json::Value>(&b"not json"[..]);
-    assert!(
-        matches!(junk, Err(Intake::Ignored)),
-        "garbage is no hook call"
-    );
+    match parse_envelope::<serde_json::Value>(&b"not json"[..]) {
+        Err(Intake::Refused(why)) => assert_eq!(why, "hook envelope is not JSON — not judged"),
+        _ => panic!("input that is not JSON must be a named refusal"),
+    }
 }
 
 /// B4 acceptance half 1: the clip is identity under budget, caps
