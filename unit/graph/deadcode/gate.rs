@@ -84,3 +84,19 @@ fn the_gate_rides_the_request_as_sent() {
     assert_eq!(obj["deadPoint"], json!({"files": [7], "dead": []}));
     assert_eq!((gate.id_of(2), gate.id_of(1)), (Some(u64::MAX), None));
 }
+
+/// The face's exit rule (release 1.10.0): a degraded document is
+/// unjudged with and without `--check` (exit 2, as flow, arch and merge);
+/// an unanswered gate is unjudged only under `--check`; an answered gate
+/// is judged either way, whether or not it blocks (its no is exit 1).
+#[test]
+fn a_degraded_document_is_unjudged_with_and_without_check() {
+    let degraded = json!({"degraded": "graph_too_large", "gate": {"answered": true}});
+    let unanswered = json!({"degraded": null, "gate": {"answered": false}});
+    let answered = json!({"degraded": null, "gate": {"answered": true, "blocked": 1}});
+    let read = |doc: &Value| (super::unjudged(doc, false), super::unjudged(doc, true));
+    assert_eq!(
+        (read(&degraded), read(&unanswered), read(&answered)),
+        ((true, true), (false, true), (false, false))
+    );
+}
