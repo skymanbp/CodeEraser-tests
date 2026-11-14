@@ -4,7 +4,7 @@ use crate::testutil::{scratch, write_tree};
 /// One record as apply.rs's append_log spells it (json! sorts keys).
 fn line(class: &str, path: &str, span: Option<(i64, i64)>) -> String {
     serde_json::json!({
-        "schema": LOG_SCHEMA,
+        "schema": log_schema(),
         "ts_ms": 1_757_088_000_123u64,
         "class": class,
         "path": path,
@@ -24,7 +24,7 @@ fn line(class: &str, path: &str, span: Option<(i64, i64)>) -> String {
 #[test]
 fn the_reader_counts_what_it_cannot_read_by_line() {
     let dir = scratch("erase-log-read");
-    let foreign = line("dead_file", "x.md", None).replace(LOG_SCHEMA, "ce.erase-log/9.0.0");
+    let foreign = line("dead_file", "x.md", None).replace(log_schema(), "ce.erase-log/9.0.0");
     let extra = line("dead_file", "y.md", None).replacen('{', "{\"note\":1,", 1);
     let text = [
         line("t1_twin", "a.py", Some((3, 9))),

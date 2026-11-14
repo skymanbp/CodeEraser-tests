@@ -30,14 +30,14 @@ fn the_table_counts_units_and_pairs_once_per_unit() {
     assert_eq!(table.capped_units, 0);
 }
 
-/// A unit past TERM_CAP word terms counts only its first TERM_CAP in
-/// term order and is ledgered.
+/// A unit past the term cap counts only its first `term_cap()` words
+/// in term order and is ledgered.
 #[test]
 fn a_unit_past_the_cap_counts_its_first_words_and_is_ledgered() {
-    let words: Vec<String> = (0..TERM_CAP + 4).map(|i| format!("w{i}")).collect();
+    let words: Vec<String> = (0..term_cap() + 4).map(|i| format!("w{i}")).collect();
     let refs: Vec<&str> = words.iter().map(String::as_str).collect();
     let corpus = Corpus::build(vec![doc("a.rs", &refs)]).expect("ascending");
     let (kept, capped) = capped_words(&corpus.docs[0].bag);
-    assert!(capped && kept.len() == TERM_CAP);
+    assert!(capped && kept.len() == term_cap());
     assert_eq!(Table::build(&corpus).capped_units, 1);
 }

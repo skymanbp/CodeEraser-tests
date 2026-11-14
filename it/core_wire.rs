@@ -186,23 +186,16 @@ fn the_rust_mirror_of_the_core_defaults_matches_the_echo() {
     }
 }
 
-/// The two mirrors outside the verdict tables: the trend knobs
-/// against the trend echo, and the graph's floor (the thresholds
-/// table's code 7) against the graph's own reading of it — absent =
-/// the mirrored floor (no cycle for a self-arc singleton), 1 = a
-/// cycle.
+/// The mirror outside the verdict tables: the graph's floor (the
+/// thresholds table's code 7) against the graph's own reading of it —
+/// absent = the mirrored floor (no cycle for a self-arc singleton), 1 =
+/// a cycle. (The trend half retired in release 1.10.0 with the two
+/// literals it pinned: the trend defaults are read from the package's
+/// `limits.trend_defaults`, the core's own knob table.)
 #[test]
-fn the_trend_and_graph_mirrors_match_their_echoes() {
+fn the_graph_mirror_matches_its_echo() {
     use codeeraser::score::knobs::core_scc_floor;
     let (mut link, _) = codeeraser::corelink::Link::open(&core_bin()).expect("open");
-    let trend = link
-        .request("trend", serde_json::json!({"rows": [[86400, 900, 1000]]}))
-        .expect("trend round-trip");
-    assert_eq!(
-        trend["knobs"],
-        serde_json::json!([[0, 3], [1, 0]]),
-        "trend mirror"
-    );
     let mut graph = |floor: Option<u32>| {
         let mut req = serde_json::json!({
             "nodes": [[0, 0, 0]], "edges": [[0, 0, 0, 0]], "pos": [], "unres": []

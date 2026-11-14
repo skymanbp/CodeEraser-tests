@@ -12,10 +12,6 @@ use std::path::Path;
 const LINKED: &[(&str, &str)] = &[
     ("baseline", codeeraser::score::baseline::SCHEMA_ID),
     ("doctor", codeeraser::health::doctor::SCHEMA_ID),
-    // the record schema was scraped behind erase::apply until plan
-    // v2.29 step 9 (O50) moved it to the model leaf; the plan's id
-    // left for the core with the GUI preview (plan v2.32 step 6)
-    ("erase-log", codeeraser::erase::LOG_SCHEMA),
     ("observe", codeeraser::hookio::OBSERVE_SCHEMA),
     // the pack text every face shows (plan v2.33 step 10)
     ("query-prelude", codeeraser::faces::PRELUDE_SCHEMA),
@@ -40,6 +36,7 @@ clone-units core/app/CE/Clone/Document.hs unitsSchema
 deadcode core/app/CE/Graph/Document.hs schemaId
 dedup core/app/CE/Dedup/Document.hs schemaId
 docdup core/app/CE/Docdup/Document.hs schemaId
+erase-log core/app/CE/Erase/Document.hs recordSchema
 erase-plan core/app/CE/Erase/Document.hs schemaId
 erase-trail core/app/CE/Erase/Document.hs trailSchemaId
 flow core/app/CE/Flow/Document.hs schemaId

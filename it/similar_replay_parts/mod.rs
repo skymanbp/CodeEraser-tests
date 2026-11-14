@@ -6,7 +6,7 @@ use crate::common;
 use crate::eval_support::content_sha;
 use crate::similar_replay::{CORPORA, Cand, K, Measured};
 use codeeraser::similar::corpus::Doc;
-use codeeraser::similar::{Channel, SIMILAR_REV, docs, ppmi};
+use codeeraser::similar::{Channel, SIMILAR_REV, docs};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
@@ -189,7 +189,7 @@ pub fn constants() -> Value {
         "idf_frac_bits": r.idf_frac_bits, "score_frac_bits": r.score_frac_bits,
         "w_unit": r.w_unit,
         "top_m": r.top_m, "min_cooc": r.min_cooc, "min_ppmi": r.min_ppmi,
-        "ppmi_cap": r.ppmi_cap, "ppmi_scale": r.ppmi_scale, "term_cap": ppmi::TERM_CAP,
+        "ppmi_cap": r.ppmi_cap, "ppmi_scale": r.ppmi_scale, "term_cap": r.term_cap,
         "lead_gap": docs::LEAD_GAP, "head_gap": docs::HEAD_GAP,
         "quota_self": [QUOTA_SELF.0, QUOTA_SELF.1],
         "quota_fixture": [QUOTA_FIXTURE.0, QUOTA_FIXTURE.1],
