@@ -184,16 +184,22 @@ pub fn package_defs() -> Vec<Def> {
             }
         }
     }
-    for key in ["classes", "reasons"] {
-        if let Some(names) = reply["document"]["erase"][key].as_array() {
-            out.push(Def {
-                file: PathBuf::from("tables/1 document.erase"),
-                name: format!("{key}.len"),
-                value: names.len().to_string(),
-            });
-        }
-    }
+    out.extend(erase_name_lengths(&reply["document"]["erase"]));
     out
+}
+
+/// The erase document's name tables by length, `classes.len` and
+/// `reasons.len` (a table the package lacks is no definition).
+fn erase_name_lengths(erase: &serde_json::Value) -> Vec<Def> {
+    let def = |key: &str| {
+        let names = erase[key].as_array()?;
+        Some(Def {
+            file: PathBuf::from("tables/1 document.erase"),
+            name: format!("{key}.len"),
+            value: names.len().to_string(),
+        })
+    };
+    ["classes", "reasons"].into_iter().filter_map(def).collect()
 }
 
 /// One `field: value,` line of a struct literal — name and value only
