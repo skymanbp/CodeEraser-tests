@@ -145,14 +145,16 @@ architecture.mcp|{count:mcp_tools#word} read-only tools|{count:mcp_tools#word}�
 judgment.gate|exit code · {count:fail_conditions#word} fail conditions|退出码 · {count:fail_conditions#word}个 fail 条件
 ";
 
-/// The `sublabel` of one diagram component, by id.
+/// The `sublabel` of one diagram box, by id: an architecture IR keeps its
+/// boxes under `components`, a data-flow IR under `nodes`.
 fn sublabel(ir: &Value, id: &str) -> String {
-    ir["components"]
-        .as_array()
-        .expect("a diagram IR carries components")
+    ir.get("components")
+        .or_else(|| ir.get("nodes"))
+        .and_then(Value::as_array)
+        .expect("a diagram IR carries components or nodes")
         .iter()
         .find(|c| c["id"] == id)
-        .unwrap_or_else(|| panic!("the architecture IR has no component {id:?}"))["sublabel"]
+        .unwrap_or_else(|| panic!("the diagram IR has no box {id:?}"))["sublabel"]
         .as_str()
         .expect("a component sublabel")
         .to_string()
