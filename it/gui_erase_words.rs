@@ -1,5 +1,5 @@
 //! The erase screen's provenance templates held to the console (release
-//! 1.10.0, item K3; split from gui_core_words.rs at its line, whose
+//! 1.10.0; split from gui_core_words.rs at its line, whose
 //! helpers it reads): the GUI writes a plan row's provenance from the
 //! row's facts with its own four templates, and nothing else read those
 //! beside the core's `prov_*` rows.

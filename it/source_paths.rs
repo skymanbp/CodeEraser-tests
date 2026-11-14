@@ -5,8 +5,7 @@
 //! span, a quoted anchor), so a comment pointing at a file by bare path
 //! was outside every gate: eleven core modules went on describing a
 //! deleted Rust file in the present tense, and a GUI comment named two
-//! console files that had moved into the core (release 1.10.0, items
-//! H10 and H17).
+//! console files that had moved into the core (release 1.10.0).
 //!
 //! The rule, exact: on a comment line (Rust and JavaScript `//`, `/*`,
 //! `*`; Haskell `--`, `{-`) of a tracked file under `cli/src`,

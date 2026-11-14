@@ -37,7 +37,7 @@ fn an_html_segment_counts_the_links_to_its_innermost_id() {
 }
 
 /// The targets a Markdown segment answers for besides its heading
-/// (release 1.10.0, item K4), one row each: (text, segment rows, the
+/// (release 1.10.0), one row each: (text, segment rows, the
 /// count). Links: `install` 2, `setup` 3, `in` 5, `below` 7, `sub` 11,
 /// `dup` 13.
 #[test]

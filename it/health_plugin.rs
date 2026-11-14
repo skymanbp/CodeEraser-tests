@@ -164,7 +164,7 @@ fn marketplace_manifest_sits_at_repo_root_and_points_home() {
 }
 
 /// The starter uses a data folder only when it is this plugin's own
-/// (release 1.10.0, J4): named the plugin's name, or that name and `-`.
+/// (release 1.10.0): named the plugin's name, or that name and `-`.
 /// The name it compares against is the manifest's.
 #[test]
 fn the_starter_compares_folders_against_the_manifest_name() {

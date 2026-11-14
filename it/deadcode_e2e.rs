@@ -261,7 +261,7 @@ fn empty_index_is_an_explicit_error() {
 
 /// A tree whose only files are prose (`.txt`: indexed for the
 /// documentation family, read by no graph rung) is judged, not refused as
-/// empty (release 1.10.0, item I1): `ce deadcode` answers zero files and
+/// empty (release 1.10.0): `ce deadcode` answers zero files and
 /// `ce check` a verdict that counts the two pages' duplicated paragraph.
 #[test]
 fn a_prose_only_tree_is_judged_on_an_empty_graph() {

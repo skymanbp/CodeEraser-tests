@@ -212,7 +212,7 @@ fn the_stop_audit_writes_the_advisors_row_for_a_new_same_role_unit() {
     assert!(quiet.get("similar").is_none(), "{quiet}");
 }
 
-/// A typed path names one file on every face (release 1.10.0, H33): the
+/// A typed path names one file on every face (release 1.10.0): the
 /// `at` of `ce similar` and the `impact` of `ce arch`, spelled relative,
 /// `./`-headed (once, or with a doubled slash), backslashed and absolute
 /// under the root, give one document each through the library faces the

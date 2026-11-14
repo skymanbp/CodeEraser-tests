@@ -4,8 +4,8 @@
 //! the candidate, equal counts keep the older choice (the later by
 //! path and line), and a candidate whose section is linked is refused
 //! by name and erased by no `--apply`. And the plan's provenance prints
-//! in the console's language, written by the core from the row's facts
-//! (J2): the English console line carries the document's `provenance`
+//! in the console's language, written by the core from the row's facts:
+//! the English console line carries the document's `provenance`
 //! byte for byte, the Chinese one no English clause.
 
 use crate::common::{self, core_bin, tmp};
@@ -85,7 +85,7 @@ fn the_unlinked_copy_goes(name: &str, links: &str, heads: [&str; 2], cand: &str)
     assert_eq!((n, stays), (1, want), "the unlinked copy goes");
 }
 
-/// The auditor's er1 shape: only the LATER side's section is linked
+/// Only the LATER side's section is linked
 /// (docs/b.md#install; docs/a.md linked without a fragment). The side
 /// with fewer links, docs/a.md, is the candidate and is erased;
 /// docs/b.md, the linked one, is untouched.
@@ -113,7 +113,7 @@ fn only_the_earlier_side_linked_erases_the_later_as_before() {
     );
 }
 
-/// The console's provenance clause (J2) over a tree with an advisory
+/// The console's provenance clause over a tree with an advisory
 /// row of each kind — a dead file, a linked doc twin, a clone twin:
 /// in English each advisory line ends with the document's `provenance`
 /// in parentheses, byte for byte; in Chinese each carries the Chinese
@@ -169,7 +169,7 @@ fn prose(s: &str) -> bool {
 }
 
 /// The paragraph both pages hold, an anchor inside it and no heading
-/// above it (release 1.10.0, item K4).
+/// above it (release 1.10.0).
 fn anchored(name: &str, links: &str) -> PathBuf {
     let dir = tmp(name);
     // between "eta" and "theta", seven words in
@@ -187,7 +187,7 @@ fn anchored(name: &str, links: &str) -> PathBuf {
 }
 
 /// A link to an anchor INSIDE the duplicated segment lands on a target
-/// the erase would remove (K4): with only `docs/b.md#keep` linked the
+/// the erase would remove: with only `docs/b.md#keep` linked the
 /// candidate is docs/a.md's copy (0 links against 1) and it is
 /// eraseable; with `docs/a.md#keep` linked too both copies are linked
 /// and the candidate is refused as `linked_section`.
