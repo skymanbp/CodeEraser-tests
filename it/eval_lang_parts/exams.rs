@@ -5,7 +5,7 @@
 
 use super::Exam;
 use super::Reach::{Tree, Universe};
-use super::Stage::Scored;
+use super::Stage::Audited;
 
 /// The C family's rungs and the compilation-database readers they
 /// consult: one ladder for both exams, since a C++ include resolves
@@ -79,7 +79,7 @@ const fn exam(
         reach: Universe,
         ladder,
         ladder_first: None,
-        stage: Scored,
+        stage: Audited,
         generation,
     }
 }
