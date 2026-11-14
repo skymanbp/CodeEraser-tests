@@ -27,6 +27,14 @@ fn typed() -> Vec<Fact> {
             score::knobs::AXES.len(),
             "cli/src/score/knobs.rs::AXES",
         ),
+        // the axes that count unless a project names more (plan v2.35:
+        // the dead axis is opt-in) — read off the definition package the
+        // core publishes, never a Rust copy of the list
+        linked(
+            "count:default_axes#word",
+            score::knobs::AXES.len() - codeeraser::tables::get().limits.score_opt_in.len(),
+            "cli/src/score/knobs.rs::AXES minus the definition package's limits.score_opt_in",
+        ),
         linked(
             "count:langs#word",
             scan::lang::Lang::judged_mask().count_ones(),

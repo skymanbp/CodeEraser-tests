@@ -170,12 +170,7 @@ fn edit_baseline(dir: &Path, f: impl FnOnce(&mut serde_json::Map<String, Value>)
 /// ratchet beside `dead_added` and the effective weights.
 #[test]
 fn the_mcp_tools_carry_the_gate() {
-    let dir = tmp("deadcode-gate-mcp");
-    std::fs::write(dir.join("s.ts"), "export const s = 1;\n").expect("s.ts");
-    common::declare(&dir, "[deadcode]\nblock = [\"born\"]\n");
-    let (code, _, err) =
-        common::ce_triple(&dir, &["baseline", ".", "--core", &core_bin()], WHOLESALE);
-    assert_eq!(code, Some(0), "{err}");
+    let dir = common::gates::standing_root_under_block("deadcode-gate-mcp");
     std::fs::write(dir.join("n.ts"), "export const n = 1;\n").expect("n.ts");
     let mut s = McpSession::over(&dir);
     let dead: Value =

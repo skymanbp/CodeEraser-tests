@@ -18,6 +18,23 @@ pub fn core_bin() -> String {
     )
 }
 
+/// A tree whose committed baseline records one standing root (`s.ts`)
+/// under `[deadcode] block = ["born"]`: the start of the dead-file-gate
+/// legs that then add born files (deadcode_gate's MCP leg, the graph
+/// screen's leg).
+pub fn standing_root_under_block(name: &str) -> std::path::PathBuf {
+    let dir = super::fixtures::tmp(name);
+    std::fs::write(dir.join("s.ts"), "export const s = 1;\n").expect("s.ts");
+    super::declare(&dir, "[deadcode]\nblock = [\"born\"]\n");
+    let (code, _, err) = super::ce_triple(
+        &dir,
+        &["baseline", ".", "--core", &core_bin()],
+        super::WHOLESALE,
+    );
+    assert_eq!(code, Some(0), "the baseline is written: {err}");
+    dir
+}
+
 /// A run whose `--core` names a path where no core exists. The flag
 /// names the core of the whole process (plan v2.32 step 2 follow-up),
 /// the definition package's included, so the run is refused before

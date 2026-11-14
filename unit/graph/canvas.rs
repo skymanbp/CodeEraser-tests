@@ -1,9 +1,12 @@
-use super::super::deadcode::{GraphWire, Judged};
+use super::super::deadcode::{GraphWire, Grouping, Judged};
 use super::super::wire::{GRAN_FILE, GRAN_PACKAGE, GRAN_SECTION};
 use super::*;
 use serde_json::json;
 
-/// Two files, one section of a.rs, one package; b.rs judged dead.
+/// Two files, one section of a.rs, one package; b.rs judged dead — a
+/// root, as the core groups a dead file nothing dead supports (the
+/// screen sends the grouping on the deadcode face's own road, and the
+/// document refuses a dead file that is neither root nor dependent).
 fn fixture() -> (GraphWire, Judged) {
     // the canvas draws the graph, it never reads the export surface
     // or the advisory — the shared wire leaves both unasked
@@ -15,7 +18,11 @@ fn fixture() -> (GraphWire, Judged) {
         kept: Some(3),
         degraded: None,
         fail: true,
-        grouping: Default::default(),
+        grouping: Grouping {
+            roots: vec![[1, 0]],
+            under: vec![],
+            dropped: false,
+        },
         gated: Default::default(),
         advisory: None,
     };

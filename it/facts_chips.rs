@@ -16,8 +16,8 @@ const M: &str = "docs/reference/methodology/";
 
 /// (repo-relative surface, chip count, Chinese?).
 const SURFACES: &[(&str, usize, bool)] = &[
-    ("README.md", 32, EN),
-    ("README.zh.md", 32, ZH),
+    ("README.md", 33, EN),
+    ("README.zh.md", 33, ZH),
     ("plugin/README.md", 7, ZH),
     ("contracts/DAEMON.md", 2, ZH),
     ("contracts/VERSIONING.md", 10, ZH),
@@ -40,8 +40,9 @@ const BOOKLETS: &str = "
 01-t1-t2-clone-detection-winnowing-fingerprint.md=3
 02-t3-near-miss-clones-tree-edit-distance-tsed.md=1
 03-documentation-duplication-shingling-minhash.md=2
+05-scoring-and-the-adr-006-ratchet.md=2
 06-graph-liveness-and-dead-code-verdicts.md=1
-07-the-three-signal-join.md=1
+07-the-three-signal-join.md=2
 10-score-trajectory-the-trend-slope-verdict.md=1
 11-fpr-discipline-and-the-guard-tier-ladder.md=1
 13-unmentioned-declaration-advisory.md=12

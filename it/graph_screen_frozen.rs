@@ -2,9 +2,12 @@
 //! in `it/golden/graph_screen.ndjson`. At plan v2.32 step 4B the file
 //! was the b3443723 code's answer, kept to prove that moving the canvas
 //! assembly into the core (CE.Graph.Screen) changed nothing; that proof
-//! is done and stays in history, and the `rust` line is still that
-//! answer byte for byte (this leg asserts nothing about it). It pins the
-//! document as the code gives it today. Lane v235_licence part 4C moved
+//! is done and stays in history. It pins the document as the code gives
+//! it today. Plan v2.35 5C moved both lines' `deadcode` half, never the
+//! canvas: the screen now judges on the deadcode face's wire and sends
+//! its request, so the half carries each root's `root` / `state` /
+//! `blocking` and the `gate` object (it/graph_screen_gate.rs holds it to
+//! `ce deadcode --format json`). Lane v235_licence part 4C moved
 //! the `docs` line by its rule (a link to a confirmed section of another
 //! file references that file): `docs/guide.md` is alive, README <->
 //! guide is a cycle, the kept edges go 5 -> 6. The road: `CE_BLESS=1`
