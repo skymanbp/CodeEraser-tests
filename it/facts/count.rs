@@ -166,7 +166,12 @@ fn tree(root: &Path) -> Vec<Fact> {
             // three, the handshake, tables/1 and document/1
             capabilities
                 .iter()
-                .filter(|c| NOT_FAMILIES.split(' ').skip(3).any(|n| Some(n) == c.as_str()))
+                .filter(|c| {
+                    NOT_FAMILIES
+                        .split(' ')
+                        .skip(3)
+                        .any(|n| Some(n) == c.as_str())
+                })
                 .count(),
             "contracts/fixtures/handshake/hello-ok.ndjson::capabilities (the stages: NOT_FAMILIES \
              without hello, tables/1, document/1)",

@@ -54,7 +54,7 @@ fn every_frozen_budget_row_closes_against_its_own_writes() {
 /// The rule as the pages publish it: (page, the words it must carry).
 /// A page that still said "past the line" would describe a rule the
 /// hook no longer runs.
-const WORDING: [(&str, &str); 5] = [
+const WORDING: [(&str, &str); 6] = [
     (
         "docs/FPR-REPLAY.md",
         "cap != 0 ∧ after > cap ∧ after > before",
@@ -65,7 +65,10 @@ const WORDING: [(&str, &str); 5] = [
     ),
     ("README.md", "A write that grows a file past"),
     ("README.zh.md", "让文件长过"),
-    ("plugin/README.md", "a write that grows a file past its hard line"),
+    (
+        "plugin/README.md",
+        "a write that grows a file past its hard line",
+    ),
     ("plugin/README.zh.md", "写入让文件长过其硬线"),
 ];
 
