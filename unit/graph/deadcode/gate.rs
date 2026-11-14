@@ -52,7 +52,11 @@ fn the_gate_is_held_to_the_dead_rows_and_the_request_and_refused_by_name() {
         let degraded = flags.as_bytes()[2] == b'd';
         let fail = reply["fail"].as_bool().expect("a fail bit");
         let entities = (flags.as_bytes()[0] == b'e').then_some(&sent);
-        if let Some(g) = crate::testutil::holds(line, says, consume(&reply, &dead, entities, (degraded, fail))) {
+        if let Some(g) = crate::testutil::holds(
+            line,
+            says,
+            consume(&reply, &dead, entities, (degraded, fail)),
+        ) {
             assert_eq!(g.states, vec![[0, 3], [1, 1], [2, 2]], "{line}");
         }
     }
