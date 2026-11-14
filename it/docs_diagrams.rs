@@ -164,9 +164,11 @@ fn sublabel(ir: &Value, id: &str) -> String {
 fn the_diagram_sublabels_spell_the_registry_values() {
     let root = repo_root();
     for row in SPELLED.lines().filter(|l| !l.is_empty()) {
-        let (at, rest) = row.split_once('|').expect("diagram.node|en|zh");
+        let fields: Vec<&str> = row.split('|').collect();
+        let [at, en, zh] = fields[..] else {
+            panic!("{row:?} is not diagram.node|en|zh")
+        };
         let (diagram, id) = at.split_once('.').expect("diagram.node");
-        let (en, zh) = rest.split_once('|').expect("diagram.node|en|zh");
         for (lang, template, is_zh) in [("en", en, false), ("zh", zh, true)] {
             assert_eq!(
                 sublabel(&ir(&root, diagram, lang), id),
