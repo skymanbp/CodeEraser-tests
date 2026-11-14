@@ -189,7 +189,7 @@ fn foreign_files_read_for_the_graph_and_the_advisory() {
 /// link is the one doc row.
 #[test]
 fn a_foreign_doc_is_read_and_never_a_stale_candidate() {
-    use codeeraser::structure::{judge, rows};
+    use codeeraser::structure::judge;
     let core = common::core_bin();
     let read = superproject("foreign-readers-stale", true);
     std::fs::write(
@@ -202,14 +202,36 @@ See [the root](root.rs).
     .expect("NOTES.md");
     judge::run(&read, None, &core, (false, Some(30), false))
         .expect("a foreign doc's link is an edge, not a doc row");
-    let (_idx, w) = common::graph_wire(&read, deadcode::Advisory::No);
-    let docs = rows::stale_docs(&read, &w, 30).expect("stale rows");
-    assert_eq!(docs.len(), 1, "NOTES.md alone is sent: {docs:?}");
-    assert_eq!(docs[0].0, "NOTES.md", "the own doc: {docs:?}");
+    own_doc_row(&read, "NOTES.md");
+}
+
+/// A `.markdown` page is a Markdown document (graph::md::is_md_path,
+/// the package's two Markdown extensions): its link to a target
+/// committed in the window makes it the stale-doc row a `.md` page is.
+/// The row once tested the `.md` suffix alone and never sent it.
+#[test]
+fn a_markdown_suffixed_page_is_a_stale_candidate() {
+    let read = superproject("foreign-readers-stale-markdown", true);
+    std::fs::write(
+        read.join("NOTES.markdown"),
+        "# notes\n\nSee [the root](root.rs).\n",
+    )
+    .expect("NOTES.markdown");
+    own_doc_row(&read, "NOTES.markdown");
+}
+
+/// The tree's stale-doc rows are `page`'s alone, with root.rs (committed
+/// in the window) its one changed target.
+fn own_doc_row(read: &Path, page: &str) {
+    use codeeraser::structure::rows;
+    common::build_index(read);
+    let (_idx, w) = common::graph_wire(read, deadcode::Advisory::No);
+    let docs = rows::stale_docs(read, &w, 30).expect("stale rows");
+    let got: Vec<(&str, usize)> = docs.iter().map(|d| (d.0.as_str(), d.2.len())).collect();
     assert_eq!(
-        docs[0].2.len(),
-        1,
-        "root.rs, committed in the window, is NOTES.md's one changed target: {docs:?}"
+        got,
+        [(page, 1)],
+        "{page} alone, root.rs its one changed target"
     );
 }
 

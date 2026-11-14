@@ -45,7 +45,7 @@
 //! sweep re-validates every anchor.
 
 use super::{Outcome, Reason, Scope, Site};
-use crate::graph::ladder::md::slug::slug_set;
+use crate::graph::ladder::md_slug::slug_set;
 use crate::graph::md::{content_lines, detect, ref_definition};
 use crate::graph::roots;
 use slug::percent_decode;

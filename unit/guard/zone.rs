@@ -131,18 +131,9 @@ fn the_budget_rule_judges_what_the_write_adds() {
     }
 }
 
-/// `before` is a line count of BYTES (REVIEW-1 Q10): the value
-/// `str::lines().count()` gives, with no size cap and no UTF-8
-/// requirement — a large or a Latin-1 file is not unread.
+/// A write grows a file when it adds lines; an unread `before` answers
+/// yes. (The line count itself is scan::metrics::size's, held there.)
 #[test]
-fn a_line_count_is_read_off_the_bytes() {
-    let count = |b: &[u8]| count_lines_in(b).expect("a slice reads");
-    let samples: [&[u8]; 6] = [b"", b"a", b"a\n", b"a\nb", b"a\r\nb\r\n", b"caf\xe9\n"];
-    assert_eq!(samples.map(count), [0, 1, 1, 2, 2, 1]);
-    for text in ["", "a", "a\n", "a\nb", "a\r\nb\r\n", "\n\n", "x\r"] {
-        assert_eq!(count(text.as_bytes()), text.lines().count(), "{text:?}");
-    }
-    let big = "0123456789abcdef\n".repeat(5 << 16); // 5 MiB + change, 64 KiB reads
-    assert_eq!(count(big.as_bytes()), 5 << 16);
+fn a_write_grows_when_it_adds_lines() {
     assert!(!grows(Ok(800), 800) && grows(Ok(800), 801) && grows(Err(()), 1));
 }

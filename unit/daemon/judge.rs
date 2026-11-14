@@ -54,3 +54,33 @@ fn a_failed_open_rides_the_degraded_reason() {
     let batch = j.judge_changeset(&[]);
     assert_eq!(batch.degraded.as_deref(), Some("no_link: cannot start `x`"));
 }
+
+/// The four-class check reads through the shared loader: a pair past
+/// READ_CAP and the pair past PAIR_CAP are counted in `unread_pairs`,
+/// never dropped in silence. The budget is closed first, so no core
+/// is spawned (the report is degraded; the count rides it anyway).
+#[test]
+fn unread_pairs_are_counted_not_dropped() {
+    let dir = crate::testutil::scratch("daemon-judge-unread");
+    let big = "x = 1
+"
+    .repeat(texts::READ_CAP / 6 + 1);
+    let mut files = vec![("big.py".to_string(), big)];
+    files.extend((0..texts::PAIR_CAP).map(|i| {
+        (
+            format!("f{i}.py"),
+            "x = 1
+"
+            .to_string(),
+        )
+    }));
+    for (path, text) in &files {
+        std::fs::write(dir.join(path), text).expect("write");
+    }
+    let pairs: Vec<session::PathPair> =
+        files.iter().map(|(p, _)| (None, Some(p.clone()))).collect();
+    let mut j = Judge::default();
+    j.budget.failed(Instant::now());
+    let report = j.classify(&dir, &pairs);
+    assert_eq!(report["unread_pairs"], 2, "{report}");
+}

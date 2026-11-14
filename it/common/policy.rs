@@ -10,7 +10,7 @@
 //! by commit, so `Config::load`, `walk::Scope`, `Classes` and the
 //! budget fence (`guard::zone::fenced`, the hook's own) answer as the
 //! product would. Nothing else is materialized; line counts come out of
-//! git through the hook's own counter (`guard::zone::count_lines_in`).
+//! git through the hook's own counter (`scan::metrics::size::count_lines_in`).
 
 use super::{blob, changed, git_lines};
 use codeeraser::config::Config;
@@ -123,7 +123,9 @@ impl Blobs {
 
     /// `rev:rel`'s line count, by the hook's own counter.
     pub fn lines(&mut self, rev: &str, rel: &str) -> usize {
-        self.ask(rev, rel, |r| zone::count_lines_in(r).expect("a blob reads"))
+        self.ask(rev, rel, |r| {
+            codeeraser::scan::metrics::size::count_lines_in(r).expect("a blob reads")
+        })
     }
 
     /// `rev:rel`'s bytes.

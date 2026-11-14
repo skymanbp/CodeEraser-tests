@@ -1,17 +1,16 @@
 //! The hard-budget ledger's EXECUTOR (v2.35 guard lane, GD2). The
 //! frozen rows of contracts/eval/fpr-budget-v1.json re-derive every
-//! number they state; docs/FPR-REPLAY.md quotes the frozen table; the
-//! growth refusal's tier is pinned at its literal value, so moving it
-//! means moving this gate (REVIEW-1 Q2: no implication between the
-//! ledger and the tier yet — that is the owner's ruling to make with
-//! this table in hand); and a synthetic history walks the instrument
-//! end to end.
+//! number they state; docs/FPR-REPLAY.md quotes the frozen table; and a
+//! synthetic history walks the instrument end to end. A growth refusal
+//! speaks at the class tier (guard/budget.rs, no second tier exists): a
+//! reading past the bar means the growth refusal needs a tier of its
+//! own before the rule may ship (REVIEW-1 Q2: the owner's ruling, made
+//! with this table in hand).
 
 use crate::common::ledger::{closes, count, two_commits};
 use crate::common::tmp;
 use crate::fpr_budget_replay::replay;
 use crate::fpr_budget_replay_parts::{LEDGER, derived, table};
-use codeeraser::guard::zone::{GROWTH_TIER, GrowthTier};
 
 /// The ledger's corpora, in order: the two standing ones, then the
 /// per-language ledger's.
@@ -70,7 +69,7 @@ const WORDING: [(&str, &str); 5] = [
 ];
 
 #[test]
-fn the_budget_doc_quotes_the_frozen_table_and_the_tier_is_the_class_tier() {
+fn the_budget_doc_quotes_the_frozen_table() {
     LEDGER.page_quotes("docs/FPR-REPLAY.md", &table(&LEDGER.corpora()));
     let root = crate::common::repo_root();
     for (page, words) in WORDING {
@@ -80,12 +79,6 @@ fn the_budget_doc_quotes_the_frozen_table_and_the_tier_is_the_class_tier() {
             "{page}: the published rule is `{words}`"
         );
     }
-    assert_eq!(
-        GROWTH_TIER,
-        GrowthTier::Class,
-        "a growth refusal speaks at the class tier; moving it is the owner's ruling, \
-         argued from contracts/eval/fpr-budget-v1.json, and this pin moves with it"
-    );
 }
 
 /// `n` lines that bait nothing (fpr_zone_gate_helpers::filler's shape).

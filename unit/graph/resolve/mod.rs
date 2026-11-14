@@ -109,3 +109,32 @@ fn agree(leg: &str, questions: &[Value], want: &[Value], got: &[Value]) {
     );
     assert_eq!(misses, 0, "{leg}: core and frozen reader disagree");
 }
+
+/// `in_core` reads the package's judged column (release 1.10.0); the
+/// hand list it replaced is kept here and held equal for every language,
+/// so a language made judged without a ladder shows up as this leg's red.
+#[test]
+fn in_core_is_the_judged_column() {
+    use crate::scan::lang::Lang;
+    let listed = |l: Lang| {
+        matches!(
+            l,
+            Lang::Python
+                | Lang::TypeScript
+                | Lang::Tsx
+                | Lang::Rust
+                | Lang::Go
+                | Lang::Markdown
+                | Lang::Html
+                | Lang::Haskell
+                | Lang::C
+                | Lang::Cpp
+                | Lang::Lua
+                | Lang::R
+                | Lang::Java
+        )
+    };
+    for l in Lang::ALL {
+        assert_eq!(super::in_core(l), listed(l), "{}", l.name());
+    }
+}

@@ -100,6 +100,32 @@ fn a_classed_file_prices_its_seam_on_its_class_curve() {
     );
 }
 
+/// A class whose hard line sits below the committed soft line: the
+/// core's curve opens at s = min s0 h (CE.Structure.Zone), so WIDE (12
+/// lines), between the class's wall at 10 and the committed soft line at
+/// 20, is priced — and the measuring side sends it. Without the class it
+/// lies under the soft line and no seam rides.
+#[test]
+fn a_class_wall_below_the_soft_line_sends_the_files_between() {
+    let lines = "[thresholds]\nfile_lines_warn = 5\nfile_lines_fail = 40\n";
+    let walled = format!(
+        "{lines}\n[[rules.class]]\nname = \"walled\"\nglobs = [\"main.py\"]\n\
+         [rules.class.knobs]\nfile_lines_fail = 10\n"
+    );
+    let soft_at_20 = |dir: std::path::PathBuf| {
+        let doc = "{\"continuous\": [], \"discrete\": [], \"softLine\": 20}\n";
+        std::fs::write(dir.join("ce-baseline.json"), doc).expect("baseline");
+        dir
+    };
+    let low_wall = soft_at_20(seeded("structure-knob-low-wall", &walled, WIDE));
+    assert!(best_benefit(&low_wall) > 0);
+    let dir = soft_at_20(seeded("structure-knob-no-wall", lines, WIDE));
+    let answer =
+        judge::run(&dir, None, &common::core_bin(), (false, None, true)).expect("structure");
+    let report: StructureReport = read_bound(answer.document, "structure").expect("read");
+    assert!(report.split_candidates.is_empty() && report.size_exempt.is_empty());
+}
+
 /// The benefit of a seam after line `end` of a `total`-line file under
 /// the zone (s, h] with P_max 10, every piece at or under h:
 /// ⌊1000·(p(total) − p(end) − p(total − end))⌋, p(x) = 10·((x − s)⁺ ⁄ (h − s))².
