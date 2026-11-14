@@ -178,3 +178,61 @@ fn the_tag_gate_requires_every_unconditional_ci_check_by_name() {
     let release = read(&repo_root(), ".github/workflows/release.yml");
     assert_eq!(quoted_list(&release, "REQUIRED", '|'), want);
 }
+
+/// The keys the plugin starter's `plat_key` can print (every `echo` in its
+/// body but `unsupported`) are the roster: ce.sh cannot read TARGETS, so
+/// a target added to one and not the other shows up here.
+#[test]
+fn the_starter_prints_exactly_the_roster_keys() {
+    let sh = read(&repo_root(), "plugin/bin/ce.sh");
+    let body = sh
+        .split("plat_key() {")
+        .nth(1)
+        .and_then(|b| b.split("\n}\n").next())
+        .expect("ce.sh declares plat_key");
+    let got: BTreeSet<&str> = body
+        .split("echo \"")
+        .skip(1)
+        .filter_map(|e| e.split('"').next())
+        .filter(|k| *k != "unsupported")
+        .collect();
+    assert_eq!(
+        got,
+        TARGETS.into_iter().collect::<BTreeSet<_>>(),
+        "plat_key"
+    );
+}
+
+/// The release build and its rehearsal run the same matrix, every column
+/// (`os`, `key`, `triple`, `ext`), comments aside: a runner label changed
+/// in one file would leave the rehearsal rehearsing another build.
+#[test]
+fn the_rehearsal_matrix_is_the_release_matrix() {
+    // a Windows checkout writes the workflows with CRLF
+    let rows =
+        |file: &str, job: &str| matrix_rows(&read(&repo_root(), file).replace("\r\n", "\n"), job);
+    let release = rows(".github/workflows/release.yml", "  build:");
+    assert_eq!(release.len(), TARGETS.len(), "release.yml build rows");
+    assert_eq!(
+        rows(".github/workflows/ci.yml", "  release-rehearsal:"),
+        release
+    );
+}
+
+/// A job's `include:` rows (flow style, one per line), each as its
+/// `field: value` pairs in order with any trailing comment dropped.
+fn matrix_rows(yml: &str, job: &str) -> Vec<Vec<(String, String)>> {
+    let after = yml.split(&format!("\n{job}\n")).nth(1).expect(job);
+    let include = after.split("include:\n").nth(1).expect("include");
+    include
+        .lines()
+        .map_while(|l| l.trim().strip_prefix("- {"))
+        .map(|row| {
+            let row = row.split('}').next().unwrap_or("");
+            row.split(", ")
+                .filter_map(|kv| kv.split_once(": "))
+                .map(|(k, v)| (k.trim().to_string(), v.trim().trim_matches('"').to_string()))
+                .collect()
+        })
+        .collect()
+}

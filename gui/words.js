@@ -35,6 +35,10 @@ for (const lang of ["en", "zh"]) {
     axis4: t.checkAxisNames[4],
     axisOff: t.axisOff("{0}"),
     deadAddedHint: t.deadAddedHint("{0}"),
+    provDead: t.provDead("{0}", "{1}"),
+    provDoc: t.provDoc("{0}", "{1}", "{2}", "{3}", "{4}", "{5}"),
+    provLinked: t.provLinked("{0}"),
+    provTwin: t.provTwin("{0}", "{1}", "{2}", "{3}", "{4}"),
   };
 }
 process.stdout.write(JSON.stringify(out));

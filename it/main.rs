@@ -206,6 +206,7 @@ mod guard_say;
 mod guard_stale;
 mod guard_unapplied;
 mod gui_core_words;
+mod gui_defaults;
 mod health_plugin;
 mod history_recipes;
 mod hook_payloads;
