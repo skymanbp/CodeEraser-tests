@@ -80,6 +80,7 @@ mod eject_e2e;
 mod erase_chunked;
 mod erase_e2e;
 mod erase_hunks_apply;
+mod erase_linked;
 mod erase_refusals;
 mod eval_arch_self;
 mod eval_commit_review;

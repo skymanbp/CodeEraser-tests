@@ -101,17 +101,19 @@ fn row<'a>(p: &'a erase::Plan, class: &str, path: &str) -> &'a erase::Row {
 /// span names a `verbatim_doc` row, none a whole-file `dead_file` row.
 pub(crate) fn hand_built(root: &Path, path: &str, span: Option<(i64, i64)>) -> erase::Row {
     let bytes = std::fs::read(root.join(path)).expect("read");
+    let (class, code) = match span {
+        Some(_) => ("verbatim_doc", 1),
+        None => ("dead_file", 3),
+    };
     erase::Row {
-        class: if span.is_some() {
-            "verbatim_doc"
-        } else {
-            "dead_file"
-        },
+        class,
         eraseable: true,
         reason: "eraseable",
+        codes: (code, 0),
         path: path.into(),
         span,
         provenance: String::new(),
+        source: erase::Source::Dead { verdict: 1, why: 0 },
         sites: 0,
         hash: codeeraser::dedup::tokens::fnv1a(&bytes),
     }

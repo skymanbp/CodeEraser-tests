@@ -166,7 +166,10 @@ pub fn default_impls_in(root: &Path, dir: &str) -> Vec<Def> {
 /// The definition package's numbers (`tables/1`, read from the core
 /// at CE_CORE_BIN through the product's own reader): each integer key
 /// directly under a table, by its bare key — the docdup floors and the
-/// tombstone name floors live there since plan v2.32 step 2.
+/// tombstone name floors live there since plan v2.32 step 2. Beside
+/// them, the erase document's two name tables by length (`classes.len`,
+/// `reasons.len`): the core's CE.Erase.Cost lists, which the measuring
+/// side no longer copies (release 1.10.0).
 pub fn package_defs() -> Vec<Def> {
     let reply = crate::common::stub_core::real_tables();
     let mut out = Vec::new();
@@ -179,6 +182,15 @@ pub fn package_defs() -> Vec<Def> {
                     value: n.to_string(),
                 });
             }
+        }
+    }
+    for key in ["classes", "reasons"] {
+        if let Some(names) = reply["document"]["erase"][key].as_array() {
+            out.push(Def {
+                file: PathBuf::from("tables/1 document.erase"),
+                name: format!("{key}.len"),
+                value: names.len().to_string(),
+            });
         }
     }
     out

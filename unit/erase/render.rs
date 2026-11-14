@@ -5,9 +5,11 @@ fn row(span: (i64, i64)) -> Row {
         class: "verbatim_doc",
         eraseable: true,
         reason: "",
+        codes: (1, 0),
         path: "f.md".into(),
         span: Some(span),
         provenance: "docdup".into(),
+        source: crate::erase::model::Source::Dead { verdict: 1, why: 0 },
         sites: 0,
         hash: 1,
     }

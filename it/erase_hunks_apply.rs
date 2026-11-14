@@ -33,9 +33,11 @@ fn span_row(path: &str, span: (i64, i64), text: &str) -> erase::Row {
         class: "verbatim_doc",
         eraseable: true,
         reason: "",
+        codes: (1, 0),
         path: path.into(),
         span: Some(span),
         provenance: "docdup".into(),
+        source: erase::Source::Dead { verdict: 1, why: 0 },
         sites: 0,
         hash: codeeraser::dedup::tokens::fnv1a(text.as_bytes()),
     }

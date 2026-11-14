@@ -7,8 +7,41 @@ fn cand(path: &str, span: Option<(i64, i64)>) -> Candidate {
         path: path.to_string(),
         span,
         provenance: String::new(),
+        source: crate::erase::model::Source::Dead { verdict: 1, why: 0 },
         sites: 0,
     }
+}
+
+/// A doc candidate whose section `linked` links land on.
+fn doc(path: &str, linked: i64) -> Candidate {
+    Candidate {
+        class: 1,
+        facts: [10, 10, 10, 1],
+        span: Some((3, 3)),
+        source: crate::erase::model::Source::Doc {
+            twin: "a.md".into(),
+            span: (3, 3),
+            jaccard: (50, 50),
+            verbatim: 10,
+            linked,
+        },
+        ..cand(path, None)
+    }
+}
+
+/// The `linked` table (release 1.10.0): [row, links] for each doc row
+/// whose section is linked, by ascending row; absent when none is.
+#[test]
+fn the_linked_table_names_each_linked_doc_row() {
+    let cands = [
+        doc("b.md", 0),
+        doc("c.md", 2),
+        cand("d.py", None),
+        doc("e.md", 1),
+    ];
+    let body = request_body(&cands);
+    assert_eq!(body["linked"], serde_json::json!([[1, 2], [3, 1]]));
+    assert!(request_body(&cands[..1]).get("linked").is_none());
 }
 
 /// The target table the request carries: path ids dense in order of

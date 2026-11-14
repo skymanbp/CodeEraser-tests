@@ -45,18 +45,20 @@ fn typed() -> Vec<Fact> {
             scan::lang::Lang::with_grammar().count(),
             "cli/src/scan/lang.rs::Lang::with_grammar (GRAMMARS rows)",
         ),
+        // the erase names are the core's (release 1.10.0: the measuring
+        // side keeps no copy), read off the definition package
         linked(
             "count:erase_reasons#word",
-            erase::REASON_NAMES.len(),
-            "cli/src/erase/model.rs::REASON_NAMES",
+            erase::reason_names().len(),
+            "the definition package's document.erase.reasons (CE.Erase.Cost reasonNames)",
         ),
         linked(
             "count:erase_classes#word",
-            erase::CLASS_NAMES
+            erase::class_names()
                 .iter()
                 .filter(|n| **n != "(retired)")
                 .count(),
-            "cli/src/erase/model.rs::CLASS_NAMES (live names)",
+            "the definition package's document.erase.classes (CE.Erase.Cost classNames, live names)",
         ),
     ]
 }

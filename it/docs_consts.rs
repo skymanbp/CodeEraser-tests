@@ -101,8 +101,8 @@ fn collision<'a>(family: &str, name: &'a str) -> (Option<&'static str>, &'a str)
         ("05", "violCost") => (Some("core/app/CE/Verdict/Cost.hs"), name),
         ("05" | "06", "sccFloor") => (Some("core/app/CE/Graph/Cost.hs"), name),
         ("06" | "07", "entryMask") => (Some("core/app/CE/Graph/Cost.hs"), name),
-        ("12", "classes") => (Some("cli/src/erase/model.rs"), "CLASS_NAMES.len"),
-        ("12", "reason codes") => (Some("cli/src/erase/model.rs"), "REASON_NAMES.len"),
+        ("12", "classes") => (Some("tables/1 document.erase"), "classes.len"),
+        ("12", "reason codes") => (Some("tables/1 document.erase"), "reasons.len"),
         _ => (None, name),
     }
 }
