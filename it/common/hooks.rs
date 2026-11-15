@@ -128,7 +128,7 @@ pub fn session_start_line(dir: &Path) -> (serde_json::Value, String) {
     session_start_line_env(dir, &[])
 }
 
-/// The same line under named environment (update_e2e's notice legs,
+/// The same line under named environment (update_e2e_notice's legs,
 /// hooks_inert's missing core).
 pub fn session_start_line_env(dir: &Path, env: &[(&str, &str)]) -> (serde_json::Value, String) {
     let envelope = serde_json::json!({
@@ -233,6 +233,8 @@ fn hook_output(
         // A row that IS testing Chinese passes it in `env`, and .envs()
         // lands after this, so it still wins.
         .env_remove("CE_LANG")
+        // the plugin's real data folder never reaches a hook leg (mod.rs)
+        .env_remove("CLAUDE_PLUGIN_DATA")
         .envs(env.iter().copied())
         .current_dir(dir)
         .stdin(Stdio::piped())

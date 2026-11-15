@@ -187,7 +187,9 @@ pub fn run_ce(dir: &Path, args: &[&str]) -> std::process::Output {
 /// cli_bare scrub the same variable; a row testing Chinese passes it
 /// in `env`, which lands after). The SessionStart update notice is
 /// off unless a leg arms it: no battery reaches the release index by
-/// accident (update/notice.rs).
+/// accident (update/notice.rs). CLAUDE_PLUGIN_DATA is cleared too: a
+/// shell holding the plugin's real data folder would hand it to every
+/// eject and update leg; a leg about that folder passes its own.
 pub fn run_ce_env(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> std::process::Output {
     ce_command(dir, env).args(args).output().expect("run ce")
 }
@@ -197,10 +199,18 @@ pub fn run_ce_env(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> std::proce
 /// `&str` pair cannot carry. No leg builds `Command::new` on the
 /// binary itself (`raw_ce_commands_go_through_the_throat` reads it/).
 pub fn ce_command(dir: &Path, env: &[(&str, &str)]) -> Command {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_ce"));
+    ce_command_at(Path::new(env!("CARGO_BIN_EXE_ce")), dir, env)
+}
+
+/// `ce_command` on the real binary reached through another path (a
+/// hard link placed in a named folder: where the binary sits is a fact
+/// `ce update` reads).
+pub fn ce_command_at(exe: &Path, dir: &Path, env: &[(&str, &str)]) -> Command {
+    let mut c = Command::new(exe);
     c.env_remove("CE_ACCEPT_BASELINE")
         .env_remove("CE_ACCEPT_FENCE")
         .env_remove("CE_LANG")
+        .env_remove("CLAUDE_PLUGIN_DATA")
         .env("CE_UPDATE_CHECK", "0")
         .envs(env.iter().copied())
         .current_dir(dir);

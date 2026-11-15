@@ -5,22 +5,23 @@
 //! binary cargo is running. Each leg pins one link of the trust
 //! chain: the pins are the tag's committed manifest's, a mismatch
 //! places nothing, a copy another package manager owns is never
-//! overwritten, the verdict is the exit code, and the SessionStart
-//! notice rides only when a newer release exists.
+//! overwritten, the verdict is the exit code; the SessionStart notice
+//! legs are update_e2e_notice.rs.
 
 use crate::common::{self, run_ce_env, tmp};
 use codeeraser::update::apply::sha256_hex;
 use codeeraser::update::version::{Platform, of_tag};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
+use std::process::Output;
 
 fn plat() -> Platform {
     Platform::of(std::env::consts::OS, std::env::consts::ARCH)
 }
 
-struct Release {
-    base: String,
-    dir: PathBuf,
+pub(crate) struct Release {
+    pub(crate) base: String,
+    pub(crate) dir: PathBuf,
     ce_pin: String,
     ce_bytes: String,
     core_bytes: String,
@@ -29,7 +30,7 @@ struct Release {
 /// A release index at a scratch dir: `latest.json` naming `tag`,
 /// `<tag>/manifest.env` with pins measured over the fake assets
 /// beside it (or, tampered, a pin no asset matches).
-fn release(name: &str, tag: &str, tamper: bool) -> Release {
+pub(crate) fn release(name: &str, tag: &str, tamper: bool) -> Release {
     let dir = tmp(name);
     let ver = of_tag(tag);
     let assets = dir.join("assets");
@@ -80,7 +81,7 @@ fn release(name: &str, tag: &str, tamper: bool) -> Release {
     }
 }
 
-fn slashes(p: &Path) -> String {
+pub(crate) fn slashes(p: &Path) -> String {
     p.display().to_string().replace('\\', "/")
 }
 
@@ -110,7 +111,15 @@ fn refused(r: &Release, target: &Path) -> String {
 /// recreates the directory, so a sibling leg's spawn found its cwd
 /// gone and died with NotFound (CI 34006228086, ubuntu).
 fn check(dir: &Path, env: &[(&str, &str)]) -> (Value, Option<i32>) {
-    let out = run_ce_env(dir, &["update", "--format", "json"], env);
+    check_at(Path::new(env!("CARGO_BIN_EXE_ce")), dir, env)
+}
+
+/// `check` on the binary reached through `exe` (a hard link).
+fn check_at(exe: &Path, dir: &Path, env: &[(&str, &str)]) -> (Value, Option<i32>) {
+    let out = common::ce_command_at(exe, dir, env)
+        .args(["update", "--format", "json"])
+        .output()
+        .expect("run ce");
     let doc = serde_json::from_slice(&out.stdout).expect("update document");
     (doc, out.status.code())
 }
@@ -120,7 +129,7 @@ fn read(p: &Path) -> String {
 }
 
 /// Files in a scratch dir (`tmp` seeds a `.git` anchor, not residue).
-fn files_in(dir: &Path) -> usize {
+pub(crate) fn files_in(dir: &Path) -> usize {
     std::fs::read_dir(dir)
         .expect("dir")
         .flatten()
@@ -214,27 +223,64 @@ fn a_pin_mismatch_places_nothing() {
     assert_eq!(files_in(&target), 0, "nothing placed, no residue");
 }
 
-#[test]
-fn a_copy_another_package_manager_owns_is_named_never_overwritten() {
-    let r = release("update-plugin", "v9.9.9", false);
-    let exe_dir = Path::new(env!("CARGO_BIN_EXE_ce"))
-        .parent()
-        .expect("exe dir")
-        .display()
-        .to_string();
+/// `ce update --format json`, then `ce <then>`, run by a hard link of
+/// the real binary placed in `data` with CLAUDE_PLUGIN_DATA naming that
+/// folder: where the binary sits is what the install kind reads (a
+/// link, not a copy: a fresh copy exec'd at once races sibling forks
+/// on Linux).
+/// The release index is `release(name, "v9.9.9")`; `data` is the folder
+/// `folder` under a scratch home of that name.
+fn from_folder(name: &str, folder: &str, then: &[&str]) -> (PathBuf, Value, Option<i32>, Output) {
+    let r = release(name, "v9.9.9", false);
+    let data = tmp(&format!("{name}-home")).join(folder);
+    let data = data.as_path();
+    std::fs::create_dir_all(data).expect("folder");
+    let exe = data.join(format!("ce{}", std::env::consts::EXE_SUFFIX));
+    std::fs::hard_link(env!("CARGO_BIN_EXE_ce"), &exe).expect("hard link");
+    let data_s = slashes(data);
     let env = [
         ("CE_UPDATE_BASE", r.base.as_str()),
-        ("CLAUDE_PLUGIN_DATA", exe_dir.as_str()),
+        ("CLAUDE_PLUGIN_DATA", data_s.as_str()),
     ];
-    let (d, code) = check(&r.dir, &env);
+    let (d, code) = check_at(&exe, &r.dir, &env);
+    let out = common::ce_command_at(&exe, &r.dir, &env)
+        .args(then)
+        .output()
+        .expect("run ce");
+    (data.to_path_buf(), d, code, out)
+}
+
+#[test]
+fn a_copy_another_package_manager_owns_is_named_never_overwritten() {
+    // the folder as Claude Code names it: plugins/data/<plugin>-<marketplace>
+    let (_, d, code, yes) = from_folder(
+        "update-plugin",
+        "codeeraser-codeeraser",
+        &["update", "--yes"],
+    );
     assert_eq!(
         (code, &d["current"]["install"], &d["action"]),
         (Some(1), &Value::from(3), &Value::from(2))
     );
-    let out = run_ce_env(&r.dir, &["update", "--yes"], &env);
-    assert_eq!(out.status.code(), Some(2));
-    let err = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(yes.status.code(), Some(2));
+    let err = String::from_utf8_lossy(&yes.stderr);
     assert!(err.contains("/plugin update codeeraser"), "{err}");
+}
+
+/// Another plugin's folder is not this plugin's: a binary sitting in it
+/// is classed by its own name (a plain `ce`: placed by hand, ours to
+/// update), and nothing is written into the folder.
+#[test]
+fn a_copy_in_another_plugins_folder_is_not_the_plugins() {
+    let (data, d, code, console) = from_folder("update-foreign", "other-plugin", &["update"]);
+    assert_eq!(console.status.code(), Some(1));
+    assert_eq!(d["current"]["install"], 0, "classed by its own name");
+    assert_eq!((code, &d["action"]), (Some(1), &Value::from(1)));
+    assert_eq!(
+        files_in(&data),
+        1,
+        "only the linked binary is in the folder"
+    );
 }
 
 #[test]
@@ -248,49 +294,4 @@ fn no_release_index_is_unknown_never_current() {
     assert!(d["latest"]["error"].as_str().is_some_and(|e| !e.is_empty()));
     let out = run_ce_env(&missing, &["update"], &[("CE_UPDATE_BASE", &base)]);
     assert!(String::from_utf8_lossy(&out.stdout).contains("latest: unknown — "));
-}
-
-fn health(dir: &Path, env: &[(&str, &str)]) -> String {
-    common::session_start_line_env(dir, env).1
-}
-
-#[test]
-fn the_session_notice_rides_only_when_newer_and_is_cached_a_day() {
-    let r = release("update-notice", "v9.9.9", false);
-    let project = tmp("update-notice-project");
-    let cache = tmp("update-notice-cache");
-    let cache_s = slashes(&cache);
-    let armed = [
-        ("CE_UPDATE_BASE", r.base.as_str()),
-        ("CLAUDE_PLUGIN_DATA", cache_s.as_str()),
-        ("CE_UPDATE_CHECK", "1"),
-    ];
-    let ctx = health(&project, &armed);
-    assert!(
-        ctx.starts_with("[ce "),
-        "the status line is untouched: {ctx}"
-    );
-    assert!(ctx.contains("\n[ce update: 9.9.9 available — "), "{ctx}");
-    assert!(cache.join("codeeraser-update-check.json").is_file());
-    // cached: the index gone, the notice still stands for a day
-    std::fs::remove_file(r.dir.join("latest.json")).expect("rm index");
-    assert!(health(&project, &armed).contains("9.9.9 available"));
-    // the harness default (off) and an explicit opt-out say nothing
-    assert!(!health(&project, &armed[..2]).contains("ce update:"));
-    // a current binary says nothing either — and its own cache
-    let same = release(
-        "update-notice-same",
-        &format!("v{}", env!("CARGO_PKG_VERSION")),
-        false,
-    );
-    let cache2 = slashes(&tmp("update-notice-cache2"));
-    let quiet = health(
-        &project,
-        &[
-            ("CE_UPDATE_BASE", &same.base),
-            ("CLAUDE_PLUGIN_DATA", &cache2),
-            ("CE_UPDATE_CHECK", "1"),
-        ],
-    );
-    assert!(!quiet.contains("ce update:"), "{quiet}");
 }

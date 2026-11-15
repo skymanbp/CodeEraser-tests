@@ -288,6 +288,7 @@ mod trend_submodule;
 mod ui_lang;
 mod unit_mounts;
 mod update_e2e;
+mod update_e2e_notice;
 mod walk_outputs;
 mod wire_indices;
 mod zh_surface;

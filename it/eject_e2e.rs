@@ -61,7 +61,8 @@ fn eject_with_data(
 #[test]
 fn plugin_data_sweep_takes_only_ce_artifacts() {
     let dir = seeded("eject-pin");
-    let data = tmp("eject-pin-data");
+    // the plugin's own folder: its name is the plugin's and a suffix
+    let data = tmp("codeeraser-eject-pin");
     common::write_all(
         &data,
         &[("ce-0.1.0-x86_64-windows.exe", "x"), ("unrelated.txt", "x")],
@@ -82,7 +83,7 @@ fn plugin_data_sweep_takes_only_ce_artifacts() {
 #[test]
 fn eject_claims_the_starter_names_and_leaves_the_neighbours() {
     let dir = tmp("eject-ownership");
-    let data = dir.join("plugindata");
+    let data = dir.join("codeeraser-codeeraser");
     std::fs::create_dir_all(&data).expect("mkdir");
 
     let ours = ["ce-core.exe", "ce-core", "ce-0.4.0-x86_64-windows.exe"];
@@ -115,4 +116,22 @@ fn eject_claims_the_starter_names_and_leaves_the_neighbours() {
         "eject claims exactly the starter's own artifacts — no neighbour, \
          no directory (theirs: {theirs:?})"
     );
+}
+
+/// Another plugin's folder is never this plugin's: files in it that
+/// carry the starter's names are neither listed by the dry run nor
+/// removed by --yes.
+#[test]
+fn another_plugins_folder_is_never_listed_or_swept() {
+    let dir = seeded("eject-foreign");
+    let data = dir.join("other-plugin");
+    let names = ["ce-core.exe", "ce-core", "ce-0.4.0-x86_64-windows.exe"];
+    common::write_all(&data, &names.map(|n| (n, n)));
+    let dry = eject_with_data(&dir, &data, &["eject", "."]);
+    let listed = String::from_utf8_lossy(&dry.stdout).to_string();
+    assert!(!listed.contains("other-plugin"), "listed: {listed}");
+    let out = eject_with_data(&dir, &data, &["eject", ".", "--yes"]);
+    assert!(out.status.success());
+    let kept = names.iter().filter(|n| data.join(n).exists()).count();
+    assert_eq!(kept, names.len(), "another plugin's files stay");
 }
