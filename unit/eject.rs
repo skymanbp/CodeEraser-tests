@@ -1,4 +1,4 @@
-use super::{released, run};
+use super::{ours, released, run};
 use interprocess::local_socket::traits::ListenerExt;
 use interprocess::local_socket::{GenericNamespaced, ListenerOptions, ToNsName};
 use std::path::{Path, PathBuf};
@@ -55,4 +55,20 @@ fn yes_keeps_every_target_while_a_daemon_holds_the_socket() {
 fn a_root_with_no_daemon_is_released() {
     let root = crate::testutil::scratch("eject-no-daemon");
     assert!(released(&root), "an unheld socket releases at once");
+}
+
+/// The starter's binaries in the data folder under every name it has
+/// used (the plain core up to 1.10.0, the versioned pair since), and
+/// none of a neighbour's files that only share the `ce-` prefix.
+#[test]
+fn ours_takes_the_starters_names_and_no_neighbours() {
+    let names = [
+        "ce-core.exe",
+        "ce-core-1.10.1-x86_64-windows.exe",
+        "ce-1.10.1-x86_64-windows.exe",
+        "ce-cache",
+        "ce-corelike",
+        "ce-core-next",
+    ];
+    assert_eq!(names.map(ours), [true, true, true, false, false, false]);
 }
