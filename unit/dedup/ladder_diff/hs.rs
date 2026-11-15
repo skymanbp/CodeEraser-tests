@@ -244,9 +244,12 @@ fn tree(rng: &mut Rng, root: &Path, rung: usize) -> Tree {
     (world, owned)
 }
 
-/// The three legs, one per rung (the `hs LEGS` table).
+/// The three legs, one per rung (the `hs LEGS` table), under the one
+/// ruled divergence (hs_own.rs): a mismatch is allowed only on a site
+/// whose owner's own package may answer by the release 1.10.0 rule.
 #[test]
 #[ignore = "instrument: needs a core (CE_CORE_BIN); run with --ignored --nocapture"]
 fn hs_random_trees_agree() {
-    super::common::legs("hs", tree);
+    let mark: super::common::Mark = super::hs_own::own_package_answers;
+    super::common::legs_marked("hs", tree, Some(mark));
 }

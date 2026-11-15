@@ -1,81 +1,19 @@
-//! What the legs share: the tally, the two-sided comparison of sites, a
-//! Scope's owned inputs and the random-tree driver (the seeded stream:
-//! rng.rs; the comparisons beside the sites: beside.rs; the frozen
-//! dispatcher: unit/graph/ladder/frozen.rs).
+//! What the legs share: the two-sided comparison of sites and a Scope's
+//! owned inputs (the tally: tally.rs; the random-tree driver: legs.rs;
+//! the seeded stream: rng.rs; the comparisons beside the sites:
+//! beside.rs; the frozen dispatcher: unit/graph/ladder/frozen.rs).
 
-use super::beside::{compare_declared, compare_forced, compare_private, names_never_move};
+use super::beside::names_never_move;
+pub(super) use super::legs::{leg, legs, legs_marked, scratch};
 use super::rng::Rng;
+pub(super) use super::tally::{Mark, Tally};
 use crate::graph::ladder::java_header::Header;
 use crate::graph::ladder::lua_path::Template;
 use crate::graph::ladder::{self, Memo, Outcome, Scope, Site};
 use crate::scan::lang::Lang;
 pub(super) use crate::testutil::write_tree;
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
-
-/// What one leg saw: per language, the sites compared, the outcome
-/// classes both sides gave, and the mismatches (first ones kept whole).
-#[derive(Default)]
-pub(super) struct Tally {
-    sites: BTreeMap<&'static str, usize>,
-    classes: BTreeMap<(&'static str, String), usize>,
-    pub(super) forced: (usize, usize),
-    pub(super) packages: (usize, usize),
-    pub(super) mains: (usize, usize),
-    pub(super) crates: (usize, usize),
-    pub(super) private: (usize, usize),
-    mismatches: usize,
-    shown: Vec<String>,
-}
-
-impl Tally {
-    pub(super) fn report(&self, leg: &str) {
-        println!("== ladder_diff {leg} ==");
-        for (lang, n) in &self.sites {
-            println!("{lang}: sites {n}");
-        }
-        for ((lang, class), n) in &self.classes {
-            println!("  {lang} {class}: {n}");
-        }
-        let (trees, arcs) = self.forced;
-        println!("forced arcs: trees {trees} arcs {arcs}");
-        let (trees, packages) = self.packages;
-        println!("R package code: trees {trees} packages {packages}");
-        let (trees, mains) = self.mains;
-        println!("cabal mains: trees {trees} mains {mains}");
-        let (trees, crates) = self.crates;
-        println!("cargo crate roots: trees {trees} roots {crates}");
-        let (files, private) = self.private;
-        println!("cabal and cargo privacy: files {files} private {private}");
-        println!("mismatches: {}", self.mismatches);
-        self.shown.iter().for_each(|m| println!("MISMATCH {m}"));
-        assert_eq!(self.mismatches, 0, "{leg}: core and frozen oracle disagree");
-    }
-
-    pub(super) fn sites(&self) -> usize {
-        self.sites.values().sum()
-    }
-
-    pub(super) fn miss(&mut self, what: String) {
-        self.mismatches += 1;
-        if self.shown.len() < 25 {
-            self.shown.push(what);
-        }
-    }
-
-    /// One comparison: a disagreement is spelled with both sides.
-    pub(super) fn agree<T: PartialEq + std::fmt::Debug>(
-        &mut self,
-        what: &str,
-        got: &T,
-        want: &T,
-        ctx: &dyn Fn() -> String,
-    ) {
-        if got != want {
-            self.miss(format!("{what}: core {got:?} oracle {want:?}\n{}", ctx()));
-        }
-    }
-}
+use std::path::Path;
 
 fn class(o: &Outcome) -> String {
     match o {
@@ -109,9 +47,8 @@ pub(super) fn compare(
     for ((lang, site), got) in sites.iter().zip(answered) {
         let want = ladder::frozen::resolve(*lang, site, oracle);
         let name = lang.name();
-        *tally.sites.entry(name).or_default() += 1;
-        *tally.classes.entry((name, class(&want))).or_default() += 1;
-        if got != want {
+        tally.count(name, class(&want));
+        if tally.unexplained(site, oracle, got != want) {
             let (kind, from, spec) = (site.kind, site.from, site.spec);
             tally.miss(format!(
                 "{name} kind={kind} from={from} spec={spec:?}: core {got:?} oracle {want:?}\n{}",
@@ -206,7 +143,15 @@ impl World {
     }
 
     /// Both sides on this world's sites, rooted at `root`.
-    fn judge(&self, root: &Path, sites: &[(Lang, Site)], tally: &mut Tally) {
+    pub(super) fn judge(&self, root: &Path, sites: &[(Lang, Site)], tally: &mut Tally) {
+        self.with_scopes(root, |core, oracle| {
+            compare(sites, core, oracle, tally, &|| self.describe(root));
+        });
+    }
+
+    /// The two Scopes over this world (one memo each: the core side's and
+    /// the frozen side's caches never meet), handed to `f`.
+    pub(super) fn with_scopes<R>(&self, root: &Path, f: impl FnOnce(&Scope, &Scope) -> R) -> R {
         let (m1, m2) = (Memo::default(), Memo::default());
         let core = Scope {
             files: &self.files,
@@ -222,11 +167,11 @@ impl World {
             py_all: &self.py_all,
         };
         let oracle = Scope { memo: &m2, ..core };
-        compare(sites, &core, &oracle, tally, &|| self.describe(root));
+        f(&core, &oracle)
     }
 
     /// The tree as text, for a mismatch report.
-    fn describe(&self, root: &Path) -> String {
+    pub(super) fn describe(&self, root: &Path) -> String {
         let mut configs = Vec::new();
         texts(root, root, &mut configs);
         format!(
@@ -260,78 +205,3 @@ pub(super) type Owned = (Lang, &'static str, String, String);
 /// One random tree: its world (configuration files already written
 /// under the root it is handed) and its sites.
 pub(super) type Tree = (World, Vec<Owned>);
-
-/// A random leg: `CE_LADDER_DIFF_N` seeded trees, each built by `tree`
-/// in a fresh directory, both sides on its sites (and on its forced-
-/// include arcs when `forced`, on its R package code, cabal mains and
-/// crate roots when it declares a DESCRIPTION, a .cabal or a Cargo.toml,
-/// on its cabal and Cargo privacy when it declares a .cabal or a
-/// Cargo.toml); the tally printed, any mismatch fails.
-pub(super) fn leg(
-    name: &str,
-    salt: u64,
-    forced: bool,
-    mut tree: impl FnMut(&mut Rng, &Path) -> Tree,
-) {
-    let mut rng = Rng::ladder(salt);
-    let mut tally = Tally::default();
-    let n = std::env::var("CE_LADDER_DIFF_N")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(400);
-    for i in 0..n {
-        let root = scratch().join(format!("{name}-{i}"));
-        let _ = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(&root).expect("scratch dir");
-        let (world, owned) = tree(&mut rng, &root);
-        let sites: Vec<(Lang, Site)> = owned
-            .iter()
-            .zip(0..)
-            .map(|((lang, kind, from, spec), at)| {
-                let line = world.lines.get(at).copied().unwrap_or(1);
-                let site = Site {
-                    kind,
-                    from,
-                    spec,
-                    line,
-                };
-                (*lang, site)
-            })
-            .collect();
-        world.judge(&root, &sites, &mut tally);
-        let ctx = || world.describe(&root);
-        if forced {
-            compare_forced(&root, &world.files, &mut tally, &ctx);
-        }
-        let named = |suffix| world.configs.iter().any(|c| c.ends_with(suffix));
-        if named("DESCRIPTION") || named(".cabal") || named("Cargo.toml") {
-            compare_declared(&root, &world.files, &mut tally, &ctx);
-        }
-        if named(".cabal") || named("Cargo.toml") {
-            compare_private(&root, &world.files, &mut tally, &ctx);
-        }
-    }
-    tally.report(&format!("{name} random"));
-}
-
-/// A language's legs, one per rung, from its `<lang> LEGS` table (rows
-/// `name salt rung`): each a seeded leg over `tree` aimed at its rung.
-pub(super) fn legs(lang: &str, tree: fn(&mut Rng, &Path, usize) -> Tree) {
-    for row in super::tables::t(&format!("{lang} LEGS")).split('|') {
-        let cells: Vec<&str> = row.split(' ').collect();
-        let [name, salt, rung] = cells[..] else {
-            panic!("a leg row: {row}");
-        };
-        let rung = rung.parse().expect("a rung");
-        leg(name, salt.parse().expect("a salt"), false, |rng, root| {
-            tree(rng, root, rung)
-        });
-    }
-}
-
-/// The scratch root the instruments write under.
-pub(super) fn scratch() -> PathBuf {
-    std::env::var("CE_LADDER_DIFF_SCRATCH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| std::env::temp_dir().join("ce-ladder-diff"))
-}
