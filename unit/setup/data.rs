@@ -1,6 +1,7 @@
 //! The data-folder rule over one value: the folder counts only when
 //! its last path segment is the plugin's name or that name and `-`,
-//! whichever separator spells it and with or without a trailing one.
+//! whichever separator spells it and with or without one trailing
+//! separator; a value whose leaf is empty after that names no folder.
 //! Every path below is a fixture value: nothing is read or written.
 
 use super::own;
@@ -35,6 +36,13 @@ fn the_folder_counts_only_when_its_last_segment_is_the_plugins() {
         r"D:\srv\codeeraserx",
         r"D:\srv\codeeraser\other\",
         "",
+        // one trailing separator dropped, an empty leaf names no folder
+        "/",
+        r"\",
+        "/srv/other-plugin//",
+        "/srv/codeeraser-x//",
+        r"D:\srv\codeeraser\/",
+        r"D:\srv\codeeraser/\",
     ];
     assert_eq!(
         misread(&ours, true),

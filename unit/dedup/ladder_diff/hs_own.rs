@@ -50,11 +50,11 @@ fn owner(from: &str, scope: &Scope) -> Option<Cabal> {
 }
 
 /// The live answer, the frozen answer and the mark for one site over the
-/// tree `files` (the cabals among them written as `texts`).
+/// tree `files` (the cabals among them written as `texts`), written under
+/// a scratch folder keyed by `name` and the process (two lib-test runs on
+/// one machine never share it) and removed once answered.
 fn answers(name: &str, texts: &[(&str, &str)], files: &[&str], spec: &str) -> [String; 3] {
-    let root = super::common::scratch().join(name);
-    let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(&root).expect("scratch dir");
+    let root = crate::testutil::scratch(name);
     write_tree(&root, texts);
     let world = World {
         files: files.iter().map(|f| (*f).to_string()).collect(),
@@ -67,7 +67,7 @@ fn answers(name: &str, texts: &[(&str, &str)], files: &[&str], spec: &str) -> [S
         spec,
         line: 1,
     };
-    world.with_scopes(&root, |core, oracle| {
+    let three = world.with_scopes(&root, |core, oracle| {
         let live = ladder::resolve_all(&[(Lang::Haskell, &site)], core).expect("the core answers");
         let frozen = ladder::frozen::resolve(Lang::Haskell, &site, oracle);
         let mark = own_package_answers(&site, oracle);
@@ -76,7 +76,9 @@ fn answers(name: &str, texts: &[(&str, &str)], files: &[&str], spec: &str) -> [S
             format!("{frozen:?}"),
             mark.to_string(),
         ]
-    })
+    });
+    let _ = std::fs::remove_dir_all(&root);
+    three
 }
 
 fn resolved(path: &str) -> String {
@@ -96,18 +98,18 @@ fn refused(reason: Reason) -> String {
 const LIBRARY: &str = "library\n  hs-source-dirs: src\n  exposed-modules: A\n";
 const APP: &str = "executable app\n  hs-source-dirs: app\n  main-is: Main.hs\n";
 
-/// The divergence on fixed trees, on every push (the lib legs run with
-/// the core exported, as every resolve leg does): the own package named
-/// under PackageImports answers live and nowhere frozen; the own package
-/// in its own build-depends beside another package exposing the same
-/// module makes two packages live (ambiguous) and one frozen; without the
-/// self-dependency, no mark and both sides agree.
 /// One fixed tree's three answers against `want`, `what` naming the case.
 fn pinned(name: &str, texts: &[(&str, &str)], spec: &str, want: [String; 3], what: &str) {
     let files = ["pkg/src/A.hs", "pkg/app/Main.hs", "other/lib/A.hs"];
     assert_eq!(answers(name, texts, &files, spec), want, "{what}");
 }
 
+/// The divergence on fixed trees, on every push (the lib legs run with
+/// the core exported, as every resolve leg does): the own package named
+/// under PackageImports answers live and nowhere frozen; the own package
+/// in its own build-depends beside another package exposing the same
+/// module makes two packages live (ambiguous) and one frozen; without the
+/// self-dependency, no mark and both sides agree.
 #[test]
 fn the_own_package_divergence_is_pinned() {
     let other = "name: other\nlibrary\n  hs-source-dirs: lib\n  exposed-modules: A\n";
