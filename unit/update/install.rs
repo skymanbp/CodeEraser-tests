@@ -19,9 +19,19 @@ fn the_owner_is_read_off_the_binarys_own_location() {
     let cargo = scratch("update-install-cargo").join(".cargo").join("bin");
     std::fs::create_dir_all(&cargo).expect("cargo bin");
     assert_eq!(classify(&cargo.join("ce"), None), Kind::Cargo);
-    // the bundle: the app sits beside us
-    std::fs::write(plain.join("CodeEraser.exe"), b"").expect("app");
+    // the names no shipped bundle carries make no bundle
+    let old = scratch("update-install-old-names");
+    for name in ["CodeEraser.exe", "CodeEraser", "codeeraser"] {
+        std::fs::write(old.join(name), b"").expect("old name");
+    }
+    assert_eq!(classify(&old.join("ce"), None), Kind::Manual);
+    // the bundle: the app the bundles ship sits beside us, either
+    // spelling (written out, not read off the constant)
+    std::fs::write(plain.join("ce-gui"), b"").expect("app");
     assert_eq!(classify(&exe, None), Kind::Bundle);
+    let windows = scratch("update-install-bundle-exe");
+    std::fs::write(windows.join("ce-gui.exe"), b"").expect("app.exe");
+    assert_eq!(classify(&windows.join("ce.exe"), None), Kind::Bundle);
     // the data-dir rule outranks the bundle rule
     assert_eq!(classify(&exe, Some(&plain)), Kind::Plugin);
 }

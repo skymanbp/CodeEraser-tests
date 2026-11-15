@@ -229,12 +229,21 @@ fn a_pin_mismatch_places_nothing() {
 /// link, not a copy: a fresh copy exec'd at once races sibling forks
 /// on Linux).
 /// The release index is `release(name, "v9.9.9")`; `data` is the folder
-/// `folder` under a scratch home of that name.
-fn from_folder(name: &str, folder: &str, then: &[&str]) -> (PathBuf, Value, Option<i32>, Output) {
+/// `folder` under a scratch home of that name, holding the empty files
+/// `beside` before the binary runs.
+pub(crate) fn from_folder(
+    name: &str,
+    folder: &str,
+    beside: &[&str],
+    then: &[&str],
+) -> (PathBuf, Value, Option<i32>, Output) {
     let r = release(name, "v9.9.9", false);
     let data = tmp(&format!("{name}-home")).join(folder);
     let data = data.as_path();
     std::fs::create_dir_all(data).expect("folder");
+    for file in beside {
+        std::fs::write(data.join(file), b"").expect("file beside");
+    }
     let exe = data.join(format!("ce{}", std::env::consts::EXE_SUFFIX));
     std::fs::hard_link(env!("CARGO_BIN_EXE_ce"), &exe).expect("hard link");
     let data_s = slashes(data);
@@ -256,6 +265,7 @@ fn a_copy_another_package_manager_owns_is_named_never_overwritten() {
     let (_, d, code, yes) = from_folder(
         "update-plugin",
         "codeeraser-codeeraser",
+        &[],
         &["update", "--yes"],
     );
     assert_eq!(
@@ -272,7 +282,7 @@ fn a_copy_another_package_manager_owns_is_named_never_overwritten() {
 /// update), and nothing is written into the folder.
 #[test]
 fn a_copy_in_another_plugins_folder_is_not_the_plugins() {
-    let (data, d, code, console) = from_folder("update-foreign", "other-plugin", &["update"]);
+    let (data, d, code, console) = from_folder("update-foreign", "other-plugin", &[], &["update"]);
     assert_eq!(console.status.code(), Some(1));
     assert_eq!(d["current"]["install"], 0, "classed by its own name");
     assert_eq!((code, &d["action"]), (Some(1), &Value::from(1)));
