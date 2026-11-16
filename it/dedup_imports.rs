@@ -12,7 +12,7 @@ use codeeraser::dedup::{analyze, pairs::Block, tokens};
 use codeeraser::scan::lang::Lang;
 use std::path::Path;
 
-fn blocks(name: &str, files: &[(&str, &str)]) -> Vec<Block> {
+pub(crate) fn blocks(name: &str, files: &[(&str, &str)]) -> Vec<Block> {
     let dir = common::tmp(name);
     for (rel, text) in files {
         std::fs::write(dir.join(rel), text).expect("write");

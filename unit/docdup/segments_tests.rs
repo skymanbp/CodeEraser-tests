@@ -89,6 +89,36 @@ fn comment_runs_merge_by_column_and_docstrings_extract() {
     );
 }
 
+/// DOCDUP_REV 9: the docstring is the body's first STATEMENT, and a
+/// comment is not one: a shebang or a coding line above the module
+/// docstring, and a comment line above a function or class docstring,
+/// leave the docstring a docstring and stay comment segments of their
+/// own. Past a comment, a first statement that is an assignment makes
+/// the later string no docstring (the docstring-first shapes above are
+/// what they were at rev 8).
+#[test]
+fn a_docstring_after_a_comment_line_is_still_the_docstring() {
+    let shebang = "#!/usr/bin/env python3\n\"\"\"Script doc.\"\"\"\nx = 1\n";
+    assert_eq!(
+        rows(shebang, Lang::Python),
+        [(KIND_COMMENT, 1, 1), (KIND_DOCSTRING, 2, 2)]
+    );
+    let coding = "# -*- coding: utf-8 -*-\n\"\"\"Module doc\nsecond line\n\"\"\"\nimport os\n";
+    assert_eq!(
+        rows(coding, Lang::Python),
+        [(KIND_COMMENT, 1, 1), (KIND_DOCSTRING, 2, 4)]
+    );
+    let bodies = "class A:\n    # note\n    \"\"\"Class doc.\"\"\"\n    def f(self):\n        # why\n        \"\"\"Fn doc.\"\"\"\n        return 1\n\ndef g():\n    # set up\n    y = 2\n    \"\"\"Second.\"\"\"\n";
+    let want = [
+        (KIND_COMMENT, 2, 2),
+        (KIND_DOCSTRING, 3, 3),
+        (KIND_COMMENT, 5, 5),
+        (KIND_DOCSTRING, 6, 6),
+        (KIND_COMMENT, 10, 10),
+    ];
+    assert_eq!(rows(bodies, Lang::Python), want);
+}
+
 #[test]
 fn rust_block_and_line_comments_extract() {
     let rs = "/* block\n   comment */\nfn main() {\n    // a\n    // b\n}\n";

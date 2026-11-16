@@ -53,6 +53,7 @@ mod deadcode_gate;
 mod deadcode_roots;
 mod declared_domain;
 mod dedup_core;
+mod dedup_docstrings;
 mod dedup_groups;
 mod dedup_imports;
 mod dedup_index;
