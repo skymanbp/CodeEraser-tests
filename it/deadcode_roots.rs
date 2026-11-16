@@ -79,20 +79,24 @@ fn trees() -> Vec<Tree> {
     out
 }
 
-fn tree_dir(t: &Tree) -> std::path::PathBuf {
+/// The tree under a folder of the leg's own (`leg`): the legs run in
+/// parallel, and a shared folder is torn down under a sibling.
+fn tree_dir(t: &Tree, leg: &str) -> std::path::PathBuf {
     let files: Vec<(&str, &str)> = t
         .files
         .iter()
         .map(|(p, s)| (p.as_str(), s.as_str()))
         .collect();
-    common::fixture(&t.name, &files).dir.clone()
+    common::fixture(&format!("{}-{leg}", t.name), &files)
+        .dir
+        .clone()
 }
 
 #[test]
 fn the_document_names_the_roots_and_each_dependents_roots() {
     let core = core_bin();
     for t in trees() {
-        let r = deadcode::run(&tree_dir(&t), None, &core).expect("run");
+        let r = deadcode::run(&tree_dir(&t, "document"), None, &core).expect("run");
         assert_eq!(r.dead.len(), t.dead, "{}: the dead rows", t.name);
         assert_eq!(
             (r.counts.roots, r.counts.dependents),
@@ -133,7 +137,7 @@ fn the_console_prints_roots_first_in_both_languages() {
         ("zh", "无引用", "个文件随它无引用", "——随根 ", "无引用（"),
     ];
     for t in trees() {
-        let dir = tree_dir(&t);
+        let dir = tree_dir(&t, "console");
         for (lang, row, falls, under, summary) in words {
             let out = common::run_ce_env(
                 &dir,
@@ -187,7 +191,7 @@ fn row_path(line: &str) -> String {
 #[test]
 fn the_mcp_tool_carries_the_grouping() {
     let t = trees().into_iter().next().expect("the chain");
-    let mut s = McpSession::over(&tree_dir(&t));
+    let mut s = McpSession::over(&tree_dir(&t, "mcp"));
     let text = s.relayed(1, "deadcode", serde_json::json!({}));
     s.finish();
     let doc: serde_json::Value = serde_json::from_str(&text).expect("a document");
