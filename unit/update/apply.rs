@@ -82,3 +82,40 @@ fn a_failed_second_placement_rolls_the_first_back() {
     assert_eq!(std::fs::read_to_string(&core).unwrap(), "new core");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// The twins `sweep_old` removes: the updater's `<name>.old` and the
+/// Windows installer's `<name>.<digits>.old`, nothing else. Each name
+/// is written into one directory, swept, and judged by what is left.
+#[test]
+fn the_sweep_removes_the_updaters_and_the_installers_twins() {
+    let names = "
+        ce.old             swept
+        ce-core.old        swept
+        ce.271348953.old   swept
+        ce-core.0.old      swept
+        ce.x.old           kept
+        ce-gui.1.old       kept
+        ce.1.old.bak       kept
+        ce..old            kept
+        ce.1.2.old         kept
+        ce.exe             kept
+        uninstall.old      kept
+    ";
+    let dir = crate::testutil::scratch("update-sweep");
+    let rows: Vec<(&str, bool)> = names
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .chunks(2)
+        .map(|w| (w[0], w[1] == "swept"))
+        .collect();
+    for (name, _) in &rows {
+        std::fs::write(dir.join(name), name).unwrap();
+    }
+    let swept = rows.iter().filter(|(_, s)| *s).count();
+    assert_eq!(super::sweep_old(&dir), swept);
+    for (name, s) in &rows {
+        assert_eq!(super::retired_twin(name), *s, "{name}");
+        assert_eq!(dir.join(name).exists(), !s, "{name} after the sweep");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

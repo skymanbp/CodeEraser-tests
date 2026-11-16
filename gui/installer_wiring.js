@@ -95,4 +95,26 @@ if (m) {
   }
 }
 
+// 6. A sidecar a running process holds (rule 3 of the hook's header):
+// PREINSTALL retires EVERY external binary the bundle carries, the
+// names read off the one place that spells them (build-target.yml's
+// externalBin), not typed here; POSTINSTALL and PREUNINSTALL run the
+// sweep, the latter outside the marker branch (it must run whether or
+// not the marker exists); the sweep names both twin patterns of each.
+const wf = read(".github/workflows/build-target.yml");
+const ext = /"externalBin":\[([^\]]*)\]/.exec(wf);
+const bins = ext ? [...ext[1].matchAll(/"([^"]+)"/g)].map((x) => path.posix.basename(x[1])) : [];
+say(bins.length > 0, `build-target.yml spells the external binaries (${bins.join(", ")})`);
+const preinst = macro("NSIS_HOOK_PREINSTALL");
+const retired = [...preinst.matchAll(/^\s*!insertmacro CE_RETIRE_SIDECAR (\S+) \S+\s*$/gm)].map((x) => x[1]);
+say(bins.length > 0 && bins.every((b) => retired.includes(b)), `PREINSTALL retires every external binary (${retired.join(", ") || "none"})`);
+const sweeps = (body) => /^\s*!insertmacro CE_SWEEP_RETIRED\s*$/m.test(body);
+say(sweeps(post), "POSTINSTALL runs the sweep");
+const [from, to] = [pre.indexOf("IfFileExists"), pre.indexOf("ceppu_done:")];
+say(from >= 0 && to > from, "PREUNINSTALL has its marker branch");
+say(sweeps(pre.slice(0, from) + pre.slice(to)), "PREUNINSTALL runs the sweep outside the marker branch");
+const sweep = macro("CE_SWEEP_RETIRED");
+const twins = (b) => [`Delete "$INSTDIR\\${b}.*.old"`, `Delete "$INSTDIR\\${b}.old"`];
+say(bins.length > 0 && bins.every((b) => twins(b).every((d) => sweep.includes(d))), "the sweep names both twin patterns of each external binary");
+
 done();
