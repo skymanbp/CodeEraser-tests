@@ -5,18 +5,23 @@
 
 use std::path::{Path, PathBuf};
 
-/// A family's schema id as the core's document catalogue states it
-/// (audit C row 18), asked of the core once: the unit legs read the
-/// id the package carries rather than restate it.
-pub fn catalogue_schema(family: &str) -> serde_json::Value {
+/// The core's `tables/1` answer as JSON, asked of the core once: the
+/// legs that read a table the way the package reader does.
+pub fn package() -> &'static serde_json::Value {
     static TABLES: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-    let tables = TABLES.get_or_init(|| {
+    TABLES.get_or_init(|| {
         let core = crate::daemon::judge::core_bin().expect("a core");
         let (mut link, _) = crate::corelink::Link::open(&core).expect("the core");
         link.request("tables", serde_json::json!({}))
             .expect("tables/1")
-    });
-    tables["document"][family]["schema"].clone()
+    })
+}
+
+/// A family's schema id as the core's document catalogue states it
+/// (audit C row 18): the unit legs read the id the package carries
+/// rather than restate it.
+pub fn catalogue_schema(family: &str) -> serde_json::Value {
+    package()["document"][family]["schema"].clone()
 }
 
 /// A literal case table, one `input => expected` per line, read and

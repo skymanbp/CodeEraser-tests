@@ -7,7 +7,8 @@
 //! an edited one become candidates; a file excluded, of the scan-only
 //! arm, or of a language that never fingerprints is not indexed;
 //! without a running daemon nothing happens; an index of another
-//! generation is not touched.
+//! generation is not touched; a file that lands outside Write/Edit is
+//! no candidate until a whole run (README, Known limits).
 
 use crate::common::{self, run_hook, spawn_daemon_ready, tmp, write_all};
 // the files the index holds, read without opening it as an Index (an
@@ -126,4 +127,16 @@ fn an_index_of_another_generation_is_not_touched() {
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .expect("version");
     assert_eq!(v, 1, "nor rebuilt");
+}
+
+#[test]
+fn a_file_written_outside_the_hooks_waits_for_a_whole_run() {
+    let (dir, guard) = seeded("guard-reindex-outside", &[("other.py", G)]);
+    write_all(&dir, &[("x.py", F)]);
+    let pre = common::pretooluse_envelope_at(&dir, "y.py", "Write", F);
+    let unseen = common::run_hook_alive(&dir, &["probe", "--hook"], &pre, &[]);
+    assert!(unseen.trim().is_empty(), "no refresh: {unseen}");
+    common::build_index(&dir);
+    common::expect_write_denied(&dir, "y.py", F, "x.py:1-");
+    drop(guard);
 }
