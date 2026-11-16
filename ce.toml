@@ -9,7 +9,7 @@
 # cli/tests` judges this tree alone. Thresholds stay at the defaults.
 
 [graph]
-# This tree is a slice of the `cli` package: its three test binaries
+# This tree is a slice of the `cli` package: its four test binaries
 # are cargo targets only in the superproject's cli/Cargo.toml, so the
 # crate roots are declared here — each one mounts its `mod` children
 # and anchors its `crate::` paths, and is a declared target for the
@@ -18,6 +18,7 @@ crate_roots = [
     "it/main.rs",
     "corelink_deadline.rs",
     "daemon_conn_deadline.rs",
+    "unit_mounts.rs", # mounts it/unit_mounts.rs (its header says why)
 ]
 # The four GUI gate scripts node runs by path from ci.yml, and the
 # unit tree: every file under unit/ is a `#[cfg(test)] #[path] mod`

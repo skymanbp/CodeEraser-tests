@@ -11,7 +11,7 @@ extracted with `git filter-repo`; nothing was rewritten but the paths.
 | here | in the superproject | what |
 |---|---|---|
 | `it/` | `cli/tests/it/` | the one Rust integration binary (`cargo test --test it -- <module>::`) |
-| `corelink_deadline.rs`, `daemon_conn_deadline.rs` | `cli/tests/` | the two root binaries that must run alone |
+| `corelink_deadline.rs`, `daemon_conn_deadline.rs`, `unit_mounts.rs` | `cli/tests/` | the three root binaries that must run alone (the third mounts `it/unit_mounts.rs`, whose `cargo package --list` must not share a process with legs that create and remove scratch directories) |
 | `gui/*.js` | `cli/tests/gui/` (formerly `gui/tests/`) | the four node gates over the GUI's JS |
 | `unit/` | `cli/tests/unit/` | the crate's unit tests, one file per `#[cfg(test)]` module of `cli/src` (mirrored path; a `mod.rs` host names its directory), mounted back by `#[cfg(test)] #[path = "../tests/unit/…"] mod tests;` in the source file (plan v2.18 step #13); the crate's tarball ships exactly these files and nothing else of this tree, and `it/unit_mounts.rs` holds src mounts, this directory and the tarball to one set |
 

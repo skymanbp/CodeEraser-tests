@@ -8,6 +8,9 @@
 //! cannot see the orphan; a mount without its file fails only under
 //! cfg(test), which `cargo publish`'s verify build never enables
 //! (both raised by the step's adversarial review).
+//!
+//! Compiled by the root binary ../unit_mounts.rs, not by the `it` crate;
+//! that file's header says why.
 
 use crate::common;
 use std::collections::BTreeSet;

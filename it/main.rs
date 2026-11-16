@@ -4,12 +4,16 @@
 //! dominated the CI test step. Every former root
 //! file is a module here; shared dirs (common/, eval_support/,
 //! *_parts/) are crate-level mods their consumers
-//! reach via `use crate::…`. Two files stay separate root binaries,
+//! reach via `use crate::…`. Three files stay separate root binaries,
 //! each for a stated isolation need: corelink_deadline.rs mutates
-//! process env under thread-level parallelism, and
+//! process env under thread-level parallelism,
 //! daemon_conn_deadline.rs asserts wall-clock deadline behavior that
 //! this crate's co-scheduling stretches past its own budget (its
-//! header carries the loop-failure record).
+//! header carries the loop-failure record), and unit_mounts.rs mounts
+//! it/unit_mounts.rs, whose `cargo package --list` takes a git status
+//! of cli/ that fails when a sibling leg removes a scratch directory
+//! mid-walk (the root's header carries the record); this crate does
+//! not mount that module.
 mod arch_face;
 mod audit_bypass;
 mod audit_stop;
@@ -288,7 +292,6 @@ mod trend_parser;
 mod trend_rebuild;
 mod trend_submodule;
 mod ui_lang;
-mod unit_mounts;
 mod update_bundle;
 mod update_e2e;
 mod update_e2e_notice;

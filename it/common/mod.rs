@@ -5,8 +5,9 @@
 //!
 //! The one integration crate compiles this module (it/main.rs,
 //! 2026-08-26), so a helper no leg calls is dead code the compiler
-//! names here. daemon_conn_deadline.rs mounts a second copy and calls
-//! a slice of it; the allow for the rest sits on that mount.
+//! names here. daemon_conn_deadline.rs and unit_mounts.rs each mount
+//! another copy and call a slice of it; the allow for the rest sits on
+//! those mounts.
 
 pub mod audit;
 pub mod bound;
