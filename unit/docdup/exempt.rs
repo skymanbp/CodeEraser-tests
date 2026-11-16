@@ -121,3 +121,77 @@ fn fenced_and_overlong_comment_lines_strip_with_ledger() {
     let md = seg(KIND_MD_PARA, 1, &[&long]);
     assert_eq!(strip_skeleton(&md, &mut lg).len(), 1, "md untouched");
 }
+
+/// A title underline is not a fence (DOCDUP_REV 9): each case is a
+/// header line `kind kept skeleton fenced @@ why` over the segment's
+/// lines (kind 1 = comment, 2 = docstring, 0 = md paragraph); the
+/// counts are the lines `strip_skeleton` keeps and its two ledger rows.
+const UNDERLINES: &str = r#"2 5 1 0 @@ the title-and-underline docstring: only the underline drops
+"""
+requests.api
+~~~~~~~~~~~~
+
+This module implements the Requests API.
+"""
+====
+2 2 1 0 @@ a title on the opening line, quotes stripped
+"""Title here
+~~~~~~~~~~
+Body text.
+====
+1 2 1 0 @@ a title in a comment
+# Title
+# ~~~~~
+# body
+====
+2 1 1 3 @@ a tilde fence under Example: (shorter than the line above) as before
+Example:
+~~~
+x = 1
+~~~
+after
+====
+2 1 0 2 @@ nothing above: a fence as before
+`
+~~~~
+x = 1
+====
+2 1 0 2 @@ an underline shorter than the title is a fence as before
+requests.adapters
+~~~~~~~~
+text
+====
+2 0 0 3 @@ inside a backtick fence a tilde line toggles as before
+```
+Title
+~~~~~
+====
+0 2 0 0 @@ an md paragraph is untouched
+Title
+~~~~~
+====
+2 2 2 0 @@ the stated limit: a tilde fence at least as long as the line above reads as an underline
+Hi
+~~~
+code
+~~~~"#;
+
+#[test]
+fn a_title_underline_is_dropped_as_skeleton_and_opens_no_fence() {
+    for case in UNDERLINES.split("\n====\n") {
+        let (head, body) = case.split_once('\n').expect("a header");
+        let (counts, why) = head.split_once(" @@ ").expect("counts @@ why");
+        let want: Vec<u64> = counts.split(' ').map(|n| n.parse().expect("n")).collect();
+        let lines: Vec<&str> = body
+            .lines()
+            .map(|l| if l == "`" { "" } else { l })
+            .collect();
+        let mut lg = Ledger::default();
+        let kept = strip_skeleton(&seg(want[0] as i64, 1, &lines), &mut lg).len() as u64;
+        assert_eq!(
+            vec![kept, lg.skeleton_line, lg.fenced_code_line],
+            want[1..].to_vec(),
+            "{why}"
+        );
+    }
+}
